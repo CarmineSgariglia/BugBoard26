@@ -1,31 +1,37 @@
 SHELL := /bin/sh
+COMPOSE := docker-compose
 
-COMPOSE := docker compose
+.PHONY: backend frontend all stop logs shell-backend shell-frontend migrate
 
-# Start just the backend service (also brings up database dependency)
+# Nota: la riga sotto deve iniziare con un TAB
 backend:
-	$(COMPOSE) up --build backend
+	$(COMPOSE) down
+	$(COMPOSE) build backend
+	$(COMPOSE) up -d backend
 
-# Start just the frontend service (depends on backend + db)
 frontend:
-	$(COMPOSE) up --build frontend
+	$(COMPOSE) down
+	$(COMPOSE) build frontend
+	$(COMPOSE) up -d frontend
 
-# Start the full stack (db + backend + frontend)
 all:
-	$(COMPOSE) up --build
+	$(COMPOSE) down
+	docker system prune -f
+	$(COMPOSE) build backend
+	$(COMPOSE) build frontend
+	$(COMPOSE) up -d
 
-# Bring the entire stack down and remove the network
+migrate:
+	$(COMPOSE) exec backend python manage.py migrate
+
 stop:
 	$(COMPOSE) down
 
-# Follow the container logs for quick debugging
 logs:
 	$(COMPOSE) logs --tail=50 --follow
 
-# Open a shell in the backend container
 shell-backend:
 	$(COMPOSE) exec backend sh
 
-# Open a shell in the frontend container
 shell-frontend:
 	$(COMPOSE) exec frontend sh
