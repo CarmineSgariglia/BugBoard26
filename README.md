@@ -41,6 +41,7 @@ Containerized three-tier architecture:
 
 If frontend works but `/api/*` calls fail on a VM, verify:
 - `ALLOWED_HOSTS` includes your VM public IP/domain (and optionally `localhost,127.0.0.1,backend`)
+- `VITE_ALLOWED_HOSTS` includes your VM public IP/domain (for Vite host check)
 - If you are serving only HTTP, set:
   - `SESSION_COOKIE_SECURE=False`
   - `CSRF_COOKIE_SECURE=False`
