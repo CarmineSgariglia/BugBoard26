@@ -1,4 +1,6 @@
 import { TopNav } from "../../components/navigation/TopNav";
+import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
+import { mockProjects } from "./projectsTest";
 
 export function ProjectsScreen() {
   return (
@@ -15,10 +17,27 @@ export function ProjectsScreen() {
       <TopNav />
 
       {/* Page Content: z-10 ensures it floats above the background */}
-      <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 relative z-10">
-        <h1 className="text-2xl font-semibold mb-6">Projects</h1>
-        <div className="text-sm text-[#9CA3AF]">
-          Login riuscito. Questa schermata è il punto di ingresso per la dashboard progetti.
+      <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 relative z-10 flex flex-col">
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Projects</h1>
+          <p className="text-[#9CA3AF]">
+            Select a project folder to view its issues and boards.
+          </p>
+        </div>
+
+        {/* CSS Grid for the folders */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+          {mockProjects.map((project) => (
+            <ProjectFolderCard
+              key={project.id}
+              color={project.color}
+              title={project.title}
+              description={project.description}
+              date={project.date}
+              authorImageUrl={project.authorImageUrl}
+              icon={project.icon}
+            />
+          ))}
         </div>
       </div>
     </div>
