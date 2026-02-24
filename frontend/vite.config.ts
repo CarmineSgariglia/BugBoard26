@@ -2,9 +2,12 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   server: {
-    host: "127.0.0.1",
+    host: true,
     port: 5173,
     strictPort: true,
+    watch: {
+      usePolling: true,
+    },
     proxy: {
       "/api": {
         target: process.env.VITE_API_PROXY_TARGET ?? "http://backend:8000",
