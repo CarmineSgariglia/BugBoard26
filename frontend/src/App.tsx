@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { RetrieveStep1Screen } from "./features/auth/RetrieveStep1Screen";
 import { RetrieveStep2Screen } from "./features/auth/RetrieveStep2Screen";
+import { ProjectsScreen } from "./features/projects/ProjectsScreen";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/forgot-password" element={<RetrieveStep1Screen />} />
         <Route path="/forgot-password/verify" element={<RetrieveStep2Screen />} />
+        <Route path="/projects" element={<ProjectsScreen />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

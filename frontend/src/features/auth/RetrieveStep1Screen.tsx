@@ -6,11 +6,14 @@ import { AuthHeader, AuthPageTitle } from "../../components/auth/AuthHeader";
 import { TextField } from "../../components/auth/TextField";
 import { PrimaryButton } from "../../components/auth/PrimaryButton";
 import { useNavigate } from "react-router-dom";
+import { requestOtpApi } from "../../services/api";
 
 export function RetrieveStep1Screen() {
     const navigate = useNavigate();
     const emailInputRef = useRef<HTMLInputElement>(null);
     const [email, setEmail] = useState("");
+    const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
     const isEmailValid = isValidEmail(email);
 
@@ -18,15 +21,25 @@ export function RetrieveStep1Screen() {
         emailInputRef.current?.focus();
     }, []);
 
-    const onSubmit = (e: React.FormEvent) => {
+    const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Here we could validate the email before navigating
-        navigate("/forgot-password/verify");
+        if (!isEmailValid || isLoading) return;
+
+        setError("");
+        setIsLoading(true);
+        try {
+            await requestOtpApi(email.trim());
+            navigate(`/forgot-password/verify?email=${encodeURIComponent(email.trim())}`);
+        } catch {
+            setError("Impossibile inviare il codice OTP");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
         <AuthLayout>
-            <AuthPageTitle text="Retrive Password" />
+            <AuthPageTitle text="Retrieve Password" />
             <AuthCard>
                 <AuthHeader
                     subtitle="Insert your email to recover your password"
@@ -39,8 +52,9 @@ export function RetrieveStep1Screen() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                     />
-                    <PrimaryButton type="submit" disabled={!isEmailValid}>
-                        Send Code
+                    {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                    <PrimaryButton type="submit" disabled={!isEmailValid || isLoading}>
+                        {isLoading ? "Sending..." : "Send Code"}
                     </PrimaryButton>
                 </form>
             </AuthCard>
