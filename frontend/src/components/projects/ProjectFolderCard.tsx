@@ -22,7 +22,7 @@ export function ProjectFolderCard({
     return (
         <button
             onClick={onClick}
-            className="group relative w-full text-left outline-none transition-transform hover:-translate-y-1 hover:shadow-2xl focus:ring-2 focus:ring-white/20 rounded-2xl"
+            className="group relative w-full h-full flex flex-col text-left outline-none transition-transform hover:-translate-y-1 hover:shadow-2xl focus:ring-2 focus:ring-white/20 rounded-2xl"
         >
             {/* The Back Tab (Folder Tab) */}
             <div
@@ -44,7 +44,7 @@ export function ProjectFolderCard({
 
             {/* The Main Front Body of the Folder */}
             <div
-                className="relative z-10 mt-[14px] flex flex-col rounded-2xl border border-white/20 p-5 shadow-xl transition-colors min-h-[220px]"
+                className="relative z-10 mt-[14px] flex flex-1 flex-col w-full rounded-2xl border border-white/20 p-5 shadow-xl transition-colors min-h-[220px]"
                 style={{ backgroundColor: color }}
             >
                 {/* Top Section: Icon */}
