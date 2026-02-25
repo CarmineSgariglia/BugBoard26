@@ -5,6 +5,7 @@ import { RetrieveStep1Screen } from "./features/auth/RetrieveStep1Screen";
 import { RetrieveStep2Screen } from "./features/auth/RetrieveStep2Screen";
 import { ProjectsScreen } from "./features/projects/ProjectsScreen";
 import { ProjectIssuesScreen } from "./features/projects/ProjectIssuesScreen";
+import { ManageAccountSettingsPage } from "./features/settings/ManageAccountSettingsPage";
 import { meApi } from "./services/api";
 
 function useAuthStatus() {
@@ -95,6 +96,14 @@ function App() {
           element={
             <RequireAuth>
               <ProjectIssuesScreen />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <ManageAccountSettingsPage />
             </RequireAuth>
           }
         />

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { GlassCard } from "./GlassCard";
 import { GlassButton } from "./GlassButton";
 
@@ -8,6 +9,8 @@ interface ProfileDropdownProps {
 }
 
 export function ProfileDropdown({ isOpen, onClose, onLogout }: ProfileDropdownProps) {
+    const navigate = useNavigate();
+
     if (!isOpen) return null;
 
     return (
@@ -17,7 +20,7 @@ export function ProfileDropdown({ isOpen, onClose, onLogout }: ProfileDropdownPr
 
             <div className="absolute top-14 right-0 z-50 w-64 origin-top-right">
                 <GlassCard>
-                    <GlassButton>
+                    <GlassButton onClick={() => { onClose(); navigate("/settings"); }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white flex-shrink-0">
                             <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             <path d="M19.4 15C19.7828 14.1165 20.0003 13.0807 20 12C20 10.8954 19.7828 9.8596 19.4 8.9761M15 19.4C14.1165 19.7828 13.0807 20.0003 12 20C10.8954 20 9.8596 19.7828 8.9761 19.4M4.6 9C4.21715 9.88349 3.99974 10.9193 4 12C4 13.1046 4.21715 14.1404 4.6 15.0239M9 4.6C9.88349 4.21715 10.9193 3.99974 12 4C13.1046 4 14.1404 4.21715 15.0239 4.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
