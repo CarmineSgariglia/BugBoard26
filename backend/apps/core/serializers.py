@@ -21,6 +21,16 @@ from .models import (
 )
 
 
+def build_media_url(serializer: serializers.Serializer, path_or_url: str) -> str:
+    if not path_or_url:
+        return ""
+    if path_or_url.startswith(("http://", "https://", "/media/")):
+        return path_or_url
+    media_url = f"/media/{path_or_url}".replace("//", "/")
+    request = serializer.context.get("request") if hasattr(serializer, "context") else None
+    return request.build_absolute_uri(media_url) if request else media_url
+
+
 class UserSerializer(serializers.ModelSerializer):
     userId = serializers.IntegerField(source="id", read_only=True)
     firstName = serializers.CharField(source="first_name", required=False, allow_blank=True)
@@ -43,6 +53,11 @@ class UserSerializer(serializers.ModelSerializer):
             "active",
         ]
         extra_kwargs = {"password": {"write_only": True, "required": False}}
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["profileImg"] = build_media_url(self, data.get("profileImg", ""))
+        return data
 
     def create(self, validated_data):
         profile_data = validated_data.pop("profile", {})
@@ -100,6 +115,11 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ["projectId", "name", "createdAt", "description", "color", "icon", "createdBy"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["icon"] = build_media_url(self, data.get("icon", ""))
+        return data
 
 
 class TagSerializer(serializers.ModelSerializer):

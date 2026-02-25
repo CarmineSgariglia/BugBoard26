@@ -6,10 +6,11 @@ import { TextField } from "../../components/auth/TextField";
 import { PrimaryButton } from "../../components/auth/PrimaryButton";
 import { isValidPassword } from "../../utils/validation";
 import { resetPasswordApi, verifyOtpApi } from "../../services/api";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export function RetrieveStep2Screen() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [code, setCode] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [error, setError] = useState("");
@@ -17,9 +18,9 @@ export function RetrieveStep2Screen() {
     const [isLoading, setIsLoading] = useState(false);
 
     const email = useMemo(() => {
-        const search = new URLSearchParams(window.location.search);
+        const search = new URLSearchParams(location.search);
         return search.get("email")?.trim() ?? "";
-    }, []);
+    }, [location.search]);
 
     const isCodeValid = /^\d{6}$/.test(code);
     const isPasswordValid = isValidPassword(newPassword);

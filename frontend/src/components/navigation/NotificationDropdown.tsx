@@ -1,7 +1,7 @@
+import { useEffect, useMemo, useState } from "react";
 import { GlassCard } from "./GlassCard";
 import { NotificationItem } from "./NotificationItem";
-
-import { notifications } from "./notifyTest"
+import { listNotificationsApi, readNotificationApi, type NotificationItem as NotificationApiItem } from "../../services/api";
 
 interface NotificationDropdownProps {
     isOpen: boolean;
@@ -9,9 +9,50 @@ interface NotificationDropdownProps {
 }
 
 export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
-    if (!isOpen) return null;
+    const [notifications, setNotifications] = useState<NotificationApiItem[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Dummy data matching realistic notifications
+    useEffect(() => {
+        if (!isOpen) return;
+        const run = async () => {
+            setIsLoading(true);
+            try {
+                const data = await listNotificationsApi();
+                setNotifications(data);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        run();
+    }, [isOpen]);
+
+    const items = useMemo(() => {
+        return notifications.map((notification) => ({
+            id: notification.notifyUserId,
+            title: notification.type.replaceAll("_", " "),
+            description:
+                notification.issueId != null
+                    ? `Issue #${notification.issueId}`
+                    : notification.projectId != null
+                        ? `Project #${notification.projectId}`
+                        : "System notification",
+            time: new Date(notification.createdAt).toLocaleString(),
+            isRead: notification.isRead,
+        }));
+    }, [notifications]);
+
+    const onRead = async (notifyUserId: number) => {
+        try {
+            await readNotificationApi(notifyUserId);
+            setNotifications((prev) =>
+                prev.map((item) => (item.notifyUserId === notifyUserId ? { ...item, isRead: true } : item)),
+            );
+        } catch {
+            return;
+        }
+    };
+
+    if (!isOpen) return null;
 
     return (
         <>
@@ -34,12 +75,18 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                             WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)'
                         }}
                     >
-                        {notifications.map(n => (
+                        {isLoading ? <p className="px-2 py-2 text-xs text-neutral-400">Loading...</p> : null}
+                        {!isLoading && items.length === 0 ? (
+                            <p className="px-2 py-2 text-xs text-neutral-400">No notifications</p>
+                        ) : null}
+                        {items.map((n) => (
                             <NotificationItem
                                 key={n.id}
                                 title={n.title}
                                 description={n.description}
                                 time={n.time}
+                                onClick={() => onRead(n.id)}
+                                unread={!n.isRead}
                             />
                         ))}
                     </div>

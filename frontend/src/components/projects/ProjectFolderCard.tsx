@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import projectLogo from "../../assets/LogoBugBoard26-Project.webp";
 
 export interface ProjectFolderCardProps {
     color: string;
@@ -71,7 +72,7 @@ export function ProjectFolderCard({
                     <div className="relative flex h-14 w-14 items-center justify-center">
                         {/* BugBoard Logo (Backdrop) */}
                         <img
-                            src="/src/assets/LogoBugBoard26-Project.webp"
+                            src={projectLogo}
                             alt="Platform"
                             className="absolute inset-0 h-full w-full object-contain opacity-30 drop-shadow-md"
                         />

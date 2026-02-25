@@ -1,18 +1,23 @@
 from __future__ import annotations
 
 import random
+import uuid
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
+from django.core.files.storage import default_storage
+from django.middleware.csrf import get_token
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .models import (
@@ -60,6 +65,46 @@ def check_admin(user: User) -> None:
         raise PermissionDenied("Admin privileges required")
 
 
+def user_project_ids(user: User):
+    if is_admin(user):
+        return Project.objects.values_list("project_id", flat=True)
+    return ProjectMembership.objects.filter(user=user).values_list("project_id", flat=True)
+
+
+def ensure_project_access(user: User, project: Project) -> None:
+    if is_admin(user):
+        return
+    if not ProjectMembership.objects.filter(project=project, user=user).exists():
+        raise PermissionDenied("You do not have access to this project")
+
+
+def ensure_issue_access(user: User, issue: Issue) -> None:
+    ensure_project_access(user, issue.project)
+
+
+def apply_issue_filters(queryset, request):
+    q = request.query_params.get("q")
+    category = request.query_params.get("category")
+    priority = request.query_params.get("priority")
+    tag = request.query_params.get("tag")
+    date_from = request.query_params.get("date_from")
+    date_to = request.query_params.get("date_to")
+
+    if q:
+        queryset = queryset.filter(title__icontains=q)
+    if category:
+        queryset = queryset.filter(issue_type=category)
+    if priority:
+        queryset = queryset.filter(priority=priority)
+    if tag:
+        queryset = queryset.filter(tags__name__iexact=tag)
+    if date_from:
+        queryset = queryset.filter(created_at__date__gte=date_from)
+    if date_to:
+        queryset = queryset.filter(created_at__date__lte=date_to)
+    return queryset.distinct()
+
+
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def health_check(_request):
@@ -69,6 +114,8 @@ def health_check(_request):
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
 
     def post(self, request):
         email = request.data.get("email", "").strip()
@@ -79,7 +126,8 @@ class LoginView(APIView):
         if auth_user is None or not auth_user.is_active:
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         login(request, auth_user)
-        return Response(UserSerializer(auth_user).data)
+        get_token(request)
+        return Response(UserSerializer(auth_user, context={"request": request}).data)
 
 
 class LogoutView(APIView):
@@ -94,12 +142,15 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        get_token(request)
+        return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 class PasswordOTPRequestView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "otp"
 
     def post(self, request):
         serializer = PasswordOTPRequestSerializer(data=request.data)
@@ -129,6 +180,8 @@ class PasswordOTPRequestView(APIView):
 class PasswordOTPVerifyView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "otp"
 
     def post(self, request):
         serializer = PasswordOTPVerifySerializer(data=request.data)
@@ -153,6 +206,8 @@ class PasswordOTPVerifyView(APIView):
 class PasswordResetView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "otp"
 
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
@@ -186,9 +241,20 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("id")
     lookup_field = "id"
     lookup_url_kwarg = "userId"
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def _validate_user_update_permissions(self, request, user: User) -> None:
+        if request.user != user and not is_admin(request.user):
+            raise PermissionDenied("Cannot edit other users")
+        if not is_admin(request.user):
+            forbidden_fields = {"isAdmin", "active"}
+            if any(field in request.data for field in forbidden_fields):
+                raise PermissionDenied("You cannot modify admin or active flags")
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        if not is_admin(self.request.user):
+            queryset = queryset.filter(id=self.request.user.id)
         q = self.request.query_params.get("q")
         if q:
             queryset = queryset.filter(
@@ -205,9 +271,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
-        if request.user != user and not is_admin(request.user):
-            raise PermissionDenied("Cannot edit other users")
+        self._validate_user_update_permissions(request, user)
         return super().partial_update(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        self._validate_user_update_permissions(request, user)
+        return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], url_path="disable")
     def disable(self, request, userId=None):
@@ -223,6 +293,40 @@ class UserViewSet(viewsets.ModelViewSet):
         profile.save(update_fields=["active"])
         return Response({"detail": "User disabled"})
 
+    @action(detail=True, methods=["post"], url_path="profile-image")
+    def upload_profile_image(self, request, userId=None):
+        user = self.get_object()
+        if request.user != user and not is_admin(request.user):
+            raise PermissionDenied("Cannot edit other users")
+
+        image = request.FILES.get("image")
+        if image is None:
+            raise ValidationError({"image": "Image file is required"})
+        if image.size > 2 * 1024 * 1024:
+            raise ValidationError({"image": "Max image size is 2MB"})
+
+        content_type = (getattr(image, "content_type", "") or "").lower()
+        allowed_types = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+        if content_type not in allowed_types:
+            raise ValidationError({"image": "Allowed formats: JPEG, PNG, WEBP"})
+
+        extension = allowed_types[content_type]
+        upload_path = f"profile-images/{user.id}/{uuid.uuid4().hex}.{extension}"
+        saved_path = default_storage.save(upload_path, image)
+
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        old_path = profile.profile_img
+        profile.profile_img = saved_path
+        profile.save(update_fields=["profile_img"])
+
+        if old_path and old_path != saved_path and old_path.startswith("profile-images/"):
+            try:
+                default_storage.delete(old_path)
+            except Exception:
+                pass
+
+        return Response(UserSerializer(user, context={"request": request}).data, status=status.HTTP_200_OK)
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
@@ -233,6 +337,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        if not is_admin(self.request.user):
+            queryset = queryset.filter(project_id__in=user_project_ids(self.request.user))
         q = self.request.query_params.get("q")
         if q:
             queryset = queryset.filter(name__icontains=q)
@@ -279,6 +385,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get", "post"], url_path="members")
     def members(self, request, projectId=None):
         project = self.get_object()
+        ensure_project_access(request.user, project)
         if request.method == "GET":
             memberships = ProjectMembership.objects.filter(project=project).select_related("user")
             return Response(ProjectMembershipSerializer(memberships, many=True).data)
@@ -303,6 +410,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def remove_member(self, request, projectId=None, userId=None):
         check_admin(request.user)
         project = self.get_object()
+        ensure_project_access(request.user, project)
         membership = ProjectMembership.objects.filter(project=project, user_id=userId).first()
         if not membership:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -312,7 +420,33 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class IssueViewSet(viewsets.ModelViewSet):
+class ProjectIssueListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, projectId):
+        project = Project.objects.filter(project_id=projectId).first()
+        if not project:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        ensure_project_access(request.user, project)
+        queryset = Issue.objects.filter(project=project).select_related("project", "reporter").prefetch_related("assignees", "tags")
+        queryset = apply_issue_filters(queryset, request)
+        return Response(IssueSerializer(queryset, many=True).data)
+
+    def post(self, request, projectId):
+        project = Project.objects.filter(project_id=projectId).first()
+        if not project:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        ensure_project_access(request.user, project)
+        issue = create_issue_for_project(request=request, project=project)
+        return Response(IssueSerializer(issue).data, status=status.HTTP_201_CREATED)
+
+
+class IssueViewSet(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = IssueSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Issue.objects.select_related("project", "reporter").prefetch_related("assignees", "tags")
@@ -321,44 +455,16 @@ class IssueViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        queryset = queryset.filter(project_id__in=user_project_ids(self.request.user))
         project_id = self.request.query_params.get("projectId")
-        q = self.request.query_params.get("q")
-        category = self.request.query_params.get("category")
-        priority = self.request.query_params.get("priority")
-        tag = self.request.query_params.get("tag")
-        date_from = self.request.query_params.get("date_from")
-        date_to = self.request.query_params.get("date_to")
 
         if project_id:
             queryset = queryset.filter(project_id=project_id)
-        if q:
-            queryset = queryset.filter(title__icontains=q)
-        if category:
-            queryset = queryset.filter(issue_type=category)
-        if priority:
-            queryset = queryset.filter(priority=priority)
-        if tag:
-            queryset = queryset.filter(tags__name__iexact=tag)
-        if date_from:
-            queryset = queryset.filter(created_at__date__gte=date_from)
-        if date_to:
-            queryset = queryset.filter(created_at__date__lte=date_to)
-
-        return queryset.distinct()
-
-    def perform_create(self, serializer):
-        project_id = self.request.data.get("projectId") or self.request.query_params.get("projectId")
-        project = Project.objects.filter(project_id=project_id).first()
-        if not project:
-            raise ValidationError({"projectId": "Valid projectId is required"})
-        issue = serializer.save(project=project, reporter=self.request.user)
-        IssueEvent.objects.create(issue=issue, actor=self.request.user, event_type=EventType.CREATE, message="Issue created")
-
-        admins = User.objects.filter(project_memberships__project=project, project_memberships__role=ProjectMembership.Role.ADMIN)
-        notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=list(admins), issue=issue)
+        return apply_issue_filters(queryset, self.request)
 
     def perform_destroy(self, instance):
         check_admin(self.request.user)
+        ensure_issue_access(self.request.user, instance)
         title = self.request.data.get("title")
         if title and title != instance.title:
             raise ValidationError({"title": "Issue title confirmation mismatch"})
@@ -371,9 +477,16 @@ class IssueViewSet(viewsets.ModelViewSet):
     def assign(self, request, issueId=None):
         check_admin(request.user)
         issue = self.get_object()
+        ensure_issue_access(request.user, issue)
         user_ids = request_user_ids(request.data.get("userIds", []))
         if not user_ids:
             raise ValidationError({"userIds": "At least one userId is required"})
+        allowed_ids = set(
+            ProjectMembership.objects.filter(project=issue.project, user_id__in=user_ids).values_list("user_id", flat=True)
+        )
+        disallowed_ids = [uid for uid in user_ids if uid not in allowed_ids]
+        if disallowed_ids:
+            raise ValidationError({"userIds": f"Users must be members of project: {disallowed_ids}"})
 
         assigned_users = []
         for user_id in user_ids:
@@ -388,6 +501,7 @@ class IssueViewSet(viewsets.ModelViewSet):
     def unassign(self, request, issueId=None):
         check_admin(request.user)
         issue = self.get_object()
+        ensure_issue_access(request.user, issue)
         user_ids = request_user_ids(request.data.get("userIds", []))
         if not user_ids:
             raise ValidationError({"userIds": "At least one userId is required"})
@@ -401,6 +515,7 @@ class IssueViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="status")
     def update_status(self, request, issueId=None):
         issue = self.get_object()
+        ensure_issue_access(request.user, issue)
         if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
             raise PermissionDenied("Only assigned users or admins can change status")
 
@@ -431,6 +546,7 @@ class IssueViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="updates")
     def add_update(self, request, issueId=None):
         issue = self.get_object()
+        ensure_issue_access(request.user, issue)
         if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
             raise PermissionDenied("Only assigned users or admins can add updates")
 
@@ -450,8 +566,9 @@ class IssueViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="suggestions")
     def suggestions(self, request, issueId=None):
         issue = self.get_object()
+        ensure_issue_access(request.user, issue)
         member_counts = (
-            User.objects.filter(project_memberships__project=issue.project)
+            User.objects.filter(project_memberships__project=issue.project, is_active=True)
             .annotate(
                 open_count=Count(
                     "issue_assignments",
@@ -471,6 +588,20 @@ class IssueViewSet(viewsets.ModelViewSet):
         ]
         return Response(payload)
 
+    def partial_update(self, request, *args, **kwargs):
+        issue = self.get_object()
+        ensure_issue_access(request.user, issue)
+        if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
+            raise PermissionDenied("Only assigned users or admins can edit issues")
+        return super().partial_update(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        issue = self.get_object()
+        ensure_issue_access(request.user, issue)
+        if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
+            raise PermissionDenied("Only assigned users or admins can edit issues")
+        return super().update(request, *args, **kwargs)
+
 
 class AttachmentUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -479,6 +610,7 @@ class AttachmentUploadView(APIView):
         event = IssueEvent.objects.filter(update_id=updateId).first()
         if not event:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        ensure_issue_access(request.user, event.issue)
         if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=event.issue, user=request.user).exists()):
             raise PermissionDenied("Not allowed")
 
@@ -524,6 +656,11 @@ class TagViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only admins can create tags")
         serializer.save()
 
+    def destroy(self, request, *args, **kwargs):
+        if not is_admin(request.user):
+            raise PermissionDenied("Only admins can delete tags")
+        return super().destroy(request, *args, **kwargs)
+
 
 class MetaEnumsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -555,3 +692,35 @@ def maybe_create_attachment(event: IssueEvent, payload: dict):
     mime_type = payload.get("mimeType", "application/octet-stream")
     size = int(payload.get("size", 0))
     return Attachment.objects.create(update=event, path=path, mime_type=mime_type, size=size)
+
+
+def create_issue_for_project(*, request, project: Project):
+    serializer = IssueSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    assignee_ids = serializer.validated_data.get("assigneeIds", [])
+    if assignee_ids:
+        member_ids = set(
+            ProjectMembership.objects.filter(project=project, user_id__in=assignee_ids).values_list("user_id", flat=True)
+        )
+        invalid_ids = [user_id for user_id in assignee_ids if user_id not in member_ids]
+        if invalid_ids:
+            raise ValidationError({"assigneeIds": f"Users must be members of project: {invalid_ids}"})
+
+    tag_ids = serializer.validated_data.get("tagIds", [])
+    if tag_ids:
+        existing_tag_ids = set(Tag.objects.filter(tag_id__in=tag_ids).values_list("tag_id", flat=True))
+        missing_tag_ids = [tag_id for tag_id in tag_ids if tag_id not in existing_tag_ids]
+        if missing_tag_ids:
+            raise ValidationError({"tagIds": f"Invalid tag ids: {missing_tag_ids}"})
+
+    issue = serializer.save(project=project, reporter=request.user)
+    IssueEvent.objects.create(issue=issue, actor=request.user, event_type=EventType.CREATE, message="Issue created")
+
+    admins = User.objects.filter(
+        project_memberships__project=project,
+        project_memberships__role=ProjectMembership.Role.ADMIN,
+        is_active=True,
+    )
+    notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=list(admins), issue=issue)
+    return issue

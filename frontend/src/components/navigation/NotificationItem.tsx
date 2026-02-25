@@ -5,12 +5,16 @@ interface NotificationItemProps {
     description: string;
     time: string;
     imageUrl?: string;
+    unread?: boolean;
     onClick?: () => void;
 }
 
-export function NotificationItem({ title, description, time, imageUrl, onClick }: NotificationItemProps) {
+export function NotificationItem({ title, description, time, imageUrl, unread = false, onClick }: NotificationItemProps) {
     return (
-        <GlassButton className="!px-3 !py-2 !items-start gap-3" onClick={onClick}>
+        <GlassButton
+            className={`!px-3 !py-2 !items-start gap-3 ${unread ? "border border-cyan-300/40 bg-cyan-500/5" : ""}`}
+            onClick={onClick}
+        >
             {/* Avatar / Icon Placeholder */}
             <div className="w-10 h-10 rounded-lg bg-neutral-800 flex-shrink-0 flex items-center justify-center overflow-hidden">
                 {imageUrl ? (

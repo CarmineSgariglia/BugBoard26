@@ -1,17 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { NavBrand } from "./NavBrand";
 import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
-import { logoutApi } from "../../services/api";
+import { logoutApi, meApi, resolveMediaUrl, type AuthUser } from "../../services/api";
 
 export function TopNav() {
+    const navigate = useNavigate();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+    useEffect(() => {
+        const run = async () => {
+            try {
+                const me = await meApi();
+                setCurrentUser(me);
+            } catch {
+                setCurrentUser(null);
+            }
+        };
+        run();
+    }, []);
 
     const handleLogout = async () => {
-        await logoutApi();
-        window.location.assign("/login");
+        try {
+            await logoutApi();
+        } finally {
+            navigate("/login", { replace: true });
+        }
     };
 
     return (
@@ -52,7 +70,17 @@ export function TopNav() {
                             setIsNotificationOpen(false); // Close other
                         }}
                     >
-                        {/* Optionally put user initial or image here */}
+                        {currentUser?.profileImg ? (
+                            <img
+                                src={resolveMediaUrl(currentUser.profileImg)}
+                                alt={currentUser.username}
+                                className="h-full w-full rounded-full object-cover"
+                            />
+                        ) : (
+                            <span className="block text-xs font-semibold text-slate-800">
+                                {(currentUser?.username ?? "U").slice(0, 1).toUpperCase()}
+                            </span>
+                        )}
                     </button>
                     <ProfileDropdown
                         isOpen={isProfileOpen}
