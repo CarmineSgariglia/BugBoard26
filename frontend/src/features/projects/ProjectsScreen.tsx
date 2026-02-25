@@ -6,18 +6,12 @@ import { AppBackground } from "../../components/layout/AppBackground";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
 import { listProjectsApi, resolveMediaUrl, meApi, type Project, type AuthUser } from "../../services/api";
+import { FaRegFolder } from "react-icons/fa";
+
 
 function folderIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <FaRegFolder size={30} className="text-white/80" />
   );
 }
 
