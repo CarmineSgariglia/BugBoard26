@@ -12,6 +12,19 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
+ * Validates if the provided string is a valid name.
+ * It checks that the name is at least 3 characters long and matches a standard 
+ * name pattern (containing only letters).
+ */
+export function isValidName(name: string): boolean {
+    if (!name || name.length < 3) return false;
+
+    // Standard name regex structure
+    const nameRegex = /^[a-zA-Z]+$/;
+    return nameRegex.test(name);
+}
+
+/**
  * Validates if the provided string is a strong password.
  * It checks that the password is at least 8 characters long,
  * contains at least one number, and at least one special character.

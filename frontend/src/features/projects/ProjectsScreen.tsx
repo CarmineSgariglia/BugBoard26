@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { TopNav } from "../../components/navigation/TopNav";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { AppBackground } from "../../components/layout/AppBackground";
-import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
+import { SearchBar } from "../../components/ui/SearchBar";
+import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
+import { listProjectsApi, resolveMediaUrl, meApi, type Project, type AuthUser } from "../../services/api";
 
 function folderIcon() {
   return (
@@ -29,6 +31,8 @@ function projectIcon(iconUrl?: string) {
 export function ProjectsScreen() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -37,9 +41,14 @@ export function ProjectsScreen() {
       setIsLoading(true);
       setError("");
       try {
-        setProjects(await listProjectsApi());
+        const [projectsData, userData] = await Promise.all([
+          listProjectsApi(),
+          meApi()
+        ]);
+        setProjects(projectsData);
+        setCurrentUser(userData);
       } catch {
-        setError("Unable to load projects. Please login again.");
+        setError("Unable to load data. Please login again.");
       } finally {
         setIsLoading(false);
       }
@@ -58,6 +67,12 @@ export function ProjectsScreen() {
     }));
   }, [projects]);
 
+  const filteredCards = useMemo(() => {
+    if (!searchQuery.trim()) return cards;
+    const lowerQuery = searchQuery.toLowerCase();
+    return cards.filter((card) => card.title.toLowerCase().includes(lowerQuery));
+  }, [cards, searchQuery]);
+
   return (
     <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
       {/* Shared Background Component */}
@@ -68,11 +83,25 @@ export function ProjectsScreen() {
 
       {/* Page Content: z-10 ensures it floats above the background */}
       <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 relative z-10 flex flex-col">
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Projects</h1>
+        <div className="mb-10 w-full max-w-xl mx-auto text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+            Hello, {currentUser?.firstName || currentUser?.lastName ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : currentUser?.username || 'User'}
+          </h1>
           <p className="text-[#9CA3AF]">
             Select a project folder to view its issues and boards.
           </p>
+        </div>
+
+        <div className="mb-8 w-full max-w-xl mx-auto">
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Enter project's name"
+            bgColor="bg-white"
+            textColor="text-neutral-900"
+            placeholderColor="placeholder:text-neutral-400"
+            iconColor="text-neutral-900"
+          />
         </div>
 
         {isLoading ? <p className="text-sm text-[#9CA3AF]">Loading projects...</p> : null}
@@ -80,7 +109,11 @@ export function ProjectsScreen() {
 
         {/* CSS Grid for the folders */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-          {cards.map((project) => (
+          {currentUser?.isAdmin && !searchQuery.trim() && (
+            <CreateProjectCard onClick={() => console.log("Open Create Project Modal")} />
+          )}
+
+          {filteredCards.map((project) => (
             <ProjectFolderCard
               key={project.id}
               color={project.color}
@@ -94,6 +127,11 @@ export function ProjectsScreen() {
             />
           ))}
         </div>
+        {!isLoading && !error && filteredCards.length === 0 ? (
+          <p className="text-sm text-[#9CA3AF] mt-8 text-center">
+            {projects.length === 0 ? "No projects found." : `No projects found matching "${searchQuery}".`}
+          </p>
+        ) : null}
       </div>
     </div>
   );
