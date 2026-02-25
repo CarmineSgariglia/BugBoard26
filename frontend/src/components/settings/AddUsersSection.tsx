@@ -1,9 +1,30 @@
 import { useMemo, useState } from "react";
+import axios from "axios";
 import { GlassCard } from "../ui/GlassCard";
 import { TextField } from "../ui/TextField";
 import { Button } from "../ui/Button";
 import { Toggle } from "../ui/Toggle";
 import { isValidEmail, isValidName } from "../../utils/validation";
+import { createUserApi } from "../../services/api";
+
+function buildUsernameFromEmail(email: string): string {
+    const localPart = email.split("@")[0] ?? "user";
+    const base = localPart.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 20) || "user";
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    return `${base}${suffix}`;
+}
+
+function generateTemporaryPassword(): string {
+    const suffix = Math.floor(100000 + Math.random() * 900000);
+    return `Temp!${suffix}`;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+    if (!axios.isAxiosError(error)) return fallback;
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string" && detail.trim().length > 0) return detail;
+    return fallback;
+}
 
 export function AddUsersSection() {
     const [name, setName] = useState("");
@@ -11,6 +32,8 @@ export function AddUsersSection() {
     const [email, setEmail] = useState("");
     const [isAdmin, setIsAdmin] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
     // Validation
     const isNameValid = useMemo(() => name === "" || isValidName(name.trim()), [name]);
@@ -29,14 +52,33 @@ export function AddUsersSection() {
         e.preventDefault();
         if (!isFormValid || isLoading) return;
         setIsLoading(true);
-        // TODO: Call API
-        await new Promise((r) => setTimeout(r, 1000));
-        setIsLoading(false);
-        // Reset form on success (mock)
-        setName("");
-        setSurname("");
-        setEmail("");
-        setIsAdmin(false);
+        setError("");
+        setSuccess("");
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const username = buildUsernameFromEmail(normalizedEmail);
+        const temporaryPassword = generateTemporaryPassword();
+
+        try {
+            await createUserApi({
+                username,
+                email: normalizedEmail,
+                password: temporaryPassword,
+                firstName: name.trim(),
+                lastName: surname.trim(),
+                isAdmin,
+                active: true,
+            });
+            setName("");
+            setSurname("");
+            setEmail("");
+            setIsAdmin(false);
+            setSuccess(`User created. Username: ${username} | Temporary password: ${temporaryPassword}`);
+        } catch (err) {
+            setError(getErrorMessage(err, "Unable to create user"));
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -89,6 +131,9 @@ export function AddUsersSection() {
 
                 {/* Divider Line */}
                 <div className="h-[1px] w-full bg-white/5 mt-2 mb-1"></div>
+
+                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
 
                 {/* Make an Admin Toggle */}
                 <div className="flex items-center gap-4">
