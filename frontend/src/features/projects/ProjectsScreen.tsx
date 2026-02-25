@@ -82,7 +82,7 @@ export function ProjectsScreen() {
       <TopNav />
 
       {/* Page Content: z-10 ensures it floats above the background */}
-      <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 relative z-10 flex flex-col">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex  mt-8 flex-col">
         <div className="mb-10 w-full max-w-xl mx-auto text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
             Hello, {currentUser?.firstName || currentUser?.lastName ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : currentUser?.username || 'User'}
@@ -92,7 +92,7 @@ export function ProjectsScreen() {
           </p>
         </div>
 
-        <div className="mb-8 w-full max-w-xl mx-auto">
+        <div className="mb-14 w-full max-w-xl mx-auto">
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}

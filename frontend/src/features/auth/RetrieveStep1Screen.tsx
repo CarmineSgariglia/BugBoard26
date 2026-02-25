@@ -1,10 +1,10 @@
 import { useRef, useEffect, useState } from "react";
 import { isValidEmail } from "../../utils/validation";
 import { AuthLayout } from "../../components/auth/AuthLayout";
-import { AuthCard } from "../../components/auth/AuthCard";
+import { GlassCard } from "../../components/ui/GlassCard";
 import { AuthHeader, AuthPageTitle } from "../../components/auth/AuthHeader";
-import { TextField } from "../../components/auth/TextField";
-import { PrimaryButton } from "../../components/auth/PrimaryButton";
+import { TextField } from "../../components/ui/TextField";
+import { Button } from "../../components/ui/Button";
 import { useNavigate } from "react-router-dom";
 import { requestOtpApi } from "../../services/api";
 
@@ -40,7 +40,7 @@ export function RetrieveStep1Screen() {
     return (
         <AuthLayout>
             <AuthPageTitle text="Retrieve Password" />
-            <AuthCard>
+            <GlassCard className="p-8">
                 <AuthHeader
                     subtitle="Insert your email to recover your password"
                 />
@@ -53,11 +53,11 @@ export function RetrieveStep1Screen() {
                         onChange={(e) => setEmail(e.target.value)}
                     />
                     {error ? <p className="text-sm text-red-400">{error}</p> : null}
-                    <PrimaryButton type="submit" disabled={!isEmailValid || isLoading}>
-                        {isLoading ? "Sending..." : "Send Code"}
-                    </PrimaryButton>
+                    <Button type="submit" disabled={!isEmailValid || isLoading} isLoading={isLoading}>
+                        Send Code
+                    </Button>
                 </form>
-            </AuthCard>
+            </GlassCard>
         </AuthLayout>
     );
 }

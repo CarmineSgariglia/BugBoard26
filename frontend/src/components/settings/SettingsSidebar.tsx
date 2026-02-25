@@ -13,8 +13,8 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
     };
 
     return (
-        <div className="w-[260px] flex-shrink-0 rounded-2xl bg-[#1A1D24]/90 border border-white/5 shadow-2xl overflow-hidden backdrop-blur-xl h-fit pb-4">
-            <div className="flex flex-col pt-2">
+        <div className="w-[260px] flex-shrink-0 rounded-2xl bg-[#1A1D24]/90 border border-white/5 shadow-2xl overflow-hidden backdrop-blur-xl pb-4">
+            <div className="flex flex-col pt-2 h-full">
                 {/* Profile Settings */}
                 <div
                     className={getTabClass("profile")}

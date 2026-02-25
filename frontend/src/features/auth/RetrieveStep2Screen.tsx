@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { AuthLayout } from "../../components/auth/AuthLayout";
-import { AuthCard } from "../../components/auth/AuthCard";
+import { GlassCard } from "../../components/ui/GlassCard";
 import { AuthHeader, AuthPageTitle } from "../../components/auth/AuthHeader";
-import { TextField } from "../../components/auth/TextField";
-import { PrimaryButton } from "../../components/auth/PrimaryButton";
+import { TextField } from "../../components/ui/TextField";
+import { Button } from "../../components/ui/Button";
 import { isValidPassword } from "../../utils/validation";
 import { resetPasswordApi, verifyOtpApi } from "../../services/api";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -53,7 +53,7 @@ export function RetrieveStep2Screen() {
     return (
         <AuthLayout>
             <AuthPageTitle text="Retrieve Password" />
-            <AuthCard>
+            <GlassCard className="p-8">
                 <AuthHeader
                     subtitle="Insert OTP code and your new password"
                 />
@@ -76,11 +76,11 @@ export function RetrieveStep2Screen() {
                     />
                     {error ? <p className="text-sm text-red-400">{error}</p> : null}
                     {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
-                    <PrimaryButton type="submit" disabled={!isFormValid || isLoading}>
-                        {isLoading ? "Updating..." : "Change password"}
-                    </PrimaryButton>
+                    <Button type="submit" disabled={!isFormValid || isLoading} isLoading={isLoading}>
+                        Change password
+                    </Button>
                 </form>
-            </AuthCard>
+            </GlassCard>
         </AuthLayout>
     );
 }

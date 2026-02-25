@@ -26,11 +26,11 @@ export function ManageAccountSettingsPage() {
             <TopNav />
 
             {/* Split Layout Container */}
-            <div className="flex-1 w-full flex flex-col md:flex-row items-start relative z-10 px-6 py-10">
+            <div className="flex-1 w-full max-w-7xl mx-auto flex flex-col md:flex-row items-start relative z-10 px-6 pt-28 pb-10">
 
                 {/* Left Column (Sidebar) - Only for Admins */}
                 {isAdmin && (
-                    <div className="w-full md:w-72 flex justify-center md:block flex-shrink-0 relative z-20 md:sticky md:top-10 self-start">
+                    <div className="w-full md:w-72 flex justify-center md:block flex-shrink-0 relative z-20 md:sticky md:top-28">
                         <SettingsSidebar
                             isAdmin={isAdmin}
                             activeTab={activeTab}
@@ -41,7 +41,7 @@ export function ManageAccountSettingsPage() {
 
                 {/* Center Column */}
                 <div className="flex-1 flex w-full justify-center px-4 mt-8 md:mt-0 relative z-10">
-                    <div className="w-full max-w-lg flex justify-center">
+                    <div className="w-full max-w-lg">
                         {activeTab === "profile" && <ProfileSettingsSection />}
                         {activeTab === "add_users" && <AddUsersSection />}
                         {activeTab === "manage_users" && <ManageUsersSection />}
