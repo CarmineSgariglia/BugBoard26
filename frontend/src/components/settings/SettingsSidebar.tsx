@@ -1,8 +1,6 @@
-import { FaUserFriends } from "react-icons/fa";
+import { GlassCard } from "../ui/GlassCard";
+import { FaUser, FaUserFriends } from "react-icons/fa";
 import { TiUserAdd } from "react-icons/ti";
-import { FaUser } from "react-icons/fa";
-
-
 
 interface SettingsSidebarProps {
     isAdmin: boolean;
@@ -19,7 +17,7 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
     };
 
     return (
-        <div className="w-[260px] flex-shrink-0 rounded-2xl bg-[#1A1D24]/90 border border-white/5 shadow-2xl overflow-hidden backdrop-blur-xl pb-4">
+        <GlassCard className="w-[260px] flex-shrink-0 pb-4">
             <div className="flex flex-col pt-2 h-full">
                 {/* Profile Settings */}
                 <div
@@ -55,6 +53,6 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
                     </div>
                 )}
             </div>
-        </div>
+        </GlassCard>
     );
 }
