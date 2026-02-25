@@ -277,6 +277,11 @@ class UserViewSet(viewsets.ModelViewSet):
         check_admin(self.request.user)
         serializer.save()
 
+    def create(self, request, *args, **kwargs):
+        # Enforce admin gate before payload validation to avoid leaking validation details.
+        check_admin(request.user)
+        return super().create(request, *args, **kwargs)
+
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
         self._validate_user_update_permissions(request, user)
@@ -286,6 +291,9 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         self._validate_user_update_permissions(request, user)
         return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        raise PermissionDenied("User deletion is disabled. Use /disable/ endpoint.")
 
     @action(detail=True, methods=["post"], url_path="disable")
     def disable(self, request, userId=None):
@@ -301,13 +309,11 @@ class UserViewSet(viewsets.ModelViewSet):
         profile.save(update_fields=["active"])
         return Response({"detail": "User disabled"})
 
-    @action(detail=True, methods=["post"], url_path="profile-image")
-    def upload_profile_image(self, request, userId=None):
-        user = self.get_object()
+    def _save_profile_image_for_user(self, *, request, user: User):
         if request.user != user and not is_admin(request.user):
             raise PermissionDenied("Cannot edit other users")
 
-        image = request.FILES.get("image")
+        image = request.FILES.get("image") or request.FILES.get("profile_img")
         if image is None:
             raise ValidationError({"image": "Image file is required"})
         if image.size > 2 * 1024 * 1024:
@@ -333,7 +339,18 @@ class UserViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-        return Response(UserSerializer(user, context={"request": request}).data, status=status.HTTP_200_OK)
+        return UserSerializer(user, context={"request": request}).data
+
+    @action(detail=True, methods=["post"], url_path="profile-image")
+    def upload_profile_image(self, request, userId=None):
+        user = self.get_object()
+        payload = self._save_profile_image_for_user(request=request, user=user)
+        return Response(payload, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="me/upload_profile_image")
+    def upload_profile_image_me(self, request):
+        payload = self._save_profile_image_for_user(request=request, user=request.user)
+        return Response(payload, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="change-password")
     def change_password(self, request, userId=None):

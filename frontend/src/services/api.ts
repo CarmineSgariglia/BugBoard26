@@ -45,6 +45,16 @@ export type UpdateUserPayload = {
   email?: string;
 };
 
+export type CreateUserPayload = {
+  username: string;
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  isAdmin?: boolean;
+  active?: boolean;
+};
+
 export type Project = {
   projectId: number;
   name: string;
@@ -114,6 +124,21 @@ export async function updateUserApi(userId: number, payload: UpdateUserPayload):
 
 export async function changePasswordApi(userId: number, currentPassword: string, newPassword: string): Promise<void> {
   await api.post(`/users/${userId}/change-password/`, { currentPassword, newPassword });
+}
+
+export async function createUserApi(payload: CreateUserPayload): Promise<AuthUser> {
+  const { data } = await api.post<AuthUser>("/users/", payload);
+  return data;
+}
+
+export async function listUsersApi(search?: string): Promise<AuthUser[]> {
+  const params = search ? { q: search } : undefined;
+  const { data } = await api.get<AuthUser[]>("/users/", { params });
+  return data;
+}
+
+export async function disableUserApi(userId: number, username: string): Promise<void> {
+  await api.post(`/users/${userId}/disable/`, { username });
 }
 
 export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
