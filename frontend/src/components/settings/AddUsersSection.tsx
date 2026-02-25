@@ -1,90 +1,135 @@
 import { useMemo, useState } from "react";
-import { SettingsCard } from "./SettingsCard";
-import { TextField } from "../auth/TextField";
-import { PrimaryButton } from "../auth/PrimaryButton";
-import { createUserApi } from "../../services/api";
-import { isValidEmail, isValidName, isValidPassword } from "../../utils/validation";
+import { GlassCard } from "../ui/GlassCard";
+import { TextField } from "../ui/TextField";
+import { Button } from "../ui/Button";
+import { isValidEmail, isValidName } from "../../utils/validation";
 
 export function AddUsersSection() {
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [username, setUsername] = useState("");
+    const [name, setName] = useState("");
+    const [surname, setSurname] = useState("");
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
     const [isAdmin, setIsAdmin] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState("");
-    const [error, setError] = useState("");
+
+    // Validation
+    const isNameValid = useMemo(() => name === "" || isValidName(name.trim()), [name]);
+    const isSurnameValid = useMemo(() => surname === "" || isValidName(surname.trim()), [surname]);
+    const isEmailValid = useMemo(() => email === "" || isValidEmail(email.trim()), [email]);
 
     const isFormValid = useMemo(() => {
         return (
-            isValidName(firstName.trim()) &&
-            isValidName(lastName.trim()) &&
-            username.trim().length >= 3 &&
-            isValidEmail(email.trim()) &&
-            isValidPassword(password)
+            name.trim().length > 0 && isValidName(name.trim()) &&
+            surname.trim().length > 0 && isValidName(surname.trim()) &&
+            email.trim().length > 0 && isValidEmail(email.trim())
         );
-    }, [email, firstName, lastName, password, username]);
+    }, [name, surname, email]);
 
-    const onSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isFormValid || isLoading) return;
         setIsLoading(true);
-        setError("");
-        setMessage("");
-        try {
-            await createUserApi({
-                username: username.trim(),
-                email: email.trim(),
-                password,
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                isAdmin,
-                active: true,
-            });
-            setMessage("User created successfully.");
-            setFirstName("");
-            setLastName("");
-            setUsername("");
-            setEmail("");
-            setPassword("");
-            setIsAdmin(false);
-        } catch {
-            setError("Unable to create user.");
-        } finally {
-            setIsLoading(false);
-        }
+        // TODO: Call API
+        await new Promise((r) => setTimeout(r, 1000));
+        setIsLoading(false);
+        // Reset form on success (mock)
+        setName("");
+        setSurname("");
+        setEmail("");
+        setIsAdmin(false);
     };
 
     return (
-        <SettingsCard className="w-full p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Add New User</h2>
-            <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-                <TextField placeholder="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                <TextField placeholder="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                <TextField placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-                <TextField type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <TextField
-                    type="password"
-                    placeholder="Temporary password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-                <label className="flex items-center gap-2 text-sm text-neutral-300">
-                    <input
-                        type="checkbox"
-                        checked={isAdmin}
-                        onChange={(e) => setIsAdmin(e.target.checked)}
-                        className="h-4 w-4 rounded border-[#2D3342] bg-[#13151A]"
+        <GlassCard className="w-full flex flex-col pt-8 px-8 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+
+                {/* Name & Surname Row */}
+                <div className="flex flex-col md:flex-row gap-6">
+                    <div className="flex-1 flex flex-col gap-2">
+                        <label className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
+                            Name
+                        </label>
+                        <TextField
+                            placeholder="Name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            error={!isNameValid ? "Name must contain only letters (min. 3)." : undefined}
+                            className="bg-[#1A1D24] border-white/5 h-12"
+                        />
+                    </div>
+                    <div className="flex-1 flex flex-col gap-2">
+                        <label className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
+                            Surname
+                        </label>
+                        <TextField
+                            placeholder="Surname"
+                            value={surname}
+                            onChange={(e) => setSurname(e.target.value)}
+                            error={!isSurnameValid ? "Surname must contain only letters (min. 3)." : undefined}
+                            className="bg-[#1A1D24] border-white/5 h-12"
+                        />
+                    </div>
+                </div>
+
+                {/* Email Address */}
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
+                        Email Address
+                    </label>
+                    <TextField
+                        type="email"
+                        placeholder="Email Address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        error={!isEmailValid ? "Invalid email address." : undefined}
+                        className="bg-[#1A1D24] border-white/5 h-12"
                     />
-                    Create as admin
-                </label>
-                {error ? <p className="text-sm text-red-400">{error}</p> : null}
-                {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
-                <PrimaryButton type="submit" disabled={!isFormValid || isLoading}>
-                    {isLoading ? "Creating..." : "Create user"}
-                </PrimaryButton>
+                </div>
+
+                {/* Divider Line */}
+                <div className="h-[1px] w-full bg-white/5 mt-2 mb-1"></div>
+
+                {/* Make an Admin Toggle */}
+                <div className="flex items-center gap-4">
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isAdmin}
+                        onClick={() => setIsAdmin(!isAdmin)}
+                        className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-[#1A1D24] ${isAdmin ? 'bg-[#3DD66A]' : 'bg-white/10'
+                            }`}
+                    >
+                        <span className="sr-only">Make an admin</span>
+
+                        {/* The "I" icon when active */}
+                        <span className={`pointer-events-none absolute left-3 text-[11px] font-bold text-white transition-opacity ${isAdmin ? 'opacity-100' : 'opacity-0'}`}>
+                            |
+                        </span>
+
+                        <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isAdmin ? 'translate-x-2.5' : '-translate-x-3'
+                                }`}
+                        />
+                    </button>
+                    <span className="text-sm font-bold tracking-wider text-neutral-400 uppercase">
+                        Make an Admin
+                    </span>
+                </div>
+
+                {/* Add User Button Container */}
+                <div className="mt-4 bg-[#20252F] -mx-8 p-6 rounded-b-[24px]">
+                    <Button
+                        type="submit"
+                        variant="primary"
+                        size="lg"
+                        isLoading={isLoading}
+                        disabled={!isFormValid || isLoading}
+                        fullWidth
+                    >
+                        Add User
+                    </Button>
+                </div>
             </form>
-        </SettingsCard>
+        </GlassCard>
     );
 }
