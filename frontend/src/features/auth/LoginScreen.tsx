@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { isValidEmail, isValidPassword } from "../../utils/validation";
 import { AuthLayout } from "../../components/auth/AuthLayout";
-import { AuthCard } from "../../components/auth/AuthCard";
+import { GlassCard } from "../../components/ui/GlassCard";
 import { AuthHeader, AuthPageTitle } from "../../components/auth/AuthHeader";
-import { TextField } from "../../components/auth/TextField";
-import { PrimaryButton } from "../../components/auth/PrimaryButton";
+import { TextField } from "../../components/ui/TextField";
+import { Button } from "../../components/ui/Button";
 import { AuthFooterLink } from "../../components/auth/AuthFooterLink";
 import { loginApi } from "../../services/api";
 import { useNavigate } from "react-router-dom";
@@ -40,7 +40,7 @@ export function LoginScreen() {
     return (
         <AuthLayout>
             <AuthPageTitle text="BugBoard26" />
-            <AuthCard>
+            <GlassCard className="p-8">
                 <AuthHeader />
                 <form className="flex flex-col gap-3" onSubmit={onSubmit}>
                     <TextField
@@ -56,12 +56,12 @@ export function LoginScreen() {
                         onChange={(e) => setPassword(e.target.value)}
                     />
                     {error ? <p className="text-sm text-red-400">{error}</p> : null}
-                    <PrimaryButton type="submit" disabled={!isFormValid || isLoading}>
-                        {isLoading ? "Logging in..." : "Login"}
-                    </PrimaryButton>
+                    <Button type="submit" disabled={!isFormValid || isLoading} isLoading={isLoading}>
+                        Login
+                    </Button>
                 </form>
                 <AuthFooterLink to="/forgot-password">Forgot password?</AuthFooterLink>
-            </AuthCard>
+            </GlassCard>
         </AuthLayout>
     );
 }

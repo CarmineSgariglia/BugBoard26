@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GlassCard } from "./GlassCard";
+import { GlassCard } from "../ui/GlassCard";
 import { NotificationItem } from "./NotificationItem";
 import { listNotificationsApi, readNotificationApi, type NotificationItem as NotificationApiItem } from "../../services/api";
 

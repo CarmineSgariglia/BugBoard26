@@ -1,4 +1,4 @@
-import { GlassButton } from "./GlassButton";
+import { Button } from "../ui/Button";
 
 interface NotificationItemProps {
     title: string;
@@ -11,8 +11,9 @@ interface NotificationItemProps {
 
 export function NotificationItem({ title, description, time, imageUrl, unread = false, onClick }: NotificationItemProps) {
     return (
-        <GlassButton
-            className={`!px-3 !py-2 !items-start gap-3 ${unread ? "border border-cyan-300/40 bg-cyan-500/5" : ""}`}
+        <Button
+            variant="glass"
+            className={`!px-3 !py-2 !items-start gap-3 w-full border ${unread ? "border-cyan-300/40 bg-cyan-500/5" : "border-transparent"} !h-auto !rounded-2xl`}
             onClick={onClick}
         >
             {/* Avatar / Icon Placeholder */}
@@ -34,6 +35,6 @@ export function NotificationItem({ title, description, time, imageUrl, unread = 
             <div className="text-neutral-500 text-[11px] whitespace-nowrap ml-2 mt-0.5">
                 {time}
             </div>
-        </GlassButton>
+        </Button>
     );
 }

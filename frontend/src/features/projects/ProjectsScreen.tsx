@@ -6,18 +6,12 @@ import { AppBackground } from "../../components/layout/AppBackground";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
 import { listProjectsApi, resolveMediaUrl, meApi, type Project, type AuthUser } from "../../services/api";
+import { FaRegFolder } from "react-icons/fa";
+
 
 function folderIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <FaRegFolder size={30} className="text-white/80" />
   );
 }
 
@@ -82,7 +76,7 @@ export function ProjectsScreen() {
       <TopNav />
 
       {/* Page Content: z-10 ensures it floats above the background */}
-      <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 relative z-10 flex flex-col">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex  mt-8 flex-col">
         <div className="mb-10 w-full max-w-xl mx-auto text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
             Hello, {currentUser?.firstName || currentUser?.lastName ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : currentUser?.username || 'User'}
@@ -92,7 +86,7 @@ export function ProjectsScreen() {
           </p>
         </div>
 
-        <div className="mb-8 w-full max-w-xl mx-auto">
+        <div className="mb-14 w-full max-w-xl mx-auto">
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}

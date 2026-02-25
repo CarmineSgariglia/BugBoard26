@@ -1,22 +1,75 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useReducer } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBrand } from "./NavBrand";
 import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
-import { logoutApi, meApi, resolveMediaUrl, type AuthUser } from "../../services/api";
+import { AvatarTrigger } from "./AvatarTrigger";
+import { logoutApi, meApi, type AuthUser } from "../../services/api";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
+import { IoIosNotificationsOutline } from "react-icons/io";
+
+
+type NavState = {
+    isProfileOpen: boolean;
+    isNotificationOpen: boolean;
+    isLogoutModalOpen: boolean;
+};
+
+type NavAction =
+    | { type: "TOGGLE_PROFILE" }
+    | { type: "TOGGLE_NOTIFICATIONS" }
+    | { type: "OPEN_LOGOUT" }
+    | { type: "CLOSE_ALL" };
+
+function navReducer(state: NavState, action: NavAction): NavState {
+    switch (action.type) {
+        case "TOGGLE_PROFILE":
+            return {
+                ...state,
+                isProfileOpen: !state.isProfileOpen,
+                isNotificationOpen: false,
+                isLogoutModalOpen: false
+            };
+        case "TOGGLE_NOTIFICATIONS":
+            return {
+                ...state,
+                isNotificationOpen: !state.isNotificationOpen,
+                isProfileOpen: false,
+                isLogoutModalOpen: false
+            };
+        case "OPEN_LOGOUT":
+            return {
+                ...state,
+                isLogoutModalOpen: true,
+                isProfileOpen: false,
+                isNotificationOpen: false
+            };
+        case "CLOSE_ALL":
+            return {
+                isProfileOpen: false,
+                isNotificationOpen: false,
+                isLogoutModalOpen: false
+            };
+        default:
+            return state;
+    }
+}
 
 export function TopNav() {
     const navigate = useNavigate();
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+    const [isScrolled, setIsScrolled] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const [state, dispatch] = useReducer(navReducer, {
+        isProfileOpen: false,
+        isNotificationOpen: false,
+        isLogoutModalOpen: false
+    });
 
     useEffect(() => {
-        const run = async () => {
+        const fetchUser = async () => {
             try {
                 const me = await meApi();
                 setCurrentUser(me);
@@ -24,93 +77,70 @@ export function TopNav() {
                 setCurrentUser(null);
             }
         };
-        run();
-    }, []);
+        fetchUser();
 
-    const handleLogoutClick = () => {
-        setIsLogoutModalOpen(true);
-        setIsProfileOpen(false);
-    };
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 20);
+        };
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
     const confirmLogout = async () => {
         setIsLoggingOut(true);
         try {
             await logoutApi();
-            setIsLogoutModalOpen(false);
+            dispatch({ type: "CLOSE_ALL" });
             navigate("/login", { replace: true });
         } catch (error) {
             console.error("Logout failed", error);
-            // Optionally, we could show an error toast here.
-            // But importantly, we do not navigate to /login if the API call fails.
         } finally {
             setIsLoggingOut(false);
         }
     };
 
     return (
-        <nav className="w-full relative px-6 py-4 flex items-center justify-between bg-transparent z-40 selection:bg-white/20">
-            {/* Left side: Brand Logo & Projects Text */}
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-5 flex items-center justify-between
+            ${isScrolled ? "bg-[#0D0F14]/80 backdrop-blur-lg border-b border-white/5 py-3" : "bg-transparent"}`}>
+
             <NavBrand />
 
-            {/* Right side: Actions */}
             <div className="flex items-center gap-6 relative">
-                {/* Search (Optional based on icon presence, omitted here as reference focuses on Bell and Avatar only) */}
-
                 {/* Notification Bell */}
                 <div className="relative">
                     <NavIconButton
                         icon={
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M18 15V11C18 7.68629 15.3137 5 12 5C8.68629 5 6 7.68629 6 11V15L4 17H20L18 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M10 19C10 20.1046 10.8954 21 12 21C13.1046 21 14 20.1046 14 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <IoIosNotificationsOutline size={24} />
                         }
-                        onClick={() => {
-                            setIsNotificationOpen(!isNotificationOpen);
-                            setIsProfileOpen(false); // Close other
-                        }}
+                        onClick={() => dispatch({ type: "TOGGLE_NOTIFICATIONS" })}
                     />
                     <NotificationDropdown
-                        isOpen={isNotificationOpen}
-                        onClose={() => setIsNotificationOpen(false)}
+                        isOpen={state.isNotificationOpen}
+                        onClose={() => dispatch({ type: "CLOSE_ALL" })}
                     />
                 </div>
 
-                {/* Profile Avatar Trigger */}
+                {/* Profile Avatar */}
                 <div className="relative">
-                    <button
-                        className="w-8 h-8 rounded-full bg-slate-200 outline-none hover:ring-2 hover:ring-white/20 transition-all flex-shrink-0"
-                        onClick={() => {
-                            setIsProfileOpen(!isProfileOpen);
-                            setIsNotificationOpen(false); // Close other
-                        }}
-                    >
-                        {currentUser?.profileImg ? (
-                            <img
-                                src={resolveMediaUrl(currentUser.profileImg)}
-                                alt={currentUser.username}
-                                className="h-full w-full rounded-full object-cover"
-                            />
-                        ) : (
-                            <span className="block text-xs font-semibold text-slate-800">
-                                {(currentUser?.username ?? "U").slice(0, 1).toUpperCase()}
-                            </span>
-                        )}
-                    </button>
+                    <AvatarTrigger
+                        user={currentUser}
+                        onClick={() => dispatch({ type: "TOGGLE_PROFILE" })}
+                    />
                     <ProfileDropdown
-                        isOpen={isProfileOpen}
-                        onClose={() => setIsProfileOpen(false)}
-                        onLogout={handleLogoutClick}
+                        isOpen={state.isProfileOpen}
+                        onClose={() => dispatch({ type: "CLOSE_ALL" })}
+                        onLogout={() => dispatch({ type: "OPEN_LOGOUT" })}
                     />
                 </div>
             </div>
 
             <LogoutConfirmModal
-                isOpen={isLogoutModalOpen}
-                onClose={() => setIsLogoutModalOpen(false)}
+                isOpen={state.isLogoutModalOpen}
+                onClose={() => dispatch({ type: "CLOSE_ALL" })}
                 onConfirm={confirmLogout}
                 isLoading={isLoggingOut}
             />
         </nav>
     );
 }
+

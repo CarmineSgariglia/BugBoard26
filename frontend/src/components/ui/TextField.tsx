@@ -11,10 +11,10 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             <div className="flex w-full flex-col">
                 <input
                     ref={ref}
-                    className={`h-11 w-full rounded-lg border bg-[#13151A] px-4 text-[14px] text-[#E2E8F0] placeholder-[#64748B] outline-none transition-colors 
+                    className={`h-11 w-full rounded-lg border px-4 text-[14px] text-white placeholder-neutral-500 bg-white/[0.03] outline-none transition-all
             ${error
                             ? "border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500/50"
-                            : "border-[#2D3342] focus:border-[#4B5563] focus:ring-1 focus:ring-[#4B5563]"
+                            : "border-white/5 focus:border-white/20 focus:ring-1 focus:ring-white/20"
                         } ${className}`}
                     {...props}
                 />

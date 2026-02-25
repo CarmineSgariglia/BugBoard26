@@ -42,7 +42,7 @@ export function ProjectIssuesScreen() {
     <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
       <AppBackground />
       <TopNav />
-      <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 relative z-10 flex flex-col">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex flex-col">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Project Issues</h1>

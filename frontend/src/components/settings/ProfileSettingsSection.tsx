@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { SettingsCard } from "./SettingsCard";
+import { GlassCard } from "../ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
@@ -127,7 +127,7 @@ export function ProfileSettingsSection() {
     ]);
 
     return (
-        <SettingsCard className="w-full">
+        <GlassCard className="w-full">
             <ProfileHeader
                 avatarUrl={avatarUrl}
                 title="Profile Settings"
@@ -160,6 +160,6 @@ export function ProfileSettingsSection() {
                 onExit={handleExit}
                 onGetHelp={handleGetHelp}
             />
-        </SettingsCard>
+        </GlassCard>
     );
 }
