@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { GlassCard } from "../ui/GlassCard";
 import { TextField } from "../ui/TextField";
 import { Button } from "../ui/Button";
+import { Toggle } from "../ui/Toggle";
 import { isValidEmail, isValidName } from "../../utils/validation";
 
 export function AddUsersSection() {
@@ -40,6 +41,7 @@ export function AddUsersSection() {
 
     return (
         <GlassCard className="w-full flex flex-col pt-8 px-8 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
                 {/* Name & Surname Row */}
@@ -90,27 +92,7 @@ export function AddUsersSection() {
 
                 {/* Make an Admin Toggle */}
                 <div className="flex items-center gap-4">
-                    <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isAdmin}
-                        onClick={() => setIsAdmin(!isAdmin)}
-                        className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-[#1A1D24] ${isAdmin ? 'bg-[#3DD66A]' : 'bg-white/10'
-                            }`}
-                    >
-                        <span className="sr-only">Make an admin</span>
-
-                        {/* The "I" icon when active */}
-                        <span className={`pointer-events-none absolute left-3 text-[11px] font-bold text-white transition-opacity ${isAdmin ? 'opacity-100' : 'opacity-0'}`}>
-                            |
-                        </span>
-
-                        <span
-                            aria-hidden="true"
-                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isAdmin ? 'translate-x-2.5' : '-translate-x-3'
-                                }`}
-                        />
-                    </button>
+                    <Toggle checked={isAdmin} onChange={setIsAdmin} label="Make an admin" />
                     <span className="text-sm font-bold tracking-wider text-neutral-400 uppercase">
                         Make an Admin
                     </span>
