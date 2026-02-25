@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { TopNav } from "../../components/navigation/TopNav";
+import { AppBackground } from "../../components/layout/AppBackground";
 import { listProjectIssuesApi, type Issue } from "../../services/api";
 
 export function ProjectIssuesScreen() {
@@ -39,10 +40,7 @@ export function ProjectIssuesScreen() {
 
   return (
     <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{ background: "radial-gradient(circle at center, #1b1e2a 0%, #0d0d12 60%)" }}
-      />
+      <AppBackground />
       <TopNav />
       <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 relative z-10 flex flex-col">
         <div className="mb-8 flex items-center justify-between">

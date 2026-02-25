@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TopNav } from "../../components/navigation/TopNav";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
+import { AppBackground } from "../../components/layout/AppBackground";
 import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
 
 function folderIcon() {
@@ -59,13 +60,8 @@ export function ProjectsScreen() {
 
   return (
     <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
-      {/* Radial Gradient Background (Fixed so it stays centered on scroll) */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          background: "radial-gradient(circle at center, #1b1e2a 0%, #0d0d12 60%)"
-        }}
-      />
+      {/* Shared Background Component */}
+      <AppBackground />
 
       {/* TopNav handles its own z-index (z-40) */}
       <TopNav />

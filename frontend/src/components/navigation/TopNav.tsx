@@ -5,11 +5,14 @@ import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { logoutApi, meApi, resolveMediaUrl, type AuthUser } from "../../services/api";
+import { LogoutConfirmModal } from "./LogoutConfirmModal";
 
 export function TopNav() {
     const navigate = useNavigate();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
     useEffect(() => {
@@ -24,11 +27,23 @@ export function TopNav() {
         run();
     }, []);
 
-    const handleLogout = async () => {
+    const handleLogoutClick = () => {
+        setIsLogoutModalOpen(true);
+        setIsProfileOpen(false);
+    };
+
+    const confirmLogout = async () => {
+        setIsLoggingOut(true);
         try {
             await logoutApi();
-        } finally {
+            setIsLogoutModalOpen(false);
             navigate("/login", { replace: true });
+        } catch (error) {
+            console.error("Logout failed", error);
+            // Optionally, we could show an error toast here.
+            // But importantly, we do not navigate to /login if the API call fails.
+        } finally {
+            setIsLoggingOut(false);
         }
     };
 
@@ -85,10 +100,17 @@ export function TopNav() {
                     <ProfileDropdown
                         isOpen={isProfileOpen}
                         onClose={() => setIsProfileOpen(false)}
-                        onLogout={handleLogout}
+                        onLogout={handleLogoutClick}
                     />
                 </div>
             </div>
+
+            <LogoutConfirmModal
+                isOpen={isLogoutModalOpen}
+                onClose={() => setIsLogoutModalOpen(false)}
+                onConfirm={confirmLogout}
+                isLoading={isLoggingOut}
+            />
         </nav>
     );
 }

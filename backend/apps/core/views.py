@@ -130,8 +130,15 @@ class LoginView(APIView):
         return Response(UserSerializer(auth_user, context={"request": request}).data)
 
 
+from rest_framework.authentication import SessionAuthentication
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  # Do not enforce CSRF on this view
+
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         logout(request)
