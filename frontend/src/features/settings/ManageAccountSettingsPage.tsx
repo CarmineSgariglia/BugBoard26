@@ -8,7 +8,7 @@ import { IdentityFields } from "../../components/settings/IdentityFields";
 import { ChangePasswordSection } from "../../components/settings/ChangePasswordSection";
 import { FooterActions } from "../../components/settings/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
-import { meApi, resolveMediaUrl } from "../../services/api";
+import { changePasswordApi, meApi, resolveMediaUrl, updateUserApi } from "../../services/api";
 
 export function ManageAccountSettingsPage() {
     const navigate = useNavigate();
@@ -26,11 +26,14 @@ export function ManageAccountSettingsPage() {
 
     // Profile Header State
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+    const [userId, setUserId] = useState<number | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Initial load: Pre-fill with current user data
     useEffect(() => {
         meApi().then((user) => {
             if (user) {
+                setUserId(user.userId);
                 setName(user.firstName || "");
                 setSurname(user.lastName || "");
                 setEmail(user.email || "");
@@ -78,10 +81,48 @@ export function ManageAccountSettingsPage() {
         window.location.href = "mailto:admin@bugboard.com";
     }, []);
 
-    const handleSave = useCallback(() => {
-        // In the future this will hit the settings update api.
-        console.log("Saving changes...", { name, surname, email, currentPassword, newPassword });
-    }, [name, surname, email, currentPassword, newPassword]);
+    const handleSave = useCallback(async () => {
+        if (!userId || isSaving || !isSaveEnabled) return;
+        setIsSaving(true);
+        try {
+            if (hasIdentityChanged) {
+                const updated = await updateUserApi(userId, {
+                    firstName: name.trim(),
+                    lastName: surname.trim(),
+                    email: email.trim(),
+                });
+                setName(updated.firstName || "");
+                setSurname(updated.lastName || "");
+                setEmail(updated.email || "");
+                setInitialData({
+                    name: updated.firstName || "",
+                    surname: updated.lastName || "",
+                    email: updated.email || "",
+                });
+            }
+
+            if (hasPasswordInput) {
+                await changePasswordApi(userId, currentPassword, newPassword);
+                setCurrentPassword("");
+                setNewPassword("");
+            }
+        } catch (err) {
+            console.error("Failed to save settings", err);
+        } finally {
+            setIsSaving(false);
+        }
+    }, [
+        currentPassword,
+        email,
+        hasIdentityChanged,
+        hasPasswordInput,
+        isSaveEnabled,
+        isSaving,
+        name,
+        newPassword,
+        surname,
+        userId,
+    ]);
 
     return (
         <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
@@ -118,7 +159,7 @@ export function ManageAccountSettingsPage() {
                     />
 
                     <FooterActions
-                        isSaveEnabled={isSaveEnabled}
+                        isSaveEnabled={isSaveEnabled && !isSaving}
                         onSave={handleSave}
                         onExit={handleExit}
                         onGetHelp={handleGetHelp}

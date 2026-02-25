@@ -39,6 +39,7 @@ from .models import (
 )
 from .serializers import (
     AttachmentSerializer,
+    ChangePasswordSerializer,
     IssueEventSerializer,
     IssueSerializer,
     NotifyUserSerializer,
@@ -63,6 +64,13 @@ def is_admin(user: User) -> bool:
 def check_admin(user: User) -> None:
     if not is_admin(user):
         raise PermissionDenied("Admin privileges required")
+
+
+def parse_int_or_none(raw_value):
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        return None
 
 
 def user_project_ids(user: User):
@@ -130,15 +138,8 @@ class LoginView(APIView):
         return Response(UserSerializer(auth_user, context={"request": request}).data)
 
 
-from rest_framework.authentication import SessionAuthentication
-
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  # Do not enforce CSRF on this view
-
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         logout(request)
@@ -334,6 +335,26 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return Response(UserSerializer(user, context={"request": request}).data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], url_path="change-password")
+    def change_password(self, request, userId=None):
+        user = self.get_object()
+        if request.user != user:
+            raise PermissionDenied("Cannot change password for other users")
+
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        current_password = serializer.validated_data["currentPassword"]
+        new_password = serializer.validated_data["newPassword"]
+
+        if not user.check_password(current_password):
+            raise ValidationError({"currentPassword": "Current password is incorrect"})
+        if current_password == new_password:
+            raise ValidationError({"newPassword": "New password must be different from current password"})
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        return Response({"detail": "Password updated"})
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
@@ -381,7 +402,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         check_admin(request.user)
         project = self.get_object()
         confirm_name = request.data.get("name")
-        if confirm_name and confirm_name != project.name:
+        if not confirm_name:
+            return Response({"detail": "Project name confirmation is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if confirm_name != project.name:
             return Response({"detail": "Project name confirmation mismatch"}, status=status.HTTP_400_BAD_REQUEST)
 
         recipient_users = list(User.objects.filter(project_memberships__project=project).distinct())
@@ -398,13 +421,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
         check_admin(request.user)
-        user_id = request.data.get("userId")
+        user_id = parse_int_or_none(request.data.get("userId"))
         if not user_id:
             raise ValidationError({"userId": "This field is required"})
         role = request.data.get("role", ProjectMembership.Role.DEVELOPER)
+        if role not in dict(ProjectMembership.Role.choices):
+            raise ValidationError({"role": "Invalid role"})
+        user = User.objects.filter(id=user_id, is_active=True).first()
+        if not user:
+            raise ValidationError({"userId": "Active user not found"})
         membership, created = ProjectMembership.objects.get_or_create(
             project=project,
-            user_id=user_id,
+            user=user,
             defaults={"role": role},
         )
         if not created:
@@ -421,6 +449,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         membership = ProjectMembership.objects.filter(project=project, user_id=userId).first()
         if not membership:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        if membership.user_id == project.created_by_id:
+            return Response({"detail": "Project creator cannot be removed from membership"}, status=status.HTTP_400_BAD_REQUEST)
+        if membership.role == ProjectMembership.Role.ADMIN:
+            admin_count = ProjectMembership.objects.filter(project=project, role=ProjectMembership.Role.ADMIN).count()
+            if admin_count <= 1:
+                return Response({"detail": "Cannot remove the last project admin"}, status=status.HTTP_400_BAD_REQUEST)
         user = membership.user
         membership.delete()
         notify_users(notify_type=NotifyType.PROJECT_REMOVED, users=[user], project=project)
@@ -473,7 +507,9 @@ class IssueViewSet(
         check_admin(self.request.user)
         ensure_issue_access(self.request.user, instance)
         title = self.request.data.get("title")
-        if title and title != instance.title:
+        if not title:
+            raise ValidationError({"title": "Issue title confirmation is required"})
+        if title != instance.title:
             raise ValidationError({"title": "Issue title confirmation mismatch"})
         recipients = list(User.objects.filter(issue_assignments__issue=instance).distinct())
         if recipients:

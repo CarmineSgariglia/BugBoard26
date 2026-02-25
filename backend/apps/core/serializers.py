@@ -235,8 +235,8 @@ class NotifyUserSerializer(serializers.ModelSerializer):
     readAt = serializers.DateTimeField(source="read_at", read_only=True)
     type = serializers.CharField(source="notification.notify_type", read_only=True)
     createdAt = serializers.DateTimeField(source="notification.created_at", read_only=True)
-    issueId = serializers.IntegerField(source="notification.issue.issue_id", read_only=True)
-    projectId = serializers.IntegerField(source="notification.project.project_id", read_only=True)
+    issueId = serializers.SerializerMethodField(read_only=True)
+    projectId = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = NotifyUser
@@ -251,6 +251,14 @@ class NotifyUserSerializer(serializers.ModelSerializer):
             "readAt",
         ]
 
+    def get_issueId(self, obj):
+        issue = getattr(obj.notification, "issue", None)
+        return getattr(issue, "issue_id", None)
+
+    def get_projectId(self, obj):
+        project = getattr(obj.notification, "project", None)
+        return getattr(project, "project_id", None)
+
 
 class PasswordOTPRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -264,6 +272,11 @@ class PasswordOTPVerifySerializer(serializers.Serializer):
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.RegexField(regex=r"^\d{6}$")
+    newPassword = serializers.CharField(min_length=8)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    currentPassword = serializers.CharField(min_length=1)
     newPassword = serializers.CharField(min_length=8)
 
 
