@@ -69,19 +69,11 @@ function App() {
         />
         <Route
           path="/forgot-password"
-          element={
-            <PublicOnly>
-              <RetrieveStep1Screen />
-            </PublicOnly>
-          }
+          element={<RetrieveStep1Screen />}
         />
         <Route
           path="/forgot-password/verify"
-          element={
-            <PublicOnly>
-              <RetrieveStep2Screen />
-            </PublicOnly>
-          }
+          element={<RetrieveStep2Screen />}
         />
         <Route
           path="/projects"

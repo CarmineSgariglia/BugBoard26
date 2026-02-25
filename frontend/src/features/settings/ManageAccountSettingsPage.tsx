@@ -8,7 +8,7 @@ import { IdentityFields } from "../../components/settings/IdentityFields";
 import { ChangePasswordSection } from "../../components/settings/ChangePasswordSection";
 import { FooterActions } from "../../components/settings/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
-import { meApi, resolveMediaUrl } from "../../services/api";
+import { meApi, resolveMediaUrl, uploadProfileImageApi } from "../../services/api";
 
 export function ManageAccountSettingsPage() {
     const navigate = useNavigate();
@@ -26,6 +26,8 @@ export function ManageAccountSettingsPage() {
 
     // Profile Header State
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+    const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Initial load: Pre-fill with current user data
     useEffect(() => {
@@ -58,17 +60,20 @@ export function ManageAccountSettingsPage() {
     // Check if user is trying to change password
     const hasPasswordInput = currentPassword.length > 0 || newPassword.length > 0;
 
+    // Check if an image was selected
+    const hasImageChanged = selectedImageFile !== null;
+
     // Check if the current visible inputs are formally valid
     const isIdentityValid = isValidName(name) && isValidName(surname) && isValidEmail(email);
     const isPasswordValid = !hasPasswordInput || (currentPassword.length > 0 && isValidPassword(newPassword));
 
     // Button is enabled ONLY if at least one section has changed, AND everything that was entered is valid
-    const isSaveEnabled = (hasIdentityChanged || hasPasswordInput) && isIdentityValid && isPasswordValid;
+    const isSaveEnabled = (hasIdentityChanged || hasPasswordInput || hasImageChanged) && isIdentityValid && isPasswordValid;
 
     // Callbacks. React.memo wasn't abused on child elements, but using useCallback for clarity.
     const handleRetrievePassword = useCallback(() => {
-        console.log("Retrive password checked");
-    }, []);
+        navigate("/forgot-password");
+    }, [navigate]);
 
     const handleExit = useCallback(() => {
         navigate(-1);
@@ -78,10 +83,32 @@ export function ManageAccountSettingsPage() {
         window.location.href = "mailto:admin@bugboard.com";
     }, []);
 
-    const handleSave = useCallback(() => {
+    const handleImageSelect = useCallback((file: File) => {
+        setSelectedImageFile(file);
+        // Create a local blob URL for instant preview without uploading
+        setAvatarUrl(URL.createObjectURL(file));
+    }, []);
+
+    const handleSave = useCallback(async () => {
         // In the future this will hit the settings update api.
         console.log("Saving changes...", { name, surname, email, currentPassword, newPassword });
-    }, [name, surname, email, currentPassword, newPassword]);
+
+        if (selectedImageFile) {
+            setIsUploading(true);
+            try {
+                const updatedUser = await uploadProfileImageApi(selectedImageFile);
+                if (updatedUser.profileImg) {
+                    setAvatarUrl(resolveMediaUrl(updatedUser.profileImg));
+                }
+                setSelectedImageFile(null); // Reset after upload
+                console.log("Image uploaded successfully!");
+            } catch (error) {
+                console.error("Failed to upload image", error);
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    }, [name, surname, email, currentPassword, newPassword, selectedImageFile]);
 
     return (
         <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
@@ -97,6 +124,8 @@ export function ManageAccountSettingsPage() {
                         avatarUrl={avatarUrl}
                         title="Profile Settings"
                         subtitle="Update your identity and security preferences"
+                        onImageSelect={handleImageSelect}
+                        isUploading={isUploading}
                     />
 
                     <IdentityFields

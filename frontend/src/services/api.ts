@@ -101,6 +101,17 @@ export async function meApi(): Promise<AuthUser> {
   return data;
 }
 
+export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
+  const formData = new FormData();
+  formData.append("profile_img", file);
+  const { data } = await api.post<AuthUser>("/users/me/upload_profile_image/", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+}
+
 export async function listProjectsApi(search?: string): Promise<Project[]> {
   const params = search ? { q: search } : undefined;
   const { data } = await api.get<Project[]>("/projects/", { params });
