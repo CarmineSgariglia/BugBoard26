@@ -1,98 +1,153 @@
 import { useEffect, useMemo, useState } from "react";
-import { SettingsCard } from "./SettingsCard";
-import { TextField } from "../auth/TextField";
-import { disableUserApi, listUsersApi, type AuthUser } from "../../services/api";
+import axios from "axios";
+import { GlassCard } from "../ui/GlassCard";
+import { TextField } from "../ui/TextField";
+import { Button } from "../ui/Button";
+import { disableUserApi, listUsersApi, meApi, type AuthUser } from "../../services/api";
+
+function getErrorMessage(error: unknown, fallback: string): string {
+    if (!axios.isAxiosError(error)) return fallback;
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string" && detail.trim().length > 0) return detail;
+    return fallback;
+}
 
 export function ManageUsersSection() {
     const [users, setUsers] = useState<AuthUser[]>([]);
-    const [query, setQuery] = useState("");
+    const [search, setSearch] = useState("");
     const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState("");
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [busyUserId, setBusyUserId] = useState<number | null>(null);
 
-    const loadUsers = async (search?: string) => {
-        setIsLoading(true);
-        setError("");
-        try {
-            const data = await listUsersApi(search);
-            setUsers(data);
-        } catch {
-            setError("Unable to load users.");
-        } finally {
-            setIsLoading(false);
-        }
+    const loadUsers = async (q?: string) => {
+        const data = await listUsersApi(q);
+        setUsers(data);
     };
 
     useEffect(() => {
-        loadUsers();
+        const run = async () => {
+            setIsLoading(true);
+            setError("");
+            try {
+                const [me, allUsers] = await Promise.all([meApi(), listUsersApi()]);
+                setCurrentUserId(me.userId);
+                setUsers(allUsers);
+            } catch (err) {
+                setError(getErrorMessage(err, "Unable to load users"));
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        run();
     }, []);
 
-    const visibleUsers = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return users;
-        return users.filter(
-            (u) =>
-                u.username.toLowerCase().includes(q) ||
-                u.email.toLowerCase().includes(q) ||
-                (u.firstName || "").toLowerCase().includes(q) ||
-                (u.lastName || "").toLowerCase().includes(q),
-        );
-    }, [query, users]);
+    const filteredUsers = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return users;
+        return users.filter((user) => {
+            const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim().toLowerCase();
+            return (
+                user.username.toLowerCase().includes(query) ||
+                user.email.toLowerCase().includes(query) ||
+                fullName.includes(query)
+            );
+        });
+    }, [users, search]);
 
-    const disableUser = async (user: AuthUser) => {
-        const confirmation = window.prompt(`Type username "${user.username}" to disable this user`, "");
-        if (!confirmation) return;
-        setBusyUserId(user.userId);
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        setError("");
         try {
-            await disableUserApi(user.userId, confirmation);
-            await loadUsers(query.trim() || undefined);
-        } catch {
-            setError("Unable to disable user. Check confirmation or permissions.");
+            await loadUsers(search.trim() || undefined);
+        } catch (err) {
+            setError(getErrorMessage(err, "Unable to refresh users"));
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const handleDisable = async (user: AuthUser) => {
+        if (!user.active) return;
+        if (user.userId === currentUserId) return;
+        const confirmation = window.prompt(`Type "${user.username}" to disable this user`);
+        if (confirmation !== user.username) return;
+
+        setBusyUserId(user.userId);
+        setError("");
+        try {
+            await disableUserApi(user.userId, user.username);
+            setUsers((prev) =>
+                prev.map((item) => (item.userId === user.userId ? { ...item, active: false } : item)),
+            );
+        } catch (err) {
+            setError(getErrorMessage(err, "Unable to disable user"));
         } finally {
             setBusyUserId(null);
         }
     };
 
     return (
-        <SettingsCard className="w-full p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Manage Users</h2>
-            <div className="mb-4">
+        <GlassCard className="w-full p-8">
+            <div className="flex items-center gap-3">
                 <TextField
-                    placeholder="Search users by username, email, name"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search users"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="bg-[#1A1D24] border-white/5 h-11"
                 />
+                <Button
+                    type="button"
+                    variant="ghost"
+                    fullWidth={false}
+                    onClick={handleRefresh}
+                    isLoading={isRefreshing}
+                    disabled={isRefreshing}
+                >
+                    Refresh
+                </Button>
             </div>
-            {isLoading ? <p className="text-sm text-neutral-400">Loading users...</p> : null}
-            {error ? <p className="text-sm text-red-400 mb-2">{error}</p> : null}
 
-            <div className="max-h-[420px] overflow-y-auto space-y-2 pr-1">
-                {visibleUsers.map((user) => (
-                    <div
-                        key={user.userId}
-                        className="flex items-center justify-between rounded-lg border border-white/10 bg-[#13151A] px-3 py-3"
-                    >
-                        <div>
-                            <p className="text-sm font-semibold text-white">{user.username}</p>
-                            <p className="text-xs text-neutral-400">{user.email}</p>
-                            <p className="text-xs text-neutral-500">
-                                {user.firstName || "-"} {user.lastName || "-"} · {user.active === false ? "disabled" : "active"}
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            disabled={user.active === false || busyUserId === user.userId}
-                            onClick={() => disableUser(user)}
-                            className="rounded-md border border-red-500/50 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+            {isLoading ? <p className="mt-6 text-sm text-neutral-400">Loading users...</p> : null}
+            {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
+
+            {!isLoading && filteredUsers.length === 0 ? (
+                <p className="mt-6 text-sm text-neutral-400">No users found.</p>
+            ) : null}
+
+            <div className="mt-6 space-y-3">
+                {filteredUsers.map((user) => {
+                    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-";
+                    const isSelf = user.userId === currentUserId;
+                    const isDisableBusy = busyUserId === user.userId;
+                    return (
+                        <div
+                            key={user.userId}
+                            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3"
                         >
-                            {busyUserId === user.userId ? "Disabling..." : "Disable"}
-                        </button>
-                    </div>
-                ))}
-                {!isLoading && visibleUsers.length === 0 ? (
-                    <p className="text-sm text-neutral-400">No users found.</p>
-                ) : null}
+                            <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-white">{fullName}</p>
+                                <p className="truncate text-xs text-neutral-400">{user.email}</p>
+                                <p className="truncate text-xs text-neutral-500">
+                                    @{user.username} · {user.isAdmin ? "Admin" : "Developer"} · {user.active ? "Active" : "Disabled"}
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                fullWidth={false}
+                                onClick={() => handleDisable(user)}
+                                disabled={!user.active || isSelf || isDisableBusy}
+                                isLoading={isDisableBusy}
+                            >
+                                Disable
+                            </Button>
+                        </div>
+                    );
+                })}
             </div>
-        </SettingsCard>
+        </GlassCard>
     );
 }
