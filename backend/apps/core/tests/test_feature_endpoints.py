@@ -164,6 +164,36 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("image", response.data)
 
+    def test_change_password_success(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password/",
+            {"currentPassword": "StrongPass123!", "newPassword": "NewStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.member.refresh_from_db()
+        self.assertTrue(self.member.check_password("NewStrongPass123!"))
+
+    def test_change_password_rejects_wrong_current(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password/",
+            {"currentPassword": "wrong-pass", "newPassword": "NewStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("currentPassword", response.data)
+
+    def test_change_password_forbidden_for_other_user(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password/",
+            {"currentPassword": "StrongPass123!", "newPassword": "NewStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
 class ProjectAndMembershipEndpointTests(APITestCase):
     def setUp(self):
@@ -230,6 +260,76 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         )
         self.assertEqual(remove_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(ProjectMembership.objects.filter(project=self.project, user=self.outsider).exists())
+
+    def test_add_member_rejects_invalid_role(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/members/",
+            {"userId": self.outsider.id, "role": "owner"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("role", response.data)
+
+    def test_add_member_rejects_inactive_user(self):
+        self.outsider.is_active = False
+        self.outsider.save(update_fields=["is_active"])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/members/",
+            {"userId": self.outsider.id, "role": ProjectMembership.Role.DEVELOPER},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("userId", response.data)
+
+    def test_cannot_remove_project_creator_membership(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(
+            f"/api/projects/{self.project.project_id}/members/{self.admin.id}/",
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_remove_last_project_admin(self):
+        second_admin = create_user_with_profile(
+            username="projects_second_admin",
+            email="projects_second_admin@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=second_admin, role=ProjectMembership.Role.ADMIN)
+
+        self.client.force_authenticate(user=self.admin)
+        first_remove = self.client.delete(
+            f"/api/projects/{self.project.project_id}/members/{second_admin.id}/",
+            format="json",
+        )
+        self.assertEqual(first_remove.status_code, status.HTTP_204_NO_CONTENT)
+
+        second_remove = self.client.delete(
+            f"/api/projects/{self.project.project_id}/members/{self.admin.id}/",
+            format="json",
+        )
+        self.assertEqual(second_remove.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_project_delete_requires_name_confirmation(self):
+        self.client.force_authenticate(user=self.admin)
+        no_confirm = self.client.delete(f"/api/projects/{self.project.project_id}/", format="json")
+        self.assertEqual(no_confirm.status_code, status.HTTP_400_BAD_REQUEST)
+
+        wrong_confirm = self.client.delete(
+            f"/api/projects/{self.project.project_id}/",
+            {"name": "wrong"},
+            format="json",
+        )
+        self.assertEqual(wrong_confirm.status_code, status.HTTP_400_BAD_REQUEST)
+
+        ok_confirm = self.client.delete(
+            f"/api/projects/{self.project.project_id}/",
+            {"name": self.project.name},
+            format="json",
+        )
+        self.assertEqual(ok_confirm.status_code, status.HTTP_204_NO_CONTENT)
 
 
 class IssueWorkflowEndpointTests(APITestCase):
@@ -365,6 +465,25 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.delete(f"/api/issues/{self.issue.issue_id}/", format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_issue_delete_requires_title_confirmation(self):
+        self.client.force_authenticate(user=self.admin)
+        no_confirm = self.client.delete(f"/api/issues/{self.issue.issue_id}/", format="json")
+        self.assertEqual(no_confirm.status_code, status.HTTP_400_BAD_REQUEST)
+
+        wrong_confirm = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/",
+            {"title": "wrong"},
+            format="json",
+        )
+        self.assertEqual(wrong_confirm.status_code, status.HTTP_400_BAD_REQUEST)
+
+        ok_confirm = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/",
+            {"title": self.issue.title},
+            format="json",
+        )
+        self.assertEqual(ok_confirm.status_code, status.HTTP_204_NO_CONTENT)
 
 
 class NotificationTagMetaEndpointTests(APITestCase):

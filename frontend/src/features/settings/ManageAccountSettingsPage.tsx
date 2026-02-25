@@ -8,7 +8,7 @@ import { IdentityFields } from "../../components/settings/IdentityFields";
 import { ChangePasswordSection } from "../../components/settings/ChangePasswordSection";
 import { FooterActions } from "../../components/settings/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
-import { meApi, resolveMediaUrl, uploadProfileImageApi } from "../../services/api";
+import { meApi, resolveMediaUrl, uploadProfileImageApi, changePasswordApi, updateUserApi } from "../../services/api";
 
 export function ManageAccountSettingsPage() {
     const navigate = useNavigate();
@@ -28,11 +28,14 @@ export function ManageAccountSettingsPage() {
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
     const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [userId, setUserId] = useState<number | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Initial load: Pre-fill with current user data
     useEffect(() => {
         meApi().then((user) => {
             if (user) {
+                setUserId(user.userId);
                 setName(user.firstName || "");
                 setSurname(user.lastName || "");
                 setEmail(user.email || "");
@@ -90,25 +93,62 @@ export function ManageAccountSettingsPage() {
     }, []);
 
     const handleSave = useCallback(async () => {
-        // In the future this will hit the settings update api.
-        console.log("Saving changes...", { name, surname, email, currentPassword, newPassword });
-
-        if (selectedImageFile) {
-            setIsUploading(true);
-            try {
+        if (!userId || isSaving || !isSaveEnabled) return;
+        setIsSaving(true);
+        try {
+            // 1. Upload Profile Image if changed
+            if (selectedImageFile) {
+                setIsUploading(true);
                 const updatedUser = await uploadProfileImageApi(selectedImageFile);
                 if (updatedUser.profileImg) {
                     setAvatarUrl(resolveMediaUrl(updatedUser.profileImg));
                 }
                 setSelectedImageFile(null); // Reset after upload
-                console.log("Image uploaded successfully!");
-            } catch (error) {
-                console.error("Failed to upload image", error);
-            } finally {
                 setIsUploading(false);
             }
+
+            // 2. Update Identity Info if changed
+            if (hasIdentityChanged) {
+                const updated = await updateUserApi(userId, {
+                    firstName: name.trim(),
+                    lastName: surname.trim(),
+                    email: email.trim(),
+                });
+                setName(updated.firstName || "");
+                setSurname(updated.lastName || "");
+                setEmail(updated.email || "");
+                setInitialData({
+                    name: updated.firstName || "",
+                    surname: updated.lastName || "",
+                    email: updated.email || "",
+                });
+            }
+
+            // 3. Update Password if attempted
+            if (hasPasswordInput) {
+                await changePasswordApi(userId, currentPassword, newPassword);
+                setCurrentPassword("");
+                setNewPassword("");
+            }
+        } catch (err) {
+            console.error("Failed to save settings", err);
+            setIsUploading(false);
+        } finally {
+            setIsSaving(false);
         }
-    }, [name, surname, email, currentPassword, newPassword, selectedImageFile]);
+    }, [
+        userId,
+        isSaving,
+        isSaveEnabled,
+        selectedImageFile,
+        hasIdentityChanged,
+        name,
+        surname,
+        email,
+        hasPasswordInput,
+        currentPassword,
+        newPassword
+    ]);
 
     return (
         <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
@@ -147,7 +187,7 @@ export function ManageAccountSettingsPage() {
                     />
 
                     <FooterActions
-                        isSaveEnabled={isSaveEnabled}
+                        isSaveEnabled={isSaveEnabled && !isSaving}
                         onSave={handleSave}
                         onExit={handleExit}
                         onGetHelp={handleGetHelp}

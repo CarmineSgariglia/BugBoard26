@@ -39,6 +39,12 @@ export type AuthUser = {
   active?: boolean;
 };
 
+export type UpdateUserPayload = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+};
+
 export type Project = {
   projectId: number;
   name: string;
@@ -99,6 +105,15 @@ export async function logoutApi(): Promise<void> {
 export async function meApi(): Promise<AuthUser> {
   const { data } = await api.get<AuthUser>("/auth/me/");
   return data;
+}
+
+export async function updateUserApi(userId: number, payload: UpdateUserPayload): Promise<AuthUser> {
+  const { data } = await api.patch<AuthUser>(`/users/${userId}/`, payload);
+  return data;
+}
+
+export async function changePasswordApi(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+  await api.post(`/users/${userId}/change-password/`, { currentPassword, newPassword });
 }
 
 export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
