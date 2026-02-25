@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from rest_framework import status
@@ -115,6 +116,12 @@ class UserManagementEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_delete_endpoint_is_disabled(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(f"/api/users/{self.member.id}/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(User.objects.filter(id=self.member.id).exists())
 
     def test_admin_can_disable_user_with_confirmation(self):
         self.client.force_authenticate(user=self.admin)

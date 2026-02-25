@@ -277,6 +277,11 @@ class UserViewSet(viewsets.ModelViewSet):
         check_admin(self.request.user)
         serializer.save()
 
+    def create(self, request, *args, **kwargs):
+        # Enforce admin gate before payload validation to avoid leaking validation details.
+        check_admin(request.user)
+        return super().create(request, *args, **kwargs)
+
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
         self._validate_user_update_permissions(request, user)
@@ -286,6 +291,9 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         self._validate_user_update_permissions(request, user)
         return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        raise PermissionDenied("User deletion is disabled. Use /disable/ endpoint.")
 
     @action(detail=True, methods=["post"], url_path="disable")
     def disable(self, request, userId=None):
