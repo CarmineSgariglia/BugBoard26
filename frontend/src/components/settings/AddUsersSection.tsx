@@ -1,17 +1,90 @@
+import { useMemo, useState } from "react";
 import { SettingsCard } from "./SettingsCard";
+import { TextField } from "../auth/TextField";
+import { PrimaryButton } from "../auth/PrimaryButton";
+import { createUserApi } from "../../services/api";
+import { isValidEmail, isValidName, isValidPassword } from "../../utils/validation";
 
 export function AddUsersSection() {
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
+
+    const isFormValid = useMemo(() => {
+        return (
+            isValidName(firstName.trim()) &&
+            isValidName(lastName.trim()) &&
+            username.trim().length >= 3 &&
+            isValidEmail(email.trim()) &&
+            isValidPassword(password)
+        );
+    }, [email, firstName, lastName, password, username]);
+
+    const onSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!isFormValid || isLoading) return;
+        setIsLoading(true);
+        setError("");
+        setMessage("");
+        try {
+            await createUserApi({
+                username: username.trim(),
+                email: email.trim(),
+                password,
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                isAdmin,
+                active: true,
+            });
+            setMessage("User created successfully.");
+            setFirstName("");
+            setLastName("");
+            setUsername("");
+            setEmail("");
+            setPassword("");
+            setIsAdmin(false);
+        } catch {
+            setError("Unable to create user.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
-        <SettingsCard className="w-full flex flex-col items-center justify-center p-14 border-dashed border-2 border-white/20">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/40 mb-4">
-                <path d="M16 21V19C16 17.8954 15.1046 17 14 17H5C3.89543 17 3 17.8954 3 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M8.5 11C10.7091 11 12.5 9.20914 12.5 7C12.5 4.79086 10.7091 3 8.5 3C6.29086 3 4.5 4.79086 4.5 7C4.5 9.20914 6.29086 11 8.5 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M20 8V14M17 11H23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <h2 className="text-xl font-bold text-white mb-2">Add New Users</h2>
-            <p className="text-center text-sm text-neutral-400">
-                This section is still under development.
-            </p>
+        <SettingsCard className="w-full p-6">
+            <h2 className="text-xl font-bold text-white mb-4">Add New User</h2>
+            <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+                <TextField placeholder="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                <TextField placeholder="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                <TextField placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                <TextField type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <TextField
+                    type="password"
+                    placeholder="Temporary password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+                <label className="flex items-center gap-2 text-sm text-neutral-300">
+                    <input
+                        type="checkbox"
+                        checked={isAdmin}
+                        onChange={(e) => setIsAdmin(e.target.checked)}
+                        className="h-4 w-4 rounded border-[#2D3342] bg-[#13151A]"
+                    />
+                    Create as admin
+                </label>
+                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
+                <PrimaryButton type="submit" disabled={!isFormValid || isLoading}>
+                    {isLoading ? "Creating..." : "Create user"}
+                </PrimaryButton>
+            </form>
         </SettingsCard>
     );
 }

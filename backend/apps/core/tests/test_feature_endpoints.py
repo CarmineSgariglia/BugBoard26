@@ -164,6 +164,18 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("image", response.data)
 
+    def test_profile_image_upload_me_endpoint_with_profile_img_field(self):
+        self.client.force_authenticate(user=self.member)
+        image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
+        response = self.client.post(
+            "/api/users/me/upload_profile_image/",
+            {"profile_img": image},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.member.refresh_from_db()
+        self.assertTrue(self.member.profile.profile_img.startswith(f"profile-images/{self.member.id}/"))
+
     def test_change_password_success(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
