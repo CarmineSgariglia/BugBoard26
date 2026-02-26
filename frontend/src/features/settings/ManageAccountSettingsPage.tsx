@@ -42,7 +42,7 @@ export function ManageAccountSettingsPage() {
                 {/* Center Column */}
                 <div className="flex-1 flex w-full justify-center px-4 mt-8 md:mt-0 relative z-10">
                     <div className="w-full max-w-lg">
-                        {activeTab === "profile" && <ProfileSettingsSection />}
+                        {activeTab === "profile" && <ProfileSettingsSection isAdmin={isAdmin} />}
                         {activeTab === "add_users" && <AddUsersSection />}
                         {activeTab === "manage_users" && <ManageUsersSection />}
                     </div>
