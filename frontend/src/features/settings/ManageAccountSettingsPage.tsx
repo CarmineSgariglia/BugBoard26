@@ -1,24 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AppBackground } from "../../components/layout/AppBackground";
 import { TopNav } from "../../components/navigation/TopNav";
 import { SettingsSidebar } from "../../components/settings/SettingsSidebar";
 import { ProfileSettingsSection } from "../../components/settings/ProfileSettingsSection";
 import { AddUsersSection } from "../../components/settings/AddUsersSection";
 import { ManageUsersSection } from "../../components/settings/ManageUsersSection";
-import { meApi } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function ManageAccountSettingsPage() {
-    const [isAdmin, setIsAdmin] = useState(false);
+    const { user } = useAuth();
+    const isAdmin = user?.isAdmin || false;
     const [activeTab, setActiveTab] = useState<"profile" | "add_users" | "manage_users">("profile");
-
-    // Fetch user role once on mount
-    useEffect(() => {
-        meApi().then((user) => {
-            if (user) {
-                setIsAdmin(user.isAdmin || false);
-            }
-        }).catch(console.error);
-    }, []);
 
     return (
         <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative">

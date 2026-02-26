@@ -5,7 +5,8 @@ import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
-import { logoutApi, meApi, type AuthUser } from "../../services/api";
+import { logoutApi } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
 import { IoIosNotificationsOutline } from "react-icons/io";
 
@@ -58,7 +59,7 @@ function navReducer(state: NavState, action: NavAction): NavState {
 
 export function TopNav() {
     const navigate = useNavigate();
-    const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+    const { user: currentUser } = useAuth();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -69,16 +70,6 @@ export function TopNav() {
     });
 
     useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const me = await meApi();
-                setCurrentUser(me);
-            } catch {
-                setCurrentUser(null);
-            }
-        };
-        fetchUser();
-
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
         };

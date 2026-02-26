@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { RetrieveStep1Screen } from "./features/auth/RetrieveStep1Screen";
@@ -6,34 +6,16 @@ import { RetrieveStep2Screen } from "./features/auth/RetrieveStep2Screen";
 import { ProjectsScreen } from "./features/projects/ProjectsScreen";
 import { ProjectIssuesScreen } from "./features/projects/ProjectIssuesScreen";
 import { ManageAccountSettingsPage } from "./features/settings/ManageAccountSettingsPage";
-import { meApi } from "./services/api";
-
-function useAuthStatus() {
-  const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
-
-  useEffect(() => {
-    const run = async () => {
-      try {
-        await meApi();
-        setStatus("authenticated");
-      } catch {
-        setStatus("unauthenticated");
-      }
-    };
-    run();
-  }, []);
-
-  return status;
-}
+import { useAuth } from "./contexts/AuthContext";
 
 function RequireAuth({ children }: { children: ReactElement }) {
-  const status = useAuthStatus();
+  const { user, isLoading } = useAuth();
 
-  if (status === "loading") {
+  if (isLoading) {
     return <div className="min-h-screen bg-[#0D0D12]" />;
   }
 
-  if (status === "unauthenticated") {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -41,13 +23,13 @@ function RequireAuth({ children }: { children: ReactElement }) {
 }
 
 function PublicOnly({ children }: { children: ReactElement }) {
-  const status = useAuthStatus();
+  const { user, isLoading } = useAuth();
 
-  if (status === "loading") {
+  if (isLoading) {
     return <div className="min-h-screen bg-[#0D0D12]" />;
   }
 
-  if (status === "authenticated") {
+  if (user) {
     return <Navigate to="/projects" replace />;
   }
 
