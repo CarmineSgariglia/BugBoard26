@@ -41,7 +41,7 @@ export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUpl
                     {isUploading ? (
                         <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                        <MdOutlineFileUpload size={40} className="text-black/40" />
+                        <MdOutlineFileUpload size={40} className="text-white" />
                     )}
                 </div>
 

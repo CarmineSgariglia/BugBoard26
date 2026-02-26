@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
 import { GlassCard } from "../ui/GlassCard";
 import { SearchBar } from "../ui/SearchBar";
 import { Select } from "../ui/Select";
 import { Pagination } from "../ui/Pagination";
-import { listUsersApi, meApi, type AuthUser } from "../../services/api";
+import { listUsersApi, meApi, disableUserApi, type AuthUser } from "../../services/api";
 import { UserTable } from "./UserTable";
+import { AdminUserEditSection } from "./AdminUserEditSection";
+import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 
 function getErrorMessage(error: unknown, fallback: string): string {
     if (!axios.isAxiosError(error)) return fallback;
@@ -13,8 +15,11 @@ function getErrorMessage(error: unknown, fallback: string): string {
     if (typeof detail === "string" && detail.trim().length > 0) return detail;
     return fallback;
 }
+export interface ManageUsersSectionProps {
+    onEditingChange?: (isEditing: boolean) => void;
+}
 
-export function ManageUsersSection() {
+export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps) {
     const [users, setUsers] = useState<AuthUser[]>([]);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
@@ -24,6 +29,10 @@ export function ManageUsersSection() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
+
+    const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
+    const [toggleStatusUser, setToggleStatusUser] = useState<AuthUser | null>(null);
+    const [isToggling, setIsToggling] = useState(false);
 
     useEffect(() => {
         const run = async () => {
@@ -90,7 +99,50 @@ export function ManageUsersSection() {
     }, [filteredUsers, currentPage]);
 
     const handleActionClick = (actionName: string, user: AuthUser) => {
-        console.log(`${actionName} clicked for user:`, user.email);
+        if (actionName === 'Edit') {
+            setEditingUser(user);
+            onEditingChange?.(true);
+        } else if (actionName === 'Delete') {
+            setToggleStatusUser(user);
+        }
+    }
+
+    const handleToggleStatus = useCallback(async () => {
+        if (!toggleStatusUser) return;
+        setIsToggling(true);
+        try {
+            await disableUserApi(toggleStatusUser.userId, toggleStatusUser.username);
+            // Toggle the active status locally
+            setUsers(prev => prev.map(u =>
+                u.userId === toggleStatusUser.userId
+                    ? { ...u, active: !u.active }
+                    : u
+            ));
+            setToggleStatusUser(null);
+        } catch (err) {
+            console.error("Failed to toggle user status", err);
+        } finally {
+            setIsToggling(false);
+        }
+    }, [toggleStatusUser]);
+
+    if (editingUser) {
+        return (
+            <div className="w-full">
+                <AdminUserEditSection
+                    user={editingUser}
+                    onClose={() => {
+                        setEditingUser(null);
+                        onEditingChange?.(false);
+                    }}
+                    onUserUpdated={(updatedUser) => {
+                        setUsers(prev => prev.map(u => u.userId === updatedUser.userId ? updatedUser : u));
+                        setEditingUser(null);
+                        onEditingChange?.(false);
+                    }}
+                />
+            </div>
+        );
     }
 
     return (
@@ -162,6 +214,14 @@ export function ManageUsersSection() {
                     />
                 )}
             </GlassCard>
+
+            <ToggleUserStatusModal
+                isOpen={toggleStatusUser !== null}
+                user={toggleStatusUser}
+                onClose={() => setToggleStatusUser(null)}
+                onConfirm={handleToggleStatus}
+                isLoading={isToggling}
+            />
         </div>
     );
 }

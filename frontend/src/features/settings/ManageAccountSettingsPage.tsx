@@ -11,6 +11,15 @@ export function ManageAccountSettingsPage() {
     const { user } = useAuth();
     const isAdmin = user?.isAdmin || false;
     const [activeTab, setActiveTab] = useState<"profile" | "add_users" | "manage_users">("profile");
+    const [isEditingUser, setIsEditingUser] = useState(false);
+
+    const handleTabChange = (tab: "profile" | "add_users" | "manage_users") => {
+        setActiveTab(tab);
+        setIsEditingUser(false);
+    };
+
+    // Use the wide table layout ONLY when on manage_users AND not editing a single user
+    const useWideLayout = activeTab === "manage_users" && !isEditingUser;
 
     return (
         <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative">
@@ -26,22 +35,22 @@ export function ManageAccountSettingsPage() {
                         <SettingsSidebar
                             isAdmin={isAdmin}
                             activeTab={activeTab}
-                            onTabChange={setActiveTab}
+                            onTabChange={handleTabChange}
                         />
                     </div>
                 )}
 
                 {/* Center Column */}
-                <div className={`flex-1 w-full mt-8 md:mt-0 relative z-10 transition-all ${activeTab === "manage_users" ? "pl-0 md:pl-12 lg:pl-16 pr-0 md:pr-4" : "flex justify-center px-4"}`}>
-                    <div className={`w-full transition-all ${activeTab === "manage_users" ? "w-full" : "max-w-lg"}`}>
+                <div className={`flex-1 w-full mt-8 md:mt-0 relative z-10 transition-all ${useWideLayout ? "pl-0 md:pl-12 lg:pl-16 pr-0 md:pr-4" : "flex justify-center px-4"}`}>
+                    <div className={`w-full transition-all ${useWideLayout ? "w-full" : "max-w-lg"}`}>
                         {activeTab === "profile" && <ProfileSettingsSection isAdmin={isAdmin} />}
                         {activeTab === "add_users" && <AddUsersSection />}
-                        {activeTab === "manage_users" && <ManageUsersSection />}
+                        {activeTab === "manage_users" && <ManageUsersSection onEditingChange={setIsEditingUser} />}
                     </div>
                 </div>
 
                 {/* Right Column Spacer (To force mathematical centering) - Only for Admins */}
-                {isAdmin && activeTab !== "manage_users" && (
+                {isAdmin && !useWideLayout && (
                     <div className="hidden lg:block w-72 flex-shrink-0 transition-all"></div>
                 )}
             </div>
