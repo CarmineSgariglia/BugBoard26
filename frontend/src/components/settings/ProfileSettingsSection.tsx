@@ -94,7 +94,6 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
         if (!userId || isSaving || !isSaveEnabled) return;
         setIsSaving(true);
         setPasswordError(""); // Clear previous errors
-        let hasError = false;
 
         try {
             if (selectedImageFile) {
@@ -129,19 +128,15 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
                     setCurrentPassword("");
                     setNewPassword("");
                 } catch (pwdErr) {
-                    hasError = true;
                     setPasswordError(getErrorMessage(pwdErr, "Failed to change password. Please check your current password."));
                 }
             }
         } catch (err) {
             console.error("Failed to save settings", err);
             setIsUploading(false);
-            hasError = true;
         } finally {
-            if (!hasError) {
-                // IMPORTANT: Tell the AuthContext radio station to broadcast the fresh user data!
-                await refreshUser();
-            }
+            // Always refresh context so navbar avatar updates even if password change failed
+            await refreshUser();
             setIsSaving(false);
         }
     }, [

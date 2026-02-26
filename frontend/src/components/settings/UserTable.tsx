@@ -122,7 +122,7 @@ export function UserTable({
 
                                 {/* Actions Cell */}
                                 {showActions && (
-                                    <div className="col-span-1 flex items-center justify-end gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <div className="col-span-1 flex items-center justify-end gap-3 transition-opacity">
                                         {onEditClick && (
                                             <button
                                                 onClick={() => onEditClick(user)}

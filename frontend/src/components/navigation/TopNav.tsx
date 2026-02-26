@@ -59,7 +59,7 @@ function navReducer(state: NavState, action: NavAction): NavState {
 
 export function TopNav() {
     const navigate = useNavigate();
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, refreshUser } = useAuth();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -81,6 +81,7 @@ export function TopNav() {
         setIsLoggingOut(true);
         try {
             await logoutApi();
+            await refreshUser();
             dispatch({ type: "CLOSE_ALL" });
             navigate("/login", { replace: true });
         } catch (error) {
