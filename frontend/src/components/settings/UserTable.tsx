@@ -1,7 +1,9 @@
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2 } from "react-icons/fi";
+import { MdGroupOff } from "react-icons/md";
 import { resolveMediaUrl, type AuthUser } from "../../services/api";
 import { Tag } from "../ui/Tag";
 import { GlassCard } from "../ui/GlassCard";
+import { StatusBadge } from "../ui/StatusBadge";
 
 export interface UserTableProps {
     users: AuthUser[];
@@ -109,11 +111,12 @@ export function UserTable({
 
                                 {/* Status Cell */}
                                 {showStatus && (
-                                    <div className="col-span-2 flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${user.active ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]' : 'bg-neutral-500'}`}></div>
-                                        <span className={`text-sm ${user.active ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                                            {user.active ? "Active" : "Inactive"}
-                                        </span>
+                                    <div className="col-span-2">
+                                        <StatusBadge
+                                            text={user.active ? "Active" : "Inactive"}
+                                            color={user.active ? "emerald-400" : "neutral-500"}
+                                            glow={user.active}
+                                        />
                                     </div>
                                 )}
 
@@ -135,7 +138,7 @@ export function UserTable({
                                                 className="text-neutral-500 hover:text-red-400 transition-colors"
                                                 title="Delete User"
                                             >
-                                                <FiTrash2 size={16} />
+                                                <MdGroupOff size={16} />
                                             </button>
                                         )}
                                     </div>

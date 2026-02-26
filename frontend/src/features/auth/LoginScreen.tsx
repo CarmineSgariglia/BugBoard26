@@ -8,9 +8,11 @@ import { Button } from "../../components/ui/Button";
 import { AuthFooterLink } from "../../components/auth/AuthFooterLink";
 import { loginApi } from "../../services/api";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function LoginScreen() {
     const navigate = useNavigate();
+    const { refreshUser } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -29,9 +31,10 @@ export function LoginScreen() {
 
         try {
             await loginApi(email.trim(), password);
+            await refreshUser();
             navigate("/projects");
         } catch {
-            setError("Credenziali non valide");
+            setError("Invalid credentials");
         } finally {
             setIsLoading(false);
         }
