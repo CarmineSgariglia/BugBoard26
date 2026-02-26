@@ -5,13 +5,15 @@ interface ChangePasswordSectionProps {
     newPassword?: string;
     onChangeNewPassword?: (val: string) => void;
     onRetrievePassword: () => void;
+    error?: string;
 }
 
 export function ChangePasswordSection({
     requireCurrentPassword,
     currentPassword = "", onChangeCurrentPassword,
     newPassword = "", onChangeNewPassword,
-    onRetrievePassword
+    onRetrievePassword,
+    error
 }: ChangePasswordSectionProps) {
     const inputClasses = "w-full rounded-lg bg-white/[0.03] border border-white/5 px-4 py-2.5 text-[14px] text-white placeholder-neutral-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all";
     const labelClasses = "block text-[10px] font-bold text-[#8A8F98] uppercase tracking-widest mb-2";
@@ -19,6 +21,12 @@ export function ChangePasswordSection({
     return (
         <div className="px-8 pb-6 pt-3 relative">
             <h2 className="text-[13px] font-bold text-white mb-5 tracking-wide">Change Password</h2>
+
+            {error && (
+                <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-3 py-2 rounded-md">
+                    {error}
+                </div>
+            )}
 
             <div className="flex flex-col gap-5">
                 {requireCurrentPassword && (

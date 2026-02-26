@@ -1,6 +1,9 @@
 import { GlassCard } from "../ui/GlassCard";
 import { FaUser, FaUserFriends } from "react-icons/fa";
 import { TiUserAdd } from "react-icons/ti";
+import { RiArrowGoBackLine } from "react-icons/ri";
+import { MdOutlineMail } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
 
 interface SettingsSidebarProps {
     isAdmin: boolean;
@@ -9,6 +12,8 @@ interface SettingsSidebarProps {
 }
 
 export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSidebarProps) {
+    const navigate = useNavigate();
+
     const getTabClass = (tabId: string) => {
         const baseClass = "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer";
         return activeTab === tabId
@@ -16,9 +21,17 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
             : `${baseClass} text-neutral-400 hover:text-white mx-2 mt-2 rounded-lg`;
     };
 
+    const handleExit = () => {
+        navigate(-1);
+    };
+
+    const handleGetHelp = () => {
+        window.location.href = "mailto:admin@bugboard.com";
+    };
+
     return (
-        <GlassCard className="w-[260px] flex-shrink-0 pb-4">
-            <div className="flex flex-col pt-2 h-full">
+        <GlassCard className="w-[260px] flex-shrink-0 pb-4 h-fit flex flex-col justify-between min-h-[400px]">
+            <div className="flex flex-col pt-2">
                 {/* Profile Settings */}
                 <div
                     className={getTabClass("profile")}
@@ -53,6 +66,26 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
                     </div>
                 )}
             </div>
+
+            {/* Bottom Admin Actions */}
+            {isAdmin && (
+                <div className="mt-8 pt-4 border-t border-white/5 flex flex-col gap-1">
+                    <div
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer text-neutral-400 hover:text-white mx-2 mt-2 rounded-lg"
+                        onClick={handleGetHelp}
+                    >
+                        <MdOutlineMail size={18} />
+                        Get Help
+                    </div>
+                    <div
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer text-neutral-400 hover:text-white mx-2 rounded-lg"
+                        onClick={handleExit}
+                    >
+                        <RiArrowGoBackLine size={18} />
+                        Exit
+                    </div>
+                </div>
+            )}
         </GlassCard>
     );
 }

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { GlassCard } from "../ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
@@ -8,7 +9,14 @@ import { FooterActions } from "./FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
 import { meApi, resolveMediaUrl, uploadProfileImageApi, changePasswordApi, updateUserApi } from "../../services/api";
 
-export function ProfileSettingsSection() {
+function getErrorMessage(error: unknown, fallback: string): string {
+    if (!axios.isAxiosError(error)) return fallback;
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string" && detail.trim().length > 0) return detail;
+    return fallback;
+}
+
+export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
     const navigate = useNavigate();
 
     // Form fields state
@@ -21,6 +29,7 @@ export function ProfileSettingsSection() {
 
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
+    const [passwordError, setPasswordError] = useState("");
 
     // Profile Header State
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
@@ -82,6 +91,9 @@ export function ProfileSettingsSection() {
     const handleSave = useCallback(async () => {
         if (!userId || isSaving || !isSaveEnabled) return;
         setIsSaving(true);
+        setPasswordError(""); // Clear previous errors
+        let hasError = false;
+
         try {
             if (selectedImageFile) {
                 setIsUploading(true);
@@ -110,14 +122,23 @@ export function ProfileSettingsSection() {
             }
 
             if (hasPasswordInput) {
-                await changePasswordApi(userId, currentPassword, newPassword);
-                setCurrentPassword("");
-                setNewPassword("");
+                try {
+                    await changePasswordApi(userId, currentPassword, newPassword);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                } catch (pwdErr) {
+                    hasError = true;
+                    setPasswordError(getErrorMessage(pwdErr, "Failed to change password. Please check your current password."));
+                }
             }
         } catch (err) {
             console.error("Failed to save settings", err);
             setIsUploading(false);
+            hasError = true;
         } finally {
+            if (!hasError) {
+                // optional success message could go here
+            }
             setIsSaving(false);
         }
     }, [
@@ -148,10 +169,17 @@ export function ProfileSettingsSection() {
             <ChangePasswordSection
                 requireCurrentPassword={true}
                 currentPassword={currentPassword}
-                onChangeCurrentPassword={setCurrentPassword}
+                onChangeCurrentPassword={(val) => {
+                    setCurrentPassword(val);
+                    if (passwordError) setPasswordError("");
+                }}
                 newPassword={newPassword}
-                onChangeNewPassword={setNewPassword}
+                onChangeNewPassword={(val) => {
+                    setNewPassword(val);
+                    if (passwordError) setPasswordError("");
+                }}
                 onRetrievePassword={handleRetrievePassword}
+                error={passwordError}
             />
 
             <FooterActions
@@ -159,6 +187,7 @@ export function ProfileSettingsSection() {
                 onSave={handleSave}
                 onExit={handleExit}
                 onGetHelp={handleGetHelp}
+                isAdmin={isAdmin}
             />
         </GlassCard>
     );
