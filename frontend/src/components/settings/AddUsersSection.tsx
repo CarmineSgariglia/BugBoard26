@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import axios from "axios";
 import { GlassCard } from "../ui/GlassCard";
 import { TextField } from "../ui/TextField";
 import { Button } from "../ui/Button";
 import { Toggle } from "../ui/Toggle";
 import { isValidEmail, isValidName } from "../../utils/validation";
+import { getErrorMessage } from "../../utils/error";
 import { createUserApi } from "../../services/api";
 
 function buildUsernameFromEmail(email: string): string {
@@ -17,13 +17,6 @@ function buildUsernameFromEmail(email: string): string {
 function generateTemporaryPassword(): string {
     const suffix = Math.floor(100000 + Math.random() * 900000);
     return `Temp!${suffix}`;
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-    if (!axios.isAxiosError(error)) return fallback;
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string" && detail.trim().length > 0) return detail;
-    return fallback;
 }
 
 export function AddUsersSection() {

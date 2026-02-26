@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import axios from "axios";
 import { GlassCard } from "../ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
@@ -7,20 +6,13 @@ import { ChangePasswordSection } from "./ChangePasswordSection";
 import { Button } from "../ui/Button";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
-import { resolveMediaUrl, updateUserApi, changePasswordApi } from "../../services/api";
-import type { AuthUser } from "../../services/api";
+import { getErrorMessage } from "../../utils/error";
+import { resolveMediaUrl, updateUserApi, changePasswordApi, type AuthUser } from "../../services/api";
 
 interface AdminUserEditSectionProps {
     user: AuthUser;
     onClose: () => void;
     onUserUpdated: (updatedUser: AuthUser) => void;
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-    if (!axios.isAxiosError(error)) return fallback;
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string" && detail.trim().length > 0) return detail;
-    return fallback;
 }
 
 export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUserEditSectionProps) {

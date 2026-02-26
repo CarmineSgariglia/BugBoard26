@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TopNav } from "../../components/navigation/TopNav";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
-import { AppBackground } from "../../components/layout/AppBackground";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
 import { listProjectsApi, resolveMediaUrl, meApi, type Project, type AuthUser } from "../../services/api";
@@ -69,8 +68,6 @@ export function ProjectsScreen() {
 
   return (
     <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
-      {/* Shared Background Component */}
-      <AppBackground />
 
       {/* TopNav handles its own z-index (z-40) */}
       <TopNav />
