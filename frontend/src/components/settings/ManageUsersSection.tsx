@@ -1,20 +1,14 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import axios from "axios";
 import { GlassCard } from "../ui/GlassCard";
 import { SearchBar } from "../ui/SearchBar";
 import { Select } from "../ui/Select";
 import { Pagination } from "../ui/Pagination";
-import { listUsersApi, meApi, disableUserApi, type AuthUser } from "../../services/api";
+import { listUsersApi, disableUserApi, type AuthUser } from "../../services/api";
+import { getErrorMessage } from "../../utils/error";
 import { UserTable } from "./UserTable";
 import { AdminUserEditSection } from "./AdminUserEditSection";
 import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 
-function getErrorMessage(error: unknown, fallback: string): string {
-    if (!axios.isAxiosError(error)) return fallback;
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string" && detail.trim().length > 0) return detail;
-    return fallback;
-}
 export interface ManageUsersSectionProps {
     onEditingChange?: (isEditing: boolean) => void;
 }

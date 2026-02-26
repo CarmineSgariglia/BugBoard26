@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppBackground } from "../../components/layout/AppBackground";
 import { TopNav } from "../../components/navigation/TopNav";
 import { SettingsSidebar } from "../../components/settings/SettingsSidebar";
 import { ProfileSettingsSection } from "../../components/settings/ProfileSettingsSection";
@@ -23,7 +22,6 @@ export function ManageAccountSettingsPage() {
 
     return (
         <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative">
-            <AppBackground />
             <TopNav />
 
             {/* Split Layout Container */}

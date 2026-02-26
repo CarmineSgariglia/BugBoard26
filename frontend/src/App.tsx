@@ -6,6 +6,7 @@ import { RetrieveStep2Screen } from "./features/auth/RetrieveStep2Screen";
 import { ProjectsScreen } from "./features/projects/ProjectsScreen";
 import { ProjectIssuesScreen } from "./features/projects/ProjectIssuesScreen";
 import { ManageAccountSettingsPage } from "./features/settings/ManageAccountSettingsPage";
+import { AppBackground } from "./components/layout/AppBackground";
 import { useAuth } from "./contexts/AuthContext";
 
 function RequireAuth({ children }: { children: ReactElement }) {
@@ -39,6 +40,7 @@ function PublicOnly({ children }: { children: ReactElement }) {
 function App() {
   return (
     <BrowserRouter>
+      <AppBackground />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route
