@@ -32,8 +32,8 @@ export function ManageAccountSettingsPage() {
                 )}
 
                 {/* Center Column */}
-                <div className="flex-1 flex w-full justify-center px-4 mt-8 md:mt-0 relative z-10">
-                    <div className="w-full max-w-lg">
+                <div className={`flex-1 w-full mt-8 md:mt-0 relative z-10 transition-all ${activeTab === "manage_users" ? "pl-0 md:pl-12 lg:pl-16 pr-0 md:pr-4" : "flex justify-center px-4"}`}>
+                    <div className={`w-full transition-all ${activeTab === "manage_users" ? "w-full" : "max-w-lg"}`}>
                         {activeTab === "profile" && <ProfileSettingsSection isAdmin={isAdmin} />}
                         {activeTab === "add_users" && <AddUsersSection />}
                         {activeTab === "manage_users" && <ManageUsersSection />}
@@ -41,8 +41,8 @@ export function ManageAccountSettingsPage() {
                 </div>
 
                 {/* Right Column Spacer (To force mathematical centering) - Only for Admins */}
-                {isAdmin && (
-                    <div className="hidden lg:block w-72 flex-shrink-0"></div>
+                {isAdmin && activeTab !== "manage_users" && (
+                    <div className="hidden lg:block w-72 flex-shrink-0 transition-all"></div>
                 )}
             </div>
         </div>
