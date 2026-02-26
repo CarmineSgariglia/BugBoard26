@@ -1,6 +1,9 @@
 SHELL := /bin/sh
 
 COMPOSE := docker compose
+COMPOSE_PROXY := docker compose --profile proxy
+
+.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend
 
 # Start just the backend service (also brings up database dependency)
 backend:
@@ -13,6 +16,14 @@ frontend:
 # Start the full stack (db + backend + frontend)
 all:
 	$(COMPOSE) up --build
+
+# Start full stack with HTTPS reverse proxy (nginx on 80/443)
+https:
+	./scripts/dev_https_up.sh
+
+# Stop stack started with HTTPS profile
+https-down:
+	$(COMPOSE_PROXY) down
 
 # Bring the entire stack down and remove the network
 stop:
