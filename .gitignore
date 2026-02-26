@@ -1,0 +1,3 @@
+nginx/certs/*.pem
+nginx/certs/*.key
+nginx/certs/*.cnf
