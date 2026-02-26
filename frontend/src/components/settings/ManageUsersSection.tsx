@@ -108,7 +108,7 @@ export function ManageUsersSection() {
                     <SearchBar
                         value={search}
                         onChange={setSearch}
-                        placeholder="Search by name, email or department..."
+                        placeholder="Search by name or email..."
                         bgColor="bg-[#1A1D24]"
                         textColor="text-white"
                         iconColor="text-neutral-400"
