@@ -8,6 +8,7 @@ import { ChangePasswordSection } from "./ChangePasswordSection";
 import { FooterActions } from "./FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
 import { meApi, resolveMediaUrl, uploadProfileImageApi, changePasswordApi, updateUserApi } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
 
 function getErrorMessage(error: unknown, fallback: string): string {
     if (!axios.isAxiosError(error)) return fallback;
@@ -18,6 +19,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
     const navigate = useNavigate();
+    const { refreshUser } = useAuth();
 
     // Form fields state
     const [name, setName] = useState("");
@@ -137,14 +139,15 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
             hasError = true;
         } finally {
             if (!hasError) {
-                // optional success message could go here
+                // IMPORTANT: Tell the AuthContext radio station to broadcast the fresh user data!
+                await refreshUser();
             }
             setIsSaving(false);
         }
     }, [
         userId, isSaving, isSaveEnabled, selectedImageFile,
         hasIdentityChanged, name, surname, email,
-        hasPasswordInput, currentPassword, newPassword
+        hasPasswordInput, currentPassword, newPassword, refreshUser
     ]);
 
     return (
