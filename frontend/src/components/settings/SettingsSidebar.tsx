@@ -1,5 +1,6 @@
 import { GlassCard } from "../ui/GlassCard";
 import { useNavigate } from "react-router-dom";
+import { handleGetHelp } from "../../utils/help";
 
 // Icons
 import { FaUser, FaUserFriends } from "react-icons/fa";
@@ -28,9 +29,7 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
         navigate(-1);
     };
 
-    const handleGetHelp = () => {
-        window.location.href = "mailto:admin@bugboard.com";
-    };
+
 
     return (
         <GlassCard className="w-[260px] flex-shrink-0 pb-4 h-fit flex flex-col justify-between min-h-[400px]">
