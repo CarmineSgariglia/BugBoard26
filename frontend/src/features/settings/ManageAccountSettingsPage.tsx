@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { TopNav } from "../../components/navigation/TopNav";
 import { SettingsSidebar } from "../../components/settings/SettingsSidebar";
 import { ProfileSettingsSection } from "../../components/settings/ProfileSettingsSection";
 import { AddUsersSection } from "../../components/settings/AddUsersSection";
@@ -22,7 +21,6 @@ export function ManageAccountSettingsPage() {
 
     return (
         <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative">
-            <TopNav />
 
             {/* Split Layout Container */}
             <div className="flex-1 w-full max-w-7xl mx-auto flex flex-col md:flex-row items-start relative z-10 px-6 pt-28 pb-10">

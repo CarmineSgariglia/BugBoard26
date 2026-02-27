@@ -1,9 +1,12 @@
 import { GlassCard } from "../ui/GlassCard";
+import { useNavigate } from "react-router-dom";
+
+// Icons
 import { FaUser, FaUserFriends } from "react-icons/fa";
 import { TiUserAdd } from "react-icons/ti";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";
-import { useNavigate } from "react-router-dom";
+
 
 interface SettingsSidebarProps {
     isAdmin: boolean;
