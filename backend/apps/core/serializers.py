@@ -9,26 +9,14 @@ from .models import (
     IssueEvent,
     IssueStatus,
     IssueTag,
-    Notification,
-    NotifyType,
     NotifyUser,
-    PasswordResetOTP,
-    Priority,
     Project,
     ProjectMembership,
     Tag,
     UserProfile,
 )
-
-
-def build_media_url(serializer: serializers.Serializer, path_or_url: str) -> str:
-    if not path_or_url:
-        return ""
-    if path_or_url.startswith(("http://", "https://", "/media/")):
-        return path_or_url
-    media_url = f"/media/{path_or_url}".replace("//", "/")
-    request = serializer.context.get("request") if hasattr(serializer, "context") else None
-    return request.build_absolute_uri(media_url) if request else media_url
+from .services import notify_users  # noqa: F401 — re-exported for backward compat
+from .utils import build_media_url
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -278,12 +266,3 @@ class PasswordResetSerializer(serializers.Serializer):
 class ChangePasswordSerializer(serializers.Serializer):
     currentPassword = serializers.CharField(min_length=1)
     newPassword = serializers.CharField(min_length=8)
-
-
-def notify_users(*, notify_type: NotifyType, users: list[User], issue: Issue | None = None, project: Project | None = None):
-    notification = Notification.objects.create(notify_type=notify_type, issue=issue, project=project)
-    NotifyUser.objects.bulk_create(
-        [NotifyUser(notification=notification, user=user) for user in users],
-        ignore_conflicts=True,
-    )
-    return notification
