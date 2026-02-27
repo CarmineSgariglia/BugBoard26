@@ -10,7 +10,7 @@ interface ConfirmModalProps {
     description: React.ReactNode;
     icon: React.ReactNode;
     confirmText: string;
-    confirmVariant?: "primary" | "secondary" | "ghost" | "destructive"; // Usiamo i varianti del tuo Button.tsx
+    confirmVariant?: "primary" | "glass" | "destructive" | "ghost";
     isLoading?: boolean;
     danger?: boolean; // Se true, l'icona e il tasto avranno toni rossi
 }

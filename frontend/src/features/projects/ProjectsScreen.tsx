@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
-import { listProjectsApi, resolveMediaUrl, meApi, type Project, type AuthUser } from "../../services/api";
+import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
 import { FaRegFolder } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 

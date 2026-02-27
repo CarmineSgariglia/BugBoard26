@@ -24,6 +24,11 @@ export function AuthLayout() {
         subtitle = "Insert OTP code and your new password";
     }
 
+    const isLoginPage = location.pathname === "/login";
+    const footerTo = isLoginPage ? "/forgot-password" : "/login";
+    const footerLabel = isLoginPage ? "Forgot password?" : "Back to login";
+
+
     return (
         <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#0D0D12]">
             {/* Radial Gradient Background */}
@@ -68,6 +73,15 @@ export function AuthLayout() {
                     </div>
 
                     <Outlet /> {/* Here we render the LoginScreen, RetrieveStep1Screen, or RetrieveStep2Screen */}
+
+                    <div className="mt-5 text-center">
+                        <Link
+                            to={footerTo}
+                            className="text-[13px] text-[#8B949E] underline underline-offset-4 transition-colors hover:text-[#C9D1D9]"
+                        >
+                            {footerLabel}
+                        </Link>
+                    </div>
 
                 </GlassCard>
             </main>

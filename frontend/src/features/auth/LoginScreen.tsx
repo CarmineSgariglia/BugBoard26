@@ -2,7 +2,6 @@ import { useState } from "react";
 import { isValidEmail, isValidPassword } from "../../utils/validation";
 import { TextField } from "../../components/ui/TextField";
 import { Button } from "../../components/ui/Button";
-import { AuthFooterLink } from "../../components/auth/AuthFooterLink";
 import { loginApi } from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -57,7 +56,6 @@ export function LoginScreen() {
                     Login
                 </Button>
             </form>
-            <AuthFooterLink to="/forgot-password">Forgot password?</AuthFooterLink>
         </div>
     );
 }
