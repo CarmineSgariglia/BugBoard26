@@ -16,12 +16,12 @@ export function AuthLayout() {
     let pageTitle = "BugBoard26";
     let subtitle = "";
 
-    if (location.pathname.includes("/forgot-password")) {
-        pageTitle = "Retrieve Password";
-        subtitle = "Insert your email to recover your password";
-    } else if (location.pathname.includes("/forgot-password/verify")) {
+    if (location.pathname.includes("/forgot-password/verify")) {
         pageTitle = "Retrieve Password";
         subtitle = "Insert OTP code and your new password";
+    } else if (location.pathname.includes("/forgot-password")) {
+        pageTitle = "Retrieve Password";
+        subtitle = "Insert your email to recover your password";
     }
 
     const isLoginPage = location.pathname === "/login";
