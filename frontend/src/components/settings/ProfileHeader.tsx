@@ -1,3 +1,8 @@
+/*
+    This component is used to display the profile header of the user.
+    It is used in the ProfileSettingsSection component.
+*/
+
 import { useRef } from "react";
 import { MdOutlineFileUpload } from "react-icons/md";
 

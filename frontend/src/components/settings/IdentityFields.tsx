@@ -1,3 +1,8 @@
+/*
+    This is the identity fields component for the settings page.
+    It is used in the ProfileSettingsSection component.
+*/
+
 import { TextField } from "../ui/TextField";
 
 interface IdentityFieldsProps {
@@ -7,18 +12,27 @@ interface IdentityFieldsProps {
     onChangeSurname: (val: string) => void;
     email: string;
     onChangeEmail: (val: string) => void;
+    errorName?: string;
+    errorSurname?: string;
+    errorEmail?: string;
+    className?: string;
 }
 
 export function IdentityFields({
     name, onChangeName,
     surname, onChangeSurname,
-    email, onChangeEmail
+    email, onChangeEmail,
+    errorName,
+    errorSurname,
+    errorEmail,
+    className = "px-8 pb-4 flex flex-col gap-5"
+
 }: IdentityFieldsProps) {
     const labelClasses = "block text-[10px] font-bold text-[#8A8F98] uppercase tracking-widest mb-2";
 
     return (
-        <div className="px-8 pb-4 flex flex-col gap-5">
-            <div className="flex gap-4">
+        <div className={className}>
+            <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                     <label className={labelClasses}>Name</label>
                     <TextField
@@ -27,6 +41,7 @@ export function IdentityFields({
                         onChange={e => onChangeName(e.target.value)}
                         placeholder="First name"
                         spellCheck={false}
+                        error={errorName}
                     />
                 </div>
                 <div className="flex-1">
@@ -37,6 +52,7 @@ export function IdentityFields({
                         onChange={e => onChangeSurname(e.target.value)}
                         placeholder="Last name"
                         spellCheck={false}
+                        error={errorSurname}
                     />
                 </div>
             </div>
@@ -48,6 +64,7 @@ export function IdentityFields({
                     onChange={e => onChangeEmail(e.target.value)}
                     placeholder="email@example.com"
                     spellCheck={false}
+                    error={errorEmail}
                 />
             </div>
         </div>
