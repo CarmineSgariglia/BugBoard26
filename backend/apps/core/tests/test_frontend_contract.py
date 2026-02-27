@@ -108,6 +108,16 @@ class FrontendContractTests(APITestCase):
         self.assertEqual(change_password_response.status_code, status.HTTP_200_OK)
         self.assertEqual(change_password_response.data["detail"], "Password updated")
 
+    def test_admin_reset_other_user_password_contract(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password/",
+            {"newPassword": "AdminResetPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["detail"], "Password updated")
+
     def test_memberships_payload_contract(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(f"/api/projects/{self.project.project_id}/members/")
