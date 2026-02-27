@@ -1,25 +1,19 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { GlassCard } from "../ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { FooterActions } from "./FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
-import { meApi, resolveMediaUrl, uploadProfileImageApi, changePasswordApi, updateUserApi } from "../../services/api";
+import { resolveMediaUrl, uploadProfileImageApi, changePasswordApi, updateUserApi } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
-
-function getErrorMessage(error: unknown, fallback: string): string {
-    if (!axios.isAxiosError(error)) return fallback;
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string" && detail.trim().length > 0) return detail;
-    return fallback;
-}
+import { getErrorMessage } from "../../utils/error";
+import { handleGetHelp } from "../../utils/help";
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
     const navigate = useNavigate();
-    const { refreshUser } = useAuth();
+    const { user, refreshUser } = useAuth();
 
     // Form fields state
     const [name, setName] = useState("");
@@ -42,23 +36,22 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
 
     // Initial load: Pre-fill with current user data
     useEffect(() => {
-        meApi().then((user) => {
-            if (user) {
-                setUserId(user.userId);
-                setName(user.firstName || "");
-                setSurname(user.lastName || "");
-                setEmail(user.email || "");
-                setInitialData({
-                    name: user.firstName || "",
-                    surname: user.lastName || "",
-                    email: user.email || ""
-                });
-                if (user.profileImg) {
-                    setAvatarUrl(resolveMediaUrl(user.profileImg));
-                }
+        if (user) {
+            setUserId(user.userId);
+            setName(user.firstName || "");
+            setSurname(user.lastName || "");
+            setEmail(user.email || "");
+            setInitialData({
+                name: user.firstName || "",
+                surname: user.lastName || "",
+                email: user.email || ""
+            });
+            if (user.profileImg) {
+                setAvatarUrl(resolveMediaUrl(user.profileImg));
             }
-        }).catch(console.error);
-    }, []);
+        }
+    }, [user]); // Si aggiorna se l'utente loggato cambia dati
+
 
     // Validation
     const hasIdentityChanged =
@@ -81,9 +74,6 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
         navigate(-1);
     }, [navigate]);
 
-    const handleGetHelp = useCallback(() => {
-        window.location.href = "mailto:admin@bugboard.com";
-    }, []);
 
     const handleImageSelect = useCallback((file: File) => {
         setSelectedImageFile(file);

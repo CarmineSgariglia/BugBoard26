@@ -6,6 +6,8 @@ import { Toggle } from "../ui/Toggle";
 import { isValidEmail, isValidName } from "../../utils/validation";
 import { getErrorMessage } from "../../utils/error";
 import { createUserApi } from "../../services/api";
+import { IdentityFields } from "./IdentityFields";
+
 
 function buildUsernameFromEmail(email: string): string {
     const localPart = email.split("@")[0] ?? "user";
@@ -79,48 +81,18 @@ export function AddUsersSection() {
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
-                {/* Name & Surname Row */}
-                <div className="flex flex-col md:flex-row gap-6">
-                    <div className="flex-1 flex flex-col gap-2">
-                        <label className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
-                            Name
-                        </label>
-                        <TextField
-                            placeholder="Name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            error={!isNameValid ? "Name must contain only letters (min. 3)." : undefined}
-                            className="bg-[#1A1D24] border-white/5 h-12"
-                        />
-                    </div>
-                    <div className="flex-1 flex flex-col gap-2">
-                        <label className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
-                            Surname
-                        </label>
-                        <TextField
-                            placeholder="Surname"
-                            value={surname}
-                            onChange={(e) => setSurname(e.target.value)}
-                            error={!isSurnameValid ? "Surname must contain only letters (min. 3)." : undefined}
-                            className="bg-[#1A1D24] border-white/5 h-12"
-                        />
-                    </div>
-                </div>
-
-                {/* Email Address */}
-                <div className="flex flex-col gap-2">
-                    <label className="text-xs font-bold tracking-wider text-neutral-400 uppercase">
-                        Email Address
-                    </label>
-                    <TextField
-                        type="email"
-                        placeholder="Email Address"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        error={!isEmailValid ? "Invalid email address." : undefined}
-                        className="bg-[#1A1D24] border-white/5 h-12"
-                    />
-                </div>
+                <IdentityFields
+                    name={name}
+                    onChangeName={setName}
+                    surname={surname}
+                    onChangeSurname={setSurname}
+                    email={email}
+                    onChangeEmail={setEmail}
+                    errorName={!isNameValid ? "Name must contain only letters (min. 3)." : undefined}
+                    errorSurname={!isSurnameValid ? "Surname must contain only letters (min. 3)." : undefined}
+                    errorEmail={!isEmailValid ? "Invalid email address." : undefined}
+                    className="px-8 pb-4 flex flex-col gap-5"
+                />
 
                 {/* Divider Line */}
                 <div className="h-[1px] w-full bg-white/5 mt-2 mb-1"></div>

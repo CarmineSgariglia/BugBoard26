@@ -1,3 +1,8 @@
+/*
+    This is the footer actions component for the settings page.
+    It is used in the ProfileSettingsSection component.
+*/
+
 import { Button } from "../ui/Button";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";

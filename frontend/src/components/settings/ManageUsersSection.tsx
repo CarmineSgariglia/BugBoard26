@@ -33,7 +33,7 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
             setIsLoading(true);
             setError("");
             try {
-                const [, allUsers] = await Promise.all([meApi(), listUsersApi()]);
+                const allUsers = await listUsersApi();
                 setUsers(allUsers);
             } catch (err) {
                 setError(getErrorMessage(err, "Unable to load users"));
