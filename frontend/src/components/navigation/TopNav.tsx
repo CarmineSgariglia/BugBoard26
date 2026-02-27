@@ -83,7 +83,7 @@ export function TopNav() {
             await logoutApi();
             await refreshUser();
             dispatch({ type: "CLOSE_ALL" });
-            navigate("/login", { replace: true });
+            navigate("/login", { replace: true }); // With replace: true, the user cannot go back to the previous page
         } catch (error) {
             console.error("Logout failed", error);
         } finally {
