@@ -9,7 +9,7 @@ from django.core.files.storage import default_storage
 from django.db.models import Q
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -131,18 +131,30 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="change-password")
     def change_password(self, request, userId=None):
-        user = self.get_object()
-        if request.user != user:
+        target_user_id = self.kwargs.get(self.lookup_url_kwarg)
+        user = User.objects.filter(id=target_user_id).first()
+        if user is None:
+            raise NotFound("User not found")
+
+        is_admin_reset = is_admin(request.user) and request.user != user
+        if request.user != user and not is_admin(request.user):
             raise PermissionDenied("Cannot change password for other users")
 
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        current_password = serializer.validated_data["currentPassword"]
+        current_password = serializer.validated_data.get("currentPassword", "")
         new_password = serializer.validated_data["newPassword"]
 
-        if not user.check_password(current_password):
-            raise ValidationError({"currentPassword": "Current password is incorrect"})
-        if current_password == new_password:
+        if is_admin_reset:
+            if user.check_password(new_password):
+                raise ValidationError({"newPassword": "New password must be different from current password"})
+        else:
+            if not current_password:
+                raise ValidationError({"currentPassword": "Current password is required"})
+            if not user.check_password(current_password):
+                raise ValidationError({"currentPassword": "Current password is incorrect"})
+
+        if user.check_password(new_password):
             raise ValidationError({"newPassword": "New password must be different from current password"})
 
         user.set_password(new_password)

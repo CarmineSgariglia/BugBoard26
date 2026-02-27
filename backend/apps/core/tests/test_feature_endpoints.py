@@ -89,6 +89,12 @@ class UserManagementEndpointTests(APITestCase):
             password="StrongPass123!",
             is_admin=True,
         )
+        self.other_admin = create_user_with_profile(
+            username="users_admin_other",
+            email="users_admin_other@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
         self.member = create_user_with_profile(
             username="users_member",
             email="users_member@example.com",
@@ -204,14 +210,56 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("currentPassword", response.data)
 
-    def test_change_password_forbidden_for_other_user(self):
+    def test_admin_can_reset_password_for_other_user_without_current(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
             f"/api/users/{self.member.id}/change-password/",
-            {"currentPassword": "StrongPass123!", "newPassword": "NewStrongPass123!"},
+            {"newPassword": "NewStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.member.refresh_from_db()
+        self.assertTrue(self.member.check_password("NewStrongPass123!"))
+
+    def test_admin_can_reset_password_for_other_admin_without_current(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/users/{self.other_admin.id}/change-password/",
+            {"newPassword": "AnotherStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.other_admin.refresh_from_db()
+        self.assertTrue(self.other_admin.check_password("AnotherStrongPass123!"))
+
+    def test_non_admin_cannot_change_other_user_password(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/users/{self.admin.id}/change-password/",
+            {"newPassword": "AnotherStrongPass123!"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_self_change_requires_current_password(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/users/{self.admin.id}/change-password/",
+            {"newPassword": "AnotherStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("currentPassword", response.data)
+
+    def test_admin_reset_rejects_same_password_as_current_target_password(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password/",
+            {"newPassword": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("newPassword", response.data)
 
 
 class ProjectAndMembershipEndpointTests(APITestCase):
