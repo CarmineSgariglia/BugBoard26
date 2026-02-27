@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TopNav } from "../../components/navigation/TopNav";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
 import { listProjectsApi, resolveMediaUrl, meApi, type Project, type AuthUser } from "../../services/api";
 import { FaRegFolder } from "react-icons/fa";
-
+import { useAuth } from "../../contexts/AuthContext";
 
 function folderIcon() {
   return (
@@ -24,7 +23,7 @@ function projectIcon(iconUrl?: string) {
 export function ProjectsScreen() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,12 +33,8 @@ export function ProjectsScreen() {
       setIsLoading(true);
       setError("");
       try {
-        const [projectsData, userData] = await Promise.all([
-          listProjectsApi(),
-          meApi()
-        ]);
+        const projectsData = await listProjectsApi();
         setProjects(projectsData);
-        setCurrentUser(userData);
       } catch {
         setError("Unable to load data. Please login again.");
       } finally {
@@ -66,12 +61,10 @@ export function ProjectsScreen() {
     return cards.filter((card) => card.title.toLowerCase().includes(lowerQuery));
   }, [cards, searchQuery]);
 
+
+
   return (
     <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
-
-      {/* TopNav handles its own z-index (z-40) */}
-      <TopNav />
-
       {/* Page Content: z-10 ensures it floats above the background */}
       <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex  mt-8 flex-col">
         <div className="mb-10 w-full max-w-xl mx-auto text-center">

@@ -1,3 +1,7 @@
+/*
+    Pagination component
+*/
+
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 export interface PaginationProps {

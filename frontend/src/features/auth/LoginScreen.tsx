@@ -1,8 +1,5 @@
 import { useState } from "react";
 import { isValidEmail, isValidPassword } from "../../utils/validation";
-import { AuthLayout } from "../../components/auth/AuthLayout";
-import { GlassCard } from "../../components/ui/GlassCard";
-import { AuthHeader, AuthPageTitle } from "../../components/auth/AuthHeader";
 import { TextField } from "../../components/ui/TextField";
 import { Button } from "../../components/ui/Button";
 import { AuthFooterLink } from "../../components/auth/AuthFooterLink";
@@ -41,30 +38,26 @@ export function LoginScreen() {
     };
 
     return (
-        <AuthLayout>
-            <AuthPageTitle text="BugBoard26" />
-            <GlassCard className="p-8">
-                <AuthHeader />
-                <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-                    <TextField
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                    {error ? <p className="text-sm text-red-400">{error}</p> : null}
-                    <Button type="submit" disabled={!isFormValid || isLoading} isLoading={isLoading}>
-                        Login
-                    </Button>
-                </form>
-                <AuthFooterLink to="/forgot-password">Forgot password?</AuthFooterLink>
-            </GlassCard>
-        </AuthLayout>
+        <div className="flex flex-col gap-3">
+            <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+                <TextField
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                />
+                <TextField
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                <Button type="submit" disabled={!isFormValid || isLoading} isLoading={isLoading}>
+                    Login
+                </Button>
+            </form>
+            <AuthFooterLink to="/forgot-password">Forgot password?</AuthFooterLink>
+        </div>
     );
 }

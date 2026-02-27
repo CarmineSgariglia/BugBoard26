@@ -25,6 +25,18 @@ export function isValidName(name: string): boolean {
 }
 
 /**
+ * Validates if the provided string is a valid code.
+ * It checks that the code is exactly 6 digits long.
+ */
+export function isValidCode(code: string): boolean {
+    if (!code || code.length !== 6) return false;
+
+    // Standard code regex structure
+    const codeRegex = /^\d{6}$/;
+    return codeRegex.test(code);
+}
+
+/**
  * Validates if the provided string is a strong password.
  * It checks that the password is at least 8 characters long,
  * contains at least one number, and at least one special character.

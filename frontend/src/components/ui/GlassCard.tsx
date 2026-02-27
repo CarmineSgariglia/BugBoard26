@@ -1,3 +1,9 @@
+/**
+ * A highly reusable glassmorphic card component.
+ * Uses a semi-transparent dark background, backdrop blur, and soft rounded corners.
+ */
+
+
 import type { ReactNode } from "react";
 
 interface GlassCardProps {
@@ -5,10 +11,7 @@ interface GlassCardProps {
     className?: string;
 }
 
-/**
- * A highly reusable glassmorphic card component.
- * Uses a semi-transparent dark background, backdrop blur, and soft rounded corners.
- */
+
 export function GlassCard({ children, className = "" }: GlassCardProps) {
     return (
         <div

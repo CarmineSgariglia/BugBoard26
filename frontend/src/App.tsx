@@ -6,9 +6,12 @@ import { RetrieveStep2Screen } from "./features/auth/RetrieveStep2Screen";
 import { ProjectsScreen } from "./features/projects/ProjectsScreen";
 import { ProjectIssuesScreen } from "./features/projects/ProjectIssuesScreen";
 import { ManageAccountSettingsPage } from "./features/settings/ManageAccountSettingsPage";
-import { AppBackground } from "./components/layout/AppBackground";
+import { AuthLayout } from "./components/layout/AuthLayout";
 import { useAuth } from "./contexts/AuthContext";
+import { MainLayout } from "./components/layout/MainLayout";
 
+
+{/* If the user is authenticated, render the MainLayout, otherwise render the AuthLayout */ }
 function RequireAuth({ children }: { children: ReactElement }) {
   const { user, isLoading } = useAuth();
 
@@ -23,6 +26,7 @@ function RequireAuth({ children }: { children: ReactElement }) {
   return children;
 }
 
+{/* If the user is authenticated, redirect to the projects page, otherwise render the AuthLayout */ }
 function PublicOnly({ children }: { children: ReactElement }) {
   const { user, isLoading } = useAuth();
 
@@ -37,52 +41,40 @@ function PublicOnly({ children }: { children: ReactElement }) {
   return children;
 }
 
+
 function App() {
   return (
     <BrowserRouter>
-      <AppBackground />
+
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* Auth Routes (Public Only) */}
         <Route
-          path="/login"
           element={
             <PublicOnly>
-              <LoginScreen />
+              <AuthLayout />
             </PublicOnly>
           }
-        />
+        >
+          <Route path="/login" element={<LoginScreen />} />
+          <Route path="/forgot-password" element={<RetrieveStep1Screen />} />
+          <Route path="/forgot-password/verify" element={<RetrieveStep2Screen />} />
+        </Route>
+
+        {/* Private Routes (Protected by RequireAuth and using MainLayout) */}
         <Route
-          path="/forgot-password"
-          element={<RetrieveStep1Screen />}
-        />
-        <Route
-          path="/forgot-password/verify"
-          element={<RetrieveStep2Screen />}
-        />
-        <Route
-          path="/projects"
           element={
             <RequireAuth>
-              <ProjectsScreen />
+              <MainLayout />
             </RequireAuth>
           }
-        />
-        <Route
-          path="/projects/:projectId/issues"
-          element={
-            <RequireAuth>
-              <ProjectIssuesScreen />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <RequireAuth>
-              <ManageAccountSettingsPage />
-            </RequireAuth>
-          }
-        />
+        >
+          <Route path="/projects" element={<ProjectsScreen />} />
+          <Route path="/projects/:projectId/issues" element={<ProjectIssuesScreen />} />
+          <Route path="/settings" element={<ManageAccountSettingsPage />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
