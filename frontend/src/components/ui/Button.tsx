@@ -1,3 +1,24 @@
+/*
+    Button component
+    
+    Varianti:
+    - primary: Bottone primario
+    - glass: Bottone con effetto vetro smerigliato
+    - destructive: Bottone distruttivo
+    - ghost: Bottone fantasma
+    
+    Dimensioni:
+    - sm: Piccolo
+    - md: Medio
+    - lg: Grande
+     
+    Opzioni:
+    - isLoading: Indica se il bottone è in stato di caricamento
+    - active: Indica se il bottone è attivo
+    - destructive: Indica se il bottone è distruttivo (elimina i dati)
+    - fullWidth: Indica se il bottone deve occupare tutta la larghezza
+*/
+
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 

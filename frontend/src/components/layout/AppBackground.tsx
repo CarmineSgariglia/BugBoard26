@@ -1,3 +1,9 @@
+{/* 
+    The AppBackground component is a reusable component that is used to display the background of the application.
+    It is used in the MainLayout component to display the background of the application.
+*/}
+
+
 export function AppBackground() {
     return (
         <div

@@ -1,8 +1,5 @@
 import { useRef, useEffect, useState } from "react";
 import { isValidEmail } from "../../utils/validation";
-import { AuthLayout } from "../../components/auth/AuthLayout";
-import { GlassCard } from "../../components/ui/GlassCard";
-import { AuthHeader, AuthPageTitle } from "../../components/auth/AuthHeader";
 import { TextField } from "../../components/ui/TextField";
 import { Button } from "../../components/ui/Button";
 import { useNavigate } from "react-router-dom";
@@ -38,26 +35,21 @@ export function RetrieveStep1Screen() {
     };
 
     return (
-        <AuthLayout>
-            <AuthPageTitle text="Retrieve Password" />
-            <GlassCard className="p-8">
-                <AuthHeader
-                    subtitle="Insert your email to recover your password"
+        <div className="flex flex-col gap-3">
+
+            <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+                <TextField
+                    ref={emailInputRef}
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                 />
-                <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-                    <TextField
-                        ref={emailInputRef}
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    {error ? <p className="text-sm text-red-400">{error}</p> : null}
-                    <Button type="submit" disabled={!isEmailValid || isLoading} isLoading={isLoading}>
-                        Send Code
-                    </Button>
-                </form>
-            </GlassCard>
-        </AuthLayout>
+                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                <Button type="submit" disabled={!isEmailValid || isLoading} isLoading={isLoading}>
+                    Send Code
+                </Button>
+            </form>
+        </div>
     );
 }

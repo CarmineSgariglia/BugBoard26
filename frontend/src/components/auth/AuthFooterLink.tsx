@@ -6,6 +6,7 @@ interface AuthFooterLinkProps extends Omit<LinkProps, 'to'> {
     to: string;
 }
 
+{/* Footer link for authentication pages */ }
 export function AuthFooterLink({ children, to, className = "", ...props }: AuthFooterLinkProps) {
     return (
         <div className="mt-5 text-center">
