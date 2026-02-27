@@ -8,6 +8,8 @@ import { RiArrowGoBackLine } from "react-icons/ri";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
 import { getErrorMessage } from "../../utils/error";
 import { resolveMediaUrl, updateUserApi, changePasswordApi, type AuthUser } from "../../services/api";
+import { FooterActions } from "../ui/FooterActions";
+
 
 interface AdminUserEditSectionProps {
     user: AuthUser;
@@ -102,9 +104,6 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
 
             if (hasPasswordInput && !hasError) {
                 try {
-                    // Note: changePasswordApi in api.ts requires currentPassword. 
-                    // If backend expects it even for admins, we might get an error. 
-                    // Sending empty string for currentPassword.
                     await changePasswordApi(user.userId, "", newPassword);
                     setNewPassword("");
                 } catch (pwdErr) {
@@ -155,31 +154,15 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
                 error={passwordError}
             />
 
-            <div className="px-8 pb-8 pt-6 flex flex-col gap-6">
-                {globalError && <div className="text-red-400 text-sm text-center font-medium bg-red-400/10 py-2 rounded-lg">{globalError}</div>}
-                {successMsg && <div className="text-emerald-400 text-sm text-center font-medium bg-emerald-400/10 py-2 rounded-lg">{successMsg}</div>}
+            <FooterActions
+                isSaveEnabled={isSaveEnabled && !isSaving}
+                onSave={handleSave}
+                isSaving={isSaving}
+                links={[
+                    { label: "Exit", icon: <RiArrowGoBackLine size={16} />, onClick: onClose },
+                ]}
+            />
 
-                <Button
-                    onClick={handleSave}
-                    disabled={!isSaveEnabled || isSaving}
-                    isLoading={isSaving}
-                    className="mt-0 tracking-wide font-semibold text-[14px]"
-                >
-                    Save Changes
-                </Button>
-
-                <div className="flex items-center justify-center gap-6 mt-1 text-[13px] font-medium text-[#8A8F98]">
-                    <Button
-                        variant="ghost"
-                        fullWidth={false}
-                        onClick={onClose}
-                        className="flex items-center gap-2 hover:text-white transition-colors focus:outline-none"
-                    >
-                        <RiArrowGoBackLine size={16} />
-                        Exit
-                    </Button>
-                </div>
-            </div>
         </GlassCard>
     );
 }

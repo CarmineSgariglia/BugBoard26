@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom"; // Importo createPortal per renderizzare il modal nel DOM root
 import { GlassCard } from "./GlassCard";
 import { Button } from "./Button";
 
@@ -34,8 +35,8 @@ export function ConfirmModal({
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    const modalContent = (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* Backdrop sfocato */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
@@ -82,4 +83,6 @@ export function ConfirmModal({
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 }

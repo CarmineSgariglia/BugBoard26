@@ -4,12 +4,15 @@ import { GlassCard } from "../ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { FooterActions } from "./FooterActions";
+import { FooterActions } from "../ui/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
 import { resolveMediaUrl, uploadProfileImageApi, changePasswordApi, updateUserApi } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { getErrorMessage } from "../../utils/error";
 import { handleGetHelp } from "../../utils/help";
+import { RiArrowGoBackLine } from "react-icons/ri";
+import { MdOutlineMail } from "react-icons/md";
+
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
     const navigate = useNavigate();
@@ -173,10 +176,13 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
             <FooterActions
                 isSaveEnabled={isSaveEnabled && !isSaving}
                 onSave={handleSave}
-                onExit={handleExit}
-                onGetHelp={handleGetHelp}
-                isAdmin={isAdmin}
+                isSaving={isSaving}
+                links={[
+                    { label: "Exit", icon: <RiArrowGoBackLine size={16} />, onClick: handleExit },
+                    ...(!isAdmin ? [{ label: "Get Help", icon: <MdOutlineMail size={16} />, onClick: handleGetHelp }] : []),
+                ]}
             />
+
         </GlassCard>
     );
 }
