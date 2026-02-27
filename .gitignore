@@ -1,3 +1,14 @@
 nginx/certs/*.pem
 nginx/certs/*.key
 nginx/certs/*.cnf
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+
+# macOS
+.DS_Store
