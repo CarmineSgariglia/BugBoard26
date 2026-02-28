@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { GlassCard } from "../ui/GlassCard";
 import { SearchBar } from "../ui/SearchBar";
 import { Select } from "../ui/Select";
@@ -15,6 +15,9 @@ export interface ManageUsersSectionProps {
 
 export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps) {
     const [users, setUsers] = useState<AuthUser[]>([]);
+    const [totalItems, setTotalItems] = useState(0); // Aggiunto per salvare il conteggio dal DB
+
+    // I parametri che l'utente può cambiare dall'interfaccia
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
     const [roleFilter, setRoleFilter] = useState<"All" | "Admin" | "User">("All");
@@ -28,69 +31,46 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
     const [toggleStatusUser, setToggleStatusUser] = useState<AuthUser | null>(null);
     const [isToggling, setIsToggling] = useState(false);
 
+    // L'effetto scatta ogni volta che uno dei filtri, la ricerca o la pagina cambia!
     useEffect(() => {
-        const run = async () => {
+        const fetchDaServer = async () => {
             setIsLoading(true);
             setError("");
             try {
-                const allUsers = await listUsersApi();
-                setUsers(allUsers);
+                // Costruiamo i parametri da inviare al server backend
+                const params: any = { page: currentPage };
+
+                if (search.trim()) params.search = search.trim();
+                if (roleFilter !== "All") params.role = roleFilter;
+                if (statusFilter !== "All") params.status = statusFilter;
+
+                // Facciamo la chiamata passando i parametri
+                const response = await listUsersApi(params);
+
+                // Salviamo SOLO gli utenti di questa pagina specifica
+                setUsers(response.results);
+                // Aggiorniamo il numero totale per far calcolare le pagine alla <Pagination>
+                setTotalItems(response.count);
             } catch (err) {
                 setError(getErrorMessage(err, "Unable to load users"));
             } finally {
                 setIsLoading(false);
             }
         };
-        run();
-    }, []);
 
-    // 1. Filter
-    const filteredUsers = useMemo(() => {
-        let result = users;
+        // Usa un piccolo "debounce" (ritardo) per evitare chiamate inutili mentre l'utente sta digitando velocemente
+        const timeoutId = setTimeout(() => {
+            fetchDaServer();
+        }, 300);
 
-        // Apply Status Filter
-        if (statusFilter === "Active") {
-            result = result.filter(u => u.active);
-        } else if (statusFilter === "Inactive") {
-            result = result.filter(u => !u.active);
-        }
+        return () => clearTimeout(timeoutId);
+    }, [currentPage, search, roleFilter, statusFilter]);
 
-        // Apply Role Filter
-        if (roleFilter === "Admin") {
-            result = result.filter(u => u.isAdmin);
-        } else if (roleFilter === "User") {
-            result = result.filter(u => !u.isAdmin);
-        }
-
-        // Apply Text Search
-        const query = search.trim().toLowerCase();
-        if (query) {
-            result = result.filter((user) => {
-                const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim().toLowerCase();
-                return (
-                    user.username.toLowerCase().includes(query) ||
-                    user.email.toLowerCase().includes(query) ||
-                    fullName.includes(query)
-                );
-            });
-        }
-
-        return result;
-    }, [users, search, statusFilter, roleFilter]);
-
-    // 2. Pagination
-    const totalItems = filteredUsers.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-
-    // Safety check if page goes out of bounds after filtering
+    // Quando cerchi o filtri qualcosa di nuovo, rimendiamo automaticamente l'utente a pagina 1
     useEffect(() => {
-        if (currentPage > totalPages) setCurrentPage(1);
-    }, [totalPages, currentPage]);
+        setCurrentPage(1);
+    }, [search, roleFilter, statusFilter]);
 
-    const paginatedUsers = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return filteredUsers.slice(startIndex, startIndex + itemsPerPage);
-    }, [filteredUsers, currentPage]);
 
     const handleActionClick = (actionName: string, user: AuthUser) => {
         if (actionName === 'Edit') {
@@ -189,7 +169,7 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
             <GlassCard className="w-full overflow-hidden p-0 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
 
                 <UserTable
-                    users={paginatedUsers}
+                    users={users}
                     isLoading={isLoading}
                     error={error}
                     showStatus={true}

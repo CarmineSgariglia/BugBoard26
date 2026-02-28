@@ -39,6 +39,21 @@ export type AuthUser = {
   active?: boolean;
 };
 
+export type PaginatedResponse<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+};
+
+export type ListUsersParams = {
+  page?: number;
+  search?: string;
+  role?: string;
+  status?: string;
+};
+
+
 export type UpdateUserPayload = {
   firstName?: string;
   lastName?: string;
@@ -131,9 +146,8 @@ export async function createUserApi(payload: CreateUserPayload): Promise<AuthUse
   return data;
 }
 
-export async function listUsersApi(search?: string): Promise<AuthUser[]> {
-  const params = search ? { q: search } : undefined;
-  const { data } = await api.get<AuthUser[]>("/users/", { params });
+export async function listUsersApi(params?: ListUsersParams): Promise<PaginatedResponse<AuthUser>> {
+  const { data } = await api.get<PaginatedResponse<AuthUser>>("/users/", { params });
   return data;
 }
 
