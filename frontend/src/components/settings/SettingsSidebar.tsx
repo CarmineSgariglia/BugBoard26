@@ -18,11 +18,13 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
     const navigate = useNavigate();
 
     const getTabClass = (tabId: string) => {
+        // Se è la tab attiva, il cursore diventa "default" anziché "pointer" (manina)
         const baseClass = "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer";
         return activeTab === tabId
-            ? `${baseClass} bg-[#2D3343] text-white rounded-lg mx-2 mt-2`
+            ? `${baseClass} bg-[#2D3343] text-white rounded-lg mx-2 mt-2 cursor-default`
             : `${baseClass} text-neutral-400 hover:text-white mx-2 mt-2 rounded-lg`;
     };
+
 
     const handleExit = () => {
         navigate(-1);
@@ -37,12 +39,13 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
                 {/* Profile Settings */}
                 <div
                     className={getTabClass("profile")}
-                    onClick={() => onTabChange("profile")}
+                    onClick={() => {
+                        if (activeTab !== "profile") onTabChange("profile")
+                    }}
                 >
                     <FaUser size={18} />
                     Profile Settings
                 </div>
-
 
                 {/* Admin Controls Line Divider */}
                 {(
@@ -53,7 +56,9 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
 
                         <div
                             className={getTabClass("add_users")}
-                            onClick={() => onTabChange("add_users")}
+                            onClick={() => {
+                                if (activeTab !== "add_users") onTabChange("add_users");
+                            }}
                         >
                             <TiUserAdd size={18} />
                             Add Users
@@ -61,7 +66,9 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
 
                         <div
                             className={getTabClass("manage_users")}
-                            onClick={() => onTabChange("manage_users")}
+                            onClick={() => {
+                                if (activeTab !== "manage_users") onTabChange("manage_users");
+                            }}
                         >
                             <FaUserFriends size={18} />
                             Manage Users
