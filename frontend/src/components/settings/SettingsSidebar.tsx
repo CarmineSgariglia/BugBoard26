@@ -10,12 +10,11 @@ import { MdOutlineMail } from "react-icons/md";
 
 
 interface SettingsSidebarProps {
-    isAdmin: boolean;
     activeTab: "profile" | "add_users" | "manage_users";
     onTabChange: (tab: "profile" | "add_users" | "manage_users") => void;
 }
 
-export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSidebarProps) {
+export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps) {
     const navigate = useNavigate();
 
     const getTabClass = (tabId: string) => {
@@ -34,6 +33,7 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
     return (
         <GlassCard className="w-[260px] flex-shrink-0 pb-4 h-fit flex flex-col justify-between min-h-[400px]">
             <div className="flex flex-col pt-2">
+
                 {/* Profile Settings */}
                 <div
                     className={getTabClass("profile")}
@@ -43,8 +43,9 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
                     Profile Settings
                 </div>
 
+
                 {/* Admin Controls Line Divider */}
-                {isAdmin && (
+                {(
                     <div className="mt-4 pt-4 border-t border-white/5">
                         <p className="px-6 text-[10px] font-bold tracking-wider text-neutral-500 uppercase mb-1">
                             Admin Controls
@@ -70,7 +71,7 @@ export function SettingsSidebar({ isAdmin, activeTab, onTabChange }: SettingsSid
             </div>
 
             {/* Bottom Admin Actions */}
-            {isAdmin && (
+            {(
                 <div className="mt-8 pt-4 border-t border-white/5 flex flex-col gap-1">
                     <div
                         className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer text-neutral-400 hover:text-white mx-2 mt-2 rounded-lg"
