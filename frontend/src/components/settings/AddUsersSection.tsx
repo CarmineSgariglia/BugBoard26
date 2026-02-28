@@ -119,7 +119,7 @@ export function AddUsersSection() {
                 </div>
 
                 {/* Add User Button Container */}
-                <div className="mt-4 bg-[#20252F] -mx-8 p-6 rounded-b-[24px]">
+                <div className="mt-4 bg-[#20252F] -mx-18 p-6 rounded-b-[24px]">
                     <Button
                         type="submit"
                         variant="primary"
