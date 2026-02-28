@@ -219,10 +219,10 @@ export function resolveMediaUrl(pathOrUrl?: string): string {
     return `${backendOrigin}${pathOrUrl.slice("https://backend:8000".length)}`;
   }
   if (pathOrUrl.startsWith("/media/")) {
-    return `${backendOrigin}${pathOrUrl}`;
+    return pathOrUrl;
   }
   if (pathOrUrl.startsWith("media/")) {
-    return `${backendOrigin}/${pathOrUrl}`;
+    return `/${pathOrUrl}`;
   }
   return pathOrUrl;
 }

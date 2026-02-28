@@ -255,6 +255,28 @@ class UserManagementEndpointTests(APITestCase):
         self.member.refresh_from_db()
         self.assertTrue(self.member.profile.profile_img.startswith(f"profile-images/{self.member.id}/"))
 
+    def test_admin_upload_profile_image_for_other_user_via_admin_endpoint(self):
+        self.client.force_authenticate(user=self.admin)
+        image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
+        response = self.client.post(
+            f"/api/users/{self.member.id}/admin-upload-image/",
+            {"profile_img": image},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.member.refresh_from_db()
+        self.assertTrue(self.member.profile.profile_img.startswith(f"profile-images/{self.member.id}/"))
+
+    def test_non_admin_cannot_use_admin_upload_profile_image_endpoint(self):
+        self.client.force_authenticate(user=self.member)
+        image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
+        response = self.client.post(
+            f"/api/users/{self.admin.id}/admin-upload-image/",
+            {"profile_img": image},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_change_password_success(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
@@ -286,6 +308,26 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.member.refresh_from_db()
         self.assertTrue(self.member.check_password("NewStrongPass123!"))
+
+    def test_admin_can_reset_password_for_other_user_via_admin_endpoint(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/users/{self.member.id}/admin-reset-password/",
+            {"newPassword": "AdminEndpointPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.member.refresh_from_db()
+        self.assertTrue(self.member.check_password("AdminEndpointPass123!"))
+
+    def test_non_admin_cannot_use_admin_reset_password_endpoint(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/users/{self.admin.id}/admin-reset-password/",
+            {"newPassword": "AdminEndpointPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_can_reset_password_for_other_admin_without_current(self):
         self.client.force_authenticate(user=self.admin)
