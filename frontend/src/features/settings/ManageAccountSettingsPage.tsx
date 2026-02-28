@@ -29,7 +29,6 @@ export function ManageAccountSettingsPage() {
                 {isAdmin && (
                     <div className="w-full md:w-72 flex justify-center md:block flex-shrink-0 relative z-20 md:sticky md:top-28">
                         <SettingsSidebar
-                            isAdmin={isAdmin} // Passo isAdmin al SettingsSidebar per rendere il componente scalabile, in futuro posso far visionare a tutti gli utenti la sidebar, ma non i tab Admin
                             activeTab={activeTab}
                             onTabChange={handleTabChange}
                         />
