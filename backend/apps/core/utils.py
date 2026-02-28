@@ -10,6 +10,4 @@ def build_media_url(serializer: serializers.Serializer, path_or_url: str) -> str
         return ""
     if path_or_url.startswith(("http://", "https://", "/media/")):
         return path_or_url
-    media_url = f"/media/{path_or_url}".replace("//", "/")
-    request = serializer.context.get("request") if hasattr(serializer, "context") else None
-    return request.build_absolute_uri(media_url) if request else media_url
+    return f"/media/{path_or_url}".replace("//", "/")
