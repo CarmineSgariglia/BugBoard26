@@ -3,7 +3,6 @@ import { GlassCard } from "../ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { Button } from "../ui/Button";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
 import { getErrorMessage } from "../../utils/error";
@@ -41,8 +40,6 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
     const [isUploading] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [globalError, setGlobalError] = useState("");
-    const [successMsg, setSuccessMsg] = useState("");
 
     // Validation
     const hasIdentityChanged =
