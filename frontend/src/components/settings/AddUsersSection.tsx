@@ -6,6 +6,7 @@ import { isValidEmail, isValidName } from "../../utils/validation";
 import { getErrorMessage } from "../../utils/error";
 import { createUserApi } from "../../services/api";
 import { IdentityFields } from "./IdentityFields";
+import { TiUserAdd } from "react-icons/ti";
 
 
 function buildUsernameFromEmail(email: string): string {
@@ -77,6 +78,16 @@ export function AddUsersSection() {
 
     return (
         <GlassCard className="w-full flex flex-col pt-8 px-8 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+
+            <div className="flex flex-col items-center justify-center mb-8 mt-2">
+                <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
+                    <TiUserAdd className="text-white-400" size={32} />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-1">Add New User</h2>
+                <p className="text-sm text-neutral-400 text-center max-w-sm">
+                    Enter the details below to create a new account in the system.
+                </p>
+            </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
