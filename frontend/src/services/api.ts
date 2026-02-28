@@ -141,6 +141,21 @@ export async function changePasswordApi(userId: number, currentPassword: string,
   await api.post(`/users/${userId}/change-password/`, { currentPassword, newPassword });
 }
 
+export async function adminChangePasswordApi(userId: number, newPassword: string): Promise<void> {
+  await api.post(`/users/${userId}/admin-reset-password/`, { newPassword });
+}
+
+export async function adminUploadProfileImageApi(userId: number, file: File): Promise<AuthUser> {
+  const formData = new FormData();
+  formData.append("profile_img", file);
+  const { data } = await api.post<AuthUser>(`/users/${userId}/admin-upload-image/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+}
+
 export async function createUserApi(payload: CreateUserPayload): Promise<AuthUser> {
   const { data } = await api.post<AuthUser>("/users/", payload);
   return data;
