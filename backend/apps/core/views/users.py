@@ -10,6 +10,7 @@ from django.db.models import Q
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -21,6 +22,12 @@ from .helpers import check_admin
 logger = logging.getLogger(__name__)
 
 
+class UserListPagination(PageNumberPagination):
+    page_size = 10
+    page_query_param = "page"
+    max_page_size = 100
+
+
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -28,6 +35,7 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = "id"
     lookup_url_kwarg = "userId"
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+    pagination_class = UserListPagination
 
     def _validate_user_update_permissions(self, request, user: User) -> None:
         if request.user != user and not is_admin(request.user):
@@ -41,14 +49,28 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         if not is_admin(self.request.user):
             queryset = queryset.filter(id=self.request.user.id)
-        q = self.request.query_params.get("q")
-        if q:
+        search_query = self.request.query_params.get("search")
+        role_filter = self.request.query_params.get("role")
+        status_filter = self.request.query_params.get("status")
+
+        if search_query:
             queryset = queryset.filter(
-                Q(username__icontains=q)
-                | Q(email__icontains=q)
-                | Q(first_name__icontains=q)
-                | Q(last_name__icontains=q)
+                Q(username__icontains=search_query)
+                | Q(email__icontains=search_query)
+                | Q(first_name__icontains=search_query)
+                | Q(last_name__icontains=search_query)
             )
+
+        if role_filter == "Admin":
+            queryset = queryset.filter(profile__is_admin=True)
+        elif role_filter == "User":
+            queryset = queryset.filter(profile__is_admin=False)
+
+        if status_filter == "Active":
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == "Inactive":
+            queryset = queryset.filter(is_active=False)
+
         return queryset
 
     def perform_create(self, serializer):
