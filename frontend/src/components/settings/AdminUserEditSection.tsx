@@ -6,7 +6,7 @@ import { ChangePasswordSection } from "./ChangePasswordSection";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
 import { getErrorMessage } from "../../utils/error";
-import { resolveMediaUrl, updateUserApi, changePasswordApi, type AuthUser } from "../../services/api";
+import { resolveMediaUrl, updateUserApi, adminChangePasswordApi, adminUploadProfileImageApi, type AuthUser } from "../../services/api";
 import { FooterActions } from "../ui/FooterActions";
 
 
@@ -31,15 +31,17 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
 
     const [newPassword, setNewPassword] = useState("");
     const [passwordError, setPasswordError] = useState("");
+    const [globalError, setGlobalError] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
 
-    // Profile Header State
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Profile header logic
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
         user.profileImg ? resolveMediaUrl(user.profileImg) : undefined
     );
     const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
-    const [isUploading] = useState(false);
-
-    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Validation
     const hasIdentityChanged =
@@ -51,6 +53,8 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
     const hasImageChanged = selectedImageFile !== null;
     const isIdentityValid = isValidName(name) && isValidName(surname) && isValidEmail(email);
     const isPasswordValid = !hasPasswordInput || isValidPassword(newPassword);
+
+    // Disable save if nothing changed or fields invalid
     const isSaveEnabled = (hasIdentityChanged || hasPasswordInput || hasImageChanged) && isIdentityValid && isPasswordValid;
 
     const handleImageSelect = useCallback((file: File) => {
@@ -58,31 +62,36 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
         setAvatarUrl(URL.createObjectURL(file));
     }, []);
 
+
     const handleSave = async () => {
         if (isSaving || !isSaveEnabled) return;
         setIsSaving(true);
         setPasswordError("");
         setGlobalError("");
         setSuccessMsg("");
-        let hasError = false;
+
         let updatedUserObj = { ...user };
+        let hasError = false;
 
         try {
-            // NOTE: uploadProfileImageApi uploads for the current user (me), it does not take a userId.
-            // If the backend doesn't support admins uploading images for OTHER users, this will fail or update the admin's own photo.
-            // Let's assume for now the backend has an endpoint, or we just skip image upload for admins if the API is restricted.
-            // Looking at api.ts, uploadProfileImageApi uses `/users/me/upload_profile_image/`.
-            // So an admin CANNOT change another user's image with this endpoint.
-            // We'll leave it in the UI but it might edit the admin themselves if used, so I will disable image selection for admins editing others.
-            // Actually, let's keep it but skip the API call for a moment, or just use the generic users endpoint if we had one.
-            // For now, I'll restrict image edits, or simulate it. 
-            // Wait, the user asked for: "- Foto - Nome - Cognome - Password". I will add it, but note the API limitation.
+            // 0. Update Image
             if (selectedImageFile) {
-                // Since there is no `users/${userId}/upload_image` in api.ts, I will just show an error indicating it's not supported by API yet.
-                setGlobalError("Profile image upload for other users requires a backend update.");
-                hasError = true;
+                setIsUploading(true);
+                try {
+                    updatedUserObj = await adminUploadProfileImageApi(user.userId, selectedImageFile);
+                    if (updatedUserObj.profileImg) {
+                        setAvatarUrl(resolveMediaUrl(updatedUserObj.profileImg));
+                    }
+                    setSelectedImageFile(null);
+                } catch (imgErr) {
+                    hasError = true;
+                    setGlobalError(getErrorMessage(imgErr, "Failed to upload the profile image."));
+                } finally {
+                    setIsUploading(false);
+                }
             }
 
+            // 1. Update Identity Data
             if (hasIdentityChanged && !hasError) {
                 updatedUserObj = await updateUserApi(user.userId, {
                     firstName: name.trim(),
@@ -99,13 +108,14 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
                 });
             }
 
+            // 2. Update Password
             if (hasPasswordInput && !hasError) {
                 try {
-                    await changePasswordApi(user.userId, "", newPassword);
+                    await adminChangePasswordApi(user.userId, newPassword);
                     setNewPassword("");
                 } catch (pwdErr) {
                     hasError = true;
-                    setPasswordError(getErrorMessage(pwdErr, "Failed to change password. Backend may require current password."));
+                    setPasswordError(getErrorMessage(pwdErr, "Failed to change password."));
                 }
             }
         } catch (err) {
@@ -139,6 +149,13 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
                 email={email}
                 onChangeEmail={setEmail}
             />
+
+            {(globalError || successMsg) && (
+                <div className="px-8 pb-4">
+                    {globalError && <p className="text-sm font-medium text-red-400">{globalError}</p>}
+                    {successMsg && <p className="text-sm font-medium text-emerald-400">{successMsg}</p>}
+                </div>
+            )}
 
             <ChangePasswordSection
                 requireCurrentPassword={false}
