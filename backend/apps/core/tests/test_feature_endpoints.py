@@ -105,14 +105,80 @@ class UserManagementEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.get("/api/users/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["userId"], self.member.id)
+        self.assertIn("count", response.data)
+        self.assertIn("results", response.data)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["userId"], self.member.id)
 
     def test_admin_user_list_returns_multiple_users(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get("/api/users/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 2)
+        self.assertIn("count", response.data)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)
+        self.assertIn("results", response.data)
+        self.assertGreaterEqual(response.data["count"], 2)
+        self.assertGreaterEqual(len(response.data["results"]), 2)
+
+    def test_admin_user_list_search_filter(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/users/?search=users_member")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["userId"], self.member.id)
+
+    def test_admin_user_list_role_filter_admin(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/users/?role=Admin")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(response.data["count"], 2)
+        self.assertTrue(all(user["isAdmin"] for user in response.data["results"]))
+
+    def test_admin_user_list_role_filter_user(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/users/?role=User")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(response.data["count"], 1)
+        self.assertTrue(all(not user["isAdmin"] for user in response.data["results"]))
+
+    def test_admin_user_list_status_filter_active_and_inactive(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+        self.member.profile.active = False
+        self.member.profile.save(update_fields=["active"])
+
+        self.client.force_authenticate(user=self.admin)
+        active_response = self.client.get("/api/users/?status=Active")
+        inactive_response = self.client.get("/api/users/?status=Inactive")
+
+        self.assertEqual(active_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(inactive_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(all(user["active"] for user in active_response.data["results"]))
+        self.assertTrue(all(not user["active"] for user in inactive_response.data["results"]))
+
+    def test_admin_user_list_combined_filters(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/users/?search=users_admin_other&role=Admin&status=Active")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["userId"], self.other_admin.id)
+
+    def test_admin_user_list_pagination_second_page(self):
+        for idx in range(12):
+            create_user_with_profile(
+                username=f"users_extra_{idx}",
+                email=f"users_extra_{idx}@example.com",
+                password="StrongPass123!",
+            )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/users/?page=2")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data["previous"])
+        self.assertGreater(response.data["count"], 10)
+        self.assertGreaterEqual(len(response.data["results"]), 1)
 
     def test_user_create_requires_admin(self):
         self.client.force_authenticate(user=self.member)

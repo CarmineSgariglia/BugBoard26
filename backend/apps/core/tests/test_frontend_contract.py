@@ -44,6 +44,16 @@ class FrontendContractTests(APITestCase):
         expected_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
         self.assertTrue(expected_keys.issubset(set(response.data.keys())))
 
+    def test_users_list_payload_matches_frontend_contract(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/users/?page=1&search=contract&role=User&status=Active")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected_top_level_keys = {"count", "next", "previous", "results"}
+        self.assertTrue(expected_top_level_keys.issubset(set(response.data.keys())))
+        self.assertGreaterEqual(len(response.data["results"]), 1)
+        expected_user_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
+        self.assertTrue(expected_user_keys.issubset(set(response.data["results"][0].keys())))
+
     def test_projects_list_payload_matches_frontend_contract(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.get("/api/projects/")
