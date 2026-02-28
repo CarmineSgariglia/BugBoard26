@@ -77,7 +77,7 @@ export function AddUsersSection() {
     };
 
     return (
-        <GlassCard className="w-full flex flex-col pt-8 px-8 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+        <GlassCard className="w-full flex flex-col pt-8 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
 
             <div className="flex flex-col items-center justify-center mb-8 mt-2">
                 <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
@@ -111,7 +111,7 @@ export function AddUsersSection() {
                 {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
 
                 {/* Make an Admin Toggle */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 px-8">
                     <Toggle checked={isAdmin} onChange={setIsAdmin} label="Make an admin" />
                     <span className="text-sm font-bold tracking-wider text-neutral-400 uppercase">
                         Make an Admin

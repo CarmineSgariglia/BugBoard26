@@ -1,19 +1,16 @@
-import { FiEdit2 } from "react-icons/fi";
-import { MdGroupOff } from "react-icons/md";
 import { resolveMediaUrl, type AuthUser } from "../../services/api";
-import { Tag } from "../ui/Tag";
-import { GlassCard } from "../ui/GlassCard";
-import { StatusBadge } from "../ui/StatusBadge";
+import { Tag } from "./Tag";
+import { GlassCard } from "./GlassCard";
+import { StatusBadge } from "./StatusBadge";
+import type { ReactNode } from "react";
 
 export interface UserTableProps {
     users: AuthUser[];
     isLoading?: boolean;
     error?: string;
     showStatus?: boolean;
-    showActions?: boolean;
-    showOnlyActive?: boolean;
-    onEditClick?: (user: AuthUser) => void;
-    onDeleteClick?: (user: AuthUser) => void;
+    // La nuova prop magica che permette di iniettare qualsiasi pulsante (o nessun pulsante)
+    renderActions?: (user: AuthUser) => ReactNode;
 }
 
 export function UserTable({
@@ -21,10 +18,7 @@ export function UserTable({
     isLoading = false,
     error = "",
     showStatus = true,
-    showActions = true,
-    showOnlyActive = false,
-    onEditClick,
-    onDeleteClick
+    renderActions // Togliamo showActions e i vecchi onEdit/onDelete
 }: UserTableProps) {
     if (isLoading) {
         return (
@@ -42,9 +36,9 @@ export function UserTable({
         );
     }
 
-    const filteredUsers = showOnlyActive ? users.filter(u => u.active) : users;
+    // Calcoliamo la larghezza delle colonne dinamicamente in base a cosa mostriamo
+    const showActions = !!renderActions; // Se ci passano la funzione, mostriamo la colonna
 
-    // Hardcode column spans to be compatible with Tailwind's static analysis
     let profileCol = "col-span-4";
     let emailCol = "col-span-3";
 
@@ -72,10 +66,10 @@ export function UserTable({
 
             {/* Table Body */}
             <div className="flex flex-col">
-                {filteredUsers.length === 0 ? (
+                {users.length === 0 ? (
                     <div className="p-8 text-center text-sm text-neutral-400">No users found matching your criteria.</div>
                 ) : (
-                    filteredUsers.map((user) => {
+                    users.map((user) => {
                         const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-";
                         return (
                             <div key={user.userId} className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-8 py-2.5 border-b border-white/5 items-center hover:bg-white/[0.02] transition-colors group`}>
@@ -104,9 +98,7 @@ export function UserTable({
 
                                 {/* Role Cell */}
                                 <div className="col-span-2 hidden md:block">
-                                    <Tag
-                                        text={user.isAdmin ? "Administrator" : "Developer"}
-                                    />
+                                    <Tag text={user.isAdmin ? "Administrator" : "Developer"} />
                                 </div>
 
                                 {/* Status Cell */}
@@ -120,27 +112,10 @@ export function UserTable({
                                     </div>
                                 )}
 
-                                {/* Actions Cell */}
+                                {/* Actions Cell (Renderizzato dinamicamente) */}
                                 {showActions && (
                                     <div className="col-span-1 flex items-center justify-end gap-3 transition-opacity">
-                                        {onEditClick && (
-                                            <button
-                                                onClick={() => onEditClick(user)}
-                                                className="text-neutral-500 hover:text-white transition-colors"
-                                                title="Edit User"
-                                            >
-                                                <FiEdit2 size={16} />
-                                            </button>
-                                        )}
-                                        {onDeleteClick && (
-                                            <button
-                                                onClick={() => onDeleteClick(user)}
-                                                className="text-neutral-500 hover:text-red-400 transition-colors"
-                                                title="Delete User"
-                                            >
-                                                <MdGroupOff size={16} />
-                                            </button>
-                                        )}
+                                        {renderActions(user)}
                                     </div>
                                 )}
 
@@ -149,7 +124,6 @@ export function UserTable({
                     })
                 )}
             </div>
-            {/* Note: Pagination is rendered outside, because tables don't usually own pagination logic. The caller will append Pagination below this Table component. */}
         </GlassCard>
     );
 }

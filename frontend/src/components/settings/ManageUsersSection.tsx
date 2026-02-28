@@ -5,9 +5,11 @@ import { Select } from "../ui/Select";
 import { Pagination } from "../ui/Pagination";
 import { listUsersApi, disableUserApi, type AuthUser } from "../../services/api";
 import { getErrorMessage } from "../../utils/error";
-import { UserTable } from "./UserTable";
+import { UserTable } from "../ui/UserTable";
 import { AdminUserEditSection } from "./AdminUserEditSection";
 import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
+import { FiEdit2 } from "react-icons/fi";
+import { MdGroupOff } from "react-icons/md";
 
 export interface ManageUsersSectionProps {
     onEditingChange?: (isEditing: boolean) => void;
@@ -173,9 +175,25 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
                     isLoading={isLoading}
                     error={error}
                     showStatus={true}
-                    showActions={true}
-                    onEditClick={(user) => handleActionClick('Edit', user)}
-                    onDeleteClick={(user) => handleActionClick('Delete', user)}
+                    // Iniettiamo i nostri bottoni di azione per queste righe specifiche
+                    renderActions={(user) => (
+                        <>
+                            <button
+                                onClick={() => handleActionClick('Edit', user)}
+                                className="text-neutral-500 hover:text-white transition-colors"
+                                title="Edit User"
+                            >
+                                <FiEdit2 size={16} />
+                            </button>
+                            <button
+                                onClick={() => handleActionClick('Delete', user)}
+                                className="text-neutral-500 hover:text-red-400 transition-colors"
+                                title={user.active ? "Deactivate User" : "Activate User"}
+                            >
+                                <MdGroupOff size={16} />
+                            </button>
+                        </>
+                    )}
                 />
 
                 {/* Pagination Footer */}
