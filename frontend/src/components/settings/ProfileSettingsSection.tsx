@@ -279,7 +279,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
                 isSaving={isSaving} // Dà informazioni al bottone se deve far girare l'animazione al suo interno
                 links={[
                     // Tasto Exit fisso per tutti
-                    { label: "Exit", icon: <RiArrowGoBackLine size={16} />, onClick: handleExit },
+                    ...(!isAdmin ? [{ label: "Exit", icon: <RiArrowGoBackLine size={16} />, onClick: handleExit }] : []),
                     // Tasto Help aggiunto con uno spread condizionale: Solo se NON sei Admin
                     ...(!isAdmin ? [{ label: "Get Help", icon: <MdOutlineMail size={16} />, onClick: handleGetHelp }] : []),
                 ]}
