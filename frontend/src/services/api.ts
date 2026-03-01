@@ -70,6 +70,14 @@ export type CreateUserPayload = {
   active?: boolean;
 };
 
+export type CreateProjectPayload = {
+  name: string;
+  description: string;
+  color?: string;
+  icon?: string;
+  userIds?: number[];
+};
+
 export type Project = {
   projectId: number;
   name: string;
@@ -78,19 +86,7 @@ export type Project = {
   color: string;
   icon: string;
   createdBy: number;
-  authorProfileImg?: string | null;
 };
-
-
-export type CreateProjectPayload = {
-  name: string;
-  description: string;
-  color: string;
-  icon: string;
-  team: number[]; // Array of User IDs
-};
-
-export type UpdateProjectPayload = Partial<Omit<CreateProjectPayload, "team">>;
 
 export type Issue = {
   issueId: number;
@@ -182,6 +178,11 @@ export async function disableUserApi(userId: number, username: string): Promise<
   await api.post(`/users/${userId}/disable/`, { username });
 }
 
+export async function setUserActiveApi(userId: number, active: boolean): Promise<AuthUser> {
+  const { data } = await api.patch<AuthUser>(`/users/${userId}/`, { active });
+  return data;
+}
+
 export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
   const formData = new FormData();
   formData.append("profile_img", file);
@@ -203,13 +204,6 @@ export async function createProjectApi(payload: CreateProjectPayload): Promise<P
   const { data } = await api.post<Project>("/projects/", payload);
   return data;
 }
-
-export async function updateProjectApi(projectId: number | string, payload: UpdateProjectPayload): Promise<Project> {
-  const { data } = await api.patch<Project>(`/projects/${projectId}/`, payload);
-  return data;
-}
-
-
 
 export async function listProjectIssuesApi(projectId: string | number): Promise<Issue[]> {
   const { data } = await api.get<Issue[]>(`/projects/${projectId}/issues/`);
