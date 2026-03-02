@@ -1,10 +1,12 @@
 from datetime import timedelta
+from io import StringIO
 from unittest.mock import patch
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.utils import timezone
 from rest_framework import status
 from django.test import override_settings
@@ -669,9 +671,19 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertEqual(second_remove.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_project_delete_allows_plain_delete_for_current_frontend_flow(self):
+        issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="Issue for cascade delete",
+            description="desc",
+            issue_type="BUG",
+            status=IssueStatus.TODO,
+            priority="MEDIUM",
+        )
         self.client.force_authenticate(user=self.admin)
         no_confirm = self.client.delete(f"/api/projects/{self.project.project_id}/", format="json")
         self.assertEqual(no_confirm.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Issue.objects.filter(issue_id=issue.issue_id).exists())
 
 
 class IssueWorkflowEndpointTests(APITestCase):
@@ -932,3 +944,40 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.assertIn("issueType", auth_response.data)
         self.assertIn("issueStatus", auth_response.data)
         self.assertIn("priority", auth_response.data)
+
+
+class OtpCleanupCommandTests(APITestCase):
+    def setUp(self):
+        self.user = create_user_with_profile(
+            username="otp_cleanup_user",
+            email="otp_cleanup_user@example.com",
+            password="StrongPass123!",
+        )
+
+    def test_cleanup_otps_removes_used_and_expired_only(self):
+        expired = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="101010",
+            expires_at=timezone.now() - timedelta(minutes=1),
+            is_used=False,
+        )
+        used = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="202020",
+            expires_at=timezone.now() + timedelta(minutes=10),
+            is_used=True,
+        )
+        valid = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="303030",
+            expires_at=timezone.now() + timedelta(minutes=10),
+            is_used=False,
+        )
+
+        output = StringIO()
+        call_command("cleanup_otps", stdout=output)
+
+        self.assertFalse(PasswordResetOTP.objects.filter(otp_id=expired.otp_id).exists())
+        self.assertFalse(PasswordResetOTP.objects.filter(otp_id=used.otp_id).exists())
+        self.assertTrue(PasswordResetOTP.objects.filter(otp_id=valid.otp_id).exists())
+        self.assertIn("Deleted", output.getvalue())
