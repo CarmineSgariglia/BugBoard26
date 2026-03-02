@@ -70,6 +70,14 @@ export type CreateUserPayload = {
   active?: boolean;
 };
 
+export type CreateProjectPayload = {
+  name: string;
+  description: string;
+  color?: string;
+  icon?: string;
+  userIds?: number[];
+};
+
 export type Project = {
   projectId: number;
   name: string;
@@ -182,6 +190,11 @@ export async function disableUserApi(userId: number, username: string): Promise<
   await api.post(`/users/${userId}/disable/`, { username });
 }
 
+export async function setUserActiveApi(userId: number, active: boolean): Promise<AuthUser> {
+  const { data } = await api.patch<AuthUser>(`/users/${userId}/`, { active });
+  return data;
+}
+
 export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
   const formData = new FormData();
   formData.append("profile_img", file);
@@ -208,8 +221,6 @@ export async function updateProjectApi(projectId: number | string, payload: Upda
   const { data } = await api.patch<Project>(`/projects/${projectId}/`, payload);
   return data;
 }
-
-
 
 export async function listProjectIssuesApi(projectId: string | number): Promise<Issue[]> {
   const { data } = await api.get<Issue[]>(`/projects/${projectId}/issues/`);

@@ -3,7 +3,7 @@ import { GlassCard } from "../ui/GlassCard";
 import { SearchBar } from "../ui/SearchBar";
 import { Select } from "../ui/Select";
 import { Pagination } from "../ui/Pagination";
-import { listUsersApi, disableUserApi, type AuthUser } from "../../services/api";
+import { listUsersApi, setUserActiveApi, type AuthUser } from "../../services/api";
 import { getErrorMessage } from "../../utils/error";
 import { UserTable } from "../ui/UserTable";
 import { AdminUserEditSection } from "./AdminUserEditSection";
@@ -87,11 +87,11 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
         if (!toggleStatusUser) return;
         setIsToggling(true);
         try {
-            await disableUserApi(toggleStatusUser.userId, toggleStatusUser.username);
-            // Toggle the active status locally
+            const nextActive = !(toggleStatusUser.active ?? true);
+            const updatedUser = await setUserActiveApi(toggleStatusUser.userId, nextActive);
             setUsers(prev => prev.map(u =>
                 u.userId === toggleStatusUser.userId
-                    ? { ...u, active: !u.active }
+                    ? updatedUser
                     : u
             ));
             setToggleStatusUser(null);

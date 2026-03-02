@@ -44,7 +44,7 @@ class Priority(models.TextChoices):
     LOW = "LOW", "Low"
     MEDIUM = "MEDIUM", "Medium"
     HIGH = "HIGH", "High"
-    CRITICAL = "CRITICAL", "Critical"
+    URGENT = "URGENT", "Urgent"
 
 
 class NotifyType(models.TextChoices):
