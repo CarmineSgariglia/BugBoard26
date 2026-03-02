@@ -59,7 +59,7 @@ class FrontendContractTests(APITestCase):
         response = self.client.get("/api/projects/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
-        expected_keys = {"projectId", "name", "createdAt", "description", "color", "icon", "createdBy"}
+        expected_keys = {"projectId", "name", "createdAt", "description", "color", "icon", "createdBy", "authorProfileImg"}
         self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
 
     def test_project_issues_payload_matches_frontend_contract(self):

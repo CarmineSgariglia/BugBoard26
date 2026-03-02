@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Project.objects.select_related("created_by").all()
+    queryset = Project.objects.select_related("created_by", "created_by__profile").all()
     lookup_field = "project_id"
     lookup_url_kwarg = "projectId"
 
