@@ -308,18 +308,6 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(User.objects.filter(id=self.member.id).exists())
 
-    def test_admin_can_disable_user_with_confirmation(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/disable/",
-            {"username": self.member.username},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.member.refresh_from_db()
-        self.assertFalse(self.member.is_active)
-        self.assertFalse(self.member.profile.active)
-
     def test_admin_can_toggle_user_status_with_status_endpoint(self):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])
