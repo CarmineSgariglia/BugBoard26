@@ -7,7 +7,6 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -28,7 +27,6 @@ from .helpers import (
     check_admin,
     create_issue_for_project,
     ensure_project_access,
-    parse_int_or_none,
     request_user_ids,
     user_project_ids,
 )
@@ -139,55 +137,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
             notify_users(notify_type=NotifyType.PROJECT_REMOVED, users=recipient_users, project=project)
         return super().destroy(request, *args, **kwargs)
 
-    @action(detail=True, methods=["get", "post"], url_path="members")
+    @action(detail=True, methods=["get"], url_path="members")
     def members(self, request, projectId=None):
         project = self.get_object()
         ensure_project_access(request.user, project)
 
-        if request.method == "GET":
-            memberships = ProjectMembership.objects.filter(project=project).select_related("user")
-            return Response(ProjectMembershipSerializer(memberships, many=True).data)
-
-        # POST — add member
-        check_admin(request.user)
-        user_id = parse_int_or_none(request.data.get("userId"))
-        if not user_id:
-            raise ValidationError({"userId": "This field is required"})
-        role = request.data.get("role", ProjectMembership.Role.DEVELOPER)
-        if role not in dict(ProjectMembership.Role.choices):
-            raise ValidationError({"role": "Invalid role"})
-        user = User.objects.filter(id=user_id, is_active=True).first()
-        if not user:
-            raise ValidationError({"userId": "Active user not found"})
-        membership, created = ProjectMembership.objects.get_or_create(
-            project=project,
-            user=user,
-            defaults={"role": role},
-        )
-        if not created:
-            membership.role = role
-            membership.save(update_fields=["role"])
-        notify_users(notify_type=NotifyType.PROJECT_ADDED, users=[membership.user], project=project)
-        return Response(ProjectMembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=["delete"], url_path=r"members/(?P<userId>[^/.]+)")
-    def remove_member(self, request, projectId=None, userId=None):
-        check_admin(request.user)
-        project = self.get_object()
-        ensure_project_access(request.user, project)
-        membership = ProjectMembership.objects.filter(project=project, user_id=userId).first()
-        if not membership:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        if membership.user_id == project.created_by_id:
-            return Response({"detail": "Project creator cannot be removed from membership"}, status=status.HTTP_400_BAD_REQUEST)
-        if membership.role == ProjectMembership.Role.ADMIN:
-            admin_count = ProjectMembership.objects.filter(project=project, role=ProjectMembership.Role.ADMIN).count()
-            if admin_count <= 1:
-                return Response({"detail": "Cannot remove the last project admin"}, status=status.HTTP_400_BAD_REQUEST)
-        user = membership.user
-        membership.delete()
-        notify_users(notify_type=NotifyType.PROJECT_REMOVED, users=[user], project=project)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        memberships = ProjectMembership.objects.filter(project=project).select_related("user")
+        return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
 
 class ProjectIssueListCreateView(APIView):

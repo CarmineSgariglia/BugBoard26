@@ -1,0 +1,11 @@
+[Unit]
+Description=Run BugBoard OTP cleanup every 10 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+Persistent=true
+Unit=bugboard-otp-cleanup.service
+
+[Install]
+WantedBy=timers.target

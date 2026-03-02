@@ -143,16 +143,12 @@ class UserViewSet(viewsets.ModelViewSet):
         refreshed_user = User.objects.get(id=user.id)
         return UserSerializer(refreshed_user, context={"request": request}).data
 
-    @action(detail=True, methods=["post"], url_path="profile-image")
-    def upload_profile_image(self, request, userId=None):
-        user = self.get_object()
-        payload = self._save_profile_image_for_user(request=request, user=user)
-        return Response(payload, status=status.HTTP_200_OK)
-
     @action(detail=True, methods=["post"], url_path="admin-upload-image")
     def admin_upload_profile_image(self, request, userId=None):
         check_admin(request.user)
-        return self.upload_profile_image(request, userId=userId)
+        user = self.get_object()
+        payload = self._save_profile_image_for_user(request=request, user=user)
+        return Response(payload, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="me/upload_profile_image")
     def upload_profile_image_me(self, request):

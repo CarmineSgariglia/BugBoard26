@@ -22,6 +22,14 @@ Containerized three-tier architecture:
    - Frontend: `http://localhost:5173`
    - Backend API health endpoint: `http://localhost:8000/api/health/`
 
+## Production (GCP VM)
+
+- Use `.env.production.example` as template for production secrets and security flags.
+- Start production-like stack with:
+  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile proxy up -d --build`
+- Full runbook:
+  - `ops/gcp/PRODUCTION_RUNBOOK.md`
+
 ## API Endpoints
 
 - `GET /api/health/`: health check
