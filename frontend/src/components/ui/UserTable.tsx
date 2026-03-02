@@ -39,20 +39,27 @@ export function UserTable({
     }
 
     // Calcoliamo la larghezza delle colonne dinamicamente in base a cosa mostriamo
-    const showActions = !!renderActions; // Se ci passano la funzione, mostriamo la colonna
+    const showActions = !!renderActions;
 
     let profileCol = "col-span-4";
     let emailCol = "col-span-3";
+    let actionsCol = "col-span-1";
 
-    if (!showStatus && !showActions) {
-        profileCol = "col-span-6";
+    if (!showStatus && !showActions && !showRole) {
+        profileCol = "col-span-8";
         emailCol = "col-span-4";
-    } else if (!showStatus) {
+    } else if (!showStatus && !showRole) {
+        // Caso ProjectTeamStep
         profileCol = "col-span-5";
         emailCol = "col-span-4";
+        actionsCol = "col-span-3";
+    } else if (!showStatus) {
+        profileCol = "col-span-4";
+        emailCol = "col-span-4";
+        actionsCol = "col-span-2";
     } else if (!showActions) {
         profileCol = "col-span-5";
-        emailCol = "col-span-3";
+        emailCol = "col-span-4";
     }
 
     return (
@@ -63,7 +70,7 @@ export function UserTable({
                 <div className={emailCol}>Email Address</div>
                 {showRole && <div className="col-span-2">Role</div>}
                 {showStatus && <div className="col-span-2">Status</div>}
-                {showActions && <div className="col-span-1 text-right">Actions</div>}
+                {showActions && <div className={`${actionsCol} text-right`}>Actions</div>}
             </div>
 
             {/* Table Body */}
@@ -119,7 +126,7 @@ export function UserTable({
 
                                 {/* Actions Cell (Renderizzato dinamicamente) */}
                                 {showActions && (
-                                    <div className="col-span-1 flex items-center justify-end gap-3 transition-opacity">
+                                    <div className={`${actionsCol} flex items-center justify-end gap-3 transition-opacity`}>
                                         {renderActions(user)}
                                     </div>
                                 )}
