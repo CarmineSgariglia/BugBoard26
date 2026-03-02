@@ -89,7 +89,15 @@ export type Project = {
   authorProfileImg?: string | null;
 };
 
-export type UpdateProjectPayload = Partial<Omit<CreateProjectPayload, "team">>;
+export type UpdateProjectPayload = Partial<CreateProjectPayload>;
+
+export type ProjectMembership = {
+  projectMembershipId: number;
+  projectId: number;
+  userId: number;
+  username: string;
+  role: string;
+};
 
 export type Issue = {
   issueId: number;
@@ -210,6 +218,11 @@ export async function createProjectApi(payload: CreateProjectPayload): Promise<P
 
 export async function updateProjectApi(projectId: number | string, payload: UpdateProjectPayload): Promise<Project> {
   const { data } = await api.patch<Project>(`/projects/${projectId}/`, payload);
+  return data;
+}
+
+export async function listProjectMembersApi(projectId: string | number): Promise<ProjectMembership[]> {
+  const { data } = await api.get<ProjectMembership[]>(`/projects/${projectId}/members/`);
   return data;
 }
 

@@ -34,6 +34,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     active?: boolean;
     destructive?: boolean;
     fullWidth?: boolean;
+    icon?: ReactNode;
 }
 
 export function Button({
@@ -44,6 +45,7 @@ export function Button({
     active = false,
     destructive = false,
     fullWidth = true,
+    icon,
     className = "",
     disabled,
     ...props
@@ -79,7 +81,12 @@ export function Button({
                     <AiOutlineLoading3Quarters className="animate-spin h-4 w-4" />
                     <span>Caricamento...</span>
                 </div>
-            ) : children}
+            ) : (
+                <>
+                    {icon && <span className="flex-shrink-0">{icon}</span>}
+                    {children}
+                </>
+            )}
         </button>
     );
 }

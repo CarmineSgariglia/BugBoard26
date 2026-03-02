@@ -1,0 +1,79 @@
+import { useEffect, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import brandLogo from "../../assets/LogoBugBoard26.webp";
+import { listProjectsApi } from "../../services/api";
+import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
+
+export function DynamicBreadcrumbs() {
+    const location = useLocation();
+    const { projectId } = useParams();
+    const { labels } = useBreadcrumbs();
+    const [projectName, setProjectName] = useState<string>("");
+
+    useEffect(() => {
+        // Use context label if available, otherwise fetch as fallback
+        if (projectId && labels[projectId]) {
+            setProjectName(labels[projectId]);
+            return;
+        }
+
+        const fetchProjectName = async () => {
+            if (projectId) {
+                try {
+                    const projects = await listProjectsApi();
+                    const currentProject = projects.find(p => String(p.projectId) === projectId);
+                    if (currentProject) {
+                        setProjectName(currentProject.name);
+                    } else {
+                        setProjectName(`Project #${projectId}`);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch project for breadcrumbs", error);
+                    setProjectName(`Project #${projectId}`);
+                }
+            }
+        };
+
+        if (location.pathname.includes("/projects/") && projectId) {
+            fetchProjectName();
+        }
+    }, [location.pathname, projectId, labels]);
+
+    const isSettings = location.pathname.startsWith("/settings");
+    const isProjects = location.pathname === "/projects";
+
+    return (
+        <div className="flex items-center gap-3">
+            {/* Logo + Root link */}
+            <Link to="/projects" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <img src={brandLogo} alt="Logo_BugBoard26" className="w-8 h-8" />
+            </Link>
+
+            {/* Separator / Breadcrumb chain */}
+            <div className="flex items-center text-xl font-medium tracking-wide">
+                <Link
+                    to="/projects"
+                    className={`transition-colors ${isProjects ? "text-white cursor-default" : "text-neutral-500 hover:text-white"}`}
+                >
+                    Projects
+                </Link>
+
+                {projectId && (
+                    <>
+                        <span className="mx-2 text-neutral-600">/</span>
+                        <span className="text-white">
+                            {projectName || "..."}
+                        </span>
+                    </>
+                )}
+
+                {isSettings && (
+                    <>
+                        <span className="mx-2 text-neutral-600">/</span>
+                        <span className="text-white">Settings</span>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}

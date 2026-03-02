@@ -1,80 +1,233 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { listProjectIssuesApi, listProjectsApi, listProjectMembersApi, type Issue, type Project, type ProjectMembership } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 
-import { listProjectIssuesApi, type Issue } from "../../services/api";
+// UI Components
+import { SearchBar } from "../../components/ui/SearchBar";
+import { Select } from "../../components/ui/Select";
+import { Button } from "../../components/ui/Button";
+import { IssueCard } from "../../components/issues/IssueCard";
+import { ProjectSidebar } from "../../components/projects/ProjectSidebar";
+import { EditProjectFlow } from "./EditProjectFlow";
+import { EditTeamFlow } from "./EditTeamFlow";
+
+// Icons
+import { FiPlus } from "react-icons/fi";
+import { HiOutlineFlag, HiOutlineCollection } from "react-icons/hi";
 
 export function ProjectIssuesScreen() {
   const navigate = useNavigate();
   const { projectId } = useParams();
+  const { user: currentUser } = useAuth();
+  const { setLabel } = useBreadcrumbs();
+
+  // States
+  const [project, setProject] = useState<Project | null>(null);
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [members, setMembers] = useState<ProjectMembership[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Filters State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
+
+  const fetchData = async () => {
+    if (!projectId) {
+      setError("Missing project id");
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError("");
+    try {
+      // Fetch issues, projects and members in parallel
+      const [issuesData, projectsData, membersData] = await Promise.all([
+        listProjectIssuesApi(projectId),
+        listProjectsApi(),
+        listProjectMembersApi(projectId)
+      ]);
+
+      setIssues(issuesData);
+      setMembers(membersData);
+      const foundProject = projectsData.find(p => String(p.projectId) === projectId);
+      if (foundProject) {
+        setProject(foundProject);
+        setLabel(projectId, foundProject.name);
+      }
+
+    } catch {
+      setError("Unable to load project data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const run = async () => {
-      if (!projectId) {
-        setError("Missing project id");
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-      setError("");
-      try {
-        const data = await listProjectIssuesApi(projectId);
-        setIssues(data);
-      } catch {
-        setError("Unable to load project issues");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    run();
+    fetchData();
   }, [projectId]);
 
-  const sortedIssues = useMemo(
-    () => [...issues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [issues],
-  );
+  const filteredIssues = useMemo(() => {
+    return issues
+      .filter(issue => {
+        const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          issue.description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "all" || issue.status.toLowerCase() === statusFilter.toLowerCase();
+        const matchesPriority = priorityFilter === "all" || issue.priority.toLowerCase() === priorityFilter.toLowerCase();
+        return matchesSearch && matchesStatus && matchesPriority;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [issues, searchQuery, statusFilter, priorityFilter]);
+
+  if (!isLoading && !project && !error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-neutral-400">
+        Project not found.
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
+    <div className="min-h-screen pt-24 pb-12 px-6">
+      <div className="max-w-[1400px] mx-auto flex flex-col gap-8">
 
-      <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex flex-col">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Project Issues</h1>
-            <p className="text-[#9CA3AF]">Project #{projectId}</p>
+        {/* Header & Filter Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 flex-1">
+            <div className="w-full md:w-80">
+              <SearchBar
+                placeholder="Search issues..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar w-full md:w-auto">
+              <Select
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                  { value: "all", label: "All Status" },
+                  { value: "todo", label: "Todo" },
+                  { value: "in_progress", label: "In Progress" },
+                  { value: "done", label: "Done" }
+                ]}
+                icon={<HiOutlineCollection size={16} />}
+              />
+              <Select
+                value={priorityFilter}
+                onChange={priorityFilter => setPriorityFilter(priorityFilter)}
+                options={[
+                  { value: "all", label: "All Priority" },
+                  { value: "critical", label: "Critical" },
+                  { value: "high", label: "High" },
+                  { value: "medium", label: "Medium" },
+                  { value: "low", label: "Low" }
+                ]}
+                icon={<HiOutlineFlag size={16} />}
+              />
+            </div>
           </div>
-          <button
-            className="rounded-md border border-white/20 px-3 py-2 text-sm hover:bg-white/10"
-            type="button"
-            onClick={() => navigate("/projects")}
+
+          <Button
+            variant="primary"
+            size="md"
+            icon={<FiPlus size={18} />}
+            fullWidth={false}
+            className="shadow-lg shadow-blue-600/20 whitespace-nowrap"
           >
-            Back to Projects
-          </button>
+            Report New Issue
+          </Button>
         </div>
 
-        {isLoading ? <p className="text-sm text-[#9CA3AF]">Loading issues...</p> : null}
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-        <div className="grid grid-cols-1 gap-4">
-          {sortedIssues.map((issue) => (
-            <article key={issue.issueId} className="rounded-xl border border-white/10 bg-white/5 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">{issue.title}</h2>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs">{issue.status}</span>
+          {/* Left Column: Issues List */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white tracking-tight">Manage Issues</h2>
+              <span className="text-xs font-medium text-neutral-500 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+                {filteredIssues.length} {filteredIssues.length === 1 ? "Issue" : "Issues"}
+              </span>
+            </div>
+
+            {error && (
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm">
+                {error}
               </div>
-              <p className="mt-2 text-sm text-[#CBD5E1]">{issue.description}</p>
-              <div className="mt-3 flex gap-2 text-xs text-[#94A3B8]">
-                <span className="rounded bg-white/10 px-2 py-1">{issue.type}</span>
-                <span className="rounded bg-white/10 px-2 py-1">{issue.priority}</span>
-              </div>
-            </article>
-          ))}
-          {!isLoading && !error && sortedIssues.length === 0 ? (
-            <p className="text-sm text-[#9CA3AF]">No issues found for this project.</p>
-          ) : null}
+            )}
+
+            <div className="flex flex-col gap-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-2 custom-scrollbar">
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
+                ))
+              ) : filteredIssues.length > 0 ? (
+                filteredIssues.map(issue => (
+                  <IssueCard
+                    key={issue.issueId}
+                    issue={issue}
+                    onClick={() => navigate(`/projects/${projectId}/issues/${issue.issueId}`)}
+                  />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/5">
+                    <HiOutlineCollection className="text-neutral-600" size={32} />
+                  </div>
+                  <h3 className="text-white font-medium mb-1">No issues found</h3>
+                  <p className="text-sm text-neutral-500 max-w-xs">
+                    Try adjusting your search or filters to find what you're looking for.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Project Sidebar */}
+          <div className="lg:col-span-4 sticky top-24">
+            {project ? (
+              <ProjectSidebar
+                project={project}
+                members={members.map(m => ({ username: m.username }))}
+                isAdmin={currentUser?.isAdmin}
+                onSettingsClick={() => setIsEditModalOpen(true)}
+                onEditTeamClick={() => setIsEditTeamModalOpen(true)}
+              />
+            ) : (
+              <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
+            )}
+          </div>
         </div>
+
+        {isEditModalOpen && project && (
+          <EditProjectFlow
+            onClose={() => setIsEditModalOpen(false)}
+            project={project}
+            onUpdated={() => {
+              setIsEditModalOpen(false);
+              fetchData();
+            }}
+          />
+        )}
+
+        {isEditTeamModalOpen && project && (
+          <EditTeamFlow
+            onClose={() => setIsEditTeamModalOpen(false)}
+            project={project}
+            onUpdated={() => {
+              setIsEditTeamModalOpen(false);
+              fetchData();
+            }}
+          />
+        )}
+
       </div>
     </div>
   );
