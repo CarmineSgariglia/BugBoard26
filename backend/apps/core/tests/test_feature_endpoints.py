@@ -1,10 +1,13 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from rest_framework import status
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from apps.core.models import (
@@ -26,6 +29,7 @@ from apps.core.tests.utils import create_project_with_members, create_user_with_
 
 class AuthOtpEndpointTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = create_user_with_profile(
             username="otp_user",
             email="otp_user@example.com",
@@ -36,6 +40,23 @@ class AuthOtpEndpointTests(APITestCase):
         response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(PasswordResetOTP.objects.filter(user=self.user).count(), 1)
+        otp = PasswordResetOTP.objects.filter(user=self.user).first()
+        self.assertIsNotNone(otp)
+        self.assertEqual(otp.attempt_count, 0)
+        self.assertIsNone(otp.last_attempt_at)
+
+    def test_otp_request_invalidates_previous_unused_otps(self):
+        old = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="111111",
+            expires_at=timezone.now() + timedelta(minutes=5),
+            is_used=False,
+        )
+        response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        old.refresh_from_db()
+        self.assertTrue(old.is_used)
+        self.assertEqual(PasswordResetOTP.objects.filter(user=self.user).count(), 2)
 
     def test_otp_request_unknown_user_returns_generic_message(self):
         response = self.client.post("/api/auth/password/otp/request/", {"email": "missing@example.com"}, format="json")
@@ -79,6 +100,98 @@ class AuthOtpEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data["valid"])
+
+    def test_otp_verify_wrong_code_increments_attempt_count(self):
+        otp = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="222222",
+            expires_at=timezone.now() + timedelta(minutes=5),
+        )
+        response = self.client.post(
+            "/api/auth/password/otp/verify/",
+            {"email": self.user.email, "code": "999999"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["valid"])
+        otp.refresh_from_db()
+        self.assertEqual(otp.attempt_count, 1)
+        self.assertIsNotNone(otp.last_attempt_at)
+        self.assertFalse(otp.is_used)
+
+    def test_otp_verify_locks_after_5_attempts(self):
+        otp = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="333333",
+            expires_at=timezone.now() + timedelta(minutes=5),
+        )
+        for _ in range(5):
+            response = self.client.post(
+                "/api/auth/password/otp/verify/",
+                {"email": self.user.email, "code": "000000"},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertFalse(response.data["valid"])
+        otp.refresh_from_db()
+        self.assertEqual(otp.attempt_count, 5)
+        self.assertTrue(otp.is_used)
+
+    def test_password_reset_rejects_expired_or_locked_otp(self):
+        expired = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="555555",
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+        expired_response = self.client.post(
+            "/api/auth/password/reset/",
+            {"email": self.user.email, "code": expired.code, "newPassword": "NewStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(expired_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("detail", expired_response.data)
+
+        locked = PasswordResetOTP.objects.create(
+            user=self.user,
+            code="666666",
+            expires_at=timezone.now() + timedelta(minutes=5),
+            is_used=True,
+        )
+        locked_response = self.client.post(
+            "/api/auth/password/reset/",
+            {"email": self.user.email, "code": locked.code, "newPassword": "NewStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(locked_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("detail", locked_response.data)
+
+    @patch("apps.core.services.password_reset._send_otp_email", side_effect=RuntimeError("provider down"))
+    def test_otp_request_email_send_failure_returns_generic_and_logs_error(self, _mock_send):
+        with self.assertLogs("apps.core.services.password_reset", level="ERROR") as logs:
+            response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+        self.assertTrue(any("otp_request_send_failed" in message for message in logs.output))
+
+    @override_settings(EMAIL_PROVIDER="console")
+    @patch("apps.core.services.password_reset.send_mail")
+    def test_email_provider_console_default_in_dev(self, mock_send_mail):
+        response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_send_mail.called)
+
+    @override_settings(
+        EMAIL_PROVIDER="brevo",
+        BREVO_OTP_TEMPLATE_ID="123",
+        DEFAULT_FROM_EMAIL="noreply@example.com",
+        BREVO_SENDER_NAME="BugBoard26",
+    )
+    @patch("apps.core.services.password_reset.EmailMessage.send", return_value=1)
+    @patch("apps.core.services.password_reset.send_mail")
+    def test_email_provider_brevo_uses_anymail_backend(self, mock_send_mail, _mock_email_send):
+        response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(mock_send_mail.called)
 
 
 class UserManagementEndpointTests(APITestCase):

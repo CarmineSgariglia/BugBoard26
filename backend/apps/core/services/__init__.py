@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from django.contrib.auth.models import User
 
-from .models import Issue, Notification, NotifyType, NotifyUser, Project
+from ..models import Issue, Notification, NotifyType, NotifyUser, Project
 
 
 def notify_users(
@@ -22,3 +22,4 @@ def notify_users(
         ignore_conflicts=True,
     )
     return notification
+
