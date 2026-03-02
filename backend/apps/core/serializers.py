@@ -99,14 +99,16 @@ class ProjectSerializer(serializers.ModelSerializer):
     projectId = serializers.IntegerField(source="project_id", read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     createdBy = serializers.IntegerField(source="created_by.id", read_only=True)
+    authorProfileImg = serializers.CharField(source="created_by.profile.profile_img", read_only=True)
 
     class Meta:
         model = Project
-        fields = ["projectId", "name", "createdAt", "description", "color", "icon", "createdBy"]
+        fields = ["projectId", "name", "createdAt", "description", "color", "icon", "createdBy", "authorProfileImg"]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["icon"] = build_media_url(self, data.get("icon", ""))
+        data["authorProfileImg"] = build_media_url(self, data.get("authorProfileImg", ""))
         return data
 
 
