@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
 import { FooterActions } from "../../components/ui/FooterActions";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { UserTable } from "../../components/ui/UserTable";
 import { Pagination } from "../../components/ui/Pagination";
+import { Select } from "../../components/ui/Select";
 import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
 import { RiArrowLeftLine } from "react-icons/ri";
-import { FiCheck, FiPlus } from "react-icons/fi";
+import { FiPlus, FiX } from "react-icons/fi";
 
 interface ProjectTeamStepProps {
     selectedUserIds: number[];
@@ -40,6 +42,14 @@ export function ProjectTeamStep({
         initialStatus: "Active",
     });
 
+    const [membershipFilter, setMembershipFilter] = useState<string>("All");
+
+    const filteredUsers = users.filter(user => {
+        if (membershipFilter === "Added") return selectedUserIds.includes(user.userId);
+        if (membershipFilter === "NotAdded") return !selectedUserIds.includes(user.userId);
+        return true;
+    });
+
     return (
         <ProjectFormLayout
             title={mode === "create" ? "Select Team Members" : "Manage Team Members"}
@@ -61,7 +71,7 @@ export function ProjectTeamStep({
                 />
             }
         >
-            {/* Search Bar + Selected Count */}
+            {/* Search Bar + Select + Selected Count */}
             <div className="flex items-center gap-4">
                 <div className="flex-1">
                     <SearchBar
@@ -74,17 +84,28 @@ export function ProjectTeamStep({
                         className="border border-white/10"
                     />
                 </div>
+
+                <Select
+                    value={membershipFilter}
+                    onChange={(val) => setMembershipFilter(val)}
+                    className="w-48"
+                    options={[
+                        { label: "All Members", value: "All" },
+                        { label: "Already Added", value: "Added" },
+                        { label: "Not Added", value: "NotAdded" }
+                    ]}
+                />
+
                 <span className="bg-[#5671F6]/20 text-[#5671F6] px-3 py-1.5 rounded-full border border-[#5671F6]/30 text-xs font-bold whitespace-nowrap">
                     {selectedUserIds.length} selected
                 </span>
             </div>
 
 
-            {/* User Table Wrapper */}
             <div className="flex-1 min-h-0 border border-white/5 bg-[#121620]/30 rounded-xl overflow-hidden flex flex-col">
                 <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
                     <UserTable
-                        users={users}
+                        users={filteredUsers}
                         isLoading={isLoading}
                         error={error}
                         showStatus={false}
@@ -94,15 +115,15 @@ export function ProjectTeamStep({
                             return (
                                 <button
                                     onClick={() => onToggleUser(user.userId)}
-                                    className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isSelected
-                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
+                                    className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-[90px] ${isSelected
+                                        ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
                                         : "bg-[#5671F6]/10 text-[#5671F6] border border-[#5671F6]/20 hover:bg-[#5671F6]/20"
                                         }`}
                                 >
                                     {isSelected ? (
                                         <>
-                                            <FiCheck size={14} />
-                                            Selected
+                                            <FiX size={14} />
+                                            Remove
                                         </>
                                     ) : (
                                         <>
