@@ -129,5 +129,17 @@ REST_FRAMEWORK = {
     },
 }
 
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "console").lower()
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_OTP_TEMPLATE_ID = os.getenv("BREVO_OTP_TEMPLATE_ID", "")
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "")
+
+if EMAIL_PROVIDER == "brevo":
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+    ANYMAIL = {
+        "BREVO_API_KEY": BREVO_API_KEY,
+    }
+else:
+    EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@bugboard26.local")
