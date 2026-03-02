@@ -1,24 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
 import { CreateProjectFlow } from "./CreateProjectFlow";
 import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
-import { FaRegFolder } from "react-icons/fa";
+import { getProjectIcon } from "../../utils/projectIcons";
 import { useAuth } from "../../contexts/AuthContext";
 
-function folderIcon() {
-  return (
-    <FaRegFolder size={30} className="text-white/80" />
-  );
-}
-
-function projectIcon(iconUrl?: string) {
-  if (!iconUrl) {
-    return folderIcon();
-  }
-  return <img src={resolveMediaUrl(iconUrl)} alt="Project icon" className="h-7 w-7 object-contain" />;
+function projectIcon(iconId?: string) {
+  return getProjectIcon(iconId || "folder", 30, "text-white/80");
 }
 
 export function ProjectsScreen() {
@@ -30,21 +21,26 @@ export function ProjectsScreen() {
   const [error, setError] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  useEffect(() => {
-    const run = async () => {
-      setIsLoading(true);
-      setError("");
-      try {
-        const projectsData = await listProjectsApi();
-        setProjects(projectsData);
-      } catch {
-        setError("Unable to load data. Please login again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    run();
+  const fetchProjects = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const projectsData = await listProjectsApi();
+      // Sort projects by createdAt (newest first)
+      const sorted = [...projectsData].sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setProjects(sorted);
+    } catch {
+      setError("Unable to load data. Please login again.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   const cards = useMemo(() => {
     return projects.map((project) => ({
@@ -127,6 +123,7 @@ export function ProjectsScreen() {
         <CreateProjectFlow
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={fetchProjects}
         />
       )}
     </div>

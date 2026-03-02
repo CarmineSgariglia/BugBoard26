@@ -7,9 +7,10 @@ import { useLockBodyScroll } from "../../utils/useLockBodyScroll";
 interface CreateProjectFlowProps {
     isOpen: boolean;
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
-export function CreateProjectFlow({ isOpen, onClose }: CreateProjectFlowProps) {
+export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectFlowProps) {
     // Blocca lo scroll quando il flow è aperto
     useLockBodyScroll(isOpen);
 
@@ -60,7 +61,8 @@ export function CreateProjectFlow({ isOpen, onClose }: CreateProjectFlowProps) {
                 team: selectedUserIds // Manda l'array di ID al backend!
             });
 
-            // 3. Se va tutto bene, chiudiamo il modale e magari ricarichiamo la lista progetti!
+            // 3. Se va tutto bene, chiamiamo il callback di successo e chiudiamo
+            if (onSuccess) onSuccess();
             onClose();
 
         } catch (error) {

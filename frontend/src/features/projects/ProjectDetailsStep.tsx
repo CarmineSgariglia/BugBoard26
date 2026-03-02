@@ -2,23 +2,9 @@ import { useState } from "react";
 import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
 import { FooterActions } from "../../components/ui/FooterActions";
 import { RiArrowGoBackLine } from "react-icons/ri";
-
-// Icone React a caso per la griglia rapida
-import { FiFolder, FiStar, FiSun, FiActivity, FiAnchor, FiAperture, FiBriefcase, FiMoreHorizontal } from "react-icons/fi";
-
-// I 5 colori base della tavolozza
-const PREDEFINED_COLORS = ["#5671F6", "#F5B025", "#EF476F", "#A0B2C6", "#06D6A0", "#FF0000", "#00FF00"];
-
-// Le 7 icone base 
-const PREDEFINED_ICONS = [
-    { id: "folder", icon: FiFolder },
-    { id: "star", icon: FiStar },
-    { id: "sun", icon: FiSun },
-    { id: "activity", icon: FiActivity },
-    { id: "anchor", icon: FiAnchor },
-    { id: "aperture", icon: FiAperture },
-    { id: "briefcase", icon: FiBriefcase },
-];
+// Icone React e Registry centrale
+import { FiMoreHorizontal } from "react-icons/fi";
+import { PREDEFINED_ICONS, PREDEFINED_COLORS } from "../../utils/projectIcons";
 
 export interface ProjectDetailsData {
     title: string;
@@ -111,7 +97,7 @@ export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: Projec
 
                 <div className="flex-1 flex flex-col gap-2">
                     <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Project Icon</label>
-                    <div className="border border-white/5 bg-[#121620]/50 rounded-xl p-4">
+                    <div className="border border-white/5 bg-[#121620]/50 rounded-xl p-4 max-h-32 overflow-y-auto custom-scrollbar">
                         <div className="grid grid-cols-4 gap-3">
                             {PREDEFINED_ICONS.map((item) => {
                                 const IconComp = item.icon;
@@ -132,13 +118,6 @@ export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: Projec
                                 );
                             })}
 
-                            <button
-                                type="button"
-                                onClick={() => alert("Mostra modale con 20 icone!")}
-                                className="flex items-center justify-center p-3 rounded-lg bg-[#1E2332] text-neutral-400 hover:text-white hover:bg-[#252B3D] transition-all"
-                            >
-                                <FiMoreHorizontal size={18} />
-                            </button>
                         </div>
                     </div>
                 </div>

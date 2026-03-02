@@ -125,31 +125,33 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
             {/* Main Table Card */}
             <GlassCard className="w-full overflow-hidden p-0 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
 
-                <UserTable
-                    users={users}
-                    isLoading={isLoading}
-                    error={error}
-                    showStatus={true}
-                    // Iniettiamo i nostri bottoni di azione per queste righe specifiche
-                    renderActions={(user) => (
-                        <>
-                            <button
-                                onClick={() => handleActionClick('Edit', user)}
-                                className="text-neutral-500 hover:text-white transition-colors"
-                                title="Edit User"
-                            >
-                                <FiEdit2 size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleActionClick('Delete', user)}
-                                className="text-neutral-500 hover:text-red-400 transition-colors"
-                                title={user.active ? "Deactivate User" : "Activate User"}
-                            >
-                                <MdGroupOff size={16} />
-                            </button>
-                        </>
-                    )}
-                />
+                <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
+                    <UserTable
+                        users={users}
+                        isLoading={isLoading}
+                        error={error}
+                        showStatus={true}
+                        // Iniettiamo i nostri bottoni di azione per queste righe specifiche
+                        renderActions={(user) => (
+                            <>
+                                <button
+                                    onClick={() => handleActionClick('Edit', user)}
+                                    className="text-neutral-500 hover:text-white transition-colors"
+                                    title="Edit User"
+                                >
+                                    <FiEdit2 size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleActionClick('Delete', user)}
+                                    className="text-neutral-500 hover:text-red-400 transition-colors"
+                                    title={user.active ? "Deactivate User" : "Activate User"}
+                                >
+                                    <MdGroupOff size={16} />
+                                </button>
+                            </>
+                        )}
+                    />
+                </div>
 
                 {/* Pagination Footer */}
                 {totalItems > 0 && !isLoading && !error && (
