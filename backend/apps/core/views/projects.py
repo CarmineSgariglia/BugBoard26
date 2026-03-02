@@ -133,11 +133,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         check_admin(request.user)
         project = self.get_object()
-        confirm_name = request.data.get("name")
-        if not confirm_name:
-            return Response({"detail": "Project name confirmation is required"}, status=status.HTTP_400_BAD_REQUEST)
-        if confirm_name != project.name:
-            return Response({"detail": "Project name confirmation mismatch"}, status=status.HTTP_400_BAD_REQUEST)
 
         recipient_users = list(User.objects.filter(project_memberships__project=project).distinct())
         if recipient_users:
