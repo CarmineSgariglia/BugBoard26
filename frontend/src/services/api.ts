@@ -185,9 +185,6 @@ export async function listUsersApi(params?: ListUsersParams): Promise<PaginatedR
   return data;
 }
 
-export async function disableUserApi(userId: number, username: string): Promise<void> {
-  await api.post(`/users/${userId}/disable/`, { username });
-}
 
 export async function setUserActiveApi(userId: number, active: boolean): Promise<AuthUser> {
   const { data } = await api.patch<AuthUser>(`/users/${userId}/`, { active });
