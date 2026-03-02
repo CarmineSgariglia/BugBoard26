@@ -3,7 +3,7 @@ SHELL := /bin/sh
 COMPOSE := docker compose
 COMPOSE_PROXY := docker compose --profile proxy
 
-.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend otp-cleaner
+.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend otp-cleaner prod-up prod-down
 
 # Start just the backend service (also brings up database dependency)
 backend:
@@ -44,3 +44,11 @@ shell-frontend:
 # Run OTP cleanup every 10 minutes (or set OTP_CLEANUP_INTERVAL_SECONDS)
 otp-cleaner:
 	./scripts/otp_cleanup_every_10m.sh
+
+# Start production-like stack (uses docker-compose.prod.yml overrides)
+prod-up:
+	$(COMPOSE_PROXY) -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# Stop production-like stack
+prod-down:
+	$(COMPOSE_PROXY) -f docker-compose.yml -f docker-compose.prod.yml down

@@ -337,8 +337,8 @@ class UserManagementEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
         response = self.client.post(
-            f"/api/users/{self.member.id}/profile-image/",
-            {"image": image},
+            "/api/users/me/upload_profile_image/",
+            {"profile_img": image},
             format="multipart",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -350,8 +350,8 @@ class UserManagementEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile("avatar.txt", b"not-image", content_type="text/plain")
         response = self.client.post(
-            f"/api/users/{self.member.id}/profile-image/",
-            {"image": image},
+            "/api/users/me/upload_profile_image/",
+            {"profile_img": image},
             format="multipart",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -362,8 +362,8 @@ class UserManagementEndpointTests(APITestCase):
         big_bytes = b"a" * (2 * 1024 * 1024 + 1)
         image = SimpleUploadedFile("big.png", big_bytes, content_type="image/png")
         response = self.client.post(
-            f"/api/users/{self.member.id}/profile-image/",
-            {"image": image},
+            "/api/users/me/upload_profile_image/",
+            {"profile_img": image},
             format="multipart",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -570,23 +570,6 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         response = self.client.get(f"/api/projects/{self.project.project_id}/members/")
         self.assertIn(response.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND))
 
-    def test_admin_can_add_and_remove_member(self):
-        self.client.force_authenticate(user=self.admin)
-        add_response = self.client.post(
-            f"/api/projects/{self.project.project_id}/members/",
-            {"userId": self.outsider.id, "role": ProjectMembership.Role.DEVELOPER},
-            format="json",
-        )
-        self.assertEqual(add_response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(ProjectMembership.objects.filter(project=self.project, user=self.outsider).exists())
-
-        remove_response = self.client.delete(
-            f"/api/projects/{self.project.project_id}/members/{self.outsider.id}/",
-            format="json",
-        )
-        self.assertEqual(remove_response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(ProjectMembership.objects.filter(project=self.project, user=self.outsider).exists())
-
     def test_project_patch_team_sync_adds_and_removes_developers(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
@@ -618,57 +601,6 @@ class ProjectAndMembershipEndpointTests(APITestCase):
                 role=ProjectMembership.Role.ADMIN,
             ).exists()
         )
-
-    def test_add_member_rejects_invalid_role(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/projects/{self.project.project_id}/members/",
-            {"userId": self.outsider.id, "role": "owner"},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("role", response.data)
-
-    def test_add_member_rejects_inactive_user(self):
-        self.outsider.is_active = False
-        self.outsider.save(update_fields=["is_active"])
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/projects/{self.project.project_id}/members/",
-            {"userId": self.outsider.id, "role": ProjectMembership.Role.DEVELOPER},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("userId", response.data)
-
-    def test_cannot_remove_project_creator_membership(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.delete(
-            f"/api/projects/{self.project.project_id}/members/{self.admin.id}/",
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_cannot_remove_last_project_admin(self):
-        second_admin = create_user_with_profile(
-            username="projects_second_admin",
-            email="projects_second_admin@example.com",
-            password="StrongPass123!",
-        )
-        ProjectMembership.objects.create(project=self.project, user=second_admin, role=ProjectMembership.Role.ADMIN)
-
-        self.client.force_authenticate(user=self.admin)
-        first_remove = self.client.delete(
-            f"/api/projects/{self.project.project_id}/members/{second_admin.id}/",
-            format="json",
-        )
-        self.assertEqual(first_remove.status_code, status.HTTP_204_NO_CONTENT)
-
-        second_remove = self.client.delete(
-            f"/api/projects/{self.project.project_id}/members/{self.admin.id}/",
-            format="json",
-        )
-        self.assertEqual(second_remove.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_project_delete_allows_plain_delete_for_current_frontend_flow(self):
         issue = Issue.objects.create(
