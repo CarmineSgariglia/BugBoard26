@@ -585,6 +585,38 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertEqual(remove_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(ProjectMembership.objects.filter(project=self.project, user=self.outsider).exists())
 
+    def test_project_patch_team_sync_adds_and_removes_developers(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/projects/{self.project.project_id}/",
+            {"team": [self.outsider.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=self.outsider,
+                role=ProjectMembership.Role.DEVELOPER,
+            ).exists()
+        )
+        self.assertFalse(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=self.member,
+                role=ProjectMembership.Role.DEVELOPER,
+            ).exists()
+        )
+        # Creator/admin membership must remain untouched.
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=self.admin,
+                role=ProjectMembership.Role.ADMIN,
+            ).exists()
+        )
+
     def test_add_member_rejects_invalid_role(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(

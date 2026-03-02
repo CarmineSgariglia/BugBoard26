@@ -75,9 +75,60 @@ class ProjectViewSet(viewsets.ModelViewSet):
             if members:
                 notify_users(notify_type=NotifyType.PROJECT_ADDED, users=members, project=project)
 
+    def _sync_team_members(self, *, project: Project, raw_user_ids):
+        user_ids = request_user_ids(raw_user_ids)
+        target_users = list(
+            User.objects.filter(id__in=user_ids, is_active=True).exclude(id=project.created_by_id)
+        )
+        target_user_ids = {user.id for user in target_users}
+
+        developer_memberships = ProjectMembership.objects.filter(
+            project=project,
+            role=ProjectMembership.Role.DEVELOPER,
+        ).select_related("user")
+        current_developer_ids = {membership.user_id for membership in developer_memberships}
+
+        to_add_ids = target_user_ids - current_developer_ids
+        to_remove_ids = current_developer_ids - target_user_ids
+
+        added_users = [user for user in target_users if user.id in to_add_ids]
+        for user in added_users:
+            ProjectMembership.objects.get_or_create(
+                project=project,
+                user=user,
+                defaults={"role": ProjectMembership.Role.DEVELOPER},
+            )
+
+        removed_memberships = list(developer_memberships.filter(user_id__in=to_remove_ids))
+        removed_users = [membership.user for membership in removed_memberships]
+        if to_remove_ids:
+            developer_memberships.filter(user_id__in=to_remove_ids).delete()
+
+        if added_users:
+            notify_users(notify_type=NotifyType.PROJECT_ADDED, users=added_users, project=project)
+        if removed_users:
+            notify_users(notify_type=NotifyType.PROJECT_REMOVED, users=removed_users, project=project)
+
     def update(self, request, *args, **kwargs):
         check_admin(request.user)
-        return super().update(request, *args, **kwargs)
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+
+        payload = request.data.copy()
+        has_team_payload = "team" in payload or "userIds" in payload
+        raw_user_ids = payload.get("userIds", payload.get("team", []))
+        payload.pop("team", None)
+        payload.pop("userIds", None)
+
+        serializer = self.get_serializer(instance, data=payload, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            self.perform_update(serializer)
+            if has_team_payload:
+                self._sync_team_members(project=instance, raw_user_ids=raw_user_ids)
+
+        return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         check_admin(request.user)
