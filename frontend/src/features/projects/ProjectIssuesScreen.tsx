@@ -12,6 +12,7 @@ import { IssueCard } from "../../components/issues/IssueCard";
 import { ProjectSidebar } from "../../components/projects/ProjectSidebar";
 import { EditProjectFlow } from "./EditProjectFlow";
 import { EditTeamFlow } from "./EditTeamFlow";
+import { DeleteProjectFlow } from "./DeleteProjectFlow";
 
 // Icons
 import { FiPlus } from "react-icons/fi";
@@ -36,6 +37,8 @@ export function ProjectIssuesScreen() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!projectId) {
@@ -199,6 +202,7 @@ export function ProjectIssuesScreen() {
                 isAdmin={currentUser?.isAdmin}
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
+                onDeleteProjectClick={() => setIsDeleteModalOpen(true)}
               />
             ) : (
               <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
@@ -225,6 +229,15 @@ export function ProjectIssuesScreen() {
               setIsEditTeamModalOpen(false);
               fetchData();
             }}
+          />
+        )}
+
+        {project && (
+          <DeleteProjectFlow
+            isOpen={isDeleteModalOpen}
+            onClose={() => setIsDeleteModalOpen(false)}
+            projectId={project.projectId}
+            projectName={project.name}
           />
         )}
 
