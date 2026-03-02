@@ -11,6 +11,7 @@ interface EditTeamFlowProps {
 
 export function EditTeamFlow({ project, onClose, onUpdated }: EditTeamFlowProps) {
     const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+    const [adminIds, setAdminIds] = useState<number[]>([]); // To keep admins in the project
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingMembers, setIsLoadingMembers] = useState(true);
     const [error, setError] = useState("");
@@ -19,7 +20,12 @@ export function EditTeamFlow({ project, onClose, onUpdated }: EditTeamFlowProps)
         const fetchMembers = async () => {
             try {
                 const members = await listProjectMembersApi(project.projectId);
-                setSelectedUserIds(members.map(m => m.userId));
+                // Separate Admins from Developers
+                const admins = members.filter(m => m.role === 'Admin').map(m => m.userId);
+                const devs = members.filter(m => m.role !== 'Admin').map(m => m.userId);
+
+                setAdminIds(admins);
+                setSelectedUserIds(devs);
             } catch (err) {
                 console.error("Error fetching project members:", err);
                 setError("Error loading team members.");
@@ -45,7 +51,8 @@ export function EditTeamFlow({ project, onClose, onUpdated }: EditTeamFlowProps)
 
         try {
             await updateProjectApi(project.projectId, {
-                team: selectedUserIds
+                // Merge admins back with newly selected devs
+                team: [...adminIds, ...selectedUserIds]
             });
 
             if (onUpdated) {

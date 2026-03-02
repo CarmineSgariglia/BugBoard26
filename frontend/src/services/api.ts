@@ -97,6 +97,7 @@ export type ProjectMembership = {
   userId: number;
   username: string;
   role: string;
+  profileImg?: string | null;
 };
 
 export type Issue = {
