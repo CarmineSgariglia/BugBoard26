@@ -218,6 +218,10 @@ export async function updateProjectApi(projectId: number | string, payload: Upda
   return data;
 }
 
+export async function deleteProjectApi(projectId: number | string): Promise<void> {
+  await api.delete(`/projects/${projectId}/`);
+}
+
 export async function listProjectMembersApi(projectId: string | number): Promise<ProjectMembership[]> {
   const { data } = await api.get<ProjectMembership[]>(`/projects/${projectId}/members/`);
   return data;

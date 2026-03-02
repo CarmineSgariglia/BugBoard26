@@ -92,8 +92,10 @@ export function TopNav() {
     };
 
     return (
-        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-5 flex items-center justify-between
-            ${isScrolled ? "bg-[#0D0F14]/80 backdrop-blur-lg border-b border-white/5 py-3" : "bg-transparent"}`}>
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-[padding,background-color,backdrop-filter,border-color] duration-300 px-6 border-b flex items-center justify-between
+            ${isScrolled
+                ? "bg-[#0D0F14]/80 backdrop-blur-lg border-white/5 py-3"
+                : "bg-transparent border-transparent py-5"}`}>
 
             <DynamicBreadcrumbs />
 
