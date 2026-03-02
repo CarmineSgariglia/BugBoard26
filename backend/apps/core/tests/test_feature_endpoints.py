@@ -207,6 +207,29 @@ class UserManagementEndpointTests(APITestCase):
         self.assertFalse(self.member.is_active)
         self.assertFalse(self.member.profile.active)
 
+    def test_admin_can_toggle_user_status_with_status_endpoint(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+        self.member.profile.active = False
+        self.member.profile.save(update_fields=["active"])
+
+        self.client.force_authenticate(user=self.admin)
+        activate = self.client.post(
+            f"/api/users/{self.member.id}/status/",
+            {"active": True},
+            format="json",
+        )
+        self.assertEqual(activate.status_code, status.HTTP_200_OK)
+        self.assertTrue(activate.data["active"])
+
+        deactivate = self.client.post(
+            f"/api/users/{self.member.id}/status/",
+            {"active": False},
+            format="json",
+        )
+        self.assertEqual(deactivate.status_code, status.HTTP_200_OK)
+        self.assertFalse(deactivate.data["active"])
+
     def test_profile_image_upload_self_success(self):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")

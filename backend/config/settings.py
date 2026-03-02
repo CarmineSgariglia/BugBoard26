@@ -83,15 +83,31 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False").lower() == "true"
-CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-    if origin.strip()
-]
+def _csv_env(name: str, default: str = "") -> list[str]:
+    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
-csrf_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins_env.split(",") if origin.strip()]
+
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False").lower() == "true"
+CORS_ALLOWED_ORIGINS = _csv_env("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+
+csrf_origins = set(_csv_env("CSRF_TRUSTED_ORIGINS", ""))
+csrf_origins.update(CORS_ALLOWED_ORIGINS)
+csrf_origins.update(_csv_env("CSRF_TRUSTED_ORIGINS_EXTRA", ""))
+
+# Dev convenience for Docker/Vite local networking.
+# Keep this block debug-only to avoid weakening production posture.
+if DEBUG:
+    csrf_origins.update(
+        {
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://172.21.160.1:5173",
+            "https://localhost",
+            "https://127.0.0.1",
+        }
+    )
+
+CSRF_TRUSTED_ORIGINS = sorted(csrf_origins)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
