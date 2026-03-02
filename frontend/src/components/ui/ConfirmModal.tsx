@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { createPortal } from "react-dom"; // Importo createPortal per renderizzare il modal nel DOM root
 import { GlassCard } from "./GlassCard";
 import { Button } from "./Button";
+import { useLockBodyScroll } from "../../utils/useLockBodyScroll";
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -19,19 +20,8 @@ interface ConfirmModalProps {
 export function ConfirmModal({
     isOpen, onClose, onConfirm, title, description, icon, confirmText, confirmVariant = "primary", isLoading, danger
 }: ConfirmModalProps) {
-    // Prevent background scrolling when modal is open
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "unset";
-        }
-
-        // Cleanup function to restore scroll when component unmounts
-        return () => {
-            document.body.style.overflow = "unset";
-        };
-    }, [isOpen]);
+    // Prevent background scrolling using our reusable hook
+    useLockBodyScroll(isOpen);
 
     if (!isOpen) return null;
 

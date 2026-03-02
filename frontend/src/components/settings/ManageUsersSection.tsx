@@ -1,77 +1,36 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { GlassCard } from "../ui/GlassCard";
 import { SearchBar } from "../ui/SearchBar";
 import { Select } from "../ui/Select";
 import { Pagination } from "../ui/Pagination";
-import { listUsersApi, setUserActiveApi, type AuthUser } from "../../services/api";
-import { getErrorMessage } from "../../utils/error";
 import { UserTable } from "../ui/UserTable";
 import { AdminUserEditSection } from "./AdminUserEditSection";
 import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 import { FiEdit2 } from "react-icons/fi";
 import { MdGroupOff } from "react-icons/md";
+import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
+import { disableUserApi, type AuthUser } from "../../services/api";
+
 
 export interface ManageUsersSectionProps {
     onEditingChange?: (isEditing: boolean) => void;
 }
 
 export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps) {
-    const [users, setUsers] = useState<AuthUser[]>([]);
-    const [totalItems, setTotalItems] = useState(0); // Aggiunto per salvare il conteggio dal DB
+    const {
+        users, totalItems, isLoading, error,
+        search, setSearch,
+        statusFilter, setStatusFilter,
+        roleFilter, setRoleFilter,
+        currentPage, setCurrentPage,
+        updateLocalUser
+    } = usePaginatedUsers();
 
-    // I parametri che l'utente può cambiare dall'interfaccia
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
-    const [roleFilter, setRoleFilter] = useState<"All" | "Admin" | "User">("All");
-    const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
-
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState("");
-
     const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
     const [toggleStatusUser, setToggleStatusUser] = useState<AuthUser | null>(null);
     const [isToggling, setIsToggling] = useState(false);
 
-    // L'effetto scatta ogni volta che uno dei filtri, la ricerca o la pagina cambia!
-    useEffect(() => {
-        const fetchDaServer = async () => {
-            setIsLoading(true);
-            setError("");
-            try {
-                // Costruiamo i parametri da inviare al server backend
-                const params: any = { page: currentPage };
-
-                if (search.trim()) params.search = search.trim();
-                if (roleFilter !== "All") params.role = roleFilter;
-                if (statusFilter !== "All") params.status = statusFilter;
-
-                // Facciamo la chiamata passando i parametri
-                const response = await listUsersApi(params);
-
-                // Salviamo SOLO gli utenti di questa pagina specifica
-                setUsers(response.results);
-                // Aggiorniamo il numero totale per far calcolare le pagine alla <Pagination>
-                setTotalItems(response.count);
-            } catch (err) {
-                setError(getErrorMessage(err, "Unable to load users"));
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        // Usa un piccolo "debounce" (ritardo) per evitare chiamate inutili mentre l'utente sta digitando velocemente
-        const timeoutId = setTimeout(() => {
-            fetchDaServer();
-        }, 300);
-
-        return () => clearTimeout(timeoutId);
-    }, [currentPage, search, roleFilter, statusFilter]);
-
-    // Quando cerchi o filtri qualcosa di nuovo, rimendiamo automaticamente l'utente a pagina 1
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [search, roleFilter, statusFilter]);
 
 
     const handleActionClick = (actionName: string, user: AuthUser) => {
@@ -87,20 +46,15 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
         if (!toggleStatusUser) return;
         setIsToggling(true);
         try {
-            const nextActive = !(toggleStatusUser.active ?? true);
-            const updatedUser = await setUserActiveApi(toggleStatusUser.userId, nextActive);
-            setUsers(prev => prev.map(u =>
-                u.userId === toggleStatusUser.userId
-                    ? updatedUser
-                    : u
-            ));
+            await disableUserApi(toggleStatusUser.userId, toggleStatusUser.username);
+            updateLocalUser({ ...toggleStatusUser, active: !toggleStatusUser.active });
             setToggleStatusUser(null);
         } catch (err) {
             console.error("Failed to toggle user status", err);
         } finally {
             setIsToggling(false);
         }
-    }, [toggleStatusUser]);
+    }, [toggleStatusUser, updateLocalUser]);
 
     if (editingUser) {
         return (
@@ -112,10 +66,11 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
                         onEditingChange?.(false);
                     }}
                     onUserUpdated={(updatedUser) => {
-                        setUsers(prev => prev.map(u => u.userId === updatedUser.userId ? updatedUser : u));
+                        updateLocalUser(updatedUser);
                         setEditingUser(null);
                         onEditingChange?.(false);
                     }}
+
                 />
             </div>
         );

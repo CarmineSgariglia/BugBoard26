@@ -73,9 +73,9 @@ export type CreateUserPayload = {
 export type CreateProjectPayload = {
   name: string;
   description: string;
-  color?: string;
-  icon?: string;
-  userIds?: number[];
+  color: string;
+  icon: string;
+  team: number[]; // Array of User IDs
 };
 
 export type Project = {
@@ -87,15 +87,6 @@ export type Project = {
   icon: string;
   createdBy: number;
   authorProfileImg?: string | null;
-};
-
-
-export type CreateProjectPayload = {
-  name: string;
-  description: string;
-  color: string;
-  icon: string;
-  team: number[]; // Array of User IDs
 };
 
 export type UpdateProjectPayload = Partial<Omit<CreateProjectPayload, "team">>;

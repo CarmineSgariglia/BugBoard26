@@ -68,7 +68,7 @@ export function AddUsersSection() {
             setSurname("");
             setEmail("");
             setIsAdmin(false);
-            setSuccess(`User created. Username: ${username} | Temporary password: ${temporaryPassword}`);
+            setSuccess(`User created. \n Username: ${username} \n Temporary password: ${temporaryPassword}`);
         } catch (err) {
             setError(getErrorMessage(err, "Unable to create user"));
         } finally {
@@ -107,8 +107,10 @@ export function AddUsersSection() {
                 {/* Divider Line */}
                 <div className="h-[1px] w-full bg-white/5 mt-2 mb-1"></div>
 
-                {error ? <p className="text-sm text-red-400">{error}</p> : null}
-                {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
+                <div className="pl-8 pr-8">
+                    {error ? <p className="text-sm text-red-400 whitespace-pre-line">{error}</p> : null}
+                    {success ? <p className="text-sm text-emerald-400 whitespace-pre-line">{success}</p> : null}
+                </div>
 
                 {/* Make an Admin Toggle */}
                 <div className="flex items-center gap-4 px-8">
