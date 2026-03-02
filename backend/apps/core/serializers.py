@@ -107,7 +107,6 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["icon"] = build_media_url(self, data.get("icon", ""))
         data["authorProfileImg"] = build_media_url(self, data.get("authorProfileImg", ""))
         return data
 

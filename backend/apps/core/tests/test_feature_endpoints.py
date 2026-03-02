@@ -541,10 +541,11 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
             "/api/projects/",
-            {"name": "New Admin Project", "description": "D", "color": "#111111", "icon": ""},
+            {"name": "New Admin Project", "description": "D", "color": "#111111", "icon": "star"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["icon"], "star")
         project_id = response.data["projectId"]
         membership = ProjectMembership.objects.filter(project_id=project_id, user=self.admin).first()
         self.assertIsNotNone(membership)
