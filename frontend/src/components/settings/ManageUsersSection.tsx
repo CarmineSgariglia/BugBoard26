@@ -9,7 +9,7 @@ import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 import { FiEdit2 } from "react-icons/fi";
 import { MdGroupOff } from "react-icons/md";
 import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
-import { disableUserApi, type AuthUser } from "../../services/api";
+import { setUserActiveApi, type AuthUser } from "../../services/api";
 
 
 export interface ManageUsersSectionProps {
@@ -46,8 +46,9 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
         if (!toggleStatusUser) return;
         setIsToggling(true);
         try {
-            await disableUserApi(toggleStatusUser.userId, toggleStatusUser.username);
-            updateLocalUser({ ...toggleStatusUser, active: !toggleStatusUser.active });
+            const nextActive = !toggleStatusUser.active;
+            const updatedUser = await setUserActiveApi(toggleStatusUser.userId, nextActive);
+            updateLocalUser(updatedUser);
             setToggleStatusUser(null);
         } catch (err) {
             console.error("Failed to toggle user status", err);
