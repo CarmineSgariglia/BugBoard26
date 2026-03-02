@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
+import { CreateProjectFlow } from "./CreateProjectFlow";
 import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
 import { FaRegFolder } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
@@ -27,6 +28,7 @@ export function ProjectsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
     const run = async () => {
@@ -52,8 +54,10 @@ export function ProjectsScreen() {
       description: project.description,
       date: new Date(project.createdAt).toLocaleDateString(),
       iconUrl: project.icon,
+      authorProfileImg: resolveMediaUrl(project.authorProfileImg),
     }));
   }, [projects]);
+
 
   const filteredCards = useMemo(() => {
     if (!searchQuery.trim()) return cards;
@@ -94,7 +98,7 @@ export function ProjectsScreen() {
         {/* CSS Grid for the folders */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
           {currentUser?.isAdmin && !searchQuery.trim() && (
-            <CreateProjectCard onClick={() => console.log("Open Create Project Modal")} />
+            <CreateProjectCard onClick={() => setIsCreateModalOpen(true)} />
           )}
 
           {filteredCards.map((project) => (
@@ -105,6 +109,7 @@ export function ProjectsScreen() {
               description={project.description}
               date={project.date}
               icon={projectIcon(project.iconUrl)}
+              authorImageUrl={project.authorProfileImg}
               onClick={() => {
                 navigate(`/projects/${project.id}/issues`);
               }}
@@ -117,6 +122,10 @@ export function ProjectsScreen() {
           </p>
         ) : null}
       </div>
+
+      {isCreateModalOpen && (
+        <CreateProjectFlow onClose={() => setIsCreateModalOpen(false)} />
+      )}
     </div>
   );
 }
