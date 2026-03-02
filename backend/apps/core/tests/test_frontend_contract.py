@@ -22,6 +22,7 @@ class FrontendContractTests(APITestCase):
         self.project = create_project_with_members(
             created_by=self.admin,
             name="Contract Project",
+            icon="folder",
             admin_members=[self.admin],
             developer_members=[self.member],
         )
@@ -61,6 +62,7 @@ class FrontendContractTests(APITestCase):
         self.assertGreaterEqual(len(response.data), 1)
         expected_keys = {"projectId", "name", "createdAt", "description", "color", "icon", "createdBy", "authorProfileImg"}
         self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
+        self.assertEqual(response.data[0]["icon"], "folder")
 
     def test_project_issues_payload_matches_frontend_contract(self):
         self.client.force_authenticate(user=self.member)
