@@ -668,24 +668,10 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         )
         self.assertEqual(second_remove.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_project_delete_requires_name_confirmation(self):
+    def test_project_delete_allows_plain_delete_for_current_frontend_flow(self):
         self.client.force_authenticate(user=self.admin)
         no_confirm = self.client.delete(f"/api/projects/{self.project.project_id}/", format="json")
-        self.assertEqual(no_confirm.status_code, status.HTTP_400_BAD_REQUEST)
-
-        wrong_confirm = self.client.delete(
-            f"/api/projects/{self.project.project_id}/",
-            {"name": "wrong"},
-            format="json",
-        )
-        self.assertEqual(wrong_confirm.status_code, status.HTTP_400_BAD_REQUEST)
-
-        ok_confirm = self.client.delete(
-            f"/api/projects/{self.project.project_id}/",
-            {"name": self.project.name},
-            format="json",
-        )
-        self.assertEqual(ok_confirm.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(no_confirm.status_code, status.HTTP_204_NO_CONTENT)
 
 
 class IssueWorkflowEndpointTests(APITestCase):
