@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
 import { ProjectTeamStep } from "./ProjectTeamStep";
 import { createProjectApi } from "../../services/api";
-import { useLockBodyScroll } from "../../utils/useLockBodyScroll";
+import { ModalOverlay } from "../../components/layout/ModalOverlay";
 
 interface CreateProjectFlowProps {
     isOpen: boolean;
@@ -11,9 +11,6 @@ interface CreateProjectFlowProps {
 }
 
 export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectFlowProps) {
-    // Blocca lo scroll quando il flow è aperto
-    useLockBodyScroll(isOpen);
-
     // 1. STATO: Traccia in quale step ci troviamo (1 = Dettagli, 2 = Team)
     const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
@@ -39,15 +36,21 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
     };
 
     const toggleUser = (userId: number) => {
-        setSelectedUserIds(prev =>
+        setSelectedUserIds((prev: number[]) =>
             prev.includes(userId)
-                ? prev.filter(id => id !== userId)
+                ? prev.filter((id: number) => id !== userId)
                 : [...prev, userId]
         );
     };
 
     const handleCreateProject = async (selectedUserIds: number[]) => {
         // 1. Mettiamo il modale in stato di caricamento
+        if (!projectData) {
+            setError("Error: Project data is missing.");
+            console.log("Error: Project data is missing.");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -76,11 +79,9 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
 
     // UI: Lo sfondo scuro a tutto schermo (Overlay Modale)
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D0D12]/90 backdrop-blur-sm p-4">
-
+        <ModalOverlay isOpen={isOpen} onClose={onClose}>
             {/* Animazione/Transizione molto base gestita coi componenti React */}
-            <div className="w-full max-w-4xl relative animate-in fade-in zoom-in duration-200">
-
+            <div className="relative">
                 {/* RENDERIZZAZIONE CONDIZIONALE DEGLI STEP */}
 
                 {currentStep === 1 && (
@@ -108,9 +109,7 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
                         isSubmitting={isSubmitting}
                     />
                 )}
-
             </div>
-
-        </div>
+        </ModalOverlay>
     );
 }

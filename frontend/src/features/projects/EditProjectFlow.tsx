@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
 import { updateProjectApi, type Project } from "../../services/api";
+import { ModalOverlay } from "../../components/layout/ModalOverlay";
 
 interface EditProjectFlowProps {
     project: Project;
@@ -40,9 +41,8 @@ export function EditProjectFlow({ project, onClose, onUpdated }: EditProjectFlow
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D0D12]/90 backdrop-blur-sm p-4">
-            <div className="w-full max-w-4xl relative animate-in fade-in zoom-in duration-200">
-
+        <ModalOverlay isOpen={true} onClose={onClose}>
+            <div className="relative">
                 {error && (
                     <div className="absolute top-0 left-0 right-0 -translate-y-full mb-4 bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-2 rounded-lg text-sm text-center">
                         {error}
@@ -51,6 +51,7 @@ export function EditProjectFlow({ project, onClose, onUpdated }: EditProjectFlow
 
                 <ProjectDetailsStep
                     mode="edit"
+                    isSubmitting={isSubmitting}
                     initialData={{
                         title: project.name,
                         description: project.description,
@@ -61,6 +62,6 @@ export function EditProjectFlow({ project, onClose, onUpdated }: EditProjectFlow
                     onExit={onClose}
                 />
             </div>
-        </div>
+        </ModalOverlay>
     );
 }

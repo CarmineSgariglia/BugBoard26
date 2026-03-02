@@ -5,7 +5,6 @@ import { getErrorMessage } from "../utils/error";
 interface UsePaginatedUsersOptions {
     initialRole?: "All" | "Admin" | "User";
     initialStatus?: "All" | "Active" | "Inactive";
-    itemsPerPage?: number;
 }
 
 export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
@@ -24,7 +23,7 @@ export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
         setIsLoading(true);
         setError("");
         try {
-            const params: any = { page: currentPage, page_size: options.itemsPerPage || 10 };
+            const params: any = { page: currentPage };
 
             if (search.trim()) params.search = search.trim();
             if (roleFilter !== "All") params.role = roleFilter;

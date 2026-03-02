@@ -2,8 +2,6 @@ import { useState } from "react";
 import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
 import { FooterActions } from "../../components/ui/FooterActions";
 import { RiArrowGoBackLine } from "react-icons/ri";
-// Icone React e Registry centrale
-import { FiMoreHorizontal } from "react-icons/fi";
 import { PREDEFINED_ICONS, PREDEFINED_COLORS } from "../../utils/projectIcons";
 
 export interface ProjectDetailsData {
@@ -15,12 +13,13 @@ export interface ProjectDetailsData {
 
 interface ProjectDetailsStepProps {
     mode: "create" | "edit";
+    isSubmitting?: boolean;
     initialData?: ProjectDetailsData;
     onNext: (data: ProjectDetailsData) => void;
     onExit: () => void;
 }
 
-export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: ProjectDetailsStepProps) {
+export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, onExit }: ProjectDetailsStepProps) {
 
     // 1. STATI
     const [title, setTitle] = useState(initialData?.title || "");
@@ -55,11 +54,10 @@ export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: Projec
 
             footer={
                 <FooterActions
-                    isSaveEnabled={isSaveEnabled}
+                    isSaveEnabled={isSaveEnabled && !isSubmitting}
                     onSave={handleNextClick}
-                    isSaving={false}
+                    isSaving={isSubmitting}
                     links={[{ label: "Exit", icon: <RiArrowGoBackLine size={16} />, onClick: onExit }]}
-                    // Usa saveLabel (che già hai in FooterActions)
                     saveLabel={mode === "create" ? "Next" : "Confirm"}
                 />
             }

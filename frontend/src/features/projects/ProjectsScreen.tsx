@@ -30,7 +30,14 @@ export function ProjectsScreen() {
       const sorted = [...projectsData].sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      setProjects(sorted);
+
+      // Pre-resolve media URLs for performance (Optimization item #13)
+      const resolved = sorted.map(p => ({
+        ...p,
+        authorProfileImg: resolveMediaUrl(p.authorProfileImg || undefined)
+      })) as Project[];
+
+      setProjects(resolved);
     } catch {
       setError("Unable to load data. Please login again.");
     } finally {
@@ -50,7 +57,7 @@ export function ProjectsScreen() {
       description: project.description,
       date: new Date(project.createdAt).toLocaleDateString(),
       iconUrl: project.icon,
-      authorProfileImg: resolveMediaUrl(project.authorProfileImg || undefined),
+      authorProfileImg: project.authorProfileImg, // Now already resolved
     }));
   }, [projects]);
 

@@ -1,13 +1,11 @@
-import { useState } from "react";
 import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
 import { FooterActions } from "../../components/ui/FooterActions";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { UserTable } from "../../components/ui/UserTable";
 import { Pagination } from "../../components/ui/Pagination";
 import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
-import { RiArrowLeftLine, RiUserAddLine, RiUserLine } from "react-icons/ri";
+import { RiArrowLeftLine } from "react-icons/ri";
 import { FiCheck, FiPlus } from "react-icons/fi";
-import { type AuthUser } from "../../services/api";
 
 interface ProjectTeamStepProps {
     selectedUserIds: number[];

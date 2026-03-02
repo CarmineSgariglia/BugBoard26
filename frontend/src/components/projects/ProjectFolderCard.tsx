@@ -8,7 +8,7 @@ export interface ProjectFolderCardProps {
     description: string;
     icon: ReactNode;
     date: string;
-    authorImageUrl?: string;
+    authorImageUrl?: string | null;
     onClick?: () => void;
 }
 

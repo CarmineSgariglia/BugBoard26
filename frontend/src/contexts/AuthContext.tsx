@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { meApi, type AuthUser } from "../services/api";
 
 interface AuthContextType {
@@ -13,7 +13,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const refreshUser = async () => {
+    const refreshUser = useCallback(async () => {
         try {
             const data = await meApi();
             setUser(data);
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         refreshUser();
