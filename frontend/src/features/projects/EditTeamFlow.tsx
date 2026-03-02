@@ -1,0 +1,90 @@
+import { useEffect, useState } from "react";
+import { ProjectTeamStep } from "./ProjectTeamStep";
+import { updateProjectApi, listProjectMembersApi, type Project } from "../../services/api";
+import { ModalOverlay } from "../../components/layout/ModalOverlay";
+
+interface EditTeamFlowProps {
+    project: Project;
+    onClose: () => void;
+    onUpdated?: () => void;
+}
+
+export function EditTeamFlow({ project, onClose, onUpdated }: EditTeamFlowProps) {
+    const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingMembers, setIsLoadingMembers] = useState(true);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        const fetchMembers = async () => {
+            try {
+                const members = await listProjectMembersApi(project.projectId);
+                setSelectedUserIds(members.map(m => m.userId));
+            } catch (err) {
+                console.error("Error fetching project members:", err);
+                setError("Error loading team members.");
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+
+        fetchMembers();
+    }, [project.projectId]);
+
+    const toggleUser = (userId: number) => {
+        setSelectedUserIds((prev) =>
+            prev.includes(userId)
+                ? prev.filter((id) => id !== userId)
+                : [...prev, userId]
+        );
+    };
+
+    const handleUpdateTeam = async () => {
+        setIsSubmitting(true);
+        setError("");
+
+        try {
+            await updateProjectApi(project.projectId, {
+                team: selectedUserIds
+            });
+
+            if (onUpdated) {
+                onUpdated();
+            }
+            onClose();
+        } catch (err) {
+            setError("Error updating the team. Please try again.");
+            console.error(err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <ModalOverlay isOpen={true} onClose={onClose}>
+            <div className="relative">
+                {error && (
+                    <div className="absolute top-0 left-0 right-0 -translate-y-full mb-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs text-center py-2">
+                        {error}
+                    </div>
+                )}
+
+                {isLoadingMembers ? (
+                    <div className="bg-[#121620] border border-white/10 rounded-3xl p-12 flex flex-col items-center justify-center gap-4 min-w-[500px]">
+                        <div className="w-10 h-10 border-4 border-[#5671F6]/20 border-t-[#5671F6] rounded-full animate-spin" />
+                        <p className="text-neutral-400 text-sm">Loading team members...</p>
+                    </div>
+                ) : (
+                    <ProjectTeamStep
+                        mode="edit"
+                        selectedUserIds={selectedUserIds}
+                        onToggleUser={toggleUser}
+                        onBack={onClose}
+                        onConfirm={handleUpdateTeam}
+                        isSubmitting={isSubmitting}
+                    />
+                )}
+            </div>
+        </ModalOverlay>
+    );
+}

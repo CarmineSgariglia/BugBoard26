@@ -551,6 +551,30 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertIsNotNone(membership)
         self.assertEqual(membership.role, ProjectMembership.Role.ADMIN)
 
+    def test_project_create_accepts_team_alias_and_emits_added_notification(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/projects/",
+            {
+                "name": "Team Alias Project",
+                "description": "D",
+                "color": "#222222",
+                "icon": "folder",
+                "team": [self.member.id],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        project_id = response.data["projectId"]
+        self.assertTrue(ProjectMembership.objects.filter(project_id=project_id, user=self.member).exists())
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.PROJECT_ADDED,
+                notification__project_id=project_id,
+            ).exists()
+        )
+
     def test_members_endpoint_forbidden_for_non_member(self):
         self.client.force_authenticate(user=self.outsider)
         response = self.client.get(f"/api/projects/{self.project.project_id}/members/")
@@ -772,6 +796,29 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Attachment.objects.filter(update=event, path="uploads/file.txt").exists())
+
+    def test_issue_partial_update_creates_edit_event_and_notification(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}/",
+            {"description": "Issue desc updated"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                actor=self.member,
+                event_type=EventType.EDIT,
+            ).exists()
+        )
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).exists()
+        )
 
     def test_issue_delete_requires_admin(self):
         self.client.force_authenticate(user=self.member)

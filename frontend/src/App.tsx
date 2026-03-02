@@ -9,6 +9,7 @@ import { ManageAccountSettingsPage } from "./features/settings/ManageAccountSett
 import { AuthLayout } from "./components/layout/AuthLayout";
 import { useAuth } from "./contexts/AuthContext";
 import { MainLayout } from "./components/layout/MainLayout";
+import { BreadcrumbProvider } from "./contexts/BreadcrumbContext";
 
 
 {/* If the user is authenticated, render the MainLayout, otherwise render the AuthLayout */ }
@@ -66,7 +67,9 @@ function App() {
         <Route
           element={
             <RequireAuth>
-              <MainLayout />
+              <BreadcrumbProvider>
+                <MainLayout />
+              </BreadcrumbProvider>
             </RequireAuth>
           }
         >

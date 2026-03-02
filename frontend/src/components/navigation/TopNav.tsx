@@ -1,6 +1,6 @@
 import { useEffect, useState, useReducer } from "react";
 import { useNavigate } from "react-router-dom";
-import { NavBrand } from "./NavBrand";
+import { DynamicBreadcrumbs } from "./DynamicBreadcrumbs";
 import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
@@ -95,7 +95,7 @@ export function TopNav() {
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-5 flex items-center justify-between
             ${isScrolled ? "bg-[#0D0F14]/80 backdrop-blur-lg border-b border-white/5 py-3" : "bg-transparent"}`}>
 
-            <NavBrand />
+            <DynamicBreadcrumbs />
 
             <div className="flex items-center gap-6 relative">
                 {/* Notification Bell */}
