@@ -7,9 +7,10 @@ interface EditTeamFlowProps {
     project: Project;
     onClose: () => void;
     onUpdated?: () => void;
+    readOnly?: boolean;
 }
 
-export function EditTeamFlow({ project, onClose, onUpdated }: EditTeamFlowProps) {
+export function EditTeamFlow({ project, onClose, onUpdated, readOnly = false }: EditTeamFlowProps) {
     const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
     const [adminIds, setAdminIds] = useState<number[]>([]); // To keep admins in the project
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,12 +84,12 @@ export function EditTeamFlow({ project, onClose, onUpdated }: EditTeamFlowProps)
                     </div>
                 ) : (
                     <ProjectTeamStep
-                        mode="edit"
+                        mode={readOnly ? "view" : "edit"}
                         selectedUserIds={selectedUserIds}
-                        onToggleUser={toggleUser}
+                        onToggleUser={readOnly ? undefined : toggleUser}
                         onBack={onClose}
-                        onConfirm={handleUpdateTeam}
-                        isSubmitting={isSubmitting}
+                        onConfirm={readOnly ? undefined : handleUpdateTeam}
+                        isSubmitting={readOnly ? false : isSubmitting}
                     />
                 )}
             </div>

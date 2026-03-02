@@ -1,6 +1,7 @@
 import { FiSettings } from "react-icons/fi";
 import { TiUserAdd } from "react-icons/ti";
 import { HiOutlineChevronRight } from "react-icons/hi";
+import { HiOutlineUsers } from "react-icons/hi";
 import { AvatarGroup } from "../ui/AvatarGroup";
 import { type Project } from "../../services/api";
 import { FiTrash2 } from "react-icons/fi";
@@ -12,9 +13,10 @@ interface ProjectSidebarProps {
     onSettingsClick?: () => void;
     onEditTeamClick?: () => void;
     onDeleteProjectClick?: () => void;
+    onViewTeamClick?: () => void;
 }
 
-export function ProjectSidebar({ project, members, isAdmin, onSettingsClick, onEditTeamClick, onDeleteProjectClick }: ProjectSidebarProps) {
+export function ProjectSidebar({ project, members, isAdmin, onSettingsClick, onEditTeamClick, onDeleteProjectClick, onViewTeamClick }: ProjectSidebarProps) {
     return (
         <div className="flex flex-col gap-8 p-6 rounded-2xl border border-white/5 bg-[#121620]/20 h-fit">
             <div className="flex flex-col gap-3">
@@ -64,6 +66,21 @@ export function ProjectSidebar({ project, members, isAdmin, onSettingsClick, onE
                         <div className="flex items-center gap-3">
                             <TiUserAdd className="text-neutral-500 group-hover:text-emerald-400 transition-colors" size={18} />
                             <span className="text-sm font-medium">Edit Team</span>
+                        </div>
+                        <HiOutlineChevronRight className="text-neutral-600" size={16} />
+                    </button>
+                </div>
+            )}
+
+            {!isAdmin && (
+                <div className="flex flex-col gap-3 pt-4 border-t border-white/5">
+                    <button
+                        onClick={onViewTeamClick}
+                        className="group flex items-center justify-between p-3 rounded-xl bg-[#1E2332]/40 hover:bg-[#1E2332]/80 border border-white/5 hover:border-white/10 transition-all text-neutral-300 hover:text-white"
+                    >
+                        <div className="flex items-center gap-3">
+                            <HiOutlineUsers className="text-neutral-500 group-hover:text-emerald-400 transition-colors" size={18} />
+                            <span className="text-sm font-medium">View Team</span>
                         </div>
                         <HiOutlineChevronRight className="text-neutral-600" size={16} />
                     </button>

@@ -8,14 +8,15 @@ interface FooterLink {
 }
 
 interface FooterActionsProps {
-    isSaveEnabled: boolean;
-    onSave: () => void;
+    isSaveEnabled?: boolean;
+    onSave?: () => void;
     isSaving?: boolean;
     saveLabel?: string;
+    showSave?: boolean;
     links?: FooterLink[];
 }
 
-export function FooterActions({ isSaveEnabled, onSave, isSaving = false, saveLabel = "Save Changes", links = [] }: FooterActionsProps) {
+export function FooterActions({ isSaveEnabled = true, onSave, isSaving = false, saveLabel = "Save Changes", showSave = true, links = [] }: FooterActionsProps) {
     return (
         <div className="px-8 pb-8 pt-6 flex items-center justify-between">
             {/* Left: text links */}
@@ -37,15 +38,17 @@ export function FooterActions({ isSaveEnabled, onSave, isSaving = false, saveLab
             </div>
 
             {/* Right: save button */}
-            <Button
-                onClick={onSave}
-                disabled={!isSaveEnabled || isSaving}
-                isLoading={isSaving}
-                fullWidth={false}
-                className="tracking-wide font-semibold text-[14px] px-8"
-            >
-                {saveLabel}
-            </Button>
+            {showSave && (
+                <Button
+                    onClick={onSave}
+                    disabled={!isSaveEnabled || isSaving}
+                    isLoading={isSaving}
+                    fullWidth={false}
+                    className="tracking-wide font-semibold text-[14px] px-8"
+                >
+                    {saveLabel}
+                </Button>
+            )}
         </div>
     );
 }

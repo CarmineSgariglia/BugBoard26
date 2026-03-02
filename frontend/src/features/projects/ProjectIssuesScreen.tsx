@@ -40,6 +40,7 @@ export function ProjectIssuesScreen() {
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isViewTeamModalOpen, setIsViewTeamModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!projectId) {
@@ -217,6 +218,7 @@ export function ProjectIssuesScreen() {
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
                 onDeleteProjectClick={() => setIsDeleteModalOpen(true)}
+                onViewTeamClick={() => setIsViewTeamModalOpen(true)}
               />
             ) : (
               <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
@@ -252,6 +254,14 @@ export function ProjectIssuesScreen() {
             onClose={() => setIsDeleteModalOpen(false)}
             projectId={project.projectId}
             projectName={project.name}
+          />
+        )}
+
+        {isViewTeamModalOpen && project && (
+          <EditTeamFlow
+            onClose={() => setIsViewTeamModalOpen(false)}
+            project={project}
+            readOnly
           />
         )}
 
