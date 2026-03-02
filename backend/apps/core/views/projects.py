@@ -61,8 +61,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 user=self.request.user,
                 defaults={"role": ProjectMembership.Role.ADMIN},
             )
-            user_ids = request_user_ids(self.request.data.get("userIds", []))
-            users = User.objects.filter(id__in=user_ids, is_active=True)
+            raw_user_ids = self.request.data.get("userIds", self.request.data.get("team", []))
+            user_ids = request_user_ids(raw_user_ids)
+            users = User.objects.filter(id__in=user_ids, is_active=True).exclude(id=self.request.user.id)
             members = []
             for user in users:
                 member, _ = ProjectMembership.objects.get_or_create(
