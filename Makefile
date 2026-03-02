@@ -3,7 +3,7 @@ SHELL := /bin/sh
 COMPOSE := docker compose
 COMPOSE_PROXY := docker compose --profile proxy
 
-.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend
+.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend otp-cleaner
 
 # Start just the backend service (also brings up database dependency)
 backend:
@@ -40,3 +40,7 @@ shell-backend:
 # Open a shell in the frontend container
 shell-frontend:
 	$(COMPOSE) exec frontend sh
+
+# Run OTP cleanup every 10 minutes (or set OTP_CLEANUP_INTERVAL_SECONDS)
+otp-cleaner:
+	./scripts/otp_cleanup_every_10m.sh
