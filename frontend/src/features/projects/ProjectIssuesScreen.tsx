@@ -16,7 +16,7 @@ import { DeleteProjectFlow } from "./DeleteProjectFlow";
 
 // Icons
 import { FiPlus } from "react-icons/fi";
-import { HiOutlineFlag, HiOutlineCollection } from "react-icons/hi";
+import { HiOutlineFlag, HiOutlineCollection, HiOutlineSortAscending, HiOutlineSortDescending } from "react-icons/hi";
 
 export function ProjectIssuesScreen() {
   const navigate = useNavigate();
@@ -35,10 +35,12 @@ export function ProjectIssuesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isViewTeamModalOpen, setIsViewTeamModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!projectId) {
@@ -84,8 +86,12 @@ export function ProjectIssuesScreen() {
         const matchesPriority = priorityFilter === "all" || issue.priority.toLowerCase() === priorityFilter.toLowerCase();
         return matchesSearch && matchesStatus && matchesPriority;
       })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [issues, searchQuery, statusFilter, priorityFilter]);
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt).getTime();
+        const timeB = new Date(b.createdAt).getTime();
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+      });
+  }, [issues, searchQuery, statusFilter, priorityFilter, sortOrder]);
 
   if (!isLoading && !project && !error) {
     return (
@@ -133,6 +139,15 @@ export function ProjectIssuesScreen() {
                   { value: "low", label: "Low" }
                 ]}
                 icon={<HiOutlineFlag size={16} />}
+              />
+              <Select
+                value={sortOrder}
+                onChange={(val) => setSortOrder(val as 'desc' | 'asc')}
+                options={[
+                  { value: "desc", label: "Newest First" },
+                  { value: "asc", label: "Oldest First" }
+                ]}
+                icon={sortOrder === 'desc' ? <HiOutlineSortDescending size={16} /> : <HiOutlineSortAscending size={16} />}
               />
             </div>
           </div>
@@ -203,6 +218,7 @@ export function ProjectIssuesScreen() {
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
                 onDeleteProjectClick={() => setIsDeleteModalOpen(true)}
+                onViewTeamClick={() => setIsViewTeamModalOpen(true)}
               />
             ) : (
               <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
@@ -238,6 +254,14 @@ export function ProjectIssuesScreen() {
             onClose={() => setIsDeleteModalOpen(false)}
             projectId={project.projectId}
             projectName={project.name}
+          />
+        )}
+
+        {isViewTeamModalOpen && project && (
+          <EditTeamFlow
+            onClose={() => setIsViewTeamModalOpen(false)}
+            project={project}
+            readOnly
           />
         )}
 

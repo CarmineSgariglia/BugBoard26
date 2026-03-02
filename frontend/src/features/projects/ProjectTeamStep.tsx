@@ -11,11 +11,11 @@ import { FiPlus, FiX } from "react-icons/fi";
 
 interface ProjectTeamStepProps {
     selectedUserIds: number[];
-    onToggleUser: (userId: number) => void;
+    onToggleUser?: (userId: number) => void;
     onBack: () => void;
-    onConfirm: () => void;
-    isSubmitting: boolean;
-    mode: "create" | "edit";
+    onConfirm?: () => void;
+    isSubmitting?: boolean;
+    mode: "create" | "edit" | "view";
 }
 
 export function ProjectTeamStep({
@@ -42,7 +42,8 @@ export function ProjectTeamStep({
         initialStatus: "Active",
     });
 
-    const [membershipFilter, setMembershipFilter] = useState<string>("All");
+    const isViewMode = mode === "view";
+    const [membershipFilter, setMembershipFilter] = useState<string>(isViewMode ? "Added" : "All");
 
     const filteredUsers = users.filter(user => {
         if (membershipFilter === "Added") return selectedUserIds.includes(user.userId);
@@ -52,18 +53,19 @@ export function ProjectTeamStep({
 
     return (
         <ProjectFormLayout
-            title={mode === "create" ? "Select Team Members" : "Manage Team Members"}
-            subtitle="Add developers to your project. Admins always have access."
+            title={isViewMode ? "Team Members" : mode === "create" ? "Select Team Members" : "Manage Team Members"}
+            subtitle={isViewMode ? "Members of this project." : "Add developers to your project. Admins always have access."}
             stepInfo={mode === "create" ? "STEP 2 OF 2" : undefined}
             footer={
                 <FooterActions
-                    isSaveEnabled={selectedUserIds.length > 0}
-                    onSave={onConfirm}
+                    isSaveEnabled={isViewMode ? false : selectedUserIds.length > 0}
+                    onSave={isViewMode ? undefined : onConfirm}
                     isSaving={isSubmitting}
-                    saveLabel={mode === "create" ? "Create Project" : "Save Changes"}
+                    saveLabel={isViewMode ? undefined : mode === "create" ? "Create Project" : "Save Changes"}
+                    showSave={!isViewMode}
                     links={[
                         {
-                            label: "Back",
+                            label: isViewMode ? "Close" : "Back",
                             icon: <RiArrowLeftLine size={16} />,
                             onClick: onBack
                         }
@@ -85,20 +87,24 @@ export function ProjectTeamStep({
                     />
                 </div>
 
-                <Select
-                    value={membershipFilter}
-                    onChange={(val) => setMembershipFilter(val)}
-                    className="w-48"
-                    options={[
-                        { label: "All Members", value: "All" },
-                        { label: "Already Added", value: "Added" },
-                        { label: "Not Added", value: "NotAdded" }
-                    ]}
-                />
+                {!isViewMode && (
+                    <Select
+                        value={membershipFilter}
+                        onChange={(val) => setMembershipFilter(val)}
+                        className="w-48"
+                        options={[
+                            { label: "All Members", value: "All" },
+                            { label: "Already Added", value: "Added" },
+                            { label: "Not Added", value: "NotAdded" }
+                        ]}
+                    />
+                )}
 
-                <span className="bg-[#5671F6]/20 text-[#5671F6] px-3 py-1.5 rounded-full border border-[#5671F6]/30 text-xs font-bold whitespace-nowrap">
-                    {selectedUserIds.length} selected
-                </span>
+                {!isViewMode && (
+                    <span className="bg-[#5671F6]/20 text-[#5671F6] px-3 py-1.5 rounded-full border border-[#5671F6]/30 text-xs font-bold whitespace-nowrap">
+                        {selectedUserIds.length} selected
+                    </span>
+                )}
             </div>
 
 
@@ -110,11 +116,11 @@ export function ProjectTeamStep({
                         error={error}
                         showStatus={false}
                         showRole={false}
-                        renderActions={(user) => {
+                        renderActions={isViewMode ? undefined : (user) => {
                             const isSelected = selectedUserIds.includes(user.userId);
                             return (
                                 <button
-                                    onClick={() => onToggleUser(user.userId)}
+                                    onClick={() => onToggleUser?.(user.userId)}
                                     className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-[90px] ${isSelected
                                         ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
                                         : "bg-[#5671F6]/10 text-[#5671F6] border border-[#5671F6]/20 hover:bg-[#5671F6]/20"

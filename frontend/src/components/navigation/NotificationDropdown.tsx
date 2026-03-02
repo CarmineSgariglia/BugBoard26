@@ -86,6 +86,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                                 description={n.description}
                                 time={n.time}
                                 onClick={() => onRead(n.id)}
+                                onMarkRead={() => onRead(n.id)}
                                 unread={!n.isRead}
                             />
                         ))}

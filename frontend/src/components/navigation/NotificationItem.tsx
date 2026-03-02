@@ -1,3 +1,4 @@
+import { HiOutlineCheckCircle } from "react-icons/hi";
 import { Button } from "../ui/Button";
 
 interface NotificationItemProps {
@@ -7,9 +8,10 @@ interface NotificationItemProps {
     imageUrl?: string;
     unread?: boolean;
     onClick?: () => void;
+    onMarkRead?: () => void;
 }
 
-export function NotificationItem({ title, description, time, imageUrl, unread = false, onClick }: NotificationItemProps) {
+export function NotificationItem({ title, description, time, imageUrl, unread = false, onClick, onMarkRead }: NotificationItemProps) {
     return (
         <Button
             variant="glass"
@@ -31,9 +33,23 @@ export function NotificationItem({ title, description, time, imageUrl, unread = 
                 <span className="text-neutral-400 text-xs truncate leading-tight mt-0.5">{description}</span>
             </div>
 
-            {/* Time */}
-            <div className="text-neutral-500 text-[11px] whitespace-nowrap ml-2 mt-0.5">
-                {time}
+            {/* Time + Mark Read */}
+            <div className="flex flex-col items-end gap-1 ml-2 mt-0.5 shrink-0">
+                <span className="text-neutral-500 text-[11px] whitespace-nowrap">
+                    {time}
+                </span>
+                {unread && onMarkRead && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onMarkRead();
+                        }}
+                        className="text-cyan-400/60 hover:text-cyan-300 transition-colors"
+                        title="Mark as read"
+                    >
+                        <HiOutlineCheckCircle size={18} />
+                    </button>
+                )}
             </div>
         </Button>
     );
