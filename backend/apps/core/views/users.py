@@ -108,6 +108,22 @@ class UserViewSet(viewsets.ModelViewSet):
         profile.save(update_fields=["active"])
         return Response({"detail": "User disabled"})
 
+    @action(detail=True, methods=["post"], url_path="status")
+    def set_status(self, request, userId=None):
+        check_admin(request.user)
+        user = self.get_object()
+        active = request.data.get("active", None)
+        if not isinstance(active, bool):
+            raise ValidationError({"active": "Boolean value is required"})
+
+        user.is_active = active
+        user.save(update_fields=["is_active"])
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.active = active
+        profile.save(update_fields=["active"])
+        refreshed_user = User.objects.get(id=user.id)
+        return Response(UserSerializer(refreshed_user, context={"request": request}).data, status=status.HTTP_200_OK)
+
     def _save_profile_image_for_user(self, *, request, user: User):
         if request.user != user and not is_admin(request.user):
             raise PermissionDenied("Cannot edit other users")
