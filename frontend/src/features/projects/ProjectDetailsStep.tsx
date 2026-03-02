@@ -7,7 +7,7 @@ import { RiArrowGoBackLine } from "react-icons/ri";
 import { FiFolder, FiStar, FiSun, FiActivity, FiAnchor, FiAperture, FiBriefcase, FiMoreHorizontal } from "react-icons/fi";
 
 // I 5 colori base della tavolozza
-const PREDEFINED_COLORS = ["#5671F6", "#F5B025", "#EF476F", "#A0B2C6", "#06D6A0"];
+const PREDEFINED_COLORS = ["#5671F6", "#F5B025", "#EF476F", "#A0B2C6", "#06D6A0", "#FF0000", "#00FF00"];
 
 // Le 7 icone base 
 const PREDEFINED_ICONS = [
@@ -78,7 +78,7 @@ export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: Projec
                 />
             }
         >
-            <div className="flex flex-col gap-2 px-8">
+            <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Project Title</label>
                 <input
                     type="text"
@@ -90,7 +90,7 @@ export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: Projec
                 />
             </div>
 
-            <div className="flex flex-col gap-2 px-8">
+            <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                     <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Description</label>
                     <span className="text-[10px] text-neutral-500 font-medium">
@@ -107,7 +107,7 @@ export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: Projec
                 />
             </div>
 
-            <div className="flex flex-col md:flex-row gap-6 px-8">
+            <div className="flex flex-col md:flex-row gap-6">
 
                 <div className="flex-1 flex flex-col gap-2">
                     <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Project Icon</label>
@@ -145,7 +145,8 @@ export function ProjectDetailsStep({ mode, initialData, onNext, onExit }: Projec
 
                 <div className="flex flex-col gap-2">
                     <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Theme Color</label>
-                    <div className="flex gap-3 pt-4 items-center">
+                    <div className="grid grid-cols-4 gap-y-8 gap-x-8 pt-4 items-center justify-items-start">
+
                         {PREDEFINED_COLORS.map(colorHex => {
                             const isSelected = selectedColor === colorHex;
 

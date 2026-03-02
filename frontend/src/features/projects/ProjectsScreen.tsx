@@ -54,7 +54,7 @@ export function ProjectsScreen() {
       description: project.description,
       date: new Date(project.createdAt).toLocaleDateString(),
       iconUrl: project.icon,
-      authorProfileImg: resolveMediaUrl(project.authorProfileImg),
+      authorProfileImg: resolveMediaUrl(project.authorProfileImg || undefined),
     }));
   }, [projects]);
 
@@ -124,7 +124,10 @@ export function ProjectsScreen() {
       </div>
 
       {isCreateModalOpen && (
-        <CreateProjectFlow onClose={() => setIsCreateModalOpen(false)} />
+        <CreateProjectFlow
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+        />
       )}
     </div>
   );

@@ -1,13 +1,18 @@
 import { useState } from "react";
-// Importiamo il componente Step 1 che hai creato prima
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
+import { ProjectTeamStep } from "./ProjectTeamStep";
 import { createProjectApi } from "../../services/api";
+import { useLockBodyScroll } from "../../utils/useLockBodyScroll";
 
 interface CreateProjectFlowProps {
+    isOpen: boolean;
     onClose: () => void;
 }
 
-export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
+export function CreateProjectFlow({ isOpen, onClose }: CreateProjectFlowProps) {
+    // Blocca lo scroll quando il flow è aperto
+    useLockBodyScroll(isOpen);
+
     // 1. STATO: Traccia in quale step ci troviamo (1 = Dettagli, 2 = Team)
     const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
@@ -18,6 +23,9 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
 
+    // 4. STATO: Membri del team selezionati
+    const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+
     // Quando clicchiamo "Next" nello Step 1
     const handleStep1Next = (data: ProjectDetailsData) => {
         setProjectData(data); // Salviamo il titolo, colore, ecc.
@@ -27,6 +35,14 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
     // Quando clicchiamo "Back" nello Step 2 (per tornare indietro se abbiamo sbagliato titolo)
     const handleStep2Back = () => {
         setCurrentStep(1);
+    };
+
+    const toggleUser = (userId: number) => {
+        setSelectedUserIds(prev =>
+            prev.includes(userId)
+                ? prev.filter(id => id !== userId)
+                : [...prev, userId]
+        );
     };
 
     const handleCreateProject = async (selectedUserIds: number[]) => {
@@ -74,28 +90,21 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
                     />
                 )}
 
-                {currentStep === 2 && (
-                    // QUI METTEREMO IL ProjectTeamStep! (Prossimo passaggio)
-                    <div className="bg-[#121620] p-8 rounded-2xl text-center border border-white/10">
-                        <h2 className="text-xl font-bold text-white mb-4">Step 2: Team Selection</h2>
-                        <p className="text-neutral-400 mb-6">
-                            You're creating a project named: <span className="text-white font-semibold">"{projectData?.title}"</span>
-                        </p>
-                        <div className="flex justify-center gap-4">
-                            <button
-                                onClick={handleStep2Back}
-                                className="px-6 py-2 rounded-lg bg-[#1E2332] text-white hover:bg-[#252B3D]"
-                            >
-                                Go Back to Step 1
-                            </button>
-                            <button
-                                onClick={onClose}
-                                className="px-6 py-2 rounded-lg bg-[#5671F6] text-white hover:bg-[#455CE6]"
-                            >
-                                (Simula) Create Project
-                            </button>
-                        </div>
+                {error && (
+                    <div className="mx-8 mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs text-center">
+                        {error}
                     </div>
+                )}
+
+                {currentStep === 2 && (
+                    <ProjectTeamStep
+                        mode="create"
+                        selectedUserIds={selectedUserIds}
+                        onToggleUser={toggleUser}
+                        onBack={handleStep2Back}
+                        onConfirm={() => handleCreateProject(selectedUserIds)}
+                        isSubmitting={isSubmitting}
+                    />
                 )}
 
             </div>

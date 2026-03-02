@@ -9,15 +9,17 @@ export interface UserTableProps {
     isLoading?: boolean;
     error?: string;
     showStatus?: boolean;
-    // La nuova prop magica che permette di iniettare qualsiasi pulsante (o nessun pulsante)
+    showRole?: boolean; // <-- AGGIUNGI QUESTA RIGA
     renderActions?: (user: AuthUser) => ReactNode;
 }
+
 
 export function UserTable({
     users,
     isLoading = false,
     error = "",
     showStatus = true,
+    showRole = true,
     renderActions // Togliamo showActions e i vecchi onEdit/onDelete
 }: UserTableProps) {
     if (isLoading) {
@@ -59,7 +61,7 @@ export function UserTable({
             <div className={`grid grid-cols-12 gap-4 px-8 py-5 border-b border-white/5 text-[10px] font-bold text-[#8A8F98] uppercase tracking-widest hidden md:grid`}>
                 <div className={profileCol}>User Profile</div>
                 <div className={emailCol}>Email Address</div>
-                <div className="col-span-2">Role</div>
+                {showRole && <div className="col-span-2">Role</div>}
                 {showStatus && <div className="col-span-2">Status</div>}
                 {showActions && <div className="col-span-1 text-right">Actions</div>}
             </div>
@@ -97,9 +99,12 @@ export function UserTable({
                                 </div>
 
                                 {/* Role Cell */}
-                                <div className="col-span-2 hidden md:block">
-                                    <Tag text={user.isAdmin ? "Administrator" : "Developer"} />
-                                </div>
+                                {showRole && (
+                                    <div className="col-span-2 hidden md:block">
+                                        <Tag text={user.isAdmin ? "Administrator" : "Developer"} />
+                                    </div>
+                                )}
+
 
                                 {/* Status Cell */}
                                 {showStatus && (

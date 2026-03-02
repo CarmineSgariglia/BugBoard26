@@ -73,9 +73,9 @@ export type CreateUserPayload = {
 export type CreateProjectPayload = {
   name: string;
   description: string;
-  color?: string;
-  icon?: string;
-  userIds?: number[];
+  color: string;
+  icon: string;
+  team: number[]; // Array of User IDs
 };
 
 export type Project = {
@@ -86,7 +86,10 @@ export type Project = {
   color: string;
   icon: string;
   createdBy: number;
+  authorProfileImg?: string | null;
 };
+
+export type UpdateProjectPayload = Partial<Omit<CreateProjectPayload, "team">>;
 
 export type Issue = {
   issueId: number;
@@ -202,6 +205,11 @@ export async function listProjectsApi(search?: string): Promise<Project[]> {
 
 export async function createProjectApi(payload: CreateProjectPayload): Promise<Project> {
   const { data } = await api.post<Project>("/projects/", payload);
+  return data;
+}
+
+export async function updateProjectApi(projectId: number | string, payload: UpdateProjectPayload): Promise<Project> {
+  const { data } = await api.patch<Project>(`/projects/${projectId}/`, payload);
   return data;
 }
 

@@ -17,7 +17,7 @@ export function ProjectFormLayout({
     footer,
 }: ProjectFormLayoutProps) {
     return (
-        <GlassCard className="w-full max-w-2xl mx-auto flex flex-col p-8 gap-6 shadow-2xl">
+        <GlassCard className="w-full max-w-2xl mx-auto flex flex-col px-8 pt-5 pb-0 gap-2 shadow-2xl">
             {/* Header: Titolo, Sottotitolo e Indicatore Step */}
             <div className="flex items-start justify-between border-b border-white/5 pb-4">
                 <div>
@@ -41,13 +41,13 @@ export function ProjectFormLayout({
             </div>
 
             {/* Content: Il corpo vero e proprio del form (campi di testo, icone, colori) */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
                 {children}
             </div>
 
             {/* Footer: I bottoni di navigazione in basso (Next, Exit, Confirm) */}
             {footer && (
-                <div className="mt-2">
+                <div className="mt-1">
                     {footer}
                 </div>
             )}
