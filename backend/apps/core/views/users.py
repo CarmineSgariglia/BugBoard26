@@ -92,21 +92,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        raise PermissionDenied("User deletion is disabled. Use /disable/ endpoint.")
-
-    @action(detail=True, methods=["post"], url_path="disable")
-    def disable(self, request, userId=None):
-        check_admin(request.user)
-        user = self.get_object()
-        username = request.data.get("username", "")
-        if username != user.username:
-            return Response({"detail": "Username confirmation mismatch"}, status=status.HTTP_400_BAD_REQUEST)
-        user.is_active = False
-        user.save(update_fields=["is_active"])
-        profile, _ = UserProfile.objects.get_or_create(user=user)
-        profile.active = False
-        profile.save(update_fields=["active"])
-        return Response({"detail": "User disabled"})
+        raise PermissionDenied("User deletion is disabled. Use status toggle instead.")
 
     @action(detail=True, methods=["post"], url_path="status")
     def set_status(self, request, userId=None):
