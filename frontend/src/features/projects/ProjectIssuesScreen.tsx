@@ -198,7 +198,7 @@ export function ProjectIssuesScreen() {
             {project ? (
               <ProjectSidebar
                 project={project}
-                members={members.map(m => ({ username: m.username }))}
+                members={members.map(m => ({ username: m.username, profileImg: m.profileImg }))}
                 isAdmin={currentUser?.isAdmin}
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
