@@ -73,6 +73,26 @@ class IssueViewSet(
             notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=recipients, issue=instance)
         instance.delete()
 
+    def perform_update(self, serializer):
+        issue = serializer.save()
+
+        # Track direct issue edits (PATCH/PUT) and fan out update notifications.
+        message = (self.request.data.get("message", "") or "").strip() or "Issue updated"
+        IssueEvent.objects.create(
+            issue=issue,
+            actor=self.request.user,
+            event_type=EventType.EDIT,
+            message=message,
+        )
+
+        recipients = list(
+            User.objects.filter(Q(issue_assignments__issue=issue) | Q(id=issue.reporter_id))
+            .exclude(id=self.request.user.id)
+            .distinct()
+        )
+        if recipients:
+            notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=recipients, issue=issue)
+
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, issueId=None):
         check_admin(request.user)
