@@ -80,7 +80,12 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
             }
         >
             <div className="flex flex-col gap-2" >
-                <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Project Title</label>
+                <div className="flex justify-between items-center">
+                    <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Project Title</label>
+                    <span className="text-[10px] text-neutral-500 font-medium">
+                        {title.length} / 20
+                    </span>
+                </div>
                 <input
                     type="text"
                     value={title}
