@@ -22,6 +22,8 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
                 return { text: "DONE", bg: "bg-emerald-500/10", border: "border-emerald-500/20", textCol: "text-emerald-500" };
             case "IN_PROGRESS":
                 return { text: "IN PROGRESS", bg: "bg-blue-500/10", border: "border-blue-500/20", textCol: "text-blue-500" };
+            case "CANCELLED":
+                return { text: "CANCELLED", bg: "bg-rose-500/10", border: "border-rose-500/20", textCol: "text-rose-500" };
             case "TODO":
             default:
                 return { text: "TODO", bg: "bg-orange-500/10", border: "border-orange-500/20", textCol: "text-orange-500" };

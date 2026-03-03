@@ -127,10 +127,10 @@ export function ProjectIssuesScreen() {
                 onChange={setStatusFilter}
                 options={[
                   { value: "all", label: "All Status" },
-                  { value: "todo", label: "Todo" },
-                  { value: "in_progress", label: "In Progress" },
-                  { value: "done", label: "Done" },
-                  { value: "cancelled", label: "Cancelled" },
+                  { value: "TODO", label: "Todo" },
+                  { value: "IN_PROGRESS", label: "In Progress" },
+                  { value: "DONE", label: "Done" },
+                  { value: "CANCELLED", label: "Cancelled" },
                 ]}
                 icon={<HiOutlineCollection size={16} />}
               />
@@ -139,10 +139,10 @@ export function ProjectIssuesScreen() {
                 onChange={priorityFilter => setPriorityFilter(priorityFilter)}
                 options={[
                   { value: "all", label: "All Priority" },
-                  { value: "urgent", label: "Urgent" },
-                  { value: "high", label: "High" },
-                  { value: "medium", label: "Medium" },
-                  { value: "low", label: "Low" }
+                  { value: "Urgent", label: "Urgent" },
+                  { value: "High", label: "High" },
+                  { value: "Medium", label: "Medium" },
+                  { value: "Low", label: "Low" }
                 ]}
                 icon={<HiOutlineFlag size={16} />}
               />

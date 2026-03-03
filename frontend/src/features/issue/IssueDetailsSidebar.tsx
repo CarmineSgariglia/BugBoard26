@@ -38,6 +38,7 @@ export function IssueDetailsSidebar({
             case "DONE": return "emerald-500";
             case "IN_PROGRESS": return "blue-500";
             case "TODO": return "orange-500";
+            case "CANCELLED": return "rose-500";
             default: return "neutral-400";
         }
     };
