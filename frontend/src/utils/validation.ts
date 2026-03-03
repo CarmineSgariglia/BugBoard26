@@ -20,7 +20,7 @@ export function isValidName(name: string): boolean {
     if (!name || name.length < 3) return false;
 
     // Standard name regex structure
-    const nameRegex = /^[a-zA-Z]+$/;
+    const nameRegex = /^[a-zA-Z\s]+$/;
     return nameRegex.test(name);
 }
 
