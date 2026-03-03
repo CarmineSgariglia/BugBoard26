@@ -5,6 +5,8 @@ import { RiArrowGoBackLine } from "react-icons/ri";
 import { PREDEFINED_ICONS, PREDEFINED_COLORS } from "../../utils/projectIcons";
 import { HexColorPicker } from "react-colorful";
 import { IoColorPalette } from "react-icons/io5";
+import { TitleFieldWithLenght } from "../../components/ui/TitleFieldWithLenght";
+import { DescriptionFieldWithLenght } from "../../components/ui/DescriptionFieldWithLenght";
 
 export interface ProjectDetailsData {
     title: string;
@@ -80,36 +82,22 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
             }
         >
             <div className="flex flex-col gap-2" >
-                <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Project Title</label>
-                    <span className="text-[10px] text-neutral-500 font-medium">
-                        {title.length} / 20
-                    </span>
-                </div>
-                <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                <TitleFieldWithLenght
+                    title={title}
+                    onChangeTitle={setTitle}
                     maxLength={20}
-                    placeholder="e.g. Q4 Marketing Campaign"
-                    className="w-full bg-[#0D0D12]/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-[#5671F6] focus:ring-1 focus:ring-[#5671F6] transition-all"
+                    placeholder="Insert your Project Title..."
+                    label="Project Title"
                 />
             </div>
 
             <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Description</label>
-                    <span className="text-[10px] text-neutral-500 font-medium">
-                        {description.length} / 256
-                    </span>
-                </div>
-                <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                <DescriptionFieldWithLenght
+                    description={description}
+                    onChangeDescription={setDescription}
                     maxLength={256}
                     placeholder="Describe the project goals and objectives..."
-                    rows={4}
-                    className="w-full bg-[#0D0D12]/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-[#5671F6] focus:ring-1 focus:ring-[#5671F6] transition-all resize-none"
+                    label="Description"
                 />
             </div>
 

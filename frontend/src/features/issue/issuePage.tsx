@@ -4,12 +4,14 @@ import { getIssueApi, type Issue } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";
 import { IssueDetailsSidebar } from "./IssueDetailsSidebar";
+import { IssueAssigneesModal } from "./IssueAssigneesModal";
 
 export function IssuePage() {
     const { issueId } = useParams();
     const { user: currentUser } = useAuth(); // Prendiamo l'utente loggato
     const [issue, setIssue] = useState<Issue | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
 
     useEffect(() => {
         if (issueId) {
@@ -31,19 +33,13 @@ export function IssuePage() {
     return (
         <div className="pt-24 pb-12 px-6">
             <SidebarLayout
-                header={
-                    <div className="flex flex-col gap-2">
-                        <span className="text-blue-500 font-bold text-[10px] tracking-widest uppercase">#{issue.issueId} · Issue Details</span>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">{issue.title}</h1>
-                    </div>
-                }
                 sidebar={
                     <IssueDetailsSidebar
                         issue={issue}
                         isAdmin={currentUser?.isAdmin}
                         isAssigned={isAssigned}
                         onEditClick={() => console.log("Edit")}
-                        onManageMembersClick={() => console.log("Manage")}
+                        onManageMembersClick={() => setIsAssigneesModalOpen(true)}
                     />
                 }
             >
@@ -52,6 +48,12 @@ export function IssuePage() {
                     <p className="text-neutral-500 italic">Buonasera caro</p>
                 </div>
             </SidebarLayout>
+            <IssueAssigneesModal
+                issue={issue}
+                isOpen={isAssigneesModalOpen}
+                onClose={() => setIsAssigneesModalOpen(false)}
+                onSuccess={(updatedIssue) => setIssue(updatedIssue)}
+            />
         </div>
     );
 }

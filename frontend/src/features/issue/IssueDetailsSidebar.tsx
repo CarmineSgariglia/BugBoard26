@@ -7,6 +7,8 @@ import { AvatarGroup } from "../../components/ui/AvatarGroup";
 import { type Issue } from "../../services/api";
 import { FiEdit2, FiUsers } from "react-icons/fi";
 import { SidebarButton } from "../../components/ui/SidebarButton";
+import { Avatar } from "../../components/ui/Avatar";
+
 
 interface IssueDetailsSidebarProps {
     issue: Issue;
@@ -26,10 +28,11 @@ export function IssueDetailsSidebar({
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Logica 256 parole per la descrizione
-    const words = issue.description.split(/\s+/);
+    const description = issue.description || "";
+    const words = description.split(/\s+/);
     const isLongDescription = words.length > 256;
     const displayDescription = isExpanded || !isLongDescription
-        ? issue.description
+        ? description
         : words.slice(0, 256).join(" ") + "...";
 
     // Mappa colori per StatusBadge
@@ -78,9 +81,23 @@ export function IssueDetailsSidebar({
                 </div>
             </SidebarCard.Section>
 
+            <SidebarCard.Section title="Reporter">
+                <div className="flex items-center gap-3">
+                    <Avatar
+                        name={issue.reporter?.username || "Unknown"}
+                        src={issue.reporter?.profileImg}
+                        size="md"
+                    />
+                    <div className="flex flex-col">
+                        <span className="text-sm font-bold text-white">{issue.reporter?.username || "Unknown Reporter"}</span>
+                        <span className="text-xs text-neutral-500">{issue.reporter?.email || "No email available"}</span>
+                    </div>
+                </div>
+            </SidebarCard.Section>
+
             <SidebarCard.Section title="Tags">
                 <div className="flex flex-wrap gap-2">
-                    {issue.tags.length > 0 ? (
+                    {issue.tags && issue.tags.length > 0 ? (
                         issue.tags.map(tag => (
                             <Tag
                                 key={tag.tagId}
@@ -97,7 +114,7 @@ export function IssueDetailsSidebar({
             </SidebarCard.Section>
 
             <SidebarCard.Section title="Assigned To">
-                {issue.assignees.length > 0 ? (
+                {issue.assignees && issue.assignees.length > 0 ? (
                     <AvatarGroup members={issue.assignees} max={5} />
                 ) : (
                     <span className="text-xs text-neutral-600 italic">No one assigned</span>
@@ -117,7 +134,7 @@ export function IssueDetailsSidebar({
                 {isAdmin && (
                     <SidebarButton
                         icon={<FiUsers size={14} />}
-                        label="Manage Members"
+                        label="Edit Members"
                         onClick={onManageMembersClick}
                         variant="success"
                     />

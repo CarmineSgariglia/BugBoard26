@@ -114,7 +114,8 @@ export type IssueAssignee = {
 export type Issue = {
   issueId: number;
   projectId: number;
-  reporterId: number;
+  reporterId?: number;
+  reporter: AuthUser;
   title: string;
   description: string;
   type: string;
@@ -134,6 +135,16 @@ export type IssueAttachment = {
   mimeType: string;
   size: number;
   uploadedAt: string;
+};
+
+export type UpdateIssuePayload = {
+  title?: string;
+  description?: string;
+  type?: string;
+  status?: string;
+  priority?: string;
+  assigneeIds?: number[];
+  tagIds?: number[];
 };
 
 export type IssueUpdate = {
@@ -221,7 +232,6 @@ export async function listUsersApi(params?: ListUsersParams): Promise<PaginatedR
   return data;
 }
 
-
 export async function setUserActiveApi(userId: number, active: boolean): Promise<AuthUser> {
   const { data } = await api.patch<AuthUser>(`/users/${userId}/`, { active });
   return data;
@@ -270,6 +280,11 @@ export async function listProjectIssuesApi(projectId: string | number): Promise<
 
 export async function getIssueApi(issueId: string | number): Promise<Issue> {
   const { data } = await api.get<Issue>(`/issues/${issueId}/`);
+  return data;
+}
+
+export async function updateIssueApi(issueId: number | string, payload: UpdateIssuePayload): Promise<Issue> {
+  const { data } = await api.patch<Issue>(`/issues/${issueId}/`, payload);
   return data;
 }
 
