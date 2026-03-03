@@ -134,7 +134,7 @@ export function IssueDetailsSidebar({
                 {isAdmin && (
                     <SidebarButton
                         icon={<FiUsers size={14} />}
-                        label="Manage Members"
+                        label="Edit Members"
                         onClick={onManageMembersClick}
                         variant="success"
                     />
