@@ -25,8 +25,8 @@ export function IssuePage() {
         return issue.assignees.some(a => a.userId === currentUser.userId);
     }, [issue, currentUser]);
 
-    if (isLoading) return <div className="pt-24 px-6 text-white text-center">Caricamento issue...</div>;
-    if (!issue) return <div className="pt-24 px-6 text-white text-center">Issue non trovata</div>;
+    if (isLoading) return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
+    if (!issue) return <div className="pt-24 px-6 text-white text-center">Issue not found</div>;
 
     return (
         <div className="pt-24 pb-12 px-6">
@@ -49,7 +49,7 @@ export function IssuePage() {
             >
                 <div className="rounded-2xl border border-white/5 bg-[#121620]/20 p-8 min-h-[500px]">
                     <h3 className="text-xl font-bold text-white mb-6">Activity Feed</h3>
-                    <p className="text-neutral-500 italic">Cronologia e chat in arrivo...</p>
+                    <p className="text-neutral-500 italic">Buonasera caro</p>
                 </div>
             </SidebarLayout>
         </div>

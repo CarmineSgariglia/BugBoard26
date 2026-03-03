@@ -4,7 +4,6 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Priority } from "../../components/ui/Priority";
 import { Tag } from "../../components/ui/Tag";
 import { AvatarGroup } from "../../components/ui/AvatarGroup";
-import { Button } from "../../components/ui/Button";
 import { type Issue } from "../../services/api";
 import { FiEdit2, FiUsers } from "react-icons/fi";
 import { SidebarButton } from "../../components/ui/SidebarButton";
