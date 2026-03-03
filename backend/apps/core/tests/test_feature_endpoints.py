@@ -19,6 +19,7 @@ from apps.core.models import (
     IssueAssignee,
     IssueEvent,
     IssueStatus,
+    Notification,
     NotifyType,
     NotifyUser,
     PasswordResetOTP,
@@ -716,6 +717,27 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("message", response.data)
 
+    def test_issue_updates_list_returns_events_for_project_member(self):
+        event = IssueEvent.objects.create(
+            issue=self.issue,
+            actor=self.member,
+            event_type=EventType.COMMENT,
+            message="visible update",
+        )
+        Attachment.objects.create(update=event, path="uploads/file.txt", mime_type="text/plain", size=12)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+        self.assertIn("actorUsername", response.data[0])
+        self.assertIn("attachments", response.data[0])
+
+    def test_issue_updates_list_forbidden_for_outsider(self):
+        self.client.force_authenticate(user=self.outsider)
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_attachment_upload_requires_issue_access(self):
         event = IssueEvent.objects.create(
             issue=self.issue,
@@ -847,6 +869,32 @@ class NotificationTagMetaEndpointTests(APITestCase):
         all_response = self.client.post("/api/notifications/read-all/", {}, format="json")
         self.assertEqual(all_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(all_response.data["updated"], 1)
+
+    def test_delete_single_notification_for_current_user_only(self):
+        self.client.force_authenticate(user=self.member)
+        target = NotifyUser.objects.filter(user=self.member).first()
+        self.assertIsNotNone(target)
+
+        response = self.client.delete(f"/api/notifications/{target.notify_user_id}/", format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(NotifyUser.objects.filter(notify_user_id=target.notify_user_id).exists())
+
+    def test_delete_notification_does_not_allow_other_user_notification(self):
+        admin_notification = NotifyUser.objects.filter(user=self.admin).first()
+        self.assertIsNotNone(admin_notification)
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.delete(f"/api/notifications/{admin_notification.notify_user_id}/", format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_notification_removes_orphan_notification_row(self):
+        single_notification = notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[self.member], issue=self.issue)
+        single_notify_user = NotifyUser.objects.get(notification=single_notification, user=self.member)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.delete(f"/api/notifications/{single_notify_user.notify_user_id}/", format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Notification.objects.filter(notification_id=single_notification.notification_id).exists())
 
     def test_tags_create_and_delete_require_admin(self):
         self.client.force_authenticate(user=self.member)
