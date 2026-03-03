@@ -16,6 +16,7 @@ import { DeleteProjectFlow } from "./DeleteProjectFlow";
 
 // Icons
 import { FiPlus } from "react-icons/fi";
+import { BiCategoryAlt } from "react-icons/bi";
 import { HiOutlineFlag, HiOutlineCollection, HiOutlineSortAscending, HiOutlineSortDescending } from "react-icons/hi";
 
 export function ProjectIssuesScreen() {
@@ -35,6 +36,7 @@ export function ProjectIssuesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
@@ -84,14 +86,15 @@ export function ProjectIssuesScreen() {
           issue.description.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === "all" || issue.status.toLowerCase() === statusFilter.toLowerCase();
         const matchesPriority = priorityFilter === "all" || issue.priority.toLowerCase() === priorityFilter.toLowerCase();
-        return matchesSearch && matchesStatus && matchesPriority;
+        const matchesType = typeFilter === "all" || issue.type.toLowerCase() === typeFilter.toLowerCase();
+        return matchesSearch && matchesStatus && matchesPriority && matchesType;
       })
       .sort((a, b) => {
         const timeA = new Date(a.createdAt).getTime();
         const timeB = new Date(b.createdAt).getTime();
         return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
       });
-  }, [issues, searchQuery, statusFilter, priorityFilter, sortOrder]);
+  }, [issues, searchQuery, statusFilter, priorityFilter, typeFilter, sortOrder]);
 
   if (!isLoading && !project && !error) {
     return (
@@ -124,7 +127,8 @@ export function ProjectIssuesScreen() {
                   { value: "all", label: "All Status" },
                   { value: "todo", label: "Todo" },
                   { value: "in_progress", label: "In Progress" },
-                  { value: "done", label: "Done" }
+                  { value: "done", label: "Done" },
+                  { value: "cancelled", label: "Cancelled" },
                 ]}
                 icon={<HiOutlineCollection size={16} />}
               />
@@ -133,12 +137,24 @@ export function ProjectIssuesScreen() {
                 onChange={priorityFilter => setPriorityFilter(priorityFilter)}
                 options={[
                   { value: "all", label: "All Priority" },
-                  { value: "critical", label: "Critical" },
+                  { value: "urgent", label: "Urgent" },
                   { value: "high", label: "High" },
                   { value: "medium", label: "Medium" },
                   { value: "low", label: "Low" }
                 ]}
                 icon={<HiOutlineFlag size={16} />}
+              />
+              <Select
+                value={typeFilter}
+                onChange={typeFilter => setTypeFilter(typeFilter)}
+                options={[
+                  { value: "all", label: "All Type" },
+                  { value: "bug", label: "Bug" },
+                  { value: "documentation", label: "Documentation" },
+                  { value: "feature", label: "Feature" },
+                  { value: "question", label: "Question" }
+                ]}
+                icon={<BiCategoryAlt size={16} />}
               />
               <Select
                 value={sortOrder}
