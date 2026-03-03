@@ -4,12 +4,14 @@ import { getIssueApi, type Issue } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";
 import { IssueDetailsSidebar } from "./IssueDetailsSidebar";
+import { IssueAssigneesModal } from "./IssueAssigneesModal";
 
 export function IssuePage() {
     const { issueId } = useParams();
     const { user: currentUser } = useAuth(); // Prendiamo l'utente loggato
     const [issue, setIssue] = useState<Issue | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
 
     useEffect(() => {
         if (issueId) {
@@ -43,7 +45,7 @@ export function IssuePage() {
                         isAdmin={currentUser?.isAdmin}
                         isAssigned={isAssigned}
                         onEditClick={() => console.log("Edit")}
-                        onManageMembersClick={() => console.log("Manage")}
+                        onManageMembersClick={() => setIsAssigneesModalOpen(true)}
                     />
                 }
             >
