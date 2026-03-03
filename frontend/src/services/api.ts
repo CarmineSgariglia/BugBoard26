@@ -127,6 +127,28 @@ export type Issue = {
   assignees: IssueAssignee[];
 };
 
+export type IssueAttachment = {
+  attachmentId: number;
+  updateId: number;
+  path: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+};
+
+export type IssueUpdate = {
+  updateId: number;
+  issueId: number;
+  actorId: number;
+  actorUsername: string;
+  eventType: string;
+  at: string;
+  message: string;
+  oldStatus?: string;
+  newStatus?: string;
+  attachments: IssueAttachment[];
+};
+
 export type NotificationItem = {
   notifyUserId: number;
   notificationId: number;
@@ -248,6 +270,11 @@ export async function listProjectIssuesApi(projectId: string | number): Promise<
 
 export async function getIssueApi(issueId: string | number): Promise<Issue> {
   const { data } = await api.get<Issue>(`/issues/${issueId}/`);
+  return data;
+}
+
+export async function listIssueUpdatesApi(issueId: string | number): Promise<IssueUpdate[]> {
+  const { data } = await api.get<IssueUpdate[]>(`/issues/${issueId}/updates/`);
   return data;
 }
 

@@ -164,10 +164,15 @@ class IssueViewSet(
             notify_users(notify_type=NotifyType.ISSUE_CLOSED, users=[issue.reporter], issue=issue)
         return Response(IssueSerializer(issue).data)
 
-    @action(detail=True, methods=["post"], url_path="updates")
-    def add_update(self, request, issueId=None):
+    @action(detail=True, methods=["get", "post"], url_path="updates")
+    def updates(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
+
+        if request.method.lower() == "get":
+            events = issue.events.select_related("actor").prefetch_related("attachments").all()
+            return Response(IssueEventSerializer(events, many=True).data)
+
         if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
             raise PermissionDenied("Only assigned users or admins can add updates")
 

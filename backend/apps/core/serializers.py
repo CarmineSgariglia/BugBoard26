@@ -161,7 +161,14 @@ class IssueSerializer(serializers.ModelSerializer):
         ]
 
     def get_assignees(self, obj):
-        return [{"userId": user.id, "username": user.username} for user in obj.assignees.all()]
+        return [
+            {
+                "userId": user.id,
+                "username": user.username,
+                "profileImg": build_media_url(self, getattr(getattr(user, "profile", None), "profile_img", "")),
+            }
+            for user in obj.assignees.all()
+        ]
 
     def create(self, validated_data):
         assignee_ids = validated_data.pop("assigneeIds", [])
@@ -203,13 +210,18 @@ class IssueEventSerializer(serializers.ModelSerializer):
     updateId = serializers.IntegerField(source="update_id", read_only=True)
     issueId = serializers.IntegerField(source="issue.issue_id", read_only=True)
     actorId = serializers.IntegerField(source="actor.id", read_only=True)
+    actorUsername = serializers.CharField(source="actor.username", read_only=True)
     eventType = serializers.CharField(source="event_type")
     oldStatus = serializers.CharField(source="old_status", required=False, allow_blank=True)
     newStatus = serializers.CharField(source="new_status", required=False, allow_blank=True)
+    attachments = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = IssueEvent
-        fields = ["updateId", "issueId", "actorId", "eventType", "at", "message", "oldStatus", "newStatus"]
+        fields = ["updateId", "issueId", "actorId", "actorUsername", "eventType", "at", "message", "oldStatus", "newStatus", "attachments"]
+
+    def get_attachments(self, obj):
+        return AttachmentSerializer(obj.attachments.all(), many=True).data
 
 
 class AttachmentSerializer(serializers.ModelSerializer):
