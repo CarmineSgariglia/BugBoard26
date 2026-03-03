@@ -2,7 +2,7 @@
     SearchBar component
 */
 
-import type { ChangeEvent } from "react"; // Importo ChangeEvent per tipizzare l'evento di cambio dell'input
+import type { ChangeEvent } from "react";
 import { FaSearch } from "react-icons/fa";
 
 

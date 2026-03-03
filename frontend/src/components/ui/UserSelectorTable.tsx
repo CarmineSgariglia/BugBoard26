@@ -37,8 +37,22 @@ export function UserSelectorTable({
 }: UserSelectorTableProps) {
     const [membershipFilter, setMembershipFilter] = useState<string>(isViewMode ? "Added" : "All");
 
-    // Filtriamo localmente solo per Added/Not Added
+    // Filtriamo localmente per Search, per Ruolo (no admin) e per Added/Not Added
     const filteredUsers = users.filter(user => {
+        // 1. Escludiamo gli Admin (nel "trucchetto" il ruolo è nel campo email)
+        const isUserAdmin = user.isAdmin || user.email?.toLowerCase() === "admin";
+        if (isUserAdmin) return false;
+
+        // 2. Filtro per Ricerca (username o nome/cognome)
+        const searchLower = search.toLowerCase();
+        const matchesSearch = !search ||
+            user.username.toLowerCase().includes(searchLower) ||
+            (user.firstName && user.firstName.toLowerCase().includes(searchLower)) ||
+            (user.lastName && user.lastName.toLowerCase().includes(searchLower));
+
+        if (!matchesSearch) return false;
+
+        // 3. Filtro per Membri Aggiunti/Non Aggiunti
         if (membershipFilter === "Added") return selectedUserIds.includes(user.userId);
         if (membershipFilter === "NotAdded") return !selectedUserIds.includes(user.userId);
         return true;
@@ -52,7 +66,7 @@ export function UserSelectorTable({
                     <SearchBar
                         value={search}
                         onChange={onSearchChange || (() => { })}
-                        placeholder="Search developers by name or email..."
+                        placeholder="Search developers by name..."
                         bgColor="bg-[#0D0D12]/50"
                         textColor="text-white"
                         iconColor="text-neutral-500"

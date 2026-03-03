@@ -84,17 +84,15 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
                     />
                 }
             >
-                <div className="h-[500px] flex flex-col">
-                    <UserSelectorTable
-                        users={members}
-                        selectedUserIds={selectedUserIds}
-                        onToggleUser={handleToggleUser}
-                        isLoading={isLoading}
-                        error={error}
-                        search={search}
-                        onSearchChange={setSearch}
-                    />
-                </div>
+                <UserSelectorTable
+                    users={members}
+                    selectedUserIds={selectedUserIds}
+                    onToggleUser={handleToggleUser}
+                    isLoading={isLoading}
+                    error={error}
+                    search={search}
+                    onSearchChange={setSearch}
+                />
             </ProjectFormLayout>
         </ModalOverlay>
     );

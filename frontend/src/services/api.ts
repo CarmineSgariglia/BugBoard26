@@ -114,7 +114,8 @@ export type IssueAssignee = {
 export type Issue = {
   issueId: number;
   projectId: number;
-  reporterId: number;
+  reporterId?: number;
+  reporter: AuthUser;
   title: string;
   description: string;
   type: string;
