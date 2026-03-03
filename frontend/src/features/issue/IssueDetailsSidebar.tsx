@@ -7,6 +7,7 @@ import { AvatarGroup } from "../../components/ui/AvatarGroup";
 import { Button } from "../../components/ui/Button";
 import { type Issue } from "../../services/api";
 import { FiEdit2, FiUsers } from "react-icons/fi";
+import { SidebarButton } from "../../components/ui/SidebarButton";
 
 interface IssueDetailsSidebarProps {
     issue: Issue;
@@ -106,14 +107,20 @@ export function IssueDetailsSidebar({
             {/* Azioni con permessi */}
             <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
                 {(isAssigned || isAdmin) && (
-                    <Button variant="glass" size="sm" icon={<FiEdit2 size={14} />} onClick={onEditClick}>
-                        Edit Issue
-                    </Button>
+                    <SidebarButton
+                        icon={<FiEdit2 size={14} />}
+                        label="Edit Issue"
+                        onClick={onEditClick}
+                        variant="primary"
+                    />
                 )}
                 {isAdmin && (
-                    <Button variant="glass" size="sm" icon={<FiUsers size={14} />} onClick={onManageMembersClick}>
-                        Manage Members
-                    </Button>
+                    <SidebarButton
+                        icon={<FiUsers size={14} />}
+                        label="Manage Members"
+                        onClick={onManageMembersClick}
+                        variant="success"
+                    />
                 )}
             </div>
         </SidebarCard>
