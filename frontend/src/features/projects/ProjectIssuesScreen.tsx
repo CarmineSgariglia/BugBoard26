@@ -13,9 +13,12 @@ import { ProjectSidebar } from "../../components/projects/ProjectSidebar";
 import { EditProjectFlow } from "./EditProjectFlow";
 import { EditTeamFlow } from "./EditTeamFlow";
 import { DeleteProjectFlow } from "./DeleteProjectFlow";
+import { SidebarLayout } from "../../components/layout/SidebarLayout";
+
 
 // Icons
 import { FiPlus } from "react-icons/fi";
+import { BiCategoryAlt } from "react-icons/bi";
 import { HiOutlineFlag, HiOutlineCollection, HiOutlineSortAscending, HiOutlineSortDescending } from "react-icons/hi";
 
 export function ProjectIssuesScreen() {
@@ -35,6 +38,7 @@ export function ProjectIssuesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
@@ -84,14 +88,15 @@ export function ProjectIssuesScreen() {
           issue.description.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === "all" || issue.status.toLowerCase() === statusFilter.toLowerCase();
         const matchesPriority = priorityFilter === "all" || issue.priority.toLowerCase() === priorityFilter.toLowerCase();
-        return matchesSearch && matchesStatus && matchesPriority;
+        const matchesType = typeFilter === "all" || issue.type.toLowerCase() === typeFilter.toLowerCase();
+        return matchesSearch && matchesStatus && matchesPriority && matchesType;
       })
       .sort((a, b) => {
         const timeA = new Date(a.createdAt).getTime();
         const timeB = new Date(b.createdAt).getTime();
         return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
       });
-  }, [issues, searchQuery, statusFilter, priorityFilter, sortOrder]);
+  }, [issues, searchQuery, statusFilter, priorityFilter, typeFilter, sortOrder]);
 
   if (!isLoading && !project && !error) {
     return (
@@ -122,9 +127,10 @@ export function ProjectIssuesScreen() {
                 onChange={setStatusFilter}
                 options={[
                   { value: "all", label: "All Status" },
-                  { value: "todo", label: "Todo" },
-                  { value: "in_progress", label: "In Progress" },
-                  { value: "done", label: "Done" }
+                  { value: "TODO", label: "Todo" },
+                  { value: "IN_PROGRESS", label: "In Progress" },
+                  { value: "DONE", label: "Done" },
+                  { value: "CANCELLED", label: "Cancelled" },
                 ]}
                 icon={<HiOutlineCollection size={16} />}
               />
@@ -133,12 +139,24 @@ export function ProjectIssuesScreen() {
                 onChange={priorityFilter => setPriorityFilter(priorityFilter)}
                 options={[
                   { value: "all", label: "All Priority" },
-                  { value: "critical", label: "Critical" },
-                  { value: "high", label: "High" },
-                  { value: "medium", label: "Medium" },
-                  { value: "low", label: "Low" }
+                  { value: "Urgent", label: "Urgent" },
+                  { value: "High", label: "High" },
+                  { value: "Medium", label: "Medium" },
+                  { value: "Low", label: "Low" }
                 ]}
                 icon={<HiOutlineFlag size={16} />}
+              />
+              <Select
+                value={typeFilter}
+                onChange={typeFilter => setTypeFilter(typeFilter)}
+                options={[
+                  { value: "all", label: "All Type" },
+                  { value: "bug", label: "Bug" },
+                  { value: "documentation", label: "Documentation" },
+                  { value: "feature", label: "Feature" },
+                  { value: "question", label: "Question" }
+                ]}
+                icon={<BiCategoryAlt size={16} />}
               />
               <Select
                 value={sortOrder}
@@ -164,10 +182,27 @@ export function ProjectIssuesScreen() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Main Content Grid */}
+        <SidebarLayout
+          sidebar={
+            project ? (
+              <ProjectSidebar
+                project={project}
+                members={members.map(m => ({ username: m.username, profileImg: m.profileImg }))}
+                isAdmin={currentUser?.isAdmin}
+                onSettingsClick={() => setIsEditModalOpen(true)}
+                onEditTeamClick={() => setIsEditTeamModalOpen(true)}
+                onDeleteProjectClick={() => setIsDeleteModalOpen(true)}
+                onViewTeamClick={() => setIsViewTeamModalOpen(true)}
+              />
+            ) : (
+              <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
+            )
+          }
+        >
 
           {/* Left Column: Issues List */}
-          <div className="lg:col-span-8 flex flex-col gap-6">
+          <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-white tracking-tight">Manage Issues</h2>
               <span className="text-xs font-medium text-neutral-500 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
@@ -181,7 +216,7 @@ export function ProjectIssuesScreen() {
               </div>
             )}
 
-            <div className="flex flex-col gap-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex flex-col gap-4 max-h-[calc(100vh-270px)] overflow-y-auto pr-2 custom-scrollbar">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
@@ -208,23 +243,7 @@ export function ProjectIssuesScreen() {
             </div>
           </div>
 
-          {/* Right Column: Project Sidebar */}
-          <div className="lg:col-span-4 sticky top-24">
-            {project ? (
-              <ProjectSidebar
-                project={project}
-                members={members.map(m => ({ username: m.username, profileImg: m.profileImg }))}
-                isAdmin={currentUser?.isAdmin}
-                onSettingsClick={() => setIsEditModalOpen(true)}
-                onEditTeamClick={() => setIsEditTeamModalOpen(true)}
-                onDeleteProjectClick={() => setIsDeleteModalOpen(true)}
-                onViewTeamClick={() => setIsViewTeamModalOpen(true)}
-              />
-            ) : (
-              <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
-            )}
-          </div>
-        </div>
+        </SidebarLayout>
 
         {isEditModalOpen && project && (
           <EditProjectFlow

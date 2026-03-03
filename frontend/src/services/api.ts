@@ -100,6 +100,17 @@ export type ProjectMembership = {
   profileImg?: string | null;
 };
 
+export type Tag = {
+  tagId: number;
+  name: string;
+};
+
+export type IssueAssignee = {
+  userId: number;
+  username: string;
+  profileImg?: string | null;
+};
+
 export type Issue = {
   issueId: number;
   projectId: number;
@@ -112,6 +123,8 @@ export type Issue = {
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
+  tags: Tag[];
+  assignees: IssueAssignee[];
 };
 
 export type NotificationItem = {
@@ -230,6 +243,11 @@ export async function listProjectMembersApi(projectId: string | number): Promise
 
 export async function listProjectIssuesApi(projectId: string | number): Promise<Issue[]> {
   const { data } = await api.get<Issue[]>(`/projects/${projectId}/issues/`);
+  return data;
+}
+
+export async function getIssueApi(issueId: string | number): Promise<Issue> {
+  const { data } = await api.get<Issue>(`/issues/${issueId}/`);
   return data;
 }
 

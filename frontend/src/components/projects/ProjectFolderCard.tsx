@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import projectLogo from "../../assets/LogoBugBoard26-Project.webp";
 import { BaseFolderCard } from "./BaseFolderCard";
+import { getContrastColor } from "../../utils/color";
+import { useMemo } from "react";
 
 export interface ProjectFolderCardProps {
     color: string;
@@ -21,25 +23,34 @@ export function ProjectFolderCard({
     authorImageUrl,
     onClick,
 }: ProjectFolderCardProps) {
+
+    const styles = useMemo(() => ({ // POTREMMO ANDARE AD EFFETTUARE UN'ASSEGNAZIONE (?)
+        textMain: getContrastColor(color, 1),
+        textSub: getContrastColor(color, 0.75),
+        textPill: getContrastColor(color, 0.9),
+        divider: getContrastColor(color, 0.075),
+        colorIconBg: getContrastColor(color, 0.15),
+    }), [color]);
+
     return (
         <BaseFolderCard color={color} onClick={onClick} className="flex-col p-5">
             {/* Top Section: Icon */}
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-white/25 shadow-sm inner-shadow">
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl shadow-sm inner-shadow" style={{ backgroundColor: styles.colorIconBg, color: styles.textMain }}>
                 {icon}
             </div>
 
             {/* Middle Section: Texts */}
             <div className="flex-1 flex flex-col justify-end">
-                <h3 className="mb-2 text-2xl font-bold tracking-tight text-white line-clamp-1">
+                <h3 className="mb-2 text-2xl font-bold tracking-tight line-clamp-1" style={{ color: styles.textMain }}>
                     {title}
                 </h3>
-                <p className="text-sm font-medium text-white/80 line-clamp-2 leading-relaxed">
+                <p className="text-sm font-medium line-clamp-2 leading-relaxed h-[45px]" style={{ color: styles.textSub }}>
                     {description}
                 </p>
             </div>
 
             {/* Divider */}
-            <div className="my-5 h-[1px] w-full bg-white/20" />
+            <div className="my-5 h-[1px] w-full" style={{ backgroundColor: styles.divider }} />
 
             {/* Footer Section: Author & Date */}
             <div className="flex items-center justify-between">
@@ -62,7 +73,7 @@ export function ProjectFolderCard({
                 </div>
 
                 {/* Date Pill */}
-                <div className="rounded-full bg-black/15 px-3 py-1 text-xs font-semibold tracking-wide text-white/95 backdrop-blur-sm">
+                <div className="rounded-full bg-black/15 px-3 py-1 text-xs font-semibold tracking-wide backdrop-blur-sm" style={{ color: styles.textSub }}>
                     {date}
                 </div>
             </div>

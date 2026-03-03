@@ -1,25 +1,31 @@
 interface StatusBadgeProps {
     text: string;
-    color: string;
+    color: string; // es. "emerald-500", "blue-500", "orange-500"
     glow?: boolean;
+    variant?: "default" | "pill";
     className?: string;
 }
 
-/**
- * A small status indicator: colored dot + text label.
- *
- * @param text   - The label displayed next to the dot (e.g. "Active", "Open").
- * @param color  - A Tailwind color token WITHOUT the prefix, e.g. "emerald-400", "red-500", "neutral-500".
- * @param glow   - If true, adds a soft colored shadow around the dot (default: false).
- */
-export function StatusBadge({ text, color, glow = false, className = "" }: StatusBadgeProps) {
+export function StatusBadge({
+    text,
+    color,
+    glow = false,
+    variant = "default",
+    className = ""
+}: StatusBadgeProps) {
+
+    // Se è in modalità pill, aggiungiamo bordi, sfondo semi-trasparente e padding
+    const pillStyles = variant === "pill"
+        ? `px-2 py-0.5 rounded-md border border-${color}/20 bg-${color}/10 text-[10px] font-bold uppercase tracking-wider`
+        : "text-sm";
+
     return (
-        <div className={`flex items-center gap-2 text-${color} ${className}`}>
+        <div className={`flex items-center gap-2 text-${color} ${pillStyles} ${className}`}>
             <div
-                className="w-2 h-2 rounded-full bg-current"
+                className="w-1.5 h-1.5 rounded-full bg-current"
                 style={glow ? { boxShadow: `0 0 8px currentColor` } : undefined}
             />
-            <span className="text-sm">
+            <span>
                 {text}
             </span>
         </div>

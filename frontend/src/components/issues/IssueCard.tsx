@@ -1,5 +1,7 @@
 import { Tag } from "../ui/Tag";
 import { type Issue } from "../../services/api";
+import { Priority } from "../ui/Priority";
+
 
 interface IssueCardProps {
     issue: Issue;
@@ -20,34 +22,20 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
                 return { text: "DONE", bg: "bg-emerald-500/10", border: "border-emerald-500/20", textCol: "text-emerald-500" };
             case "IN_PROGRESS":
                 return { text: "IN PROGRESS", bg: "bg-blue-500/10", border: "border-blue-500/20", textCol: "text-blue-500" };
+            case "CANCELLED":
+                return { text: "CANCELLED", bg: "bg-rose-500/10", border: "border-rose-500/20", textCol: "text-rose-500" };
             case "TODO":
             default:
                 return { text: "TODO", bg: "bg-orange-500/10", border: "border-orange-500/20", textCol: "text-orange-500" };
         }
     };
 
-    const getPriorityStyles = (priority: string) => {
-        switch (priority.toUpperCase()) {
-            case "URGENT":
-                return { text: "URGENT", textCol: "text-rose-500", border: "border-rose-500/20" };
-            case "HIGH":
-                return { text: "HIGH", textCol: "text-orange-500", border: "border-orange-500/20" };
-            case "MEDIUM":
-                return { text: "MEDIUM", textCol: "text-yellow-500", border: "border-yellow-500/20" };
-            case "LOW":
-                return { text: "LOW", textCol: "text-blue-500", border: "border-blue-500/20" };
-            default:
-                return { text: priority, textCol: "text-neutral-400", border: "border-neutral-800" };
-        }
-    };
-
     const statusStyle = getStatusStyles(issue.status);
-    const priorityStyle = getPriorityStyles(issue.priority);
 
     return (
         <div
             onClick={onClick}
-            className="group relative flex flex-col gap-4 p-6 rounded-2xl border border-white/5 bg-[#121620]/40 hover:bg-[#1E2332]/60 hover:border-white/10 transition-all cursor-pointer overflow-hidden min-h-[155px]"
+            className="group relative flex flex-col gap-4 p-6 pl-6 hover:pl-[22px] rounded-2xl border-l-2 hover:border-l-4 border-l-white border border-white/5 bg-[#121620]/40 hover:bg-[#1E2332]/60 hover:border-white/10 transition-all cursor-pointer overflow-hidden min-h-[155px]"
         >
             {/* Left accent hover effect */}
             <div className={`absolute left-0 top-0 bottom-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity ${statusStyle.textCol.replace("text-", "bg-")}`} />
@@ -80,18 +68,19 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
                         className="bg-[#EF476F]/5"
                     />
 
-                    {/* Placeholder tags for visual match, actual tags would come from metadata or keywords */}
-                    <Tag
-                        text="#API"
-                        textColor="text-[#5671F6]"
-                        borderColor="border-[#5671F6]/20"
-                        className="bg-[#5671F6]/5"
-                    />
+                    {/* Dynamic tags from DB */}
+                    {issue.tags?.map((tag) => (
+                        <Tag
+                            key={tag.tagId}
+                            text={`#${tag.name.toUpperCase()}`}
+                            textColor="text-[#5671F6]"
+                            borderColor="border-[#5671F6]/20"
+                            className="bg-[#5671F6]/5"
+                        />
+                    ))}
                 </div>
 
-                <div className={`px-3 py-1 rounded-full text-[10px] font-bold border ${priorityStyle.border} ${priorityStyle.textCol} tracking-widest`}>
-                    {priorityStyle.text}
-                </div>
+                <Priority level={issue.priority} />
             </div>
         </div>
     );
