@@ -181,7 +181,7 @@ export function ProjectIssuesScreen() {
               </div>
             )}
 
-            <div className="flex flex-col gap-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex flex-col gap-4 max-h-[calc(100vh-270px)] overflow-y-auto pr-2 custom-scrollbar">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
