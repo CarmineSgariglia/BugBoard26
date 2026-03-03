@@ -170,14 +170,11 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                                     <HexColorPicker color={selectedColor} onChange={setSelectedColor} />
                                 </div>
                             )}
-
                         </div>
                     </div>
                 </div>
-
             </div>
 
         </ProjectFormLayout>
-
     );
 }

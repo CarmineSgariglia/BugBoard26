@@ -21,6 +21,7 @@ export function ProjectFolderCard({
     authorImageUrl,
     onClick,
 }: ProjectFolderCardProps) {
+
     return (
         <BaseFolderCard color={color} onClick={onClick} className="flex-col p-5">
             {/* Top Section: Icon */}
@@ -30,10 +31,10 @@ export function ProjectFolderCard({
 
             {/* Middle Section: Texts */}
             <div className="flex-1 flex flex-col justify-end">
-                <h3 className="mb-2 text-2xl font-bold tracking-tight text-white line-clamp-1">
+                <h3 className="mb-2 text-2xl font-bold tracking-tight text-white line-clamp-1 ">
                     {title}
                 </h3>
-                <p className="text-sm font-medium text-white/80 line-clamp-2 leading-relaxed">
+                <p className="text-sm font-medium text-white/80 line-clamp-2 leading-relaxed ">
                     {description}
                 </p>
             </div>
