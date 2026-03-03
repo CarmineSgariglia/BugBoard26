@@ -4,3 +4,5 @@ django-cors-headers>=4.4,<5.0
 django-anymail[brevo]>=11,<12
 psycopg2-binary>=2.9,<3.0
 gunicorn>=22.0,<23.0
+django-storages>=1.14,<2.0
+google-cloud-storage>=2.18,<3.0
