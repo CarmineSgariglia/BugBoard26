@@ -80,13 +80,16 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
                         className="bg-[#EF476F]/5"
                     />
 
-                    {/* Placeholder tags for visual match, actual tags would come from metadata or keywords */}
-                    <Tag
-                        text="#API"
-                        textColor="text-[#5671F6]"
-                        borderColor="border-[#5671F6]/20"
-                        className="bg-[#5671F6]/5"
-                    />
+                    {/* Dynamic tags from DB */}
+                    {issue.tags?.map((tag) => (
+                        <Tag
+                            key={tag.tagId}
+                            text={`#${tag.name.toUpperCase()}`}
+                            textColor="text-[#5671F6]"
+                            borderColor="border-[#5671F6]/20"
+                            className="bg-[#5671F6]/5"
+                        />
+                    ))}
                 </div>
 
                 <div className={`px-3 py-1 rounded-full text-[10px] font-bold border ${priorityStyle.border} ${priorityStyle.textCol} tracking-widest`}>
