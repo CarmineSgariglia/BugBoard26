@@ -1,5 +1,7 @@
 import { Tag } from "../ui/Tag";
 import { type Issue } from "../../services/api";
+import { Priority } from "../ui/Priority";
+
 
 interface IssueCardProps {
     issue: Issue;
@@ -26,23 +28,7 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
         }
     };
 
-    const getPriorityStyles = (priority: string) => {
-        switch (priority.toUpperCase()) {
-            case "URGENT":
-                return { text: "URGENT", textCol: "text-rose-500", border: "border-rose-500/20" };
-            case "HIGH":
-                return { text: "HIGH", textCol: "text-orange-500", border: "border-orange-500/20" };
-            case "MEDIUM":
-                return { text: "MEDIUM", textCol: "text-yellow-500", border: "border-yellow-500/20" };
-            case "LOW":
-                return { text: "LOW", textCol: "text-blue-500", border: "border-blue-500/20" };
-            default:
-                return { text: priority, textCol: "text-neutral-400", border: "border-neutral-800" };
-        }
-    };
-
     const statusStyle = getStatusStyles(issue.status);
-    const priorityStyle = getPriorityStyles(issue.priority);
 
     return (
         <div
@@ -92,9 +78,7 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
                     ))}
                 </div>
 
-                <div className={`px-3 py-1 rounded-full text-[10px] font-bold border ${priorityStyle.border} ${priorityStyle.textCol} tracking-widest`}>
-                    {priorityStyle.text}
-                </div>
+                <Priority level={issue.priority} />
             </div>
         </div>
     );
