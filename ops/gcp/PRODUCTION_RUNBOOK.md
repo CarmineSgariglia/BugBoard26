@@ -28,7 +28,17 @@
 - Monta i file in `nginx/certs/` con nomi attesi dal config Nginx.
 - Evita certificati self-signed in produzione.
 
-## 4) Hardening applicativo (già supportato)
+## 4) Storage avatar/media (Google Cloud Storage)
+- Crea bucket GCS dedicato (es. `bugboard-media-prod`).
+- Configura accesso dal backend:
+  - `MEDIA_STORAGE_BACKEND=gcs`
+  - `GS_BUCKET_NAME=<bucket-name>`
+  - `GCS_MEDIA_URL=https://storage.googleapis.com/<bucket-name>/`
+- Credenziali consigliate:
+  - VM con service account dedicato (no key file su disco).
+  - Permessi minimi: `roles/storage.objectAdmin` sul bucket.
+
+## 5) Hardening applicativo (già supportato)
 - `DEBUG=False`
 - `DJANGO_SECRET_KEY` forte
 - `ALLOWED_HOSTS` stretti
@@ -36,7 +46,7 @@
 - `CORS_ALLOWED_ORIGINS` e `CSRF_TRUSTED_ORIGINS` solo domini reali
 - Cookie secure e HSTS attivi via env
 
-## 5) OTP Cleanup scheduler (systemd timer)
+## 6) OTP Cleanup scheduler (systemd timer)
 1. Copia unit:
    - `sudo cp ops/gcp/systemd/bugboard-otp-cleanup.service /etc/systemd/system/`
    - `sudo cp ops/gcp/systemd/bugboard-otp-cleanup.timer /etc/systemd/system/`
@@ -48,12 +58,12 @@
    - `systemctl list-timers | grep bugboard-otp-cleanup`
    - `journalctl -u bugboard-otp-cleanup.service -n 100 --no-pager`
 
-## 6) Backup e restore
+## 7) Backup e restore
 - Abilita snapshot periodici volume DB.
 - Definisci almeno un backup logico (`pg_dump`) giornaliero.
 - Testa restore completo su ambiente staging.
 
-## 7) Monitoraggio minimo
+## 8) Monitoraggio minimo
 - Log containers: `docker compose logs -f backend nginx`
 - Alert su:
   - HTTP 5xx

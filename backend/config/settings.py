@@ -135,6 +135,25 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = os.getenv("SECURE_REFERRER_POLICY", "strict-origin-when-cross-origin")
 
+MEDIA_STORAGE_BACKEND = os.getenv("MEDIA_STORAGE_BACKEND", "local").lower()
+if MEDIA_STORAGE_BACKEND not in {"local", "gcs"}:
+    raise ImproperlyConfigured("MEDIA_STORAGE_BACKEND must be one of: local, gcs")
+
+if MEDIA_STORAGE_BACKEND == "gcs":
+    GS_BUCKET_NAME = os.getenv("GS_BUCKET_NAME", "").strip()
+    if not GS_BUCKET_NAME:
+        raise ImproperlyConfigured("GS_BUCKET_NAME must be set when MEDIA_STORAGE_BACKEND=gcs")
+
+    GS_DEFAULT_ACL = None
+    GS_QUERYSTRING_AUTH = os.getenv("GS_QUERYSTRING_AUTH", "False").lower() == "true"
+    MEDIA_URL = os.getenv("GCS_MEDIA_URL", f"https://storage.googleapis.com/{GS_BUCKET_NAME}/")
+    if not MEDIA_URL.endswith("/"):
+        MEDIA_URL = f"{MEDIA_URL}/"
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.gcloud.GoogleCloudStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",

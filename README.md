@@ -25,6 +25,7 @@ Containerized three-tier architecture:
 ## Production (GCP VM)
 
 - Use `.env.production.example` as template for production secrets and security flags.
+- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs` and `GS_BUCKET_NAME`.
 - Start production-like stack with:
   - `docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile proxy up -d --build`
 - Full runbook:
