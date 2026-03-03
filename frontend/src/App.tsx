@@ -10,6 +10,7 @@ import { AuthLayout } from "./components/layout/AuthLayout";
 import { useAuth } from "./contexts/AuthContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { BreadcrumbProvider } from "./contexts/BreadcrumbContext";
+import { IssuePage } from "./features/issue/IssuePage";
 
 
 {/* If the user is authenticated, render the MainLayout, otherwise render the AuthLayout */ }
@@ -75,6 +76,7 @@ function App() {
         >
           <Route path="/projects" element={<ProjectsScreen />} />
           <Route path="/projects/:projectId/issues" element={<ProjectIssuesScreen />} />
+          <Route path="/projects/:projectId/issues/:issueId" element={<IssuePage />} />
           <Route path="/settings" element={<ManageAccountSettingsPage />} />
         </Route>
 
