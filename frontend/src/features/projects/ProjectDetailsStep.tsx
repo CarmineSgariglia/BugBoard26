@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
 import { FooterActions } from "../../components/ui/FooterActions";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { PREDEFINED_ICONS, PREDEFINED_COLORS } from "../../utils/projectIcons";
+import { HexColorPicker } from "react-colorful";
+import { IoColorPalette } from "react-icons/io5";
 
 export interface ProjectDetailsData {
     title: string;
@@ -10,6 +12,7 @@ export interface ProjectDetailsData {
     icon: string;
     color: string;
 }
+
 
 interface ProjectDetailsStepProps {
     mode: "create" | "edit";
@@ -26,6 +29,8 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
     const [description, setDescription] = useState(initialData?.description || "");
     const [selectedIcon, setSelectedIcon] = useState(initialData?.icon || "folder");
     const [selectedColor, setSelectedColor] = useState(initialData?.color || PREDEFINED_COLORS[0]);
+    const [isOpen, toggle] = useState(false);
+    const popover = useRef(null);
 
     // 2. LOGICA E VALIDAZIONI
     const isSaveEnabled = title.trim().length >= 3 && description.trim().length >= 5;
@@ -41,8 +46,20 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
         });
     };
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (popover.current && !(popover.current as HTMLElement).contains(e.target as Node)) {
+                toggle(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen]);
+
     // 3. UI
     return (
+
         <ProjectFormLayout
             title={mode === "create" ? "Project Details" : "Edit Project"}
             subtitle={
@@ -62,7 +79,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                 />
             }
         >
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2" >
                 <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">Project Title</label>
                 <input
                     type="text"
@@ -140,15 +157,20 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                                 />
                             );
                         })}
+                        <div className="relative">
+                            <div onClick={() => toggle(!isOpen)} className="cursor-pointer hover:scale-110 transition-transform">
 
-                        <div className="relative cursor-pointer hover:scale-110 transition-transform">
-                            <input
-                                type="color"
-                                value={selectedColor}
-                                onChange={(e) => setSelectedColor(e.target.value)}
-                                className="w-7 h-7 bg-transparent border-0 opacity-0 absolute top-0 left-0 cursor-pointer"
-                            />
-                            <div className="w-7 h-7 rounded-full border border-white/20 bg-gradient-to-tr from-[#5671F6] via-[#EF476F] to-[#06D6A0] pointer-events-none flex items-center justify-center" />
+                                <div style={{ backgroundColor: selectedColor }} className="w-7 h-7 rounded-full border border-white/20  pointer-events-none flex items-center justify-center" >
+                                    <IoColorPalette size={18} style={{ filter: "drop-shadow(0px 0px 5px rgba(0, 0, 0, 0.5))" }} color={"white"} />
+                                </div>
+                            </div>
+                            {isOpen && (
+
+                                <div className="absolute z-[100] bottom-full mb-1 right-0" ref={popover}>
+                                    <HexColorPicker color={selectedColor} onChange={setSelectedColor} />
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 </div>
@@ -156,5 +178,6 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
             </div>
 
         </ProjectFormLayout>
+
     );
 }

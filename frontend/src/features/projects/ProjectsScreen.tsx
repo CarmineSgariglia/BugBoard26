@@ -58,7 +58,9 @@ export function ProjectsScreen() {
       date: new Date(project.createdAt).toLocaleDateString(),
       iconUrl: project.icon,
       authorProfileImg: project.authorProfileImg, // Now already resolved
+
     }));
+
   }, [projects]);
 
 

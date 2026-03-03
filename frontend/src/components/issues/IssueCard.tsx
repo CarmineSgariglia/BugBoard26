@@ -47,7 +47,7 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
     return (
         <div
             onClick={onClick}
-            className="group relative flex flex-col gap-4 p-6 rounded-2xl border border-white/5 bg-[#121620]/40 hover:bg-[#1E2332]/60 hover:border-white/10 transition-all cursor-pointer overflow-hidden min-h-[155px]"
+            className="group relative flex flex-col gap-4 p-6 rounded-2xl border-l-2 border-l-white  border border-white/5 bg-[#121620]/40 hover:bg-[#1E2332]/60 hover:border-white/10 transition-all cursor-pointer overflow-hidden min-h-[155px]"
         >
             {/* Left accent hover effect */}
             <div className={`absolute left-0 top-0 bottom-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity ${statusStyle.textCol.replace("text-", "bg-")}`} />
