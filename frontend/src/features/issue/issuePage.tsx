@@ -33,12 +33,6 @@ export function IssuePage() {
     return (
         <div className="pt-24 pb-12 px-6">
             <SidebarLayout
-                header={
-                    <div className="flex flex-col gap-2">
-                        <span className="text-blue-500 font-bold text-[10px] tracking-widest uppercase">#{issue.issueId} · Issue Details</span>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">{issue.title}</h1>
-                    </div>
-                }
                 sidebar={
                     <IssueDetailsSidebar
                         issue={issue}
@@ -54,6 +48,12 @@ export function IssuePage() {
                     <p className="text-neutral-500 italic">Buonasera caro</p>
                 </div>
             </SidebarLayout>
+            <IssueAssigneesModal
+                issue={issue}
+                isOpen={isAssigneesModalOpen}
+                onClose={() => setIsAssigneesModalOpen(false)}
+                onSuccess={(updatedIssue) => setIssue(updatedIssue)}
+            />
         </div>
     );
 }
