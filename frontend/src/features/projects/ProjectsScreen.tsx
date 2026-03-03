@@ -9,7 +9,7 @@ import { getProjectIcon } from "../../utils/projectIcons";
 import { useAuth } from "../../contexts/AuthContext";
 
 function projectIcon(iconId?: string) {
-  return getProjectIcon(iconId || "folder", 30, "text-white/80");
+  return getProjectIcon(iconId || "folder", 30);
 }
 
 export function ProjectsScreen() {

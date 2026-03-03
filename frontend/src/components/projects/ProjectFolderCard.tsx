@@ -29,22 +29,22 @@ export function ProjectFolderCard({
         textSub: getContrastColor(color, 0.75),
         textPill: getContrastColor(color, 0.9),
         divider: getContrastColor(color, 0.075),
-        iconBg: getContrastColor(color, 0.15),
+        colorIconBg: getContrastColor(color, 0.15),
     }), [color]);
 
     return (
         <BaseFolderCard color={color} onClick={onClick} className="flex-col p-5">
             {/* Top Section: Icon */}
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl shadow-sm inner-shadow" style={{ backgroundColor: styles.iconBg }}>
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl shadow-sm inner-shadow" style={{ backgroundColor: styles.colorIconBg, color: styles.textMain }}>
                 {icon}
             </div>
 
             {/* Middle Section: Texts */}
             <div className="flex-1 flex flex-col justify-end">
-                <h3 className="mb-2 text-2xl font-bold tracking-tight text-white line-clamp-1" style={{ color: styles.textMain }}>
+                <h3 className="mb-2 text-2xl font-bold tracking-tight line-clamp-1" style={{ color: styles.textMain }}>
                     {title}
                 </h3>
-                <p className="text-sm font-medium text-white/80 line-clamp-2 leading-relaxed" style={{ color: styles.textSub }}>
+                <p className="text-sm font-medium line-clamp-2 leading-relaxed h-[45px]" style={{ color: styles.textSub }}>
                     {description}
                 </p>
             </div>
@@ -73,7 +73,7 @@ export function ProjectFolderCard({
                 </div>
 
                 {/* Date Pill */}
-                <div className="rounded-full bg-black/15 px-3 py-1 text-xs font-semibold tracking-wide text-white/95 backdrop-blur-sm">
+                <div className="rounded-full bg-black/15 px-3 py-1 text-xs font-semibold tracking-wide backdrop-blur-sm" style={{ color: styles.textSub }}>
                     {date}
                 </div>
             </div>
