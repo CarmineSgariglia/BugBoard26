@@ -7,7 +7,7 @@ interface SidebarCardProps {
 
 export function SidebarCard({ children, className = "" }: SidebarCardProps) {
     return (
-        <div className={`flex flex-col gap-8 p-6 rounded-2xl border border-white/5 bg-[#121620]/20 h-fit ${className}`}>
+        <div className={`flex flex-col gap-8 p-6 rounded-2xl border border-white/5 bg-[#121620]/20 h-fit w-full ${className}`}>
             {children}
         </div>
     );

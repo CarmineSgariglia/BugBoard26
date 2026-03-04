@@ -3,7 +3,8 @@
     It is used in the ProfileSettingsSection component.
 */
 
-import { TextField } from "../ui/TextField";
+import { FormField } from "../ui/FormField";
+import { Input } from "../ui/Input";
 
 interface IdentityFieldsProps {
     name: string;
@@ -28,45 +29,40 @@ export function IdentityFields({
     className = "px-8 pb-4 flex flex-col gap-5"
 
 }: IdentityFieldsProps) {
-    const labelClasses = "block text-[10px] font-bold text-[#8A8F98] uppercase tracking-widest mb-2";
-
     return (
         <div className={className}>
             <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                    <label className={labelClasses}>Name</label>
-                    <TextField
+                <FormField label="Name" className="flex-1" error={errorName}>
+                    <Input
                         type="text"
                         value={name}
                         onChange={e => onChangeName(e.target.value)}
                         placeholder="First name"
                         spellCheck={false}
-                        error={errorName}
+                        hasError={!!errorName}
                     />
-                </div>
-                <div className="flex-1">
-                    <label className={labelClasses}>Surname</label>
-                    <TextField
+                </FormField>
+                <FormField label="Surname" className="flex-1" error={errorSurname}>
+                    <Input
                         type="text"
                         value={surname}
                         onChange={e => onChangeSurname(e.target.value)}
                         placeholder="Last name"
                         spellCheck={false}
-                        error={errorSurname}
+                        hasError={!!errorSurname}
                     />
-                </div>
+                </FormField>
             </div>
-            <div>
-                <label className={labelClasses}>Email Address</label>
-                <TextField
+            <FormField label="Email Address" error={errorEmail}>
+                <Input
                     type="email"
                     value={email}
                     onChange={e => onChangeEmail(e.target.value)}
                     placeholder="email@example.com"
                     spellCheck={false}
-                    error={errorEmail}
+                    hasError={!!errorEmail}
                 />
-            </div>
+            </FormField>
         </div>
     );
 }
