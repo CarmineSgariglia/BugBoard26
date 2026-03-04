@@ -11,7 +11,7 @@ import { TagInput } from "../../components/ui/TagInput";
 import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
 import { FiX } from "react-icons/fi";
 import { Button } from "../../components/ui/Button";
-import { createProjectIssueApi, updateIssueApi, type Issue } from "../../services/api";
+import { createProjectIssueApi, updateIssueDetailsApi, createAttachmentApi, type Issue } from "../../services/api";
 
 
 interface IssueModalProps {
@@ -83,21 +83,37 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
         if (!isFormValid) return;
         setIsSubmitting(true);
         try {
+            let resultIssue: Issue | null = null;
+
             if (mode === "create" && projectId) {
-                await createProjectIssueApi(projectId, {
+                resultIssue = await createProjectIssueApi(projectId, {
                     title,
                     description,
                     type: category,
                     priority,
+                    tagNames: tags,
                 });
             } else if (mode === "edit" && issue?.issueId) {
-                await updateIssueApi(issue.issueId, {
+                resultIssue = await updateIssueDetailsApi(issue.issueId, {
                     title,
                     description,
                     type: category,
                     priority,
                     status,
+                    tagNames: tags,
                 });
+            }
+
+            // Upload file allegati
+            if (resultIssue && files.length > 0) {
+                for (const file of files) {
+                    await createAttachmentApi({
+                        issueId: resultIssue.issueId,
+                        path: file.name,
+                        mimeType: file.type,
+                        size: file.size,
+                    });
+                }
             }
 
             if (onSuccess) onSuccess();
@@ -107,6 +123,7 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
             setIsSubmitting(false);
         }
     };
+
 
     return (
         <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">

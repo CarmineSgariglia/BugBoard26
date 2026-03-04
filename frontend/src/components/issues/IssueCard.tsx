@@ -54,7 +54,7 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
                 </span>
             </div>
 
-            <p className="text-sm text-neutral-400 line-clamp-2 leading-relaxed">
+            <p className="text-sm text-neutral-400 truncate">
                 {issue.description}
             </p>
 
