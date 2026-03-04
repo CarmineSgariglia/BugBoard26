@@ -119,7 +119,7 @@ class Issue(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, db_column="projectId", related_name="issues")
     reporter = models.ForeignKey(User, on_delete=models.PROTECT, db_column="reporterId", related_name="reported_issues")
     title = models.CharField(max_length=30)
-    description = models.CharField(max_length=256)
+    description = models.CharField(max_length=1000)
     issue_type = models.CharField(max_length=32, choices=IssueType.choices, default=IssueType.BUG, db_column="type")
     status = models.CharField(max_length=32, choices=IssueStatus.choices, default=IssueStatus.TODO)
     priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.MEDIUM)

@@ -8,7 +8,7 @@ from .auth import (  # noqa: F401
     PasswordOTPVerifyView,
     PasswordResetView,
 )
-from .issues import AttachmentUploadView, IssueViewSet  # noqa: F401
+from .issues import AttachmentUploadView, AttachmentViewSet, IssueViewSet  # noqa: F401
 from .notifications import NotificationViewSet  # noqa: F401
 from .projects import ProjectIssueListCreateView, ProjectViewSet  # noqa: F401
 from .tags import MetaEnumsView, TagViewSet, health_check  # noqa: F401

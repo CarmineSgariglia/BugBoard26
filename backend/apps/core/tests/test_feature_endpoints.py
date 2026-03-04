@@ -826,6 +826,58 @@ class IssueWorkflowEndpointTests(APITestCase):
             ).exists()
         )
 
+    def test_issue_details_endpoint_updates_tags_and_fields(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}/details/",
+            {
+                "title": "Details endpoint title",
+                "description": "Updated via details endpoint",
+                "status": "IN_PROGRESS",
+                "priority": "MEDIUM",
+                "tagNames": ["api", "frontend"],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.issue.refresh_from_db()
+        self.assertEqual(self.issue.title, "Details endpoint title")
+        self.assertEqual(self.issue.status, IssueStatus.IN_PROGRESS)
+        self.assertEqual(set(self.issue.tags.values_list("name", flat=True)), {"api", "frontend"})
+
+    def test_attachments_api_create_list_and_delete(self):
+        self.client.force_authenticate(user=self.member)
+        create_response = self.client.post(
+            "/api/attachments/",
+            {
+                "issueId": self.issue.issue_id,
+                "message": "file attached",
+                "path": "uploads/manual.txt",
+                "mimeType": "text/plain",
+                "size": 33,
+            },
+            format="json",
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        attachment_id = create_response.data["attachmentId"]
+
+        list_response = self.client.get(f"/api/attachments/?issueId={self.issue.issue_id}")
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(any(item["attachmentId"] == attachment_id for item in list_response.data))
+
+        delete_response = self.client.delete(f"/api/attachments/{attachment_id}/")
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Attachment.objects.filter(attachment_id=attachment_id).exists())
+
+    def test_attachments_api_create_requires_target(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            "/api/attachments/",
+            {"path": "uploads/manual.txt", "mimeType": "text/plain", "size": 33},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_issue_delete_requires_admin(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.delete(f"/api/issues/{self.issue.issue_id}/", format="json")
