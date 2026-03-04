@@ -144,5 +144,5 @@ def create_issue_for_project(*, request, project):
         project_memberships__role=ProjectMembership.Role.ADMIN,
         is_active=True,
     )
-    notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=list(admins), issue=issue)
+    notify_users(notify_type=NotifyType.ISSUE_ADDED, users=list(admins), issue=issue)
     return issue

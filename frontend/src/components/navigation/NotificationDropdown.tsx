@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { GlassCard } from "../ui/GlassCard";
 import { NotificationItem } from "./NotificationItem";
-import { listNotificationsApi, readNotificationApi, type NotificationItem as NotificationApiItem } from "../../services/api";
+import { listNotificationsApi, readNotificationApi, deleteNotificationApi, type NotificationItem as NotificationApiItem } from "../../services/api";
 
 interface NotificationDropdownProps {
     isOpen: boolean;
@@ -52,6 +52,15 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         }
     };
 
+    const onDelete = async (notifyUserId: number) => {
+        try {
+            await deleteNotificationApi(notifyUserId);
+            setNotifications((prev) => prev.filter((item) => item.notifyUserId !== notifyUserId));
+        } catch {
+            console.error("Failed to delete notification");
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -87,6 +96,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                                 time={n.time}
                                 onClick={() => onRead(n.id)}
                                 onMarkRead={() => onRead(n.id)}
+                                onDelete={() => onDelete(n.id)}
                                 unread={!n.isRead}
                             />
                         ))}

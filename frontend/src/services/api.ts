@@ -351,6 +351,10 @@ export async function readAllNotificationsApi(): Promise<{ updated: number }> {
   return data;
 }
 
+export async function deleteNotificationApi(notificationId: number): Promise<void> {
+  await api.delete(`/notifications/${notificationId}/`);
+}
+
 export function resolveMediaUrl(pathOrUrl?: string): string {
   if (!pathOrUrl) return "";
   const backendOrigin =

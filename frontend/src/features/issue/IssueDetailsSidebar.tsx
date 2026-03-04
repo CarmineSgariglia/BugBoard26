@@ -51,7 +51,7 @@ export function IssueDetailsSidebar({
         <SidebarCard>
 
             <div className="flex flex-row gap-8 items-center justify-between">
-                <SidebarCard.Section title="Status">
+                <SidebarCard.Section title="Status" className="items-center">
                     <StatusBadge
                         text={issue.status.replace('_', ' ')}
                         color={getStatusColor(issue.status)}
@@ -60,13 +60,13 @@ export function IssueDetailsSidebar({
                     />
                 </SidebarCard.Section>
 
-                <SidebarCard.Section title="Category">
-                    <Tag className="w-full justify-center"
+                <SidebarCard.Section title="Type" className="items-center">
+                    <Tag
                         text={issue.type}
                     />
                 </SidebarCard.Section>
 
-                <SidebarCard.Section title="Priority">
+                <SidebarCard.Section title="Priority" className="items-center">
                     <Priority level={issue.priority} />
                 </SidebarCard.Section>
             </div>
