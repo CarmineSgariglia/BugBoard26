@@ -1,24 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import brandLogo from "../../assets/LogoBugBoard26.webp";
-import { listProjectsApi } from "../../services/api";
+import { listProjectsApi, getIssueApi } from "../../services/api";
 import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 
 export function DynamicBreadcrumbs() {
     const location = useLocation();
-    const { projectId } = useParams();
+    const { projectId, issueId } = useParams();
     const { labels } = useBreadcrumbs();
     const [projectName, setProjectName] = useState<string>("");
+    const [issueTitle, setIssueTitle] = useState<string>("");
 
     useEffect(() => {
-        // Use context label if available, otherwise fetch as fallback
+        // Use context label if available
         if (projectId && labels[projectId]) {
             setProjectName(labels[projectId]);
-            return;
+        }
+        if (issueId && labels[issueId]) {
+            setIssueTitle(labels[issueId]);
         }
 
         const fetchProjectName = async () => {
-            if (projectId) {
+            if (projectId && !labels[projectId]) {
                 try {
                     const projects = await listProjectsApi();
                     const currentProject = projects.find(p => String(p.projectId) === projectId);
@@ -34,10 +37,31 @@ export function DynamicBreadcrumbs() {
             }
         };
 
+        const fetchIssueName = async () => {
+            if (issueId && !labels[issueId]) {
+                try {
+                    // fall back to getIssueApi
+                    const issue = await getIssueApi(issueId);
+                    if (issue) {
+                        setIssueTitle(issue.title);
+                    } else {
+                        setIssueTitle(`Issue #${issueId}`);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch issue for breadcrumbs", error);
+                    setIssueTitle(`Issue #${issueId}`);
+                }
+            }
+        }
+
         if (location.pathname.includes("/projects/") && projectId) {
             fetchProjectName();
         }
-    }, [location.pathname, projectId, labels]);
+
+        if (issueId) {
+            fetchIssueName();
+        }
+    }, [location.pathname, projectId, issueId, labels]);
 
     const isSettings = location.pathname.startsWith("/settings");
     const isProjects = location.pathname === "/projects";
@@ -61,8 +85,26 @@ export function DynamicBreadcrumbs() {
                 {projectId && (
                     <>
                         <span className="mx-2 text-neutral-600">/</span>
+                        {issueId ? (
+                            <Link
+                                to={`/projects/${projectId}/issues`}
+                                className="text-neutral-500 hover:text-white transition-colors"
+                            >
+                                {projectName || "..."}
+                            </Link>
+                        ) : (
+                            <span className="text-white">
+                                {projectName || "..."}
+                            </span>
+                        )}
+                    </>
+                )}
+
+                {issueId && (
+                    <>
+                        <span className="mx-2 text-neutral-600">/</span>
                         <span className="text-white">
-                            {projectName || "..."}
+                            {issueTitle || "..."}
                         </span>
                     </>
                 )}

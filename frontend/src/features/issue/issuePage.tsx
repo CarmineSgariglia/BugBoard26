@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { getIssueApi, type Issue } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";
 import { IssueDetailsSidebar } from "./IssueDetailsSidebar";
 import { IssueAssigneesModal } from "./IssueAssigneesModal";
@@ -9,6 +10,7 @@ import { IssueAssigneesModal } from "./IssueAssigneesModal";
 export function IssuePage() {
     const { issueId } = useParams();
     const { user: currentUser } = useAuth(); // Prendiamo l'utente loggato
+    const { setLabel } = useBreadcrumbs();
     const [issue, setIssue] = useState<Issue | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
@@ -16,10 +18,13 @@ export function IssuePage() {
     useEffect(() => {
         if (issueId) {
             getIssueApi(issueId)
-                .then(setIssue)
+                .then(data => {
+                    setIssue(data);
+                    setLabel(issueId, data.title);
+                })
                 .finally(() => setIsLoading(false));
         }
-    }, [issueId]);
+    }, [issueId, setLabel]);
 
 
     const isAssigned = useMemo(() => {
