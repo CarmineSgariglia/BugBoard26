@@ -9,6 +9,7 @@ from django.utils import timezone
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,6 +19,7 @@ from ..models import (
     Issue,
     IssueAssignee,
     IssueEvent,
+    IssueImage,
     IssueStatus,
     NotifyType,
     ProjectMembership,
@@ -26,6 +28,7 @@ from ..permissions import is_admin
 from ..serializers import (
     AttachmentSerializer,
     IssueEventSerializer,
+    IssueImageSerializer,
     IssueSerializer,
 )
 from ..services import notify_users
@@ -34,6 +37,8 @@ from .helpers import (
     check_admin,
     ensure_issue_access,
     maybe_create_attachment,
+    save_issue_uploaded_file,
+    delete_media_path,
     request_user_ids,
     user_project_ids,
 )
@@ -237,6 +242,7 @@ class IssueViewSet(
 
 class AttachmentUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def post(self, request, updateId):
         event = IssueEvent.objects.filter(update_id=updateId).first()
@@ -248,7 +254,7 @@ class AttachmentUploadView(APIView):
 
         attachment = maybe_create_attachment(event, request.data)
         if not attachment:
-            raise ValidationError({"path": "path is required"})
+            raise ValidationError({"detail": "Either `file` or `path` is required"})
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
 
@@ -260,6 +266,7 @@ class AttachmentViewSet(
 ):
     serializer_class = AttachmentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     queryset = Attachment.objects.select_related("update", "update__issue")
     lookup_field = "attachment_id"
     lookup_url_kwarg = "attachmentId"
@@ -307,11 +314,70 @@ class AttachmentViewSet(
 
         attachment = maybe_create_attachment(event, request.data)
         if not attachment:
-            raise ValidationError({"path": "path is required"})
+            raise ValidationError({"detail": "Either `file` or `path` is required"})
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         attachment = self.get_object()
         self._ensure_attachment_write_access(attachment.update.issue)
+        delete_media_path(attachment.path)
         attachment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class IssueImageViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = IssueImageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    queryset = IssueImage.objects.select_related("issue", "issue__project")
+    lookup_field = "issue_image_id"
+    lookup_url_kwarg = "issueImageId"
+
+    def get_queryset(self):
+        queryset = super().get_queryset().filter(issue__project_id__in=user_project_ids(self.request.user))
+        issue_id = self.request.query_params.get("issueId")
+        if issue_id:
+            queryset = queryset.filter(issue_id=issue_id)
+        return queryset
+
+    def _ensure_issue_image_write_access(self, issue: Issue) -> None:
+        ensure_issue_access(self.request.user, issue)
+        if not (is_admin(self.request.user) or IssueAssignee.objects.filter(issue=issue, user=self.request.user).exists()):
+            raise PermissionDenied("Not allowed")
+
+    def create(self, request, *args, **kwargs):
+        issue_id = request.data.get("issueId")
+        if not issue_id:
+            raise ValidationError({"issueId": "issueId is required"})
+
+        issue = Issue.objects.filter(issue_id=issue_id).select_related("project").first()
+        if not issue:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        self._ensure_issue_image_write_access(issue)
+
+        uploaded_file = request.FILES.get("file")
+        if uploaded_file is None:
+            raise ValidationError({"file": "Image file is required"})
+        content_type = (getattr(uploaded_file, "content_type", "") or "").lower()
+        if not content_type.startswith("image/"):
+            raise ValidationError({"file": "Only image files are allowed"})
+
+        saved_path, _, _ = save_issue_uploaded_file(
+            uploaded_file=uploaded_file,
+            issue_id=issue.issue_id,
+            base_dir="issue-images",
+        )
+        issue_image = IssueImage.objects.create(issue=issue, path=saved_path)
+        return Response(IssueImageSerializer(issue_image).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        issue_image = self.get_object()
+        self._ensure_issue_image_write_access(issue_image.issue)
+        delete_media_path(issue_image.path)
+        issue_image.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

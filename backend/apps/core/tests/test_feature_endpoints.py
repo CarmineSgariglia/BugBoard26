@@ -1,5 +1,7 @@
 from datetime import timedelta
 from io import StringIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from django.contrib.auth import authenticate
@@ -18,6 +20,7 @@ from apps.core.models import (
     Issue,
     IssueAssignee,
     IssueEvent,
+    IssueImage,
     IssueStatus,
     Notification,
     NotifyType,
@@ -869,6 +872,33 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Attachment.objects.filter(attachment_id=attachment_id).exists())
 
+    def test_attachments_api_multipart_upload_saves_file_on_disk(self):
+        self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile("notes.txt", b"hello attachment", content_type="text/plain")
+
+        with TemporaryDirectory() as tmp_dir:
+            with override_settings(MEDIA_ROOT=tmp_dir):
+                response = self.client.post(
+                    "/api/attachments/",
+                    {
+                        "issueId": self.issue.issue_id,
+                        "message": "file upload",
+                        "file": uploaded,
+                    },
+                    format="multipart",
+                )
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                attachment = Attachment.objects.get(attachment_id=response.data["attachmentId"])
+                self.assertTrue(attachment.path.startswith(f"issue-attachments/{self.issue.issue_id}/"))
+                self.assertTrue((Path(tmp_dir) / attachment.path).exists())
+                self.assertEqual(response.data["mimeType"], "text/plain")
+                self.assertGreater(response.data["size"], 0)
+                self.assertTrue(response.data["url"].startswith("/media/"))
+
+                delete_response = self.client.delete(f"/api/attachments/{attachment.attachment_id}/")
+                self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+                self.assertFalse((Path(tmp_dir) / attachment.path).exists())
+
     def test_attachments_api_create_requires_target(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
@@ -877,6 +907,36 @@ class IssueWorkflowEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_issue_images_api_create_list_and_delete(self):
+        self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile("mock.png", b"\x89PNG\r\n\x1a\nimg-data", content_type="image/png")
+
+        with TemporaryDirectory() as tmp_dir:
+            with override_settings(MEDIA_ROOT=tmp_dir):
+                create_response = self.client.post(
+                    "/api/issue-images/",
+                    {
+                        "issueId": self.issue.issue_id,
+                        "file": uploaded,
+                    },
+                    format="multipart",
+                )
+                self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+                image_id = create_response.data["issueImageId"]
+                issue_image = IssueImage.objects.get(issue_image_id=image_id)
+                self.assertTrue(issue_image.path.startswith(f"issue-images/{self.issue.issue_id}/"))
+                self.assertTrue((Path(tmp_dir) / issue_image.path).exists())
+                self.assertTrue(create_response.data["url"].startswith("/media/"))
+
+                list_response = self.client.get(f"/api/issue-images/?issueId={self.issue.issue_id}")
+                self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+                self.assertTrue(any(item["issueImageId"] == image_id for item in list_response.data))
+
+                delete_response = self.client.delete(f"/api/issue-images/{image_id}/")
+                self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+                self.assertFalse(IssueImage.objects.filter(issue_image_id=image_id).exists())
+                self.assertFalse((Path(tmp_dir) / issue_image.path).exists())
 
     def test_issue_delete_requires_admin(self):
         self.client.force_authenticate(user=self.member)

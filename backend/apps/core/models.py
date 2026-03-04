@@ -197,6 +197,15 @@ class Attachment(models.Model):
         db_table = "Attachment"
 
 
+class IssueImage(models.Model):
+    issue_image_id = models.AutoField(primary_key=True, db_column="issueImageId")
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, db_column="issueId", related_name="images")
+    path = models.CharField(max_length=256)
+
+    class Meta:
+        db_table = "IssueImage"
+
+
 class Notification(models.Model):
     notification_id = models.AutoField(primary_key=True, db_column="notificationId")
     notify_type = models.CharField(max_length=32, choices=NotifyType.choices, db_column="type")

@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import logging
+import mimetypes
+from pathlib import Path
+from uuid import uuid4
 
 from django.contrib.auth.models import User
+from django.core.files.storage import default_storage
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from ..models import (
@@ -57,6 +61,7 @@ def parse_int_or_none(raw_value):
 
 
 MAX_USER_IDS = 100
+MAX_ISSUE_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 
 def request_user_ids(raw_value):
@@ -100,12 +105,48 @@ def apply_issue_filters(queryset, request):
 
 
 def maybe_create_attachment(event: IssueEvent, payload: dict):
+    uploaded_file = payload.get("file")
+    if uploaded_file is not None:
+        saved_path, mime_type, size = save_issue_uploaded_file(
+            uploaded_file=uploaded_file,
+            issue_id=event.issue_id,
+            base_dir="issue-attachments",
+        )
+        return Attachment.objects.create(update=event, path=saved_path, mime_type=mime_type, size=size)
+
     path = payload.get("path")
     if not path:
         return None
     mime_type = payload.get("mimeType", "application/octet-stream")
     size = int(payload.get("size", 0))
     return Attachment.objects.create(update=event, path=path, mime_type=mime_type, size=size)
+
+
+def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
+    size = int(getattr(uploaded_file, "size", 0) or 0)
+    if size <= 0:
+        raise ValidationError({"file": "File is empty"})
+    if size > MAX_ISSUE_FILE_SIZE_BYTES:
+        raise ValidationError({"file": "Max file size is 10MB"})
+
+    content_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower() or "application/octet-stream"
+    extension = Path(getattr(uploaded_file, "name", "")).suffix.lower()
+    if not extension:
+        extension = mimetypes.guess_extension(content_type) or ""
+    filename = f"{uuid4().hex}{extension}"
+    storage_path = f"{base_dir}/{issue_id}/{filename}"
+    saved_path = default_storage.save(storage_path, uploaded_file)
+    return saved_path, content_type, size
+
+
+def delete_media_path(path: str) -> None:
+    if not path:
+        return
+    try:
+        if default_storage.exists(path):
+            default_storage.delete(path)
+    except Exception:
+        logger.warning("Failed to delete media file at path: %s", path)
 
 
 def create_issue_for_project(*, request, project):

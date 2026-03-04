@@ -5,6 +5,7 @@ from .models import (
     Issue,
     IssueAssignee,
     IssueEvent,
+    IssueImage,
     IssueTag,
     Notification,
     NotifyUser,
@@ -71,6 +72,12 @@ class IssueEventAdmin(admin.ModelAdmin):
 class AttachmentAdmin(admin.ModelAdmin):
     list_display = ("attachment_id", "update", "mime_type", "size", "uploaded_at")
     search_fields = ("path", "mime_type")
+
+
+@admin.register(IssueImage)
+class IssueImageAdmin(admin.ModelAdmin):
+    list_display = ("issue_image_id", "issue", "path")
+    search_fields = ("path",)
 
 
 @admin.register(Tag)
