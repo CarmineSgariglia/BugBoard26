@@ -676,6 +676,40 @@ class IssueWorkflowEndpointTests(APITestCase):
         new_issue = Issue.objects.get(issue_id=response.data["issueId"])
         self.assertTrue(IssueEvent.objects.filter(issue=new_issue, event_type=EventType.CREATE).exists())
 
+    def test_issue_create_with_tag_names_reuses_existing_and_creates_missing(self):
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "title": "Created issue with names",
+            "description": "Created from test",
+            "type": "BUG",
+            "status": "TODO",
+            "priority": "MEDIUM",
+            "tagNames": ["api", "frontend", "API"],
+        }
+        response = self.client.post(f"/api/projects/{self.project.project_id}/issues/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        created_issue = Issue.objects.get(issue_id=response.data["issueId"])
+        issue_tag_names = set(created_issue.tags.values_list("name", flat=True))
+        self.assertEqual(issue_tag_names, {"api", "frontend"})
+        self.assertEqual(Tag.objects.filter(name__iexact="api").count(), 1)
+        self.assertEqual(Tag.objects.filter(name__iexact="frontend").count(), 1)
+
+    def test_issue_update_with_tag_names_reuses_existing_tags(self):
+        self.client.force_authenticate(user=self.member)
+        Tag.objects.create(name="ops")
+
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}/",
+            {"tagNames": ["api", "ops", "API"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.issue.refresh_from_db()
+        issue_tag_names = set(self.issue.tags.values_list("name", flat=True))
+        self.assertEqual(issue_tag_names, {"api", "ops"})
+        self.assertEqual(Tag.objects.filter(name__iexact="api").count(), 1)
+
     def test_assign_requires_admin(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(

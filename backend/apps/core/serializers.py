@@ -138,6 +138,11 @@ class IssueSerializer(serializers.ModelSerializer):
         child=serializers.IntegerField(min_value=1), write_only=True, required=False
     )
     tagIds = serializers.ListField(child=serializers.IntegerField(min_value=1), write_only=True, required=False)
+    tagNames = serializers.ListField(
+        child=serializers.CharField(max_length=16, allow_blank=False, trim_whitespace=True),
+        write_only=True,
+        required=False,
+    )
     assignees = serializers.SerializerMethodField(read_only=True)
     tags = TagSerializer(read_only=True, many=True)
 
@@ -158,6 +163,7 @@ class IssueSerializer(serializers.ModelSerializer):
             "closedAt",
             "assigneeIds",
             "tagIds",
+            "tagNames",
             "assignees",
             "tags",
         ]
@@ -172,19 +178,49 @@ class IssueSerializer(serializers.ModelSerializer):
             for user in obj.assignees.all()
         ]
 
+    def _resolve_tag_ids(self, *, tag_ids: list[int], tag_names: list[str]) -> list[int]:
+        resolved: list[int] = []
+        seen: set[int] = set()
+
+        if tag_ids:
+            existing_tag_ids = set(Tag.objects.filter(tag_id__in=tag_ids).values_list("tag_id", flat=True))
+            missing_tag_ids = [tag_id for tag_id in tag_ids if tag_id not in existing_tag_ids]
+            if missing_tag_ids:
+                raise serializers.ValidationError({"tagIds": f"Invalid tag ids: {missing_tag_ids}"})
+            for tag_id in tag_ids:
+                if tag_id not in seen:
+                    seen.add(tag_id)
+                    resolved.append(tag_id)
+
+        for raw_name in tag_names:
+            name = (raw_name or "").strip()
+            if not name:
+                continue
+            tag = Tag.objects.filter(name__iexact=name).first()
+            if not tag:
+                tag = Tag.objects.create(name=name)
+            if tag.tag_id not in seen:
+                seen.add(tag.tag_id)
+                resolved.append(tag.tag_id)
+
+        return resolved
+
     def create(self, validated_data):
         assignee_ids = validated_data.pop("assigneeIds", [])
         tag_ids = validated_data.pop("tagIds", [])
+        tag_names = validated_data.pop("tagNames", [])
+        resolved_tag_ids = self._resolve_tag_ids(tag_ids=tag_ids, tag_names=tag_names)
         issue = Issue.objects.create(**validated_data)
         for user_id in assignee_ids:
             IssueAssignee.objects.get_or_create(issue=issue, user_id=user_id)
-        for tag_id in tag_ids:
+        for tag_id in resolved_tag_ids:
             IssueTag.objects.get_or_create(issue=issue, tag_id=tag_id)
         return issue
 
     def update(self, instance, validated_data):
         assignee_ids = validated_data.pop("assigneeIds", None)
         tag_ids = validated_data.pop("tagIds", None)
+        tag_names = validated_data.pop("tagNames", None)
         if "issue_type" in validated_data:
             instance.issue_type = validated_data.pop("issue_type")
         for key, value in validated_data.items():
@@ -200,9 +236,10 @@ class IssueSerializer(serializers.ModelSerializer):
             for user_id in assignee_ids:
                 IssueAssignee.objects.get_or_create(issue=instance, user_id=user_id)
 
-        if tag_ids is not None:
-            IssueTag.objects.filter(issue=instance).exclude(tag_id__in=tag_ids).delete()
-            for tag_id in tag_ids:
+        if tag_ids is not None or tag_names is not None:
+            resolved_tag_ids = self._resolve_tag_ids(tag_ids=tag_ids or [], tag_names=tag_names or [])
+            IssueTag.objects.filter(issue=instance).exclude(tag_id__in=resolved_tag_ids).delete()
+            for tag_id in resolved_tag_ids:
                 IssueTag.objects.get_or_create(issue=instance, tag_id=tag_id)
 
         return instance
