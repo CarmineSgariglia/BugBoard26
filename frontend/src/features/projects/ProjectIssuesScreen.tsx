@@ -4,6 +4,8 @@ import { listProjectIssuesApi, listProjectsApi, listProjectMembersApi, type Issu
 import { useAuth } from "../../contexts/AuthContext";
 import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 
+import { CATEGORIES, PRIORITIES, STATUSES } from "../../utils/issueConstants";
+
 // UI Components
 import { SearchBar } from "../../components/ui/SearchBar";
 import { Select } from "../../components/ui/Select";
@@ -20,6 +22,7 @@ import { SidebarLayout } from "../../components/layout/SidebarLayout";
 import { FiPlus } from "react-icons/fi";
 import { BiCategoryAlt } from "react-icons/bi";
 import { HiOutlineFlag, HiOutlineCollection, HiOutlineSortAscending, HiOutlineSortDescending } from "react-icons/hi";
+import { IssueModal } from "../issue/IssueModal";
 
 export function ProjectIssuesScreen() {
   const navigate = useNavigate();
@@ -45,6 +48,9 @@ export function ProjectIssuesScreen() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isViewTeamModalOpen, setIsViewTeamModalOpen] = useState(false);
+
+  // Issue Modal
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!projectId) {
@@ -127,10 +133,7 @@ export function ProjectIssuesScreen() {
                 onChange={setStatusFilter}
                 options={[
                   { value: "all", label: "All Status" },
-                  { value: "TODO", label: "Todo" },
-                  { value: "IN_PROGRESS", label: "In Progress" },
-                  { value: "DONE", label: "Done" },
-                  { value: "CANCELLED", label: "Cancelled" },
+                  ...STATUSES,
                 ]}
                 icon={<HiOutlineCollection size={16} />}
               />
@@ -139,10 +142,7 @@ export function ProjectIssuesScreen() {
                 onChange={priorityFilter => setPriorityFilter(priorityFilter)}
                 options={[
                   { value: "all", label: "All Priority" },
-                  { value: "Urgent", label: "Urgent" },
-                  { value: "High", label: "High" },
-                  { value: "Medium", label: "Medium" },
-                  { value: "Low", label: "Low" }
+                  ...PRIORITIES,
                 ]}
                 icon={<HiOutlineFlag size={16} />}
               />
@@ -151,10 +151,7 @@ export function ProjectIssuesScreen() {
                 onChange={typeFilter => setTypeFilter(typeFilter)}
                 options={[
                   { value: "all", label: "All Type" },
-                  { value: "bug", label: "Bug" },
-                  { value: "documentation", label: "Documentation" },
-                  { value: "feature", label: "Feature" },
-                  { value: "question", label: "Question" }
+                  ...CATEGORIES,
                 ]}
                 icon={<BiCategoryAlt size={16} />}
               />
@@ -176,6 +173,7 @@ export function ProjectIssuesScreen() {
             icon={<FiPlus size={18} />}
             fullWidth={false}
             className="shadow-lg shadow-blue-600/20 whitespace-nowrap"
+            onClick={() => setIsIssueModalOpen(true)}
           >
             Report New Issue
           </Button>
@@ -285,6 +283,18 @@ export function ProjectIssuesScreen() {
         )}
 
       </div>
+
+      {isIssueModalOpen && (
+        <IssueModal
+          isOpen={isIssueModalOpen}
+          onClose={() => setIsIssueModalOpen(false)}
+          projectId={projectId}
+          onSuccess={() => {
+            setIsIssueModalOpen(false);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }

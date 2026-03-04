@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { isValidEmail, isValidPassword } from "../../utils/validation";
-import { TextField } from "../../components/ui/TextField";
+import { FormField } from "../../components/ui/FormField";
+import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { loginApi } from "../../services/api";
 import { useNavigate } from "react-router-dom";
@@ -39,19 +40,23 @@ export function LoginScreen() {
     return (
         <div className="flex flex-col gap-3">
             <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-                <TextField
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-                <TextField
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                <FormField>
+                    <Input
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </FormField>
+                <FormField>
+                    <Input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </FormField>
+                {error ? <p className="text-sm text-rose-400">{error}</p> : null}
                 <Button type="submit" disabled={!isFormValid || isLoading} isLoading={isLoading}>
                     Login
                 </Button>

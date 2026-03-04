@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { TextField } from "../../components/ui/TextField";
+import { FormField } from "../../components/ui/FormField";
+import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { isValidPassword, isValidCode } from "../../utils/validation";
 import { resetPasswordApi, verifyOtpApi } from "../../services/api";
@@ -54,20 +55,24 @@ export function RetrieveStep2Screen() {
                 <p className="text-sm text-red-400">Missing email context. Restart password recovery.</p>
             ) : null}
             <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-                <TextField
-                    type="text"
-                    placeholder="Code"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    maxLength={6}
-                />
-                <TextField
-                    type="password"
-                    placeholder="New Password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                />
-                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                <FormField>
+                    <Input
+                        type="text"
+                        placeholder="Code"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        maxLength={6}
+                    />
+                </FormField>
+                <FormField>
+                    <Input
+                        type="password"
+                        placeholder="New Password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                </FormField>
+                {error ? <p className="text-sm text-rose-400">{error}</p> : null}
                 {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
                 <Button type="submit" disabled={!isFormValid || isLoading} isLoading={isLoading}>
                     Change password

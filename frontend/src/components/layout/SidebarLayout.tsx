@@ -8,7 +8,7 @@ interface SidebarLayoutProps {
 
 export function SidebarLayout({ children, sidebar, header }: SidebarLayoutProps) {
     return (
-        <div className="max-w-[1400px] mx-auto flex flex-col gap-8">
+        <div className="max-w-[1400px] mx-auto flex flex-col gap-8 w-full">
             {header && <div>{header}</div>}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

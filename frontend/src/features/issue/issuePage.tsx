@@ -2,24 +2,35 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { getIssueApi, type Issue } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";
 import { IssueDetailsSidebar } from "./IssueDetailsSidebar";
 import { IssueAssigneesModal } from "./IssueAssigneesModal";
+import { IssueModal } from "./IssueModal";
 
 export function IssuePage() {
     const { issueId } = useParams();
     const { user: currentUser } = useAuth(); // Prendiamo l'utente loggato
+    const { setLabel } = useBreadcrumbs();
     const [issue, setIssue] = useState<Issue | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => {
+    const fetchIssueDetails = () => {
         if (issueId) {
             getIssueApi(issueId)
-                .then(setIssue)
+                .then(data => {
+                    setIssue(data);
+                    setLabel(issueId, data.title);
+                })
                 .finally(() => setIsLoading(false));
         }
-    }, [issueId]);
+    };
+
+    useEffect(() => {
+        fetchIssueDetails();
+    }, [issueId, setLabel]);
 
 
     const isAssigned = useMemo(() => {
@@ -38,7 +49,7 @@ export function IssuePage() {
                         issue={issue}
                         isAdmin={currentUser?.isAdmin}
                         isAssigned={isAssigned}
-                        onEditClick={() => console.log("Edit")}
+                        onEditClick={() => setIsModalOpen(true)}
                         onManageMembersClick={() => setIsAssigneesModalOpen(true)}
                     />
                 }
@@ -53,6 +64,17 @@ export function IssuePage() {
                 isOpen={isAssigneesModalOpen}
                 onClose={() => setIsAssigneesModalOpen(false)}
                 onSuccess={(updatedIssue) => setIssue(updatedIssue)}
+            />
+            <IssueModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                mode="edit"
+                issue={issue}
+                initialData={issue}
+                onSuccess={() => {
+                    setIsModalOpen(false);
+                    fetchIssueDetails();
+                }}
             />
         </div>
     );

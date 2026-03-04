@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { isValidEmail } from "../../utils/validation";
-import { TextField } from "../../components/ui/TextField";
+import { FormField } from "../../components/ui/FormField";
+import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { useNavigate } from "react-router-dom";
 import { requestOtpApi } from "../../services/api";
@@ -38,14 +39,16 @@ export function RetrieveStep1Screen() {
         <div className="flex flex-col gap-3">
 
             <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-                <TextField
-                    ref={emailInputRef}
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                <FormField>
+                    <Input
+                        ref={emailInputRef}
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </FormField>
+                {error ? <p className="text-sm text-rose-400">{error}</p> : null}
                 <Button type="submit" disabled={!isEmailValid || isLoading} isLoading={isLoading}>
                     Send Code
                 </Button>
