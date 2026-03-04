@@ -73,6 +73,7 @@ class FrontendContractTests(APITestCase):
             "issueId",
             "projectId",
             "reporterId",
+            "reporter",
             "title",
             "description",
             "type",
@@ -83,6 +84,8 @@ class FrontendContractTests(APITestCase):
             "closedAt",
         }
         self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
+        reporter_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
+        self.assertTrue(reporter_keys.issubset(set(response.data[0]["reporter"].keys())))
 
     def test_notifications_payload_matches_frontend_contract(self):
         self.client.force_authenticate(user=self.member)

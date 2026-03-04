@@ -48,12 +48,12 @@ class IssueViewSet(
 ):
     serializer_class = IssueSerializer
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Issue.objects.select_related("project", "reporter").prefetch_related("assignees", "tags")
+    queryset = Issue.objects.select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
     lookup_field = "issue_id"
     lookup_url_kwarg = "issueId"
 
     def get_queryset(self):
-        queryset = Issue.objects.select_related("project", "reporter").prefetch_related("assignees", "tags")
+        queryset = Issue.objects.select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
         queryset = queryset.filter(project_id__in=user_project_ids(self.request.user))
         project_id = self.request.query_params.get("projectId")
         if project_id:
