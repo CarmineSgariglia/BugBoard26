@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AttachmentUploadView,
+    AttachmentViewSet,
     IssueViewSet,
     LoginView,
     LogoutView,
@@ -23,6 +24,7 @@ router = DefaultRouter()
 router.register("users", UserViewSet, basename="users")
 router.register("projects", ProjectViewSet, basename="projects")
 router.register("issues", IssueViewSet, basename="issues")
+router.register("attachments", AttachmentViewSet, basename="attachments")
 router.register("notifications", NotificationViewSet, basename="notifications")
 router.register("tags", TagViewSet, basename="tags")
 

@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..models import (
+    Attachment,
     EventType,
     Issue,
     IssueAssignee,
@@ -214,6 +215,11 @@ class IssueViewSet(
         ]
         return Response(payload)
 
+    @action(detail=True, methods=["patch"], url_path="details")
+    def details(self, request, issueId=None):
+        """Dedicated endpoint for issue edit pages to patch full issue details."""
+        return self.partial_update(request, issueId=issueId)
+
     def partial_update(self, request, *args, **kwargs):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
@@ -244,3 +250,68 @@ class AttachmentUploadView(APIView):
         if not attachment:
             raise ValidationError({"path": "path is required"})
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+
+
+class AttachmentViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = AttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Attachment.objects.select_related("update", "update__issue")
+    lookup_field = "attachment_id"
+    lookup_url_kwarg = "attachmentId"
+
+    def get_queryset(self):
+        queryset = super().get_queryset().filter(update__issue__project_id__in=user_project_ids(self.request.user))
+        issue_id = self.request.query_params.get("issueId")
+        update_id = self.request.query_params.get("updateId")
+        if issue_id:
+            queryset = queryset.filter(update__issue__issue_id=issue_id)
+        if update_id:
+            queryset = queryset.filter(update_id=update_id)
+        return queryset
+
+    def _ensure_attachment_write_access(self, issue: Issue) -> None:
+        ensure_issue_access(self.request.user, issue)
+        if not (is_admin(self.request.user) or IssueAssignee.objects.filter(issue=issue, user=self.request.user).exists()):
+            raise PermissionDenied("Not allowed")
+
+    def create(self, request, *args, **kwargs):
+        update_id = request.data.get("updateId")
+        issue_id = request.data.get("issueId")
+        if not update_id and not issue_id:
+            raise ValidationError({"detail": "Either `updateId` or `issueId` is required"})
+        if update_id and issue_id:
+            raise ValidationError({"detail": "Provide only one between `updateId` and `issueId`"})
+
+        if update_id:
+            event = IssueEvent.objects.filter(update_id=update_id).select_related("issue").first()
+            if not event:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            self._ensure_attachment_write_access(event.issue)
+        else:
+            issue = Issue.objects.filter(issue_id=issue_id).select_related("project").first()
+            if not issue:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            self._ensure_attachment_write_access(issue)
+            message = (request.data.get("message", "") or "").strip() or "Attachment uploaded"
+            event = IssueEvent.objects.create(
+                issue=issue,
+                actor=request.user,
+                event_type=EventType.COMMENT,
+                message=message,
+            )
+
+        attachment = maybe_create_attachment(event, request.data)
+        if not attachment:
+            raise ValidationError({"path": "path is required"})
+        return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        attachment = self.get_object()
+        self._ensure_attachment_write_access(attachment.update.issue)
+        attachment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
