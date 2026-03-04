@@ -85,7 +85,7 @@ export function AddUsersSection() {
                 mode="view"
             />
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
                 <IdentityFields
                     name={name}
@@ -101,7 +101,7 @@ export function AddUsersSection() {
                 />
 
                 {/* Divider Line */}
-                <div className="h-[1px] w-full bg-white/5 mt-2 mb-1"></div>
+                <div className="h-[1px] w-full bg-white/5"></div>
 
                 <div className="pl-8 pr-8">
                     {error ? <p className="text-sm text-red-400 whitespace-pre-line">{error}</p> : null}
