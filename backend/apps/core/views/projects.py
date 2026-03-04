@@ -154,7 +154,7 @@ class ProjectIssueListCreateView(APIView):
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
-        queryset = Issue.objects.filter(project=project).select_related("project", "reporter").prefetch_related("assignees", "tags")
+        queryset = Issue.objects.filter(project=project).select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
         queryset = apply_issue_filters(queryset, request)
         return Response(IssueSerializer(queryset, many=True).data)
 

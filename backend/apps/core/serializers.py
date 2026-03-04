@@ -129,6 +129,7 @@ class IssueSerializer(serializers.ModelSerializer):
     issueId = serializers.IntegerField(source="issue_id", read_only=True)
     projectId = serializers.IntegerField(source="project.project_id", read_only=True)
     reporterId = serializers.IntegerField(source="reporter.id", read_only=True)
+    reporter = UserSerializer(read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
     closedAt = serializers.DateTimeField(source="closed_at", read_only=True)
@@ -146,6 +147,7 @@ class IssueSerializer(serializers.ModelSerializer):
             "issueId",
             "projectId",
             "reporterId",
+            "reporter",
             "title",
             "description",
             "type",
