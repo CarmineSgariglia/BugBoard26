@@ -156,6 +156,16 @@ export type CreateIssuePayload = {
   tagNames?: string[];
 };
 
+export type CreateAttachmentPayload = {
+  path: string;
+  mimeType?: string;
+  size?: number;
+  updateId?: number;
+  issueId?: number;
+  message?: string;
+};
+
+
 export type IssueUpdate = {
   updateId: number;
   issueId: number;
@@ -292,6 +302,25 @@ export async function createProjectIssueApi(projectId: string | number, payload:
   return data;
 }
 
+export async function updateIssueDetailsApi(issueId: number | string, payload: UpdateIssuePayload): Promise<Issue> {
+  const { data } = await api.patch<Issue>(`/issues/${issueId}/details/`, payload);
+  return data;
+}
+
+export async function createAttachmentApi(payload: CreateAttachmentPayload): Promise<IssueAttachment> {
+  const { data } = await api.post<IssueAttachment>("/attachments/", payload);
+  return data;
+}
+
+export async function listAttachmentsApi(params: { issueId?: number; updateId?: number }): Promise<IssueAttachment[]> {
+  const { data } = await api.get<IssueAttachment[]>("/attachments/", { params });
+  return data;
+}
+
+export async function deleteAttachmentApi(attachmentId: number): Promise<void> {
+  await api.delete(`/attachments/${attachmentId}/`);
+}
+
 export async function getIssueApi(issueId: string | number): Promise<Issue> {
   const { data } = await api.get<Issue>(`/issues/${issueId}/`);
   return data;
@@ -320,6 +349,10 @@ export async function readNotificationApi(notificationId: number): Promise<Notif
 export async function readAllNotificationsApi(): Promise<{ updated: number }> {
   const { data } = await api.post<{ updated: number }>("/notifications/read-all/");
   return data;
+}
+
+export async function deleteNotificationApi(notificationId: number): Promise<void> {
+  await api.delete(`/notifications/${notificationId}/`);
 }
 
 export function resolveMediaUrl(pathOrUrl?: string): string {

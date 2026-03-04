@@ -1,20 +1,20 @@
 export const CATEGORIES = [
-    { label: "Bug", value: "bug" },
-    { label: "Feature", value: "feature" },
-    { label: "Documentation", value: "documentation" },
-    { label: "Question", value: "question" },
+    { label: "Bug", value: "BUG" },
+    { label: "Feature", value: "FEATURE" },
+    { label: "Documentation", value: "DOCUMENTATION" },
+    { label: "Question", value: "QUESTION" },
 ];
 
 export const PRIORITIES = [
-    { label: "Low", value: "low" },
-    { label: "Medium", value: "medium" },
-    { label: "High", value: "high" },
-    { label: "Urgent", value: "urgent" },
+    { label: "Low", value: "LOW" },
+    { label: "Medium", value: "MEDIUM" },
+    { label: "High", value: "HIGH" },
+    { label: "Urgent", value: "URGENT" },
 ];
 
 export const STATUSES = [
-    { label: "To do", value: "todo" },
-    { label: "In Progress", value: "in_progress" },
-    { label: "Done", value: "done" },
-    { label: "Cancelled", value: "cancelled" },
+    { label: "To do", value: "TODO" },
+    { label: "In Progress", value: "IN_PROGRESS" },
+    { label: "Done", value: "DONE" },
+    { label: "Cancelled", value: "CANCELLED" },
 ];

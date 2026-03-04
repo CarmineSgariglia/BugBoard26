@@ -4,6 +4,7 @@ import { SearchBar } from "../ui/SearchBar";
 import { Select } from "../ui/Select";
 import { Pagination } from "../ui/Pagination";
 import { UserTable } from "../ui/UserTable";
+import { ScrollComponent } from "../ui/ScrollComponent";
 import { AdminUserEditSection } from "./AdminUserEditSection";
 import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 import { FiEdit2 } from "react-icons/fi";

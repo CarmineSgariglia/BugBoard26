@@ -8,6 +8,7 @@ import { type Issue } from "../../services/api";
 import { FiEdit2, FiUsers } from "react-icons/fi";
 import { SidebarButton } from "../../components/ui/SidebarButton";
 import { Avatar } from "../../components/ui/Avatar";
+import { ScrollComponent } from "../../components/ui/ScrollComponent";
 
 
 interface IssueDetailsSidebarProps {
@@ -50,7 +51,7 @@ export function IssueDetailsSidebar({
         <SidebarCard>
 
             <div className="flex flex-row gap-8 items-center justify-between">
-                <SidebarCard.Section title="Status">
+                <SidebarCard.Section title="Status" className="items-center">
                     <StatusBadge
                         text={issue.status.replace('_', ' ')}
                         color={getStatusColor(issue.status)}
@@ -59,16 +60,24 @@ export function IssueDetailsSidebar({
                     />
                 </SidebarCard.Section>
 
-                <SidebarCard.Section title="Priority">
+                <SidebarCard.Section title="Type" className="items-center">
+                    <Tag
+                        text={issue.type}
+                    />
+                </SidebarCard.Section>
+
+                <SidebarCard.Section title="Priority" className="items-center">
                     <Priority level={issue.priority} />
                 </SidebarCard.Section>
             </div>
 
-
             <SidebarCard.Section title="Description">
+
                 <div className="flex flex-col gap-2">
                     <p className="text-sm text-neutral-400 leading-relaxed break-words">
-                        {displayDescription}
+                        <ScrollComponent maxHeight="max-h-[150px]">
+                            {displayDescription}
+                        </ScrollComponent>
                     </p>
                     {isLongDescription && (
                         <button
@@ -79,6 +88,7 @@ export function IssueDetailsSidebar({
                         </button>
                     )}
                 </div>
+
             </SidebarCard.Section>
 
             <SidebarCard.Section title="Reporter">

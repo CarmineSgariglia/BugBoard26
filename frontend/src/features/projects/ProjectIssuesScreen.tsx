@@ -289,6 +289,7 @@ export function ProjectIssuesScreen() {
           isOpen={isIssueModalOpen}
           onClose={() => setIsIssueModalOpen(false)}
           projectId={projectId}
+          mode="create"
           onSuccess={() => {
             setIsIssueModalOpen(false);
             fetchData();

@@ -51,9 +51,10 @@ class NotifyType(models.TextChoices):
     PROJECT_ADDED = "PROJECT_ADDED", "Project Added"
     PROJECT_REMOVED = "PROJECT_REMOVED", "Project Removed"
     ISSUE_ASSIGNED = "ISSUE_ASSIGNED", "Issue Assigned"
-    ISSUE_UPDATED = "ISSUE_UPDATED", "Issue Updated"
+    ISSUE_ADDED = "ISSUE_ADDED", "Issue Added"
     ISSUE_CLOSED = "ISSUE_CLOSED", "Issue Closed"
     ISSUE_UNASSIGNED = "ISSUE_UNASSIGNED", "Issue Unassigned"
+    ISSUE_UPDATED = "ISSUE_UPDATED", "Issue Updated"
 
 
 class EventType(models.TextChoices):

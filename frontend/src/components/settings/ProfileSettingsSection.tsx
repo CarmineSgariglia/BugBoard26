@@ -241,7 +241,11 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
                 subtitle="Update your identity and security preferences"
                 onImageSelect={handleImageSelect}
                 isUploading={isUploading}
+                className="text-sm-p-6 text-neutral-400 text-center max-w-sm"
             />
+
+
+
 
             {/* Blocco 2: I campi del form dell'identità (si legano allo State) */}
             <IdentityFields

@@ -11,7 +11,7 @@ import { TagInput } from "../../components/ui/TagInput";
 import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
 import { FiX } from "react-icons/fi";
 import { Button } from "../../components/ui/Button";
-import { createProjectIssueApi, updateIssueApi, type Issue } from "../../services/api";
+import { createProjectIssueApi, updateIssueDetailsApi, createAttachmentApi, type Issue } from "../../services/api";
 
 
 interface IssueModalProps {
@@ -28,9 +28,9 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
     // --- States ---
     const [title, setTitle] = useState(initialData?.title || "");
     const [description, setDescription] = useState(initialData?.description || "");
-    const [category, setCategory] = useState(initialData?.type?.toLowerCase() || CATEGORIES[0].value);
-    const [priority, setPriority] = useState(initialData?.priority?.toLowerCase() || "medium");
-    const [status, setStatus] = useState(initialData?.status?.toLowerCase() || STATUSES[0].value); // DEVO INSERIRE QUESTA LOGICA <----------------
+    const [category, setCategory] = useState(initialData?.type || CATEGORIES[0].value);
+    const [priority, setPriority] = useState(initialData?.priority || "MEDIUM");
+    const [status, setStatus] = useState(initialData?.status || STATUSES[0].value); // DEVO INSERIRE QUESTA LOGICA <----------------
     const [tags, setTags] = useState<string[]>(initialData?.tags?.map(tag => tag.name) || []);
     const [files, setFiles] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,16 +40,16 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
             if (mode === "edit" && initialData) {
                 setTitle(initialData.title);
                 setDescription(initialData.description);
-                setCategory(initialData.type?.toLowerCase() || CATEGORIES[0].value);
-                setPriority(initialData.priority?.toLowerCase() || "medium");
-                setStatus(initialData.status?.toLowerCase() || STATUSES[0].value);
+                setCategory(initialData.type || CATEGORIES[0].value);
+                setPriority(initialData.priority || "MEDIUM");
+                setStatus(initialData.status || STATUSES[0].value);
                 setTags(initialData.tags?.map(t => t.name) || []);
                 setFiles([]);
             } else if (mode === "create") {
                 setTitle("");
                 setDescription("");
                 setCategory(CATEGORIES[0].value);
-                setPriority("medium");
+                setPriority("MEDIUM");
                 setStatus(STATUSES[0].value);
                 setTags([]);
                 setFiles([]);
@@ -66,9 +66,9 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
 
         const titleChanged = title !== initialData.title;
         const descChanged = description !== initialData.description;
-        const categoryChanged = category !== (initialData.type?.toLowerCase() || "");
-        const priorityChanged = priority !== (initialData.priority?.toLowerCase() || "");
-        const statusChanged = status !== (initialData.status?.toLowerCase() || "");
+        const categoryChanged = category !== (initialData.type || "");
+        const priorityChanged = priority !== (initialData.priority || "");
+        const statusChanged = status !== (initialData.status || "");
         const tagsChanged = JSON.stringify(tags) !== JSON.stringify(initialData.tags?.map(t => t.name) || []);
         const filesChanged = files.length > 0;
 
@@ -83,21 +83,37 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
         if (!isFormValid) return;
         setIsSubmitting(true);
         try {
+            let resultIssue: Issue | null = null;
+
             if (mode === "create" && projectId) {
-                await createProjectIssueApi(projectId, {
+                resultIssue = await createProjectIssueApi(projectId, {
                     title,
                     description,
                     type: category,
                     priority,
+                    tagNames: tags,
                 });
             } else if (mode === "edit" && issue?.issueId) {
-                await updateIssueApi(issue.issueId, {
+                resultIssue = await updateIssueDetailsApi(issue.issueId, {
                     title,
                     description,
                     type: category,
                     priority,
                     status,
+                    tagNames: tags,
                 });
+            }
+
+            // Upload file allegati
+            if (resultIssue && files.length > 0) {
+                for (const file of files) {
+                    await createAttachmentApi({
+                        issueId: resultIssue.issueId,
+                        path: file.name,
+                        mimeType: file.type,
+                        size: file.size,
+                    });
+                }
             }
 
             if (onSuccess) onSuccess();
@@ -107,6 +123,7 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
             setIsSubmitting(false);
         }
     };
+
 
     return (
         <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
