@@ -6,7 +6,7 @@ interface FileAttachmentProps {
     maxSizeMB?: number;
 }
 
-export function FileAttachment({ onFilesChange, maxSizeMB = 2 }: FileAttachmentProps) {
+export function FileAttachment({ onFilesChange, maxSizeMB = 10 }: FileAttachmentProps) {
     const [files, setFiles] = useState<File[]>([]);
     const [error, setError] = useState<string | null>(null);
 

@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { GlassCard } from "../ui/GlassCard";
-import { Button } from "../ui/Button";
 import { Toggle } from "../ui/Toggle";
 import { isValidEmail, isValidName } from "../../utils/validation";
 import { getErrorMessage } from "../../utils/error";
 import { createUserApi } from "../../services/api";
 import { IdentityFields } from "./IdentityFields";
-import { TiUserAdd } from "react-icons/ti";
+import { ProfileHeader } from "./ProfileHeader";
+import { FooterActions } from "../ui/FooterActions";
 
 
 function buildUsernameFromEmail(email: string): string {
@@ -43,8 +43,8 @@ export function AddUsersSection() {
         );
     }, [name, surname, email]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async (e?: React.FormEvent) => {
+        e?.preventDefault();
         if (!isFormValid || isLoading) return;
         setIsLoading(true);
         setError("");
@@ -77,19 +77,15 @@ export function AddUsersSection() {
     };
 
     return (
-        <GlassCard className="w-full flex flex-col pt-8 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+        <GlassCard className="w-full">
 
-            <div className="flex flex-col items-center justify-center mb-8 mt-2">
-                <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
-                    <TiUserAdd className="text-white-400" size={32} />
-                </div>
-                <h2 className="text-xl font-bold text-white mb-1">Add New User</h2>
-                <p className="text-sm-p-6 text-neutral-400 text-center max-w-sm">
-                    Enter the details below to create a new account.
-                </p>
-            </div>
+            <ProfileHeader
+                title="Add New User"
+                subtitle="Enter the details below to create a new account."
+                mode="view"
+            />
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
                 <IdentityFields
                     name={name}
@@ -101,11 +97,11 @@ export function AddUsersSection() {
                     errorName={!isNameValid ? "Name must contain only letters (min. 3)." : undefined}
                     errorSurname={!isSurnameValid ? "Surname must contain only letters (min. 3)." : undefined}
                     errorEmail={!isEmailValid ? "Invalid email address." : undefined}
-                    className="px-8 pb-4 flex flex-col gap-5"
+
                 />
 
                 {/* Divider Line */}
-                <div className="h-[1px] w-full bg-white/5 mt-2 mb-1"></div>
+                <div className="h-[1px] w-full bg-white/5"></div>
 
                 <div className="pl-8 pr-8">
                     {error ? <p className="text-sm text-red-400 whitespace-pre-line">{error}</p> : null}
@@ -120,19 +116,14 @@ export function AddUsersSection() {
                     </span>
                 </div>
 
-                {/* Add User Button Container */}
-                <div className="mt-4 bg-[#20252F] -mx-18 p-6 rounded-b-[24px]">
-                    <Button
-                        type="submit"
-                        variant="primary"
-                        size="lg"
-                        isLoading={isLoading}
-                        disabled={!isFormValid || isLoading}
-                        fullWidth
-                    >
-                        Add User
-                    </Button>
-                </div>
+                {/* Footer con bottone Add User */}
+                <FooterActions
+                    isSaveEnabled={isFormValid && !isLoading}
+                    onSave={() => handleSubmit()}
+                    isSaving={isLoading}
+                    saveLabel="Add User"
+                    links={[]}
+                />
             </form>
         </GlassCard>
     );

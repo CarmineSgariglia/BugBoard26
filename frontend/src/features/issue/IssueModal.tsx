@@ -11,7 +11,7 @@ import { TagInput } from "../../components/ui/TagInput";
 import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
 import { FiX } from "react-icons/fi";
 import { Button } from "../../components/ui/Button";
-import { createProjectIssueApi, updateIssueDetailsApi, createAttachmentApi, type Issue } from "../../services/api";
+import { createProjectIssueApi, updateIssueDetailsApi, uploadAttachmentApi, type Issue } from "../../services/api";
 
 
 interface IssueModalProps {
@@ -107,12 +107,7 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
             // Upload file allegati
             if (resultIssue && files.length > 0) {
                 for (const file of files) {
-                    await createAttachmentApi({
-                        issueId: resultIssue.issueId,
-                        path: file.name,
-                        mimeType: file.type,
-                        size: file.size,
-                    });
+                    await uploadAttachmentApi(file, resultIssue.issueId);
                 }
             }
 
