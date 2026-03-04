@@ -132,9 +132,17 @@ export type IssueAttachment = {
   attachmentId: number;
   updateId: number;
   path: string;
+  url: string;
   mimeType: string;
   size: number;
   uploadedAt: string;
+};
+
+export type IssueImage = {
+  issueImageId: number;
+  issueId: number;
+  path: string;
+  url: string;
 };
 
 export type UpdateIssuePayload = {
@@ -156,14 +164,7 @@ export type CreateIssuePayload = {
   tagNames?: string[];
 };
 
-export type CreateAttachmentPayload = {
-  path: string;
-  mimeType?: string;
-  size?: number;
-  updateId?: number;
-  issueId?: number;
-  message?: string;
-};
+
 
 
 export type IssueUpdate = {
@@ -307,8 +308,18 @@ export async function updateIssueDetailsApi(issueId: number | string, payload: U
   return data;
 }
 
-export async function createAttachmentApi(payload: CreateAttachmentPayload): Promise<IssueAttachment> {
-  const { data } = await api.post<IssueAttachment>("/attachments/", payload);
+export async function uploadAttachmentApi(
+  file: File,
+  issueId: number,
+  message?: string
+): Promise<IssueAttachment> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("issueId", String(issueId));
+  if (message) formData.append("message", message);
+  const { data } = await api.post<IssueAttachment>("/attachments/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 }
 
@@ -319,6 +330,25 @@ export async function listAttachmentsApi(params: { issueId?: number; updateId?: 
 
 export async function deleteAttachmentApi(attachmentId: number): Promise<void> {
   await api.delete(`/attachments/${attachmentId}/`);
+}
+
+export async function uploadIssueImageApi(file: File, issueId: number): Promise<IssueImage> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("issueId", String(issueId));
+  const { data } = await api.post<IssueImage>("/issue-images/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function listIssueImagesApi(issueId: number): Promise<IssueImage[]> {
+  const { data } = await api.get<IssueImage[]>("/issue-images/", { params: { issueId } });
+  return data;
+}
+
+export async function deleteIssueImageApi(issueImageId: number): Promise<void> {
+  await api.delete(`/issue-images/${issueImageId}/`);
 }
 
 export async function getIssueApi(issueId: string | number): Promise<Issue> {

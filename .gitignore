@@ -12,3 +12,7 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+
+# Media (Uploads)
+backend/media/
