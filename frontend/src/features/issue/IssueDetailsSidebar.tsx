@@ -60,11 +60,16 @@ export function IssueDetailsSidebar({
                     />
                 </SidebarCard.Section>
 
+                <SidebarCard.Section title="Category">
+                    <Tag className="w-full justify-center"
+                        text={issue.type}
+                    />
+                </SidebarCard.Section>
+
                 <SidebarCard.Section title="Priority">
                     <Priority level={issue.priority} />
                 </SidebarCard.Section>
             </div>
-
 
             <SidebarCard.Section title="Description">
 
