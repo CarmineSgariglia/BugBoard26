@@ -27,7 +27,7 @@ export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUpl
     };
 
     return (
-        <div className="flex flex-col items-center pt-10 pb-6 px-8 text-center">
+        <div className={`flex flex-col items-center pt-10 pb-6 px-8 text-center`}>
             <div
                 className="relative h-[72px] w-[72px] rounded-full bg-[#fca5a5] flex items-center justify-center overflow-hidden mb-5 shadow-lg border-[3px] border-[#1A1D24]/80 group cursor-pointer transition-transform hover:scale-105"
                 onClick={() => !isUploading && fileInputRef.current?.click()}
@@ -60,7 +60,7 @@ export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUpl
                 />
             </div>
             <h1 className="text-xl font-bold text-white mb-1.5 tracking-tight">{title}</h1>
-            <p className="text-xs font-medium text-neutral-400">{subtitle}</p>
+            <p className="text-sm-p-6 text-neutral-400 text-center max-w-sm">{subtitle}</p>
         </div>
     );
 }

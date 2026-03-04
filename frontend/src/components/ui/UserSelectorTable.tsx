@@ -4,6 +4,7 @@ import { UserTable } from "./UserTable";
 import { Pagination } from "./Pagination";
 import { Select } from "./Select";
 import { FiPlus, FiX } from "react-icons/fi";
+import { ScrollComponent } from "./ScrollComponent";
 import type { AuthUser } from "../../services/api";
 
 interface UserSelectorTableProps {
@@ -95,7 +96,7 @@ export function UserSelectorTable({
             </div>
 
             <div className="flex-1 min-h-0 border border-white/5 bg-[#121620]/30 rounded-xl overflow-hidden flex flex-col">
-                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                <ScrollComponent maxHeight="max-h-[300px]" hideBorder>
                     <UserTable
                         users={filteredUsers}
                         isLoading={isLoading}
@@ -128,7 +129,7 @@ export function UserSelectorTable({
                             );
                         }}
                     />
-                </div>
+                </ScrollComponent>
 
                 {/* Pagination */}
                 {totalItems > 0 && !isLoading && !error && onPageChange && (

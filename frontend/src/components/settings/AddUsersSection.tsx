@@ -85,7 +85,7 @@ export function AddUsersSection() {
                 </div>
                 <h2 className="text-xl font-bold text-white mb-1">Add New User</h2>
                 <p className="text-sm-p-6 text-neutral-400 text-center max-w-sm">
-                    Enter the details below to create a new account in the system.
+                    Enter the details below to create a new account.
                 </p>
             </div>
 

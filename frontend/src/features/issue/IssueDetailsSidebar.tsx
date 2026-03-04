@@ -8,6 +8,7 @@ import { type Issue } from "../../services/api";
 import { FiEdit2, FiUsers } from "react-icons/fi";
 import { SidebarButton } from "../../components/ui/SidebarButton";
 import { Avatar } from "../../components/ui/Avatar";
+import { ScrollComponent } from "../../components/ui/ScrollComponent";
 
 
 interface IssueDetailsSidebarProps {
@@ -66,9 +67,12 @@ export function IssueDetailsSidebar({
 
 
             <SidebarCard.Section title="Description">
+
                 <div className="flex flex-col gap-2">
                     <p className="text-sm text-neutral-400 leading-relaxed break-words">
-                        {displayDescription}
+                        <ScrollComponent maxHeight="max-h-[150px]">
+                            {displayDescription}
+                        </ScrollComponent>
                     </p>
                     {isLongDescription && (
                         <button
@@ -79,6 +83,7 @@ export function IssueDetailsSidebar({
                         </button>
                     )}
                 </div>
+
             </SidebarCard.Section>
 
             <SidebarCard.Section title="Reporter">

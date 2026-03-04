@@ -5,6 +5,7 @@ import { AvatarGroup } from "../ui/AvatarGroup";
 import { type Project } from "../../services/api";
 import { SidebarCard } from "../layout/SidebarCard";
 import { SidebarButton } from "../ui/SidebarButton";
+import { ScrollComponent } from "../ui/ScrollComponent";
 
 interface ProjectSidebarProps {
     project: Project;
@@ -23,9 +24,11 @@ export function ProjectSidebar({
     return (
         <SidebarCard>
             <SidebarCard.Section title="Project Description">
-                <p className="text-sm text-neutral-400 leading-relaxed break-words">
-                    {project.description || "No description provided for this project."}
-                </p>
+                <ScrollComponent maxHeight="max-h-[150px]">
+                    <p className="text-sm text-neutral-400 leading-relaxed break-words">
+                        {project.description || "No description provided for this project."}
+                    </p>
+                </ScrollComponent>
             </SidebarCard.Section>
 
             <SidebarCard.Section title="Members">
