@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { FormField } from "../../components/ui/FormField";
@@ -11,8 +11,8 @@ import { TagInput } from "../../components/ui/TagInput";
 import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
 import { FiX } from "react-icons/fi";
 import { Button } from "../../components/ui/Button";
-import { useEffect } from "react";
 import { createProjectIssueApi, updateIssueApi, type Issue } from "../../services/api";
+
 
 interface IssueModalProps {
     isOpen: boolean;
@@ -36,15 +36,45 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        if (initialData && mode === "edit") {
-            setTitle(initialData.title);
-            setDescription(initialData.description);
-            setCategory(initialData.type?.toLowerCase() || CATEGORIES[0].value);
-            setPriority(initialData.priority?.toLowerCase() || "medium");
-            setStatus(initialData.status?.toLowerCase() || STATUSES[0].value);
-            setTags(initialData.tags?.map(t => t.name) || []);
+        if (isOpen) {
+            if (mode === "edit" && initialData) {
+                setTitle(initialData.title);
+                setDescription(initialData.description);
+                setCategory(initialData.type?.toLowerCase() || CATEGORIES[0].value);
+                setPriority(initialData.priority?.toLowerCase() || "medium");
+                setStatus(initialData.status?.toLowerCase() || STATUSES[0].value);
+                setTags(initialData.tags?.map(t => t.name) || []);
+                setFiles([]);
+            } else if (mode === "create") {
+                setTitle("");
+                setDescription("");
+                setCategory(CATEGORIES[0].value);
+                setPriority("medium");
+                setStatus(STATUSES[0].value);
+                setTags([]);
+                setFiles([]);
+            }
         }
-    }, [initialData, mode]);
+    }, [isOpen, initialData, mode]);
+
+
+
+    // Dirty check: abilita "Save Changes" solo se qualcosa è cambiato
+    const hasChanges = useMemo(() => {
+        if (mode === "create") return true; // In create mode, sempre abilitato
+        if (!initialData) return false;
+
+        const titleChanged = title !== initialData.title;
+        const descChanged = description !== initialData.description;
+        const categoryChanged = category !== (initialData.type?.toLowerCase() || "");
+        const priorityChanged = priority !== (initialData.priority?.toLowerCase() || "");
+        const statusChanged = status !== (initialData.status?.toLowerCase() || "");
+        const tagsChanged = JSON.stringify(tags) !== JSON.stringify(initialData.tags?.map(t => t.name) || []);
+        const filesChanged = files.length > 0;
+
+        return titleChanged || descChanged || categoryChanged || priorityChanged || statusChanged || tagsChanged || filesChanged;
+    }, [mode, initialData, title, description, category, priority, status, tags, files]);
+
 
     // Validation (simple example)
     const isFormValid = title.trim().length >= 3 && description.trim().length >= 5;
@@ -57,10 +87,8 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
                 await createProjectIssueApi(projectId, {
                     title,
                     description,
-                    type: category, // L'API lo chiama 'type'
+                    type: category,
                     priority,
-                    tagNames: tags,
-                    // Nota: se i file richiedono chiamate separate, andranno gestite qui
                 });
             } else if (mode === "edit" && issue?.issueId) {
                 await updateIssueApi(issue.issueId, {
@@ -69,7 +97,6 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
                     type: category,
                     priority,
                     status,
-                    tagNames: tags,
                 });
             }
 
@@ -101,8 +128,8 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
                 {/* Body (Scrollable if content is too long) */}
                 <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
 
-                    {/* Title & Category Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                    {/* Title, Status & Category Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
                         <div className="md:col-span-2">
                             <TitleFieldWithLenght
                                 label="Title"
@@ -113,7 +140,16 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
                             />
                         </div>
                         <div>
-                            {/* Override the Select's rounded-full to rounded-lg to match the design */}
+                            <FormField label="Status">
+                                <Select
+                                    options={STATUSES}
+                                    value={status}
+                                    onChange={setStatus}
+                                    className="[&>select]:rounded-lg"
+                                />
+                            </FormField>
+                        </div>
+                        <div>
                             <FormField label="Category">
                                 <Select
                                     options={CATEGORIES}
@@ -157,7 +193,7 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
                     <Button
                         variant="primary"
                         onClick={handleSubmit}
-                        disabled={!isFormValid || isSubmitting}
+                        disabled={!isFormValid || isSubmitting || !hasChanges}
                         isLoading={isSubmitting}
                         fullWidth={false}
                     >
