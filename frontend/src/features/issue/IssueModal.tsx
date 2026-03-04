@@ -28,9 +28,9 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
     // --- States ---
     const [title, setTitle] = useState(initialData?.title || "");
     const [description, setDescription] = useState(initialData?.description || "");
-    const [category, setCategory] = useState(initialData?.type?.toLowerCase() || CATEGORIES[0].value);
-    const [priority, setPriority] = useState(initialData?.priority?.toLowerCase() || "medium");
-    const [status, setStatus] = useState(initialData?.status?.toLowerCase() || STATUSES[0].value); // DEVO INSERIRE QUESTA LOGICA <----------------
+    const [category, setCategory] = useState(initialData?.type || CATEGORIES[0].value);
+    const [priority, setPriority] = useState(initialData?.priority || "MEDIUM");
+    const [status, setStatus] = useState(initialData?.status || STATUSES[0].value); // DEVO INSERIRE QUESTA LOGICA <----------------
     const [tags, setTags] = useState<string[]>(initialData?.tags?.map(tag => tag.name) || []);
     const [files, setFiles] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,16 +40,16 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
             if (mode === "edit" && initialData) {
                 setTitle(initialData.title);
                 setDescription(initialData.description);
-                setCategory(initialData.type?.toLowerCase() || CATEGORIES[0].value);
-                setPriority(initialData.priority?.toLowerCase() || "medium");
-                setStatus(initialData.status?.toLowerCase() || STATUSES[0].value);
+                setCategory(initialData.type || CATEGORIES[0].value);
+                setPriority(initialData.priority || "MEDIUM");
+                setStatus(initialData.status || STATUSES[0].value);
                 setTags(initialData.tags?.map(t => t.name) || []);
                 setFiles([]);
             } else if (mode === "create") {
                 setTitle("");
                 setDescription("");
                 setCategory(CATEGORIES[0].value);
-                setPriority("medium");
+                setPriority("MEDIUM");
                 setStatus(STATUSES[0].value);
                 setTags([]);
                 setFiles([]);
@@ -66,9 +66,9 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
 
         const titleChanged = title !== initialData.title;
         const descChanged = description !== initialData.description;
-        const categoryChanged = category !== (initialData.type?.toLowerCase() || "");
-        const priorityChanged = priority !== (initialData.priority?.toLowerCase() || "");
-        const statusChanged = status !== (initialData.status?.toLowerCase() || "");
+        const categoryChanged = category !== (initialData.type || "");
+        const priorityChanged = priority !== (initialData.priority || "");
+        const statusChanged = status !== (initialData.status || "");
         const tagsChanged = JSON.stringify(tags) !== JSON.stringify(initialData.tags?.map(t => t.name) || []);
         const filesChanged = files.length > 0;
 
