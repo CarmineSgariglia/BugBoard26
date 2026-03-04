@@ -6,6 +6,7 @@ import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";
 import { IssueDetailsSidebar } from "./IssueDetailsSidebar";
 import { IssueAssigneesModal } from "./IssueAssigneesModal";
+import { IssueModal } from "./IssueModal";
 
 export function IssuePage() {
     const { issueId } = useParams();
@@ -14,6 +15,7 @@ export function IssuePage() {
     const [issue, setIssue] = useState<Issue | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         if (issueId) {
@@ -43,7 +45,7 @@ export function IssuePage() {
                         issue={issue}
                         isAdmin={currentUser?.isAdmin}
                         isAssigned={isAssigned}
-                        onEditClick={() => console.log("Edit")}
+                        onEditClick={() => setIsModalOpen(true)}
                         onManageMembersClick={() => setIsAssigneesModalOpen(true)}
                     />
                 }
@@ -58,6 +60,11 @@ export function IssuePage() {
                 isOpen={isAssigneesModalOpen}
                 onClose={() => setIsAssigneesModalOpen(false)}
                 onSuccess={(updatedIssue) => setIssue(updatedIssue)}
+            />
+            <IssueModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                mode="edit"
             />
         </div>
     );
