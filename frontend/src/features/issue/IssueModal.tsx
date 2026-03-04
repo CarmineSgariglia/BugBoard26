@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { FormField } from "../../components/ui/FormField";
@@ -8,26 +8,43 @@ import { Select } from "../../components/ui/Select";
 import { FileAttachment } from "../../components/ui/FileAttachment";
 import { PrioritySelector } from "../../components/ui/PrioritySelector";
 import { TagInput } from "../../components/ui/TagInput";
-import { CATEGORIES } from "../../utils/issueConstants";
+import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
 import { FiX } from "react-icons/fi";
 import { Button } from "../../components/ui/Button";
+import { useEffect } from "react";
+import { createProjectIssueApi, updateIssueApi, type Issue } from "../../services/api";
 
 interface IssueModalProps {
     isOpen: boolean;
     onClose: () => void;
     mode: "create" | "edit";
-    // We can add initialData here for edit mode in the future
+    projectId?: string | number;
+    issue?: Issue | null;
+    initialData?: Issue | null;
+    onSuccess?: () => void;
 }
 
-export function IssueModal({ isOpen, onClose, mode }: IssueModalProps) {
+export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialData, onSuccess }: IssueModalProps) {
     // --- States ---
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [category, setCategory] = useState(CATEGORIES[0].value);
-    const [priority, setPriority] = useState("medium");
-    const [tags, setTags] = useState<string[]>([]);
+    const [title, setTitle] = useState(initialData?.title || "");
+    const [description, setDescription] = useState(initialData?.description || "");
+    const [category, setCategory] = useState(initialData?.type?.toLowerCase() || CATEGORIES[0].value);
+    const [priority, setPriority] = useState(initialData?.priority?.toLowerCase() || "medium");
+    const [status, setStatus] = useState(initialData?.status?.toLowerCase() || STATUSES[0].value); // DEVO INSERIRE QUESTA LOGICA <----------------
+    const [tags, setTags] = useState<string[]>(initialData?.tags?.map(tag => tag.name) || []);
     const [files, setFiles] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (initialData && mode === "edit") {
+            setTitle(initialData.title);
+            setDescription(initialData.description);
+            setCategory(initialData.type?.toLowerCase() || CATEGORIES[0].value);
+            setPriority(initialData.priority?.toLowerCase() || "medium");
+            setStatus(initialData.status?.toLowerCase() || STATUSES[0].value);
+            setTags(initialData.tags?.map(t => t.name) || []);
+        }
+    }, [initialData, mode]);
 
     // Validation (simple example)
     const isFormValid = title.trim().length >= 3 && description.trim().length >= 5;
@@ -36,13 +53,27 @@ export function IssueModal({ isOpen, onClose, mode }: IssueModalProps) {
         if (!isFormValid) return;
         setIsSubmitting(true);
         try {
-            // TODO: Here we'll call the API to create/edit the issue
-            // e.g. await createProjectIssueApi(projectId, { title, description, category, priority, tags })
-            console.log("Submitting:", { title, description, category, priority, tags, files });
+            if (mode === "create" && projectId) {
+                await createProjectIssueApi(projectId, {
+                    title,
+                    description,
+                    type: category, // L'API lo chiama 'type'
+                    priority,
+                    tagNames: tags,
+                    // Nota: se i file richiedono chiamate separate, andranno gestite qui
+                });
+            } else if (mode === "edit" && issue?.issueId) {
+                await updateIssueApi(issue.issueId, {
+                    title,
+                    description,
+                    type: category,
+                    priority,
+                    status,
+                    tagNames: tags,
+                });
+            }
 
-            // Simulate API delay
-            await new Promise(res => setTimeout(res, 800));
-            onClose(); // Close modal on success
+            if (onSuccess) onSuccess();
         } catch (error) {
             console.error("Failed to submit issue", error);
         } finally {
@@ -78,6 +109,7 @@ export function IssueModal({ isOpen, onClose, mode }: IssueModalProps) {
                                 title={title}
                                 onChangeTitle={setTitle}
                                 placeholder="What's the issue?"
+                                maxLength={30}
                             />
                         </div>
                         <div>

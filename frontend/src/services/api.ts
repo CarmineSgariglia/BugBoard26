@@ -145,6 +145,15 @@ export type UpdateIssuePayload = {
   priority?: string;
   assigneeIds?: number[];
   tagIds?: number[];
+  tagNames?: string[];
+};
+
+export type CreateIssuePayload = {
+  title: string;
+  description: string;
+  type: string;
+  priority: string;
+  tagNames?: string[];
 };
 
 export type IssueUpdate = {
@@ -275,6 +284,11 @@ export async function listProjectMembersApi(projectId: string | number): Promise
 
 export async function listProjectIssuesApi(projectId: string | number): Promise<Issue[]> {
   const { data } = await api.get<Issue[]>(`/projects/${projectId}/issues/`);
+  return data;
+}
+
+export async function createProjectIssueApi(projectId: string | number, payload: CreateIssuePayload): Promise<Issue> {
+  const { data } = await api.post<Issue>(`/projects/${projectId}/issues/`, payload);
   return data;
 }
 

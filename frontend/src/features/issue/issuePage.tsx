@@ -17,7 +17,7 @@ export function IssuePage() {
     const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => {
+    const fetchIssueDetails = () => {
         if (issueId) {
             getIssueApi(issueId)
                 .then(data => {
@@ -26,6 +26,10 @@ export function IssuePage() {
                 })
                 .finally(() => setIsLoading(false));
         }
+    };
+
+    useEffect(() => {
+        fetchIssueDetails();
     }, [issueId, setLabel]);
 
 
@@ -65,6 +69,12 @@ export function IssuePage() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 mode="edit"
+                issue={issue}
+                initialData={issue}
+                onSuccess={() => {
+                    setIsModalOpen(false);
+                    fetchIssueDetails();
+                }}
             />
         </div>
     );
