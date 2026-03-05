@@ -11,6 +11,9 @@ import { useAuth } from "./contexts/AuthContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { BreadcrumbProvider } from "./contexts/BreadcrumbContext";
 import { IssuePage } from "./features/issue/IssuePage";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+const queryClient = new QueryClient();
+
 
 
 {/* If the user is authenticated, render the MainLayout, otherwise render the AuthLayout */ }
@@ -46,43 +49,45 @@ function PublicOnly({ children }: { children: ReactElement }) {
 
 function App() {
   return (
-    <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
 
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Auth Routes (Public Only) */}
-        <Route
-          element={
-            <PublicOnly>
-              <AuthLayout />
-            </PublicOnly>
-          }
-        >
-          <Route path="/login" element={<LoginScreen />} />
-          <Route path="/forgot-password" element={<RetrieveStep1Screen />} />
-          <Route path="/forgot-password/verify" element={<RetrieveStep2Screen />} />
-        </Route>
+          {/* Auth Routes (Public Only) */}
+          <Route
+            element={
+              <PublicOnly>
+                <AuthLayout />
+              </PublicOnly>
+            }
+          >
+            <Route path="/login" element={<LoginScreen />} />
+            <Route path="/forgot-password" element={<RetrieveStep1Screen />} />
+            <Route path="/forgot-password/verify" element={<RetrieveStep2Screen />} />
+          </Route>
 
-        {/* Private Routes (Protected by RequireAuth and using MainLayout) */}
-        <Route
-          element={
-            <RequireAuth>
-              <BreadcrumbProvider>
-                <MainLayout />
-              </BreadcrumbProvider>
-            </RequireAuth>
-          }
-        >
-          <Route path="/projects" element={<ProjectsScreen />} />
-          <Route path="/projects/:projectId/issues" element={<ProjectIssuesScreen />} />
-          <Route path="/projects/:projectId/issues/:issueId" element={<IssuePage />} />
-          <Route path="/settings" element={<ManageAccountSettingsPage />} />
-        </Route>
+          {/* Private Routes (Protected by RequireAuth and using MainLayout) */}
+          <Route
+            element={
+              <RequireAuth>
+                <BreadcrumbProvider>
+                  <MainLayout />
+                </BreadcrumbProvider>
+              </RequireAuth>
+            }
+          >
+            <Route path="/projects" element={<ProjectsScreen />} />
+            <Route path="/projects/:projectId/issues" element={<ProjectIssuesScreen />} />
+            <Route path="/projects/:projectId/issues/:issueId" element={<IssuePage />} />
+            <Route path="/settings" element={<ManageAccountSettingsPage />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 
