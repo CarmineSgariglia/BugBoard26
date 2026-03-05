@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { SearchBar } from "../../components/ui/SearchBar";
@@ -7,6 +7,7 @@ import { CreateProjectFlow } from "./CreateProjectFlow";
 import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
 import { getProjectIcon } from "../../utils/projectIcons";
 import { useAuth } from "../../contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query"; // UTILIZZARE QUESTA LOGICA PER LE ALTRE PAGINE APPENA FACCIO IL REFACTORING
 
 function projectIcon(iconId?: string) {
   return getProjectIcon(iconId || "folder", 30);
@@ -14,61 +15,37 @@ function projectIcon(iconId?: string) {
 
 export function ProjectsScreen() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
   const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const fetchProjects = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
-    try {
+  const {
+    data: projects = [],
+    isLoading,
+    error,
+    refetch: fetchProjects // Rinominiamo refetch in fetchProjects per non rompere il CreateProjectFlow
+  } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
       const projectsData = await listProjectsApi();
-      // Sort projects by createdAt (newest first)
+      // Manteniamo la tua logica di ordinamento e risoluzione URL
       const sorted = [...projectsData].sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-
-      // Pre-resolve media URLs for performance (Optimization item #13)
-      const resolved = sorted.map(p => ({
+      return sorted.map(p => ({
         ...p,
         authorProfileImg: resolveMediaUrl(p.authorProfileImg || undefined)
       })) as Project[];
-
-      setProjects(resolved);
-    } catch {
-      setError("Unable to load data. Please login again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
-
-  const cards = useMemo(() => {
-    return projects.map((project) => ({
-      id: String(project.projectId),
-      color: project.color || "#14B8A6",
-      title: project.name,
-      description: project.description,
-      date: new Date(project.createdAt).toLocaleDateString(),
-      iconUrl: project.icon,
-      authorProfileImg: project.authorProfileImg, // Now already resolved
-
-    }));
-
-  }, [projects]);
+    },
+    staleTime: 30000, // I famosi 30 secondi!
+  });
 
 
   const filteredCards = useMemo(() => {
-    if (!searchQuery.trim()) return cards;
+    if (!searchQuery.trim()) return projects;
     const lowerQuery = searchQuery.toLowerCase();
-    return cards.filter((card) => card.title.toLowerCase().includes(lowerQuery));
-  }, [cards, searchQuery]);
+    return projects.filter((p) => p.name.toLowerCase().includes(lowerQuery));
+  }, [projects, searchQuery]);
 
 
 
@@ -97,8 +74,8 @@ export function ProjectsScreen() {
           />
         </div>
 
-        {isLoading ? <p className="text-sm text-[#9CA3AF]">Loading projects...</p> : null}
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="text-sm text-red-400">Unable to load data. Please login again.</p> : null}
+
 
         {/* CSS Grid for the folders */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
@@ -108,18 +85,19 @@ export function ProjectsScreen() {
 
           {filteredCards.map((project) => (
             <ProjectFolderCard
-              key={project.id}
-              color={project.color}
-              title={project.title}
+              key={project.projectId}
+              color={project.color || "#14B8A6"}
+              title={project.name}
               description={project.description}
-              date={project.date}
-              icon={projectIcon(project.iconUrl)}
+              date={new Date(project.createdAt).toLocaleDateString()}
+              icon={projectIcon(project.icon)}
               authorImageUrl={project.authorProfileImg}
               onClick={() => {
-                navigate(`/projects/${project.id}/issues`);
+                navigate(`/projects/${project.projectId}/issues`);
               }}
             />
           ))}
+
         </div>
         {!isLoading && !error && filteredCards.length === 0 ? (
           <p className="text-sm text-[#9CA3AF] mt-8 text-center">
