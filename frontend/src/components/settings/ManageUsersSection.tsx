@@ -4,13 +4,13 @@ import { SearchBar } from "../ui/SearchBar";
 import { Select } from "../ui/Select";
 import { Pagination } from "../ui/Pagination";
 import { UserTable } from "../ui/UserTable";
-import { ScrollComponent } from "../ui/ScrollComponent";
 import { AdminUserEditSection } from "./AdminUserEditSection";
 import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 import { FiEdit2 } from "react-icons/fi";
 import { MdGroupOff } from "react-icons/md";
 import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
 import { setUserActiveApi, type AuthUser } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
 
 
 export interface ManageUsersSectionProps {
@@ -18,6 +18,7 @@ export interface ManageUsersSectionProps {
 }
 
 export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps) {
+    const { user: currentUser } = useAuth();
     const {
         users, totalItems, isLoading, error,
         search, setSearch,
@@ -145,8 +146,13 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
                                 </button>
                                 <button
                                     onClick={() => handleActionClick('Delete', user)}
-                                    className="text-neutral-500 hover:text-red-400 transition-colors"
-                                    title={user.active ? "Deactivate User" : "Activate User"}
+                                    className="text-neutral-500 hover:text-red-400 transition-colors disabled:cursor-not-allowed disabled:text-neutral-700 disabled:hover:text-neutral-700"
+                                    title={
+                                        currentUser?.userId === user.userId
+                                            ? "You cannot deactivate your own account"
+                                            : user.active ? "Deactivate User" : "Activate User"
+                                    }
+                                    disabled={currentUser?.userId === user.userId}
                                 >
                                     <MdGroupOff size={16} />
                                 </button>
