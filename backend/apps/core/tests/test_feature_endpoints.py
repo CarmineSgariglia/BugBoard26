@@ -20,7 +20,6 @@ from apps.core.models import (
     Issue,
     IssueAssignee,
     IssueEvent,
-    IssueImage,
     IssueStatus,
     Notification,
     NotifyType,
@@ -43,7 +42,9 @@ class AuthOtpEndpointTests(APITestCase):
         )
 
     def test_otp_request_existing_user_creates_code(self):
-        response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+        response = self.client.post(
+            "/api/auth/password/otp/request/", {"email": self.user.email}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(PasswordResetOTP.objects.filter(user=self.user).count(), 1)
         otp = PasswordResetOTP.objects.filter(user=self.user).first()
@@ -58,14 +59,20 @@ class AuthOtpEndpointTests(APITestCase):
             expires_at=timezone.now() + timedelta(minutes=5),
             is_used=False,
         )
-        response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+        response = self.client.post(
+            "/api/auth/password/otp/request/", {"email": self.user.email}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         old.refresh_from_db()
         self.assertTrue(old.is_used)
         self.assertEqual(PasswordResetOTP.objects.filter(user=self.user).count(), 2)
 
     def test_otp_request_unknown_user_returns_generic_message(self):
-        response = self.client.post("/api/auth/password/otp/request/", {"email": "missing@example.com"}, format="json")
+        response = self.client.post(
+            "/api/auth/password/otp/request/",
+            {"email": "missing@example.com"},
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(PasswordResetOTP.objects.count(), 0)
 
@@ -85,13 +92,19 @@ class AuthOtpEndpointTests(APITestCase):
 
         reset_response = self.client.post(
             "/api/auth/password/reset/",
-            {"email": self.user.email, "code": otp.code, "newPassword": "NewStrongPass123!"},
+            {
+                "email": self.user.email,
+                "code": otp.code,
+                "newPassword": "NewStrongPass123!",
+            },
             format="json",
         )
         self.assertEqual(reset_response.status_code, status.HTTP_200_OK)
         otp.refresh_from_db()
         self.assertTrue(otp.is_used)
-        self.assertTrue(authenticate(username=self.user.username, password="NewStrongPass123!"))
+        self.assertTrue(
+            authenticate(username=self.user.username, password="NewStrongPass123!")
+        )
 
     def test_otp_verify_rejects_expired_code(self):
         PasswordResetOTP.objects.create(
@@ -151,7 +164,11 @@ class AuthOtpEndpointTests(APITestCase):
         )
         expired_response = self.client.post(
             "/api/auth/password/reset/",
-            {"email": self.user.email, "code": expired.code, "newPassword": "NewStrongPass123!"},
+            {
+                "email": self.user.email,
+                "code": expired.code,
+                "newPassword": "NewStrongPass123!",
+            },
             format="json",
         )
         self.assertEqual(expired_response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -165,24 +182,43 @@ class AuthOtpEndpointTests(APITestCase):
         )
         locked_response = self.client.post(
             "/api/auth/password/reset/",
-            {"email": self.user.email, "code": locked.code, "newPassword": "NewStrongPass123!"},
+            {
+                "email": self.user.email,
+                "code": locked.code,
+                "newPassword": "NewStrongPass123!",
+            },
             format="json",
         )
         self.assertEqual(locked_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("detail", locked_response.data)
 
-    @patch("apps.core.services.password_reset._send_otp_email", side_effect=RuntimeError("provider down"))
-    def test_otp_request_email_send_failure_returns_generic_and_logs_error(self, _mock_send):
-        with self.assertLogs("apps.core.services.password_reset", level="ERROR") as logs:
-            response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+    @patch(
+        "apps.core.services.password_reset._send_otp_email",
+        side_effect=RuntimeError("provider down"),
+    )
+    def test_otp_request_email_send_failure_returns_generic_and_logs_error(
+        self, _mock_send
+    ):
+        with self.assertLogs(
+            "apps.core.services.password_reset", level="ERROR"
+        ) as logs:
+            response = self.client.post(
+                "/api/auth/password/otp/request/",
+                {"email": self.user.email},
+                format="json",
+            )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("detail", response.data)
-        self.assertTrue(any("otp_request_send_failed" in message for message in logs.output))
+        self.assertTrue(
+            any("otp_request_send_failed" in message for message in logs.output)
+        )
 
     @override_settings(EMAIL_PROVIDER="console")
     @patch("apps.core.services.password_reset.send_mail")
     def test_email_provider_console_default_in_dev(self, mock_send_mail):
-        response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+        response = self.client.post(
+            "/api/auth/password/otp/request/", {"email": self.user.email}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(mock_send_mail.called)
 
@@ -194,8 +230,12 @@ class AuthOtpEndpointTests(APITestCase):
     )
     @patch("apps.core.services.password_reset.EmailMessage.send", return_value=1)
     @patch("apps.core.services.password_reset.send_mail")
-    def test_email_provider_brevo_uses_anymail_backend(self, mock_send_mail, _mock_email_send):
-        response = self.client.post("/api/auth/password/otp/request/", {"email": self.user.email}, format="json")
+    def test_email_provider_brevo_uses_anymail_backend(
+        self, mock_send_mail, _mock_email_send
+    ):
+        response = self.client.post(
+            "/api/auth/password/otp/request/", {"email": self.user.email}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(mock_send_mail.called)
 
@@ -275,11 +315,15 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(active_response.status_code, status.HTTP_200_OK)
         self.assertEqual(inactive_response.status_code, status.HTTP_200_OK)
         self.assertTrue(all(user["active"] for user in active_response.data["results"]))
-        self.assertTrue(all(not user["active"] for user in inactive_response.data["results"]))
+        self.assertTrue(
+            all(not user["active"] for user in inactive_response.data["results"])
+        )
 
     def test_admin_user_list_combined_filters(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get("/api/users/?search=users_admin_other&role=Admin&status=Active")
+        response = self.client.get(
+            "/api/users/?search=users_admin_other&role=Admin&status=Active"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["userId"], self.other_admin.id)
@@ -303,7 +347,11 @@ class UserManagementEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
             "/api/users/",
-            {"username": "new_user", "email": "new_user@example.com", "password": "StrongPass123!"},
+            {
+                "username": "new_user",
+                "email": "new_user@example.com",
+                "password": "StrongPass123!",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -339,7 +387,9 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_profile_image_upload_self_success(self):
         self.client.force_authenticate(user=self.member)
-        image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
+        image = SimpleUploadedFile(
+            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+        )
         response = self.client.post(
             "/api/users/me/upload_profile_image/",
             {"profile_img": image},
@@ -347,12 +397,18 @@ class UserManagementEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.member.refresh_from_db()
-        self.assertTrue(self.member.profile.profile_img.startswith(f"profile-images/{self.member.id}/"))
+        self.assertTrue(
+            self.member.profile.profile_img.startswith(
+                f"profile-images/{self.member.id}/"
+            )
+        )
         self.assertIn("/media/profile-images/", response.data["profileImg"])
 
     def test_profile_image_upload_rejects_invalid_type(self):
         self.client.force_authenticate(user=self.member)
-        image = SimpleUploadedFile("avatar.txt", b"not-image", content_type="text/plain")
+        image = SimpleUploadedFile(
+            "avatar.txt", b"not-image", content_type="text/plain"
+        )
         response = self.client.post(
             "/api/users/me/upload_profile_image/",
             {"profile_img": image},
@@ -375,7 +431,9 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_profile_image_upload_me_endpoint_with_profile_img_field(self):
         self.client.force_authenticate(user=self.member)
-        image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
+        image = SimpleUploadedFile(
+            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+        )
         response = self.client.post(
             "/api/users/me/upload_profile_image/",
             {"profile_img": image},
@@ -383,11 +441,17 @@ class UserManagementEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.member.refresh_from_db()
-        self.assertTrue(self.member.profile.profile_img.startswith(f"profile-images/{self.member.id}/"))
+        self.assertTrue(
+            self.member.profile.profile_img.startswith(
+                f"profile-images/{self.member.id}/"
+            )
+        )
 
     def test_admin_upload_profile_image_for_other_user_via_admin_endpoint(self):
         self.client.force_authenticate(user=self.admin)
-        image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
+        image = SimpleUploadedFile(
+            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+        )
         response = self.client.post(
             f"/api/users/{self.member.id}/admin-upload-image/",
             {"profile_img": image},
@@ -395,11 +459,17 @@ class UserManagementEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.member.refresh_from_db()
-        self.assertTrue(self.member.profile.profile_img.startswith(f"profile-images/{self.member.id}/"))
+        self.assertTrue(
+            self.member.profile.profile_img.startswith(
+                f"profile-images/{self.member.id}/"
+            )
+        )
 
     def test_non_admin_cannot_use_admin_upload_profile_image_endpoint(self):
         self.client.force_authenticate(user=self.member)
-        image = SimpleUploadedFile("avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png")
+        image = SimpleUploadedFile(
+            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+        )
         response = self.client.post(
             f"/api/users/{self.admin.id}/admin-upload-image/",
             {"profile_img": image},
@@ -535,13 +605,20 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
             "/api/projects/",
-            {"name": "New Admin Project", "description": "D", "color": "#111111", "icon": "star"},
+            {
+                "name": "New Admin Project",
+                "description": "D",
+                "color": "#111111",
+                "icon": "star",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["icon"], "star")
         project_id = response.data["projectId"]
-        membership = ProjectMembership.objects.filter(project_id=project_id, user=self.admin).first()
+        membership = ProjectMembership.objects.filter(
+            project_id=project_id, user=self.admin
+        ).first()
         self.assertIsNotNone(membership)
         self.assertEqual(membership.role, ProjectMembership.Role.ADMIN)
 
@@ -560,7 +637,11 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         project_id = response.data["projectId"]
-        self.assertTrue(ProjectMembership.objects.filter(project_id=project_id, user=self.member).exists())
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project_id=project_id, user=self.member
+            ).exists()
+        )
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=self.member,
@@ -572,7 +653,9 @@ class ProjectAndMembershipEndpointTests(APITestCase):
     def test_members_endpoint_forbidden_for_non_member(self):
         self.client.force_authenticate(user=self.outsider)
         response = self.client.get(f"/api/projects/{self.project.project_id}/members/")
-        self.assertIn(response.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND))
+        self.assertIn(
+            response.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
+        )
 
     def test_project_patch_team_sync_adds_and_removes_developers(self):
         self.client.force_authenticate(user=self.admin)
@@ -617,7 +700,9 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             priority="MEDIUM",
         )
         self.client.force_authenticate(user=self.admin)
-        no_confirm = self.client.delete(f"/api/projects/{self.project.project_id}/", format="json")
+        no_confirm = self.client.delete(
+            f"/api/projects/{self.project.project_id}/", format="json"
+        )
         self.assertEqual(no_confirm.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Issue.objects.filter(issue_id=issue.issue_id).exists())
 
@@ -674,10 +759,16 @@ class IssueWorkflowEndpointTests(APITestCase):
             "assigneeIds": [self.member.id],
             "tagIds": [self.tag.tag_id],
         }
-        response = self.client.post(f"/api/projects/{self.project.project_id}/issues/", payload, format="json")
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues/", payload, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         new_issue = Issue.objects.get(issue_id=response.data["issueId"])
-        self.assertTrue(IssueEvent.objects.filter(issue=new_issue, event_type=EventType.CREATE).exists())
+        self.assertTrue(
+            IssueEvent.objects.filter(
+                issue=new_issue, event_type=EventType.CREATE
+            ).exists()
+        )
 
     def test_issue_create_with_tag_names_reuses_existing_and_creates_missing(self):
         self.client.force_authenticate(user=self.admin)
@@ -689,7 +780,9 @@ class IssueWorkflowEndpointTests(APITestCase):
             "priority": "MEDIUM",
             "tagNames": ["api", "frontend", "API"],
         }
-        response = self.client.post(f"/api/projects/{self.project.project_id}/issues/", payload, format="json")
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues/", payload, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         created_issue = Issue.objects.get(issue_id=response.data["issueId"])
@@ -761,7 +854,9 @@ class IssueWorkflowEndpointTests(APITestCase):
             event_type=EventType.COMMENT,
             message="visible update",
         )
-        Attachment.objects.create(update=event, path="uploads/file.txt", mime_type="text/plain", size=12)
+        Attachment.objects.create(
+            update=event, path="uploads/file.txt", mime_type="text/plain", size=12
+        )
 
         self.client.force_authenticate(user=self.member)
         response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates/")
@@ -804,7 +899,9 @@ class IssueWorkflowEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Attachment.objects.filter(update=event, path="uploads/file.txt").exists())
+        self.assertTrue(
+            Attachment.objects.filter(update=event, path="uploads/file.txt").exists()
+        )
 
     def test_issue_partial_update_creates_edit_event_and_notification(self):
         self.client.force_authenticate(user=self.member)
@@ -846,7 +943,9 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.issue.refresh_from_db()
         self.assertEqual(self.issue.title, "Details endpoint title")
         self.assertEqual(self.issue.status, IssueStatus.IN_PROGRESS)
-        self.assertEqual(set(self.issue.tags.values_list("name", flat=True)), {"api", "frontend"})
+        self.assertEqual(
+            set(self.issue.tags.values_list("name", flat=True)), {"api", "frontend"}
+        )
 
     def test_attachments_api_create_list_and_delete(self):
         self.client.force_authenticate(user=self.member)
@@ -864,17 +963,25 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
         attachment_id = create_response.data["attachmentId"]
 
-        list_response = self.client.get(f"/api/attachments/?issueId={self.issue.issue_id}")
+        list_response = self.client.get(
+            f"/api/attachments/?issueId={self.issue.issue_id}"
+        )
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(any(item["attachmentId"] == attachment_id for item in list_response.data))
+        self.assertTrue(
+            any(item["attachmentId"] == attachment_id for item in list_response.data)
+        )
 
         delete_response = self.client.delete(f"/api/attachments/{attachment_id}/")
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Attachment.objects.filter(attachment_id=attachment_id).exists())
+        self.assertFalse(
+            Attachment.objects.filter(attachment_id=attachment_id).exists()
+        )
 
     def test_attachments_api_multipart_upload_saves_file_on_disk(self):
         self.client.force_authenticate(user=self.member)
-        uploaded = SimpleUploadedFile("notes.txt", b"hello attachment", content_type="text/plain")
+        uploaded = SimpleUploadedFile(
+            "notes.txt", b"hello attachment", content_type="text/plain"
+        )
 
         with TemporaryDirectory() as tmp_dir:
             with override_settings(MEDIA_ROOT=tmp_dir):
@@ -888,15 +995,25 @@ class IssueWorkflowEndpointTests(APITestCase):
                     format="multipart",
                 )
                 self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-                attachment = Attachment.objects.get(attachment_id=response.data["attachmentId"])
-                self.assertTrue(attachment.path.startswith(f"issue-attachments/{self.issue.issue_id}/"))
+                attachment = Attachment.objects.get(
+                    attachment_id=response.data["attachmentId"]
+                )
+                self.assertTrue(
+                    attachment.path.startswith(
+                        f"issue-attachments/{self.issue.issue_id}/"
+                    )
+                )
                 self.assertTrue((Path(tmp_dir) / attachment.path).exists())
                 self.assertEqual(response.data["mimeType"], "text/plain")
                 self.assertGreater(response.data["size"], 0)
                 self.assertTrue(response.data["url"].startswith("/media/"))
 
-                delete_response = self.client.delete(f"/api/attachments/{attachment.attachment_id}/")
-                self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+                delete_response = self.client.delete(
+                    f"/api/attachments/{attachment.attachment_id}/"
+                )
+                self.assertEqual(
+                    delete_response.status_code, status.HTTP_204_NO_CONTENT
+                )
                 self.assertFalse((Path(tmp_dir) / attachment.path).exists())
 
     def test_attachments_api_create_requires_target(self):
@@ -908,44 +1025,18 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_issue_images_api_create_list_and_delete(self):
-        self.client.force_authenticate(user=self.member)
-        uploaded = SimpleUploadedFile("mock.png", b"\x89PNG\r\n\x1a\nimg-data", content_type="image/png")
-
-        with TemporaryDirectory() as tmp_dir:
-            with override_settings(MEDIA_ROOT=tmp_dir):
-                create_response = self.client.post(
-                    "/api/issue-images/",
-                    {
-                        "issueId": self.issue.issue_id,
-                        "file": uploaded,
-                    },
-                    format="multipart",
-                )
-                self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-                image_id = create_response.data["issueImageId"]
-                issue_image = IssueImage.objects.get(issue_image_id=image_id)
-                self.assertTrue(issue_image.path.startswith(f"issue-images/{self.issue.issue_id}/"))
-                self.assertTrue((Path(tmp_dir) / issue_image.path).exists())
-                self.assertTrue(create_response.data["url"].startswith("/media/"))
-
-                list_response = self.client.get(f"/api/issue-images/?issueId={self.issue.issue_id}")
-                self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-                self.assertTrue(any(item["issueImageId"] == image_id for item in list_response.data))
-
-                delete_response = self.client.delete(f"/api/issue-images/{image_id}/")
-                self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
-                self.assertFalse(IssueImage.objects.filter(issue_image_id=image_id).exists())
-                self.assertFalse((Path(tmp_dir) / issue_image.path).exists())
-
     def test_issue_delete_requires_admin(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.delete(f"/api/issues/{self.issue.issue_id}/", format="json")
+        response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/", format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_issue_delete_requires_title_confirmation(self):
         self.client.force_authenticate(user=self.admin)
-        no_confirm = self.client.delete(f"/api/issues/{self.issue.issue_id}/", format="json")
+        no_confirm = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/", format="json"
+        )
         self.assertEqual(no_confirm.status_code, status.HTTP_400_BAD_REQUEST)
 
         wrong_confirm = self.client.delete(
@@ -991,7 +1082,11 @@ class NotificationTagMetaEndpointTests(APITestCase):
             status=IssueStatus.TODO,
             priority="LOW",
         )
-        notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[self.admin, self.member], issue=self.issue)
+        notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.admin, self.member],
+            issue=self.issue,
+        )
 
     def test_notifications_are_scoped_to_current_user(self):
         self.client.force_authenticate(user=self.member)
@@ -1000,19 +1095,27 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.assertTrue(all(item["notifyUserId"] for item in response.data))
         ids = [item["notifyUserId"] for item in response.data]
         for notify_user_id in ids:
-            self.assertTrue(NotifyUser.objects.filter(notify_user_id=notify_user_id, user=self.member).exists())
+            self.assertTrue(
+                NotifyUser.objects.filter(
+                    notify_user_id=notify_user_id, user=self.member
+                ).exists()
+            )
 
     def test_read_single_notification_and_read_all(self):
         self.client.force_authenticate(user=self.member)
         notify_user = NotifyUser.objects.filter(user=self.member).first()
-        single_response = self.client.post(f"/api/notifications/{notify_user.notify_user_id}/read/", {}, format="json")
+        single_response = self.client.post(
+            f"/api/notifications/{notify_user.notify_user_id}/read/", {}, format="json"
+        )
         self.assertEqual(single_response.status_code, status.HTTP_200_OK)
         notify_user.refresh_from_db()
         self.assertTrue(notify_user.is_read)
         self.assertIsNotNone(notify_user.read_at)
 
         NotifyUser.objects.filter(user=self.member).update(is_read=False, read_at=None)
-        all_response = self.client.post("/api/notifications/read-all/", {}, format="json")
+        all_response = self.client.post(
+            "/api/notifications/read-all/", {}, format="json"
+        )
         self.assertEqual(all_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(all_response.data["updated"], 1)
 
@@ -1021,34 +1124,54 @@ class NotificationTagMetaEndpointTests(APITestCase):
         target = NotifyUser.objects.filter(user=self.member).first()
         self.assertIsNotNone(target)
 
-        response = self.client.delete(f"/api/notifications/{target.notify_user_id}/", format="json")
+        response = self.client.delete(
+            f"/api/notifications/{target.notify_user_id}/", format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(NotifyUser.objects.filter(notify_user_id=target.notify_user_id).exists())
+        self.assertFalse(
+            NotifyUser.objects.filter(notify_user_id=target.notify_user_id).exists()
+        )
 
     def test_delete_notification_does_not_allow_other_user_notification(self):
         admin_notification = NotifyUser.objects.filter(user=self.admin).first()
         self.assertIsNotNone(admin_notification)
         self.client.force_authenticate(user=self.member)
 
-        response = self.client.delete(f"/api/notifications/{admin_notification.notify_user_id}/", format="json")
+        response = self.client.delete(
+            f"/api/notifications/{admin_notification.notify_user_id}/", format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_notification_removes_orphan_notification_row(self):
-        single_notification = notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[self.member], issue=self.issue)
-        single_notify_user = NotifyUser.objects.get(notification=single_notification, user=self.member)
+        single_notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED, users=[self.member], issue=self.issue
+        )
+        single_notify_user = NotifyUser.objects.get(
+            notification=single_notification, user=self.member
+        )
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.delete(f"/api/notifications/{single_notify_user.notify_user_id}/", format="json")
+        response = self.client.delete(
+            f"/api/notifications/{single_notify_user.notify_user_id}/", format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Notification.objects.filter(notification_id=single_notification.notification_id).exists())
+        self.assertFalse(
+            Notification.objects.filter(
+                notification_id=single_notification.notification_id
+            ).exists()
+        )
 
     def test_tags_create_and_delete_require_admin(self):
         self.client.force_authenticate(user=self.member)
-        create_response = self.client.post("/api/tags/", {"name": "frontend"}, format="json")
+        create_response = self.client.post(
+            "/api/tags/", {"name": "frontend"}, format="json"
+        )
         self.assertEqual(create_response.status_code, status.HTTP_403_FORBIDDEN)
 
         self.client.force_authenticate(user=self.admin)
-        create_response = self.client.post("/api/tags/", {"name": "frontend"}, format="json")
+        create_response = self.client.post(
+            "/api/tags/", {"name": "frontend"}, format="json"
+        )
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
         tag_id = create_response.data["tagId"]
 
@@ -1062,7 +1185,10 @@ class NotificationTagMetaEndpointTests(APITestCase):
 
     def test_meta_enums_requires_auth_and_returns_payload(self):
         anon_response = self.client.get("/api/meta/enums/")
-        self.assertIn(anon_response.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
+        self.assertIn(
+            anon_response.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
 
         self.client.force_authenticate(user=self.member)
         auth_response = self.client.get("/api/meta/enums/")
@@ -1103,7 +1229,9 @@ class OtpCleanupCommandTests(APITestCase):
         output = StringIO()
         call_command("cleanup_otps", stdout=output)
 
-        self.assertFalse(PasswordResetOTP.objects.filter(otp_id=expired.otp_id).exists())
+        self.assertFalse(
+            PasswordResetOTP.objects.filter(otp_id=expired.otp_id).exists()
+        )
         self.assertFalse(PasswordResetOTP.objects.filter(otp_id=used.otp_id).exists())
         self.assertTrue(PasswordResetOTP.objects.filter(otp_id=valid.otp_id).exists())
         self.assertIn("Deleted", output.getvalue())

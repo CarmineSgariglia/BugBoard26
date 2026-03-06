@@ -5,7 +5,6 @@ from .models import (
     Issue,
     IssueAssignee,
     IssueEvent,
-    IssueImage,
     IssueTag,
     Notification,
     NotifyUser,
@@ -74,10 +73,6 @@ class AttachmentAdmin(admin.ModelAdmin):
     search_fields = ("path", "mime_type")
 
 
-@admin.register(IssueImage)
-class IssueImageAdmin(admin.ModelAdmin):
-    list_display = ("issue_image_id", "issue", "path")
-    search_fields = ("path",)
 
 
 @admin.register(Tag)
