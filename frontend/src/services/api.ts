@@ -332,24 +332,7 @@ export async function deleteAttachmentApi(attachmentId: number): Promise<void> {
   await api.delete(`/attachments/${attachmentId}/`);
 }
 
-export async function uploadIssueImageApi(file: File, issueId: number): Promise<IssueImage> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("issueId", String(issueId));
-  const { data } = await api.post<IssueImage>("/issue-images/", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return data;
-}
 
-export async function listIssueImagesApi(issueId: number): Promise<IssueImage[]> {
-  const { data } = await api.get<IssueImage[]>("/issue-images/", { params: { issueId } });
-  return data;
-}
-
-export async function deleteIssueImageApi(issueImageId: number): Promise<void> {
-  await api.delete(`/issue-images/${issueImageId}/`);
-}
 
 export async function getIssueApi(issueId: string | number): Promise<Issue> {
   const { data } = await api.get<Issue>(`/issues/${issueId}/`);
