@@ -40,6 +40,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def _validate_user_update_permissions(self, request, user: User) -> None:
         if request.user != user and not is_admin(request.user):
             raise PermissionDenied("Cannot edit other users")
+        if is_admin(request.user) and request.user == user and "active" in request.data:
+            raise PermissionDenied("You cannot deactivate your own account")
         if not is_admin(request.user):
             forbidden_fields = {"isAdmin", "active"}
             if any(field in request.data for field in forbidden_fields):
@@ -101,6 +103,8 @@ class UserViewSet(viewsets.ModelViewSet):
         active = request.data.get("active", None)
         if not isinstance(active, bool):
             raise ValidationError({"active": "Boolean value is required"})
+        if request.user == user:
+            raise PermissionDenied("You cannot deactivate your own account")
 
         user.is_active = active
         user.save(update_fields=["is_active"])
