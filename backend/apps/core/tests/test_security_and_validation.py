@@ -1,9 +1,13 @@
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.test import SimpleTestCase
+from django.test import override_settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
+from unittest.mock import patch
+from datetime import timedelta
 
 from apps.core.models import Project, ProjectMembership, Tag, UserProfile
 from apps.core.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
@@ -234,3 +238,45 @@ class SessionAuthFlowTests(APITestCase):
                 (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
                 msg=f"{method.upper()} {path} should require auth",
             )
+
+    def test_session_settings_use_idle_timeout_defaults(self):
+        self.assertEqual(settings.SESSION_COOKIE_AGE, 28800)
+        self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
+        self.assertFalse(settings.SESSION_EXPIRE_AT_BROWSER_CLOSE)
+
+    @override_settings(SESSION_COOKIE_AGE=5, SESSION_SAVE_EVERY_REQUEST=True)
+    def test_session_expires_after_idle_timeout(self):
+        login_time = timezone.now()
+        with patch("django.utils.timezone.now", return_value=login_time):
+            login_response = self.client.post(
+                "/api/auth/login/",
+                {"email": self.user.email, "password": "StrongPass123!"},
+                format="json",
+            )
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+
+        expired_time = login_time + timedelta(seconds=6)
+        with patch("django.utils.timezone.now", return_value=expired_time):
+            me_response = self.client.get("/api/auth/me/")
+        self.assertIn(me_response.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
+
+    @override_settings(SESSION_COOKIE_AGE=10, SESSION_SAVE_EVERY_REQUEST=True)
+    def test_authenticated_request_refreshes_idle_timeout(self):
+        login_time = timezone.now()
+        with patch("django.utils.timezone.now", return_value=login_time):
+            login_response = self.client.post(
+                "/api/auth/login/",
+                {"email": self.user.email, "password": "StrongPass123!"},
+                format="json",
+            )
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+
+        refresh_time = login_time + timedelta(seconds=5)
+        with patch("django.utils.timezone.now", return_value=refresh_time):
+            keep_alive_response = self.client.get("/api/auth/me/")
+        self.assertEqual(keep_alive_response.status_code, status.HTTP_200_OK)
+
+        still_valid_time = login_time + timedelta(seconds=12)
+        with patch("django.utils.timezone.now", return_value=still_valid_time):
+            still_valid_response = self.client.get("/api/auth/me/")
+        self.assertEqual(still_valid_response.status_code, status.HTTP_200_OK)
