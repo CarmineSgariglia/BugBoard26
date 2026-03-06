@@ -73,7 +73,7 @@ export function ProjectIssuesScreen() {
       const foundProject = projectsData.find(p => String(p.projectId) === projectId);
       if (foundProject) {
         setProject(foundProject);
-        setLabel(projectId, foundProject.name);
+        setLabel(`project:${projectId}`, foundProject.name);
       }
 
     } catch {

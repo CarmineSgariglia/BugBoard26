@@ -22,7 +22,7 @@ export function IssuePage() {
             getIssueApi(issueId)
                 .then(data => {
                     setIssue(data);
-                    setLabel(issueId, data.title);
+                    setLabel(`issue:${issueId}`, data.title);
                 })
                 .finally(() => setIsLoading(false));
         }
