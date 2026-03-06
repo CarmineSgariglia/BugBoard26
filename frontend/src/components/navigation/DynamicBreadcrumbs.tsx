@@ -13,15 +13,15 @@ export function DynamicBreadcrumbs() {
 
     useEffect(() => {
         // Use context label if available
-        if (projectId && labels[projectId]) {
-            setProjectName(labels[projectId]);
+        if (projectId && labels[`project:${projectId}`]) {
+            setProjectName(labels[`project:${projectId}`]);
         }
-        if (issueId && labels[issueId]) {
-            setIssueTitle(labels[issueId]);
+        if (issueId && labels[`issue:${issueId}`]) {
+            setIssueTitle(labels[`issue:${issueId}`]);
         }
 
         const fetchProjectName = async () => {
-            if (projectId && !labels[projectId]) {
+            if (projectId && !labels[`project:${projectId}`]) {
                 try {
                     const projects = await listProjectsApi();
                     const currentProject = projects.find(p => String(p.projectId) === projectId);
@@ -38,7 +38,7 @@ export function DynamicBreadcrumbs() {
         };
 
         const fetchIssueName = async () => {
-            if (issueId && !labels[issueId]) {
+            if (issueId && !labels[`issue:${issueId}`]) {
                 try {
                     // fall back to getIssueApi
                     const issue = await getIssueApi(issueId);
