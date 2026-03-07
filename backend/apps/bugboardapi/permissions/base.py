@@ -1,11 +1,10 @@
 from rest_framework.permissions import BasePermission
 
+from ..roles import is_admin_user
+
 
 def is_admin(user) -> bool:
-    if not user.is_authenticated:
-        return False
-    profile = getattr(user, "profile", None)
-    return user.is_superuser or user.is_staff or bool(profile and profile.is_admin)
+    return is_admin_user(user)
 
 
 class IsAdminUser(BasePermission):

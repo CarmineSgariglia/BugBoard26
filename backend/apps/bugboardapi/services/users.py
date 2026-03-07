@@ -15,7 +15,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from ..models import PasswordResetOTP, UserProfile
+from ..models import PasswordResetOTP, UserImage
 from ..permissions import is_admin
 from ..serializers import UserSerializer
 
@@ -174,7 +174,7 @@ def save_profile_image_for_user(*, request, user: User):
     upload_path = f"profile-images/{user.id}/{uuid.uuid4().hex}.{extension}"
     saved_path = default_storage.save(upload_path, image)
 
-    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile, _ = UserImage.objects.get_or_create(user=user)
     old_path = profile.profile_img
     profile.profile_img = saved_path
     profile.save(update_fields=["profile_img"])

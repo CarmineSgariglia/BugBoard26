@@ -6,7 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 
-class UserProfile(models.Model):
+class UserImage(models.Model):
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,

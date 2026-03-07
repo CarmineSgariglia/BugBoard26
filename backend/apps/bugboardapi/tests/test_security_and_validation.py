@@ -1,15 +1,10 @@
-from django.contrib.auth.models import User
 from django.conf import settings
 from django.test import SimpleTestCase
-from django.test import override_settings
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
-from unittest.mock import patch
-from datetime import timedelta
 
-from apps.bugboardapi.models import Project, ProjectMembership, Tag, UserProfile
+from apps.bugboardapi.models import Project, ProjectMembership, Tag
 from apps.bugboardapi.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
@@ -193,37 +188,59 @@ class AuthThrottleConfigurationTests(SimpleTestCase):
         self.assertIn("otp", rates)
 
 
-class SessionAuthFlowTests(APITestCase):
+class JwtAuthFlowTests(APITestCase):
     def setUp(self):
         self.user = create_user_with_profile(
-            username="session_user",
-            email="session@example.com",
+            username="jwt_user",
+            email="jwt@example.com",
             password="StrongPass123!",
         )
 
-    def test_login_me_logout_flow(self):
+    def _auth_headers(self, access_token: str) -> dict[str, str]:
+        return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
+
+    def test_login_me_refresh_logout_flow(self):
         login_response = self.client.post(
             "/api/auth/login",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
         )
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertIn("accessToken", login_response.data)
+        self.assertIn("user", login_response.data)
+        self.assertIn(settings.AUTH_REFRESH_COOKIE_NAME, login_response.cookies)
 
-        me_response = self.client.get("/api/auth/me")
+        access_token = login_response.data["accessToken"]
+
+        me_response = self.client.get("/api/auth/me", **self._auth_headers(access_token))
         self.assertEqual(me_response.status_code, status.HTTP_200_OK)
         self.assertEqual(me_response.data["email"], self.user.email)
 
-        logout_response = self.client.post("/api/auth/logout", {}, format="json")
+        refresh_response = self.client.post("/api/auth/refresh", {}, format="json")
+        self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
+        self.assertIn("accessToken", refresh_response.data)
+
+        refresh_cookie = login_response.cookies[settings.AUTH_REFRESH_COOKIE_NAME].value
+
+        logout_response = self.client.post(
+            "/api/auth/logout",
+            {},
+            format="json",
+            **self._auth_headers(refresh_response.data["accessToken"]),
+        )
         self.assertEqual(logout_response.status_code, status.HTTP_204_NO_CONTENT)
 
-        me_after_logout = self.client.get("/api/auth/me")
+        me_after_logout = self.client.get("/api/auth/me", **self._auth_headers(access_token))
         self.assertIn(me_after_logout.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
 
+        stale_refresh_client = self.client_class()
+        stale_refresh_client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = refresh_cookie
+        stale_refresh = stale_refresh_client.post("/api/auth/refresh", {}, format="json")
+        self.assertEqual(stale_refresh.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_private_endpoints_require_authentication(self):
-        self.client.logout()
         protected_calls = [
             ("get", "/api/auth/me"),
-            ("post", "/api/auth/logout"),
             ("get", "/api/projects"),
             ("get", "/api/notifications"),
             ("get", "/api/meta/enums"),
@@ -239,44 +256,6 @@ class SessionAuthFlowTests(APITestCase):
                 msg=f"{method.upper()} {path} should require auth",
             )
 
-    def test_session_settings_use_idle_timeout_defaults(self):
-        self.assertEqual(settings.SESSION_COOKIE_AGE, 28800)
-        self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
-        self.assertFalse(settings.SESSION_EXPIRE_AT_BROWSER_CLOSE)
-
-    @override_settings(SESSION_COOKIE_AGE=5, SESSION_SAVE_EVERY_REQUEST=True)
-    def test_session_expires_after_idle_timeout(self):
-        login_time = timezone.now()
-        with patch("django.utils.timezone.now", return_value=login_time):
-            login_response = self.client.post(
-                "/api/auth/login",
-                {"email": self.user.email, "password": "StrongPass123!"},
-                format="json",
-            )
-        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
-
-        expired_time = login_time + timedelta(seconds=6)
-        with patch("django.utils.timezone.now", return_value=expired_time):
-            me_response = self.client.get("/api/auth/me")
-        self.assertIn(me_response.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
-
-    @override_settings(SESSION_COOKIE_AGE=10, SESSION_SAVE_EVERY_REQUEST=True)
-    def test_authenticated_request_refreshes_idle_timeout(self):
-        login_time = timezone.now()
-        with patch("django.utils.timezone.now", return_value=login_time):
-            login_response = self.client.post(
-                "/api/auth/login",
-                {"email": self.user.email, "password": "StrongPass123!"},
-                format="json",
-            )
-        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
-
-        refresh_time = login_time + timedelta(seconds=5)
-        with patch("django.utils.timezone.now", return_value=refresh_time):
-            keep_alive_response = self.client.get("/api/auth/me")
-        self.assertEqual(keep_alive_response.status_code, status.HTTP_200_OK)
-
-        still_valid_time = login_time + timedelta(seconds=12)
-        with patch("django.utils.timezone.now", return_value=still_valid_time):
-            still_valid_response = self.client.get("/api/auth/me")
-        self.assertEqual(still_valid_response.status_code, status.HTTP_200_OK)
+    def test_refresh_requires_cookie(self):
+        response = self.client.post("/api/auth/refresh", {}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
