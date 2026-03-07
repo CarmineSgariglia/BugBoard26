@@ -1,4 +1,9 @@
-import axios from "axios";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  skipAuthRefresh?: boolean;
+};
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
@@ -9,6 +14,9 @@ const api = axios.create({
   },
 });
 
+let accessToken: string | null = null;
+let refreshPromise: Promise<string | null> | null = null;
+
 function readCookie(name: string): string {
   const escapedName = name.replace(/[-[\]/{}()*+?.\\^$|]/g, "\\$&");
   const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
@@ -16,17 +24,66 @@ function readCookie(name: string): string {
 }
 
 api.interceptors.request.use((config) => {
+  const requestConfig = config as RetryableRequestConfig;
   const method = (config.method ?? "get").toUpperCase();
   const requiresCsrf = method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE";
-  if (!requiresCsrf) return config;
+  if (accessToken) {
+    requestConfig.headers = requestConfig.headers ?? {};
+    requestConfig.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  if (!requiresCsrf) return requestConfig;
 
   const csrfToken = readCookie("csrftoken");
   if (csrfToken) {
-    config.headers = config.headers ?? {};
-    config.headers["X-CSRFToken"] = csrfToken;
+    requestConfig.headers = requestConfig.headers ?? {};
+    requestConfig.headers["X-CSRFToken"] = csrfToken;
   }
-  return config;
+  return requestConfig;
 });
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post<{ accessToken: string }>("/auth/refresh", {}, { skipAuthRefresh: true } as RetryableRequestConfig)
+      .then(({ data }) => {
+        accessToken = data.accessToken;
+        return data.accessToken;
+      })
+      .catch(() => {
+        accessToken = null;
+        return null;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+    if (
+      error.response?.status !== 401 ||
+      !originalRequest ||
+      originalRequest._retry ||
+      originalRequest.skipAuthRefresh
+    ) {
+      throw error;
+    }
+
+    originalRequest._retry = true;
+    const refreshedToken = await refreshAccessToken();
+    if (!refreshedToken) {
+      throw error;
+    }
+
+    originalRequest.headers = originalRequest.headers ?? {};
+    originalRequest.headers.Authorization = `Bearer ${refreshedToken}`;
+    return api(originalRequest);
+  }
+);
 
 export type AuthUser = {
   userId: number;
@@ -34,9 +91,15 @@ export type AuthUser = {
   email: string;
   firstName?: string;
   lastName?: string;
+  group?: "admin" | "developer";
   isAdmin?: boolean;
   profileImg?: string;
   active?: boolean;
+};
+
+type LoginResponse = {
+  accessToken: string;
+  user: AuthUser;
 };
 
 export type PaginatedResponse<T> = {
@@ -66,6 +129,7 @@ export type CreateUserPayload = {
   password: string;
   firstName?: string;
   lastName?: string;
+  group?: "admin" | "developer";
   isAdmin?: boolean;
   active?: boolean;
 };
@@ -192,8 +256,13 @@ export type NotificationItem = {
 };
 
 export async function loginApi(email: string, password: string): Promise<AuthUser> {
-  const { data } = await api.post<AuthUser>("/auth/login", { email, password });
-  return data;
+  const { data } = await api.post<LoginResponse>(
+    "/auth/login",
+    { email, password },
+    { skipAuthRefresh: true } as RetryableRequestConfig
+  );
+  accessToken = data.accessToken;
+  return data.user;
 }
 
 export async function requestOtpApi(email: string): Promise<void> {
@@ -210,7 +279,11 @@ export async function resetPasswordApi(email: string, code: string, newPassword:
 }
 
 export async function logoutApi(): Promise<void> {
-  await api.post("/auth/logout");
+  try {
+    await api.post("/auth/logout");
+  } finally {
+    accessToken = null;
+  }
 }
 
 export async function meApi(): Promise<AuthUser> {

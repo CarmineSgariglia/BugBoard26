@@ -7,6 +7,7 @@ from .auth import (  # noqa: F401
     PasswordOTPRequestView,
     PasswordOTPVerifyView,
     PasswordResetView,
+    RefreshView,
 )
 from .issues import AttachmentUploadView, AttachmentViewSet,  IssueViewSet  # noqa: F401
 from .notifications import NotificationViewSet  # noqa: F401

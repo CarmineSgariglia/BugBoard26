@@ -12,12 +12,12 @@ from .models import (
     Project,
     ProjectMembership,
     Tag,
-    UserProfile,
+    UserImage,
 )
 
 
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
+@admin.register(UserImage)
+class UserImageAdmin(admin.ModelAdmin):
     list_display = ("user", "is_admin", "active")
     list_filter = ("is_admin", "active")
     search_fields = ("user__username", "user__email")

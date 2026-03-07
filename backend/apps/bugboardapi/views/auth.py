@@ -1,15 +1,21 @@
-"""Authentication views: login, logout, me, OTP, and password reset."""
+"""Authentication views: JWT login, refresh, logout, me, OTP, and password reset."""
 from __future__ import annotations
 
 import logging
 
-from django.contrib.auth import authenticate, login, logout
+from django.conf import settings
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from ..serializers import (
     PasswordOTPRequestSerializer,
@@ -22,6 +28,41 @@ from ..services.users import issue_otp_for_email, reset_password_with_otp, verif
 logger = logging.getLogger(__name__)
 
 
+def _refresh_cookie_name() -> str:
+    return settings.AUTH_REFRESH_COOKIE_NAME
+
+
+def _refresh_cookie_path() -> str:
+    return settings.AUTH_REFRESH_COOKIE_PATH
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+    response.set_cookie(
+        _refresh_cookie_name(),
+        refresh_token,
+        max_age=max_age,
+        httponly=True,
+        secure=settings.AUTH_REFRESH_COOKIE_SECURE,
+        samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
+        path=_refresh_cookie_path(),
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        _refresh_cookie_name(),
+        path=_refresh_cookie_path(),
+        samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
+    )
+
+
+def _token_pair_for_user(user: User) -> tuple[str, str]:
+    refresh = RefreshToken.for_user(user)
+    return str(refresh.access_token), str(refresh)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
@@ -36,17 +77,61 @@ class LoginView(APIView):
         auth_user = authenticate(request, username=username, password=password)
         if auth_user is None or not auth_user.is_active:
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        login(request, auth_user)
+
+        access_token, refresh_token = _token_pair_for_user(auth_user)
         get_token(request)
-        return Response(UserSerializer(auth_user, context={"request": request}).data)
+
+        response = Response(
+            {
+                "accessToken": access_token,
+                "user": UserSerializer(auth_user, context={"request": request}).data,
+            }
+        )
+        _set_refresh_cookie(response, refresh_token)
+        return response
 
 
-class LogoutView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+@method_decorator(csrf_exempt, name="dispatch")
+class RefreshView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def post(self, request):
-        logout(request)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        refresh_token = request.COOKIES.get(_refresh_cookie_name())
+        if not refresh_token:
+            return Response({"detail": "Refresh token missing"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception:
+            return Response({"detail": "Invalid refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        get_token(request)
+        response = Response({"accessToken": serializer.validated_data["access"]})
+
+        rotated_refresh = serializer.validated_data.get("refresh")
+        if rotated_refresh:
+            _set_refresh_cookie(response, rotated_refresh)
+        return response
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class LogoutView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get(_refresh_cookie_name())
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                logger.info("logout_with_invalid_refresh_token")
+
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        _clear_refresh_cookie(response)
+        return response
 
 
 class MeView(APIView):
@@ -57,6 +142,7 @@ class MeView(APIView):
         return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PasswordOTPRequestView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
@@ -71,6 +157,7 @@ class PasswordOTPRequestView(APIView):
         return Response({"detail": "If the email exists, an OTP has been sent."})
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PasswordOTPVerifyView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
@@ -88,6 +175,7 @@ class PasswordOTPVerifyView(APIView):
         return Response({"valid": True, "expiresAt": expires_at})
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PasswordResetView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []

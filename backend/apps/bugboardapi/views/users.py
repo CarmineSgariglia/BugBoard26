@@ -12,7 +12,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from ..models import UserProfile
+from ..models import UserImage
+from ..roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from ..permissions import check_admin, is_admin
 from ..serializers import ChangePasswordSerializer, UserSerializer
 from ..services import save_profile_image_for_user
@@ -38,10 +39,12 @@ class UserViewSet(viewsets.ModelViewSet):
     def _validate_user_update_permissions(self, request, user: User) -> None:
         if request.user != user and not is_admin(request.user):
             raise PermissionDenied("Cannot edit other users")
-        if is_admin(request.user) and request.user == user and "active" in request.data:
-            raise PermissionDenied("You cannot deactivate your own account")
+        if is_admin(request.user) and request.user == user and any(
+            field in request.data for field in {"active", "group", "isAdmin"}
+        ):
+            raise PermissionDenied("You cannot change your own active status or role")
         if not is_admin(request.user):
-            forbidden_fields = {"isAdmin", "active"}
+            forbidden_fields = {"isAdmin", "group", "active"}
             if any(field in request.data for field in forbidden_fields):
                 raise PermissionDenied("You cannot modify admin or active flags")
 
@@ -62,16 +65,16 @@ class UserViewSet(viewsets.ModelViewSet):
             )
 
         if role_filter == "Admin":
-            queryset = queryset.filter(profile__is_admin=True)
-        elif role_filter == "User":
-            queryset = queryset.filter(profile__is_admin=False)
+            queryset = queryset.filter(groups__name=ADMIN_GROUP_NAME)
+        elif role_filter in {"User", "Developer"}:
+            queryset = queryset.filter(groups__name=DEVELOPER_GROUP_NAME)
 
         if status_filter == "Active":
             queryset = queryset.filter(is_active=True)
         elif status_filter == "Inactive":
             queryset = queryset.filter(is_active=False)
 
-        return queryset
+        return queryset.distinct()
 
     def perform_create(self, serializer):
         check_admin(self.request.user)
@@ -106,7 +109,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.is_active = active
         user.save(update_fields=["is_active"])
-        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile, _ = UserImage.objects.get_or_create(user=user)
         profile.active = active
         profile.save(update_fields=["active"])
         refreshed_user = User.objects.get(id=user.id)
