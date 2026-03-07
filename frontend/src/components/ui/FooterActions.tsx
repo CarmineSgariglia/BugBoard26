@@ -3,7 +3,7 @@ import { Button } from "./Button";
 
 interface FooterLink {
     label: string;
-    icon: ReactNode;
+    icon?: ReactNode;
     onClick: () => void;
 }
 

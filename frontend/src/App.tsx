@@ -10,7 +10,7 @@ import { AuthLayout } from "./components/layout/AuthLayout";
 import { useAuth } from "./contexts/AuthContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { BreadcrumbProvider } from "./contexts/BreadcrumbContext";
-import { IssuePage } from "./features/issue/IssuePage";
+import { IssuePage } from "./features/issue/issuePage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const queryClient = new QueryClient();
 

@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  build: {
+    sourcemap: false,
+  },
   server: {
     host: true,
     port: 5173,

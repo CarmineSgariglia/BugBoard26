@@ -15,9 +15,10 @@ interface ProfileHeaderProps {
     onImageSelect?: (file: File) => void;
     isUploading?: boolean;
     mode?: "edit" | "view";
+    className?: string;
 }
 
-export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUploading, mode = "edit" }: ProfileHeaderProps) {
+export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUploading, mode = "edit", className = "" }: ProfileHeaderProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isViewMode = mode === "view";
 
@@ -71,7 +72,7 @@ export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUpl
                 </div>
             )}
             <h1 className="text-xl font-bold text-white mb-1.5 tracking-tight">{title}</h1>
-            <p className="text-sm-p-6 text-neutral-400 text-center max-w-sm">{subtitle}</p>
+            <p className={`text-sm-p-6 text-neutral-400 text-center max-w-sm ${className}`.trim()}>{subtitle}</p>
         </div>
     );
 }

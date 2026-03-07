@@ -1,5 +1,8 @@
 import random
-from apps.core.models import User, Project, Issue, Notification, NotifyUser, NotifyType
+
+from django.contrib.auth.models import User
+
+from apps.bugboardapi.models import Issue, Notification, NotifyType, NotifyUser, Project
 
 def seed_notifications():
     # Find active admin user or fallback
