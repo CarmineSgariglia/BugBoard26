@@ -1,3 +1,5 @@
+import { Input } from "../ui/Input";
+
 interface ChangePasswordSectionProps {
     requireCurrentPassword: boolean;
     currentPassword?: string;
@@ -15,7 +17,6 @@ export function ChangePasswordSection({
     onRetrievePassword,
     error
 }: ChangePasswordSectionProps) {
-    const inputClasses = "w-full rounded-lg bg-white/[0.03] border border-white/5 px-4 py-2.5 text-[14px] text-white placeholder-neutral-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all";
     const labelClasses = "block text-[10px] font-bold text-[#8A8F98] uppercase tracking-widest mb-2";
 
     return (
@@ -41,11 +42,10 @@ export function ChangePasswordSection({
                                 RETRIEVE PASSWORD
                             </button>
                         </div>
-                        <input
+                        <Input
                             type="password"
                             value={currentPassword}
                             onChange={e => onChangeCurrentPassword?.(e.target.value)}
-                            className={inputClasses}
                             placeholder="••••••••••••"
                         />
                     </div>
@@ -53,11 +53,10 @@ export function ChangePasswordSection({
 
                 <div>
                     <label className={labelClasses}>New Password</label>
-                    <input
+                    <Input
                         type="password"
                         value={newPassword}
                         onChange={e => onChangeNewPassword?.(e.target.value)}
-                        className={inputClasses}
                         placeholder="Enter new password"
                     />
                 </div>
@@ -65,3 +64,4 @@ export function ChangePasswordSection({
         </div>
     );
 }
+

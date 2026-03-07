@@ -54,7 +54,7 @@ export function DynamicBreadcrumbs() {
         <div className="flex items-center gap-3">
             {/* Logo + Root link */}
             <Link to="/projects" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                <img src={brandLogo} alt="Logo_BugBoard26" className="w-8 h-7" />
+                <img src={brandLogo} alt="Logo_BugBoard26" className="w-8 h-6" />
             </Link>
 
             {/* Separator / Breadcrumb chain */}
