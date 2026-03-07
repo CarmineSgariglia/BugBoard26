@@ -7,7 +7,6 @@ from .models import (
     Issue,
     IssueAssignee,
     IssueEvent,
-    IssueImage,
     IssueStatus,
     IssueTag,
     NotifyUser,
@@ -279,17 +278,6 @@ class AttachmentSerializer(serializers.ModelSerializer):
         return build_media_url(self, obj.path)
 
 
-class IssueImageSerializer(serializers.ModelSerializer):
-    issueImageId = serializers.IntegerField(source="issue_image_id", read_only=True)
-    issueId = serializers.IntegerField(source="issue.issue_id", read_only=True)
-    url = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = IssueImage
-        fields = ["issueImageId", "issueId", "path", "url"]
-
-    def get_url(self, obj):
-        return build_media_url(self, obj.path)
 
 
 class NotifyUserSerializer(serializers.ModelSerializer):

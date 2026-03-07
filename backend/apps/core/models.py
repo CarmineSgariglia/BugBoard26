@@ -16,7 +16,9 @@ class UserProfile(models.Model):
         related_name="profile",
     )
     is_admin = models.BooleanField(default=False, db_column="isAdmin")
-    profile_img = models.CharField(max_length=256, blank=True, default="", db_column="profileImg")
+    profile_img = models.CharField(
+        max_length=256, blank=True, default="", db_column="profileImg"
+    )
     active = models.BooleanField(default=True, db_column="active")
 
     class Meta:
@@ -93,14 +95,30 @@ class ProjectMembership(models.Model):
         ADMIN = "admin", "Admin"
         DEVELOPER = "developer", "Developer"
 
-    project_membership_id = models.AutoField(primary_key=True, db_column="projectMembershipId")
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, db_column="projectId", related_name="memberships")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="userId", related_name="project_memberships")
+    project_membership_id = models.AutoField(
+        primary_key=True, db_column="projectMembershipId"
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        db_column="projectId",
+        related_name="memberships",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        db_column="userId",
+        related_name="project_memberships",
+    )
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.DEVELOPER)
 
     class Meta:
         db_table = "ProjectMembership"
-        constraints = [models.UniqueConstraint(fields=["project", "user"], name="unique_project_user_membership")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "user"], name="unique_project_user_membership"
+            )
+        ]
 
 
 class Tag(models.Model):
@@ -117,17 +135,35 @@ class Tag(models.Model):
 
 class Issue(models.Model):
     issue_id = models.AutoField(primary_key=True, db_column="issueId")
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, db_column="projectId", related_name="issues")
-    reporter = models.ForeignKey(User, on_delete=models.PROTECT, db_column="reporterId", related_name="reported_issues")
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, db_column="projectId", related_name="issues"
+    )
+    reporter = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        db_column="reporterId",
+        related_name="reported_issues",
+    )
     title = models.CharField(max_length=30)
     description = models.CharField(max_length=1000)
-    issue_type = models.CharField(max_length=32, choices=IssueType.choices, default=IssueType.BUG, db_column="type")
-    status = models.CharField(max_length=32, choices=IssueStatus.choices, default=IssueStatus.TODO)
-    priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.MEDIUM)
+    issue_type = models.CharField(
+        max_length=32,
+        choices=IssueType.choices,
+        default=IssueType.BUG,
+        db_column="type",
+    )
+    status = models.CharField(
+        max_length=32, choices=IssueStatus.choices, default=IssueStatus.TODO
+    )
+    priority = models.CharField(
+        max_length=16, choices=Priority.choices, default=Priority.MEDIUM
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_column="createdAt")
     updated_at = models.DateTimeField(auto_now=True, db_column="updatedAt")
     closed_at = models.DateTimeField(null=True, blank=True, db_column="closedAt")
-    assignees = models.ManyToManyField(User, through="IssueAssignee", related_name="assigned_issues")
+    assignees = models.ManyToManyField(
+        User, through="IssueAssignee", related_name="assigned_issues"
+    )
     tags = models.ManyToManyField(Tag, through="IssueTag", related_name="issues")
 
     class Meta:
@@ -140,29 +176,55 @@ class Issue(models.Model):
 
 class IssueAssignee(models.Model):
     issue_assignee_id = models.AutoField(primary_key=True, db_column="issueAssigneeId")
-    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, db_column="issueId", related_name="issue_assignees")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="userId", related_name="issue_assignments")
+    issue = models.ForeignKey(
+        Issue,
+        on_delete=models.CASCADE,
+        db_column="issueId",
+        related_name="issue_assignees",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        db_column="userId",
+        related_name="issue_assignments",
+    )
 
     class Meta:
         db_table = "IssueAssignee"
-        constraints = [models.UniqueConstraint(fields=["issue", "user"], name="unique_issue_assignee")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["issue", "user"], name="unique_issue_assignee"
+            )
+        ]
 
 
 class IssueTag(models.Model):
     issue_tag_id = models.AutoField(primary_key=True, db_column="issueTagId")
-    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, db_column="issueId", related_name="issue_tags")
-    tag = models.ForeignKey(Tag, on_delete=models.CASCADE, db_column="tagId", related_name="tag_issues")
+    issue = models.ForeignKey(
+        Issue, on_delete=models.CASCADE, db_column="issueId", related_name="issue_tags"
+    )
+    tag = models.ForeignKey(
+        Tag, on_delete=models.CASCADE, db_column="tagId", related_name="tag_issues"
+    )
 
     class Meta:
         db_table = "IssueTag"
-        constraints = [models.UniqueConstraint(fields=["issue", "tag"], name="unique_issue_tag")]
+        constraints = [
+            models.UniqueConstraint(fields=["issue", "tag"], name="unique_issue_tag")
+        ]
 
 
 class IssueEvent(models.Model):
     update_id = models.AutoField(primary_key=True, db_column="updateId")
-    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, db_column="issueId", related_name="events")
-    actor = models.ForeignKey(User, on_delete=models.PROTECT, db_column="actorId", related_name="issue_events")
-    event_type = models.CharField(max_length=32, choices=EventType.choices, db_column="eventType")
+    issue = models.ForeignKey(
+        Issue, on_delete=models.CASCADE, db_column="issueId", related_name="events"
+    )
+    actor = models.ForeignKey(
+        User, on_delete=models.PROTECT, db_column="actorId", related_name="issue_events"
+    )
+    event_type = models.CharField(
+        max_length=32, choices=EventType.choices, db_column="eventType"
+    )
     at = models.DateTimeField(auto_now_add=True)
     message = models.CharField(max_length=256, blank=True, default="")
     old_status = models.CharField(
@@ -187,7 +249,12 @@ class IssueEvent(models.Model):
 
 class Attachment(models.Model):
     attachment_id = models.AutoField(primary_key=True, db_column="attachmentId")
-    update = models.ForeignKey(IssueEvent, on_delete=models.CASCADE, db_column="updateId", related_name="attachments")
+    update = models.ForeignKey(
+        IssueEvent,
+        on_delete=models.CASCADE,
+        db_column="updateId",
+        related_name="attachments",
+    )
     path = models.CharField(max_length=256)
     mime_type = models.CharField(max_length=50, db_column="mimeType")
     size = models.IntegerField()
@@ -197,19 +264,19 @@ class Attachment(models.Model):
         db_table = "Attachment"
 
 
-class IssueImage(models.Model):
-    issue_image_id = models.AutoField(primary_key=True, db_column="issueImageId")
-    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, db_column="issueId", related_name="images")
-    path = models.CharField(max_length=256)
-
-    class Meta:
-        db_table = "IssueImage"
-
-
 class Notification(models.Model):
     notification_id = models.AutoField(primary_key=True, db_column="notificationId")
-    notify_type = models.CharField(max_length=32, choices=NotifyType.choices, db_column="type")
-    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, null=True, blank=True, db_column="issueId", related_name="notifications")
+    notify_type = models.CharField(
+        max_length=32, choices=NotifyType.choices, db_column="type"
+    )
+    issue = models.ForeignKey(
+        Issue,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        db_column="issueId",
+        related_name="notifications",
+    )
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
@@ -224,7 +291,10 @@ class Notification(models.Model):
         db_table = "Notification"
         constraints = [
             models.CheckConstraint(
-                check=(Q(issue__isnull=False, project__isnull=True) | Q(issue__isnull=True, project__isnull=False)),
+                check=(
+                    Q(issue__isnull=False, project__isnull=True)
+                    | Q(issue__isnull=True, project__isnull=False)
+                ),
                 name="notification_xor_target",
             )
         ]
@@ -239,33 +309,50 @@ class NotifyUser(models.Model):
         db_column="notificationId",
         related_name="recipients",
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="userId", related_name="notifications")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, db_column="userId", related_name="notifications"
+    )
     is_read = models.BooleanField(default=False, db_column="isRead")
     read_at = models.DateTimeField(null=True, blank=True, db_column="readAt")
 
     class Meta:
         db_table = "NotifyUser"
-        constraints = [models.UniqueConstraint(fields=["notification", "user"], name="unique_notification_user")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["notification", "user"], name="unique_notification_user"
+            )
+        ]
         ordering = ["-notification__created_at"]
 
 
 class PasswordResetOTP(models.Model):
     otp_id = models.AutoField(primary_key=True, db_column="otpId")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="userId", related_name="otp_codes")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, db_column="userId", related_name="otp_codes"
+    )
     code = models.CharField(
         max_length=6,
-        validators=[MinLengthValidator(6), RegexValidator(r"^\d{6}$", "OTP must be 6 digits")],
+        validators=[
+            MinLengthValidator(6),
+            RegexValidator(r"^\d{6}$", "OTP must be 6 digits"),
+        ],
     )
     created_at = models.DateTimeField(auto_now_add=True, db_column="createdAt")
     expires_at = models.DateTimeField(db_column="expiresAt")
     is_used = models.BooleanField(default=False, db_column="isUsed")
-    attempt_count = models.PositiveSmallIntegerField(default=0, db_column="attemptCount")
-    last_attempt_at = models.DateTimeField(null=True, blank=True, db_column="lastAttemptAt")
+    attempt_count = models.PositiveSmallIntegerField(
+        default=0, db_column="attemptCount"
+    )
+    last_attempt_at = models.DateTimeField(
+        null=True, blank=True, db_column="lastAttemptAt"
+    )
 
     class Meta:
         db_table = "PasswordResetOTP"
         indexes = [
-            models.Index(fields=["user", "code", "is_used", "expires_at"], name="otp_lookup_idx"),
+            models.Index(
+                fields=["user", "code", "is_used", "expires_at"], name="otp_lookup_idx"
+            ),
         ]
         ordering = ["-created_at"]
 
