@@ -10,13 +10,13 @@ import { AuthLayout } from "./components/layout/AuthLayout";
 import { useAuth } from "./contexts/AuthContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { BreadcrumbProvider } from "./contexts/BreadcrumbContext";
-import { IssuePage } from "./features/issue/IssuePage";
+import { IssuePage } from "./features/issue/issuePage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const queryClient = new QueryClient();
 
-
-
-{/* If the user is authenticated, render the MainLayout, otherwise render the AuthLayout */ }
+{
+  /* If the user is authenticated, render the MainLayout, otherwise render the AuthLayout */
+}
 function RequireAuth({ children }: { children: ReactElement }) {
   const { user, isLoading } = useAuth();
 
@@ -31,7 +31,9 @@ function RequireAuth({ children }: { children: ReactElement }) {
   return children;
 }
 
-{/* If the user is authenticated, redirect to the projects page, otherwise render the AuthLayout */ }
+{
+  /* If the user is authenticated, redirect to the projects page, otherwise render the AuthLayout */
+}
 function PublicOnly({ children }: { children: ReactElement }) {
   const { user, isLoading } = useAuth();
 
@@ -46,12 +48,10 @@ function PublicOnly({ children }: { children: ReactElement }) {
   return children;
 }
 
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -65,7 +65,10 @@ function App() {
           >
             <Route path="/login" element={<LoginScreen />} />
             <Route path="/forgot-password" element={<RetrieveStep1Screen />} />
-            <Route path="/forgot-password/verify" element={<RetrieveStep2Screen />} />
+            <Route
+              path="/forgot-password/verify"
+              element={<RetrieveStep2Screen />}
+            />
           </Route>
 
           {/* Private Routes (Protected by RequireAuth and using MainLayout) */}
@@ -79,8 +82,14 @@ function App() {
             }
           >
             <Route path="/projects" element={<ProjectsScreen />} />
-            <Route path="/projects/:projectId/issues" element={<ProjectIssuesScreen />} />
-            <Route path="/projects/:projectId/issues/:issueId" element={<IssuePage />} />
+            <Route
+              path="/projects/:projectId/issues"
+              element={<ProjectIssuesScreen />}
+            />
+            <Route
+              path="/projects/:projectId/issues/:issueId"
+              element={<IssuePage />}
+            />
             <Route path="/settings" element={<ManageAccountSettingsPage />} />
           </Route>
 
