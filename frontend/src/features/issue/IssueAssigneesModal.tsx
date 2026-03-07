@@ -41,7 +41,7 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
                 profileImg: m.profileImg || undefined,
             }));
             setMembers(mappedUsers);
-        } catch (err) {
+        } catch {
             setError("Failed to load project members.");
         } finally {
             setIsLoading(false);
@@ -60,7 +60,7 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
             const updated = await updateIssueApi(issue.issueId, { assigneeIds: selectedUserIds });
             onSuccess(updated);
             onClose();
-        } catch (err) {
+        } catch {
             setError("Failed to update assignees.");
         } finally {
             setIsSubmitting(false);

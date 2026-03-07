@@ -192,49 +192,49 @@ export type NotificationItem = {
 };
 
 export async function loginApi(email: string, password: string): Promise<AuthUser> {
-  const { data } = await api.post<AuthUser>("/auth/login/", { email, password });
+  const { data } = await api.post<AuthUser>("/auth/login", { email, password });
   return data;
 }
 
 export async function requestOtpApi(email: string): Promise<void> {
-  await api.post("/auth/password/otp/request/", { email });
+  await api.post("/auth/password/otp/request", { email });
 }
 
 export async function verifyOtpApi(email: string, code: string): Promise<{ valid: boolean }> {
-  const { data } = await api.post<{ valid: boolean }>("/auth/password/otp/verify/", { email, code });
+  const { data } = await api.post<{ valid: boolean }>("/auth/password/otp/verify", { email, code });
   return data;
 }
 
 export async function resetPasswordApi(email: string, code: string, newPassword: string): Promise<void> {
-  await api.post("/auth/password/reset/", { email, code, newPassword });
+  await api.post("/auth/password/reset", { email, code, newPassword });
 }
 
 export async function logoutApi(): Promise<void> {
-  await api.post("/auth/logout/");
+  await api.post("/auth/logout");
 }
 
 export async function meApi(): Promise<AuthUser> {
-  const { data } = await api.get<AuthUser>("/auth/me/");
+  const { data } = await api.get<AuthUser>("/auth/me");
   return data;
 }
 
 export async function updateUserApi(userId: number, payload: UpdateUserPayload): Promise<AuthUser> {
-  const { data } = await api.patch<AuthUser>(`/users/${userId}/`, payload);
+  const { data } = await api.patch<AuthUser>(`/users/${userId}`, payload);
   return data;
 }
 
 export async function changePasswordApi(userId: number, currentPassword: string, newPassword: string): Promise<void> {
-  await api.post(`/users/${userId}/change-password/`, { currentPassword, newPassword });
+  await api.post(`/users/${userId}/change-password`, { currentPassword, newPassword });
 }
 
 export async function adminChangePasswordApi(userId: number, newPassword: string): Promise<void> {
-  await api.post(`/users/${userId}/admin-reset-password/`, { newPassword });
+  await api.post(`/users/${userId}/admin-reset-password`, { newPassword });
 }
 
 export async function adminUploadProfileImageApi(userId: number, file: File): Promise<AuthUser> {
   const formData = new FormData();
   formData.append("profile_img", file);
-  const { data } = await api.post<AuthUser>(`/users/${userId}/admin-upload-image/`, formData, {
+  const { data } = await api.post<AuthUser>(`/users/${userId}/admin-upload-image`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -243,24 +243,24 @@ export async function adminUploadProfileImageApi(userId: number, file: File): Pr
 }
 
 export async function createUserApi(payload: CreateUserPayload): Promise<AuthUser> {
-  const { data } = await api.post<AuthUser>("/users/", payload);
+  const { data } = await api.post<AuthUser>("/users", payload);
   return data;
 }
 
 export async function listUsersApi(params?: ListUsersParams): Promise<PaginatedResponse<AuthUser>> {
-  const { data } = await api.get<PaginatedResponse<AuthUser>>("/users/", { params });
+  const { data } = await api.get<PaginatedResponse<AuthUser>>("/users", { params });
   return data;
 }
 
 export async function setUserActiveApi(userId: number, active: boolean): Promise<AuthUser> {
-  const { data } = await api.patch<AuthUser>(`/users/${userId}/`, { active });
+  const { data } = await api.patch<AuthUser>(`/users/${userId}`, { active });
   return data;
 }
 
 export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
   const formData = new FormData();
   formData.append("profile_img", file);
-  const { data } = await api.post<AuthUser>("/users/me/upload_profile_image/", formData, {
+  const { data } = await api.post<AuthUser>("/users/me/upload_profile_image", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -270,41 +270,41 @@ export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
 
 export async function listProjectsApi(search?: string): Promise<Project[]> {
   const params = search ? { q: search } : undefined;
-  const { data } = await api.get<Project[]>("/projects/", { params });
+  const { data } = await api.get<Project[]>("/projects", { params });
   return data;
 }
 
 export async function createProjectApi(payload: CreateProjectPayload): Promise<Project> {
-  const { data } = await api.post<Project>("/projects/", payload);
+  const { data } = await api.post<Project>("/projects", payload);
   return data;
 }
 
 export async function updateProjectApi(projectId: number | string, payload: UpdateProjectPayload): Promise<Project> {
-  const { data } = await api.patch<Project>(`/projects/${projectId}/`, payload);
+  const { data } = await api.patch<Project>(`/projects/${projectId}`, payload);
   return data;
 }
 
 export async function deleteProjectApi(projectId: number | string): Promise<void> {
-  await api.delete(`/projects/${projectId}/`);
+  await api.delete(`/projects/${projectId}`);
 }
 
 export async function listProjectMembersApi(projectId: string | number): Promise<ProjectMembership[]> {
-  const { data } = await api.get<ProjectMembership[]>(`/projects/${projectId}/members/`);
+  const { data } = await api.get<ProjectMembership[]>(`/projects/${projectId}/members`);
   return data;
 }
 
 export async function listProjectIssuesApi(projectId: string | number): Promise<Issue[]> {
-  const { data } = await api.get<Issue[]>(`/projects/${projectId}/issues/`);
+  const { data } = await api.get<Issue[]>(`/projects/${projectId}/issues`);
   return data;
 }
 
 export async function createProjectIssueApi(projectId: string | number, payload: CreateIssuePayload): Promise<Issue> {
-  const { data } = await api.post<Issue>(`/projects/${projectId}/issues/`, payload);
+  const { data } = await api.post<Issue>(`/projects/${projectId}/issues`, payload);
   return data;
 }
 
 export async function updateIssueDetailsApi(issueId: number | string, payload: UpdateIssuePayload): Promise<Issue> {
-  const { data } = await api.patch<Issue>(`/issues/${issueId}/details/`, payload);
+  const { data } = await api.patch<Issue>(`/issues/${issueId}/details`, payload);
   return data;
 }
 
@@ -317,67 +317,72 @@ export async function uploadAttachmentApi(
   formData.append("file", file);
   formData.append("issueId", String(issueId));
   if (message) formData.append("message", message);
-  const { data } = await api.post<IssueAttachment>("/attachments/", formData, {
+  const { data } = await api.post<IssueAttachment>("/attachments", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
 }
 
 export async function listAttachmentsApi(params: { issueId?: number; updateId?: number }): Promise<IssueAttachment[]> {
-  const { data } = await api.get<IssueAttachment[]>("/attachments/", { params });
+  const { data } = await api.get<IssueAttachment[]>("/attachments", { params });
   return data;
 }
 
 export async function deleteAttachmentApi(attachmentId: number): Promise<void> {
-  await api.delete(`/attachments/${attachmentId}/`);
+  await api.delete(`/attachments/${attachmentId}`);
 }
 
 
 
 export async function getIssueApi(issueId: string | number): Promise<Issue> {
-  const { data } = await api.get<Issue>(`/issues/${issueId}/`);
+  const { data } = await api.get<Issue>(`/issues/${issueId}`);
   return data;
 }
 
 export async function updateIssueApi(issueId: number | string, payload: UpdateIssuePayload): Promise<Issue> {
-  const { data } = await api.patch<Issue>(`/issues/${issueId}/`, payload);
+  const { data } = await api.patch<Issue>(`/issues/${issueId}`, payload);
   return data;
 }
 
 export async function listIssueUpdatesApi(issueId: string | number): Promise<IssueUpdate[]> {
-  const { data } = await api.get<IssueUpdate[]>(`/issues/${issueId}/updates/`);
+  const { data } = await api.get<IssueUpdate[]>(`/issues/${issueId}/updates`);
   return data;
 }
 
 export async function listNotificationsApi(): Promise<NotificationItem[]> {
-  const { data } = await api.get<NotificationItem[]>("/notifications/");
+  const { data } = await api.get<NotificationItem[]>("/notifications");
   return data;
 }
 
 export async function readNotificationApi(notificationId: number): Promise<NotificationItem> {
-  const { data } = await api.post<NotificationItem>(`/notifications/${notificationId}/read/`);
+  const { data } = await api.post<NotificationItem>(`/notifications/${notificationId}/read`);
   return data;
 }
 
 export async function readAllNotificationsApi(): Promise<{ updated: number }> {
-  const { data } = await api.post<{ updated: number }>("/notifications/read-all/");
+  const { data } = await api.post<{ updated: number }>("/notifications/read-all");
   return data;
 }
 
 export async function deleteNotificationApi(notificationId: number): Promise<void> {
-  await api.delete(`/notifications/${notificationId}/`);
+  await api.delete(`/notifications/${notificationId}`);
 }
 
 export function resolveMediaUrl(pathOrUrl?: string): string {
   if (!pathOrUrl) return "";
-  const backendOrigin =
-    import.meta.env.VITE_BACKEND_PUBLIC_ORIGIN ?? `${window.location.protocol}//${window.location.hostname}:8000`;
+  const backendOrigin = import.meta.env.VITE_BACKEND_PUBLIC_ORIGIN ?? window.location.origin;
 
   if (pathOrUrl.startsWith("http://backend:8000")) {
     return `${backendOrigin}${pathOrUrl.slice("http://backend:8000".length)}`;
   }
   if (pathOrUrl.startsWith("https://backend:8000")) {
     return `${backendOrigin}${pathOrUrl.slice("https://backend:8000".length)}`;
+  }
+  if (pathOrUrl.startsWith("http://backend")) {
+    return `${backendOrigin}${pathOrUrl.slice("http://backend".length)}`;
+  }
+  if (pathOrUrl.startsWith("https://backend")) {
+    return `${backendOrigin}${pathOrUrl.slice("https://backend".length)}`;
   }
   if (pathOrUrl.startsWith("/media/")) {
     return pathOrUrl;

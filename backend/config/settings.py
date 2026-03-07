@@ -27,7 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
-    "apps.core",
+    "apps.bugboardapi",
 ]
 
 MIDDLEWARE = [
@@ -42,6 +42,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+APPEND_SLASH = False
 
 TEMPLATES = [
     {
