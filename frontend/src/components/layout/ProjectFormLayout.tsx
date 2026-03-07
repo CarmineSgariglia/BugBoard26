@@ -22,7 +22,6 @@ export function ProjectFormLayout({
     return (
         <GlassCard className="w-full max-w-2xl mx-auto flex flex-col px-8 pt-5 pb-0 gap-2 shadow-2xl">
             {/* Header: Titolo, Sottotitolo e Indicatore Step */}
-            <div className="flex items-start justify-between border-b border-white/5 pb-4" />
             <div>
                 <h2 className="text-xl font-bold text-white mb-1">{title}</h2>
                 <p className="text-sm text-neutral-400">{subtitle}</p>
