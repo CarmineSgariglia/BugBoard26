@@ -11,6 +11,7 @@
         display: none; /* Chrome, Safari and Opera */
     }
 }
+
 @layer utilities {
 
     /* Hide scrollbar for Chrome, Safari and Opera */
@@ -25,29 +26,4 @@
         scrollbar-width: none;
         /* Firefox */
     }
-}
-
-
-.popover {
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  border-radius: 9px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-
-
-
-
-/* -_-__-_| TEST |----___--*/
-
-.card {
-  background-color: var(--bg-variable);
-  
-  /* Calcolo del colore del testo */
-  color: oklch(from var(--bg-variable) l c h);
-  
-  /* Logica di soglia: se L < 0.5 (50%), forza a bianco, altrimenti nero */
-  color: oklch(from var(--bg-variable) calc(1 - round(l, 1)) 0 0);
 }
