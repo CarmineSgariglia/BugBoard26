@@ -6,7 +6,7 @@ import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
 import { CreateProjectFlow } from "./CreateProjectFlow";
 import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
 import { getProjectIcon } from "../../utils/projectIcons";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { useQuery } from "@tanstack/react-query"; // UTILIZZARE QUESTA LOGICA PER LE ALTRE PAGINE APPENA FACCIO IL REFACTORING
 
 function projectIcon(iconId?: string) {

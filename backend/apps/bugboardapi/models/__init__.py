@@ -1,4 +1,4 @@
-from .users import PasswordResetOTP, UserImage
+from .users import PasswordResetOTP, RevokedTokenSession, UserProfileImage
 from .projects import Project, ProjectMembership
 from .tags import Tag
 from .issues import (
@@ -30,6 +30,7 @@ __all__ = [
     "Priority",
     "Project",
     "ProjectMembership",
+    "RevokedTokenSession",
     "Tag",
-    "UserImage",
+    "UserProfileImage",
 ]

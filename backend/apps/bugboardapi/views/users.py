@@ -12,7 +12,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from ..models import UserImage
+from ..passwords import ensure_valid_password
 from ..roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from ..permissions import check_admin, is_admin
 from ..serializers import ChangePasswordSerializer, UserSerializer
@@ -109,9 +109,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.is_active = active
         user.save(update_fields=["is_active"])
-        profile, _ = UserImage.objects.get_or_create(user=user)
-        profile.active = active
-        profile.save(update_fields=["active"])
         refreshed_user = User.objects.get(id=user.id)
         return Response(UserSerializer(refreshed_user, context={"request": request}).data, status=status.HTTP_200_OK)
 
@@ -154,6 +151,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if user.check_password(new_password):
             raise ValidationError({"newPassword": "New password must be different from current password"})
+
+        ensure_valid_password(new_password, user=user, field_name="newPassword")
 
         user.set_password(new_password)
         user.save(update_fields=["password"])

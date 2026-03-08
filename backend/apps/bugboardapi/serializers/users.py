@@ -1,7 +1,8 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from ..models import UserImage
+from ..models import UserProfileImage
+from ..passwords import build_password_validation_user, ensure_valid_password
 from ..roles import (
     ADMIN_GROUP_NAME,
     DEVELOPER_GROUP_NAME,
@@ -48,6 +49,7 @@ class UserSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         requested_group = attrs.get("group")
         requested_is_admin = attrs.pop("isAdmin", None)
+        password = attrs.get("password")
 
         if requested_is_admin is not None:
             alias_group = ADMIN_GROUP_NAME if requested_is_admin else DEVELOPER_GROUP_NAME
@@ -59,6 +61,16 @@ class UserSerializer(serializers.ModelSerializer):
             attrs["group"] = requested_group
         elif self.instance is None:
             attrs["group"] = DEVELOPER_GROUP_NAME
+
+        if self.instance is None and not password:
+            raise serializers.ValidationError({"password": "Password is required"})
+
+        if self.instance is not None and password is not None:
+            raise serializers.ValidationError({"password": "Use the dedicated password endpoint"})
+
+        if password:
+            candidate_user = build_password_validation_user(instance=self.instance, attrs=attrs)
+            ensure_valid_password(password, user=candidate_user, field_name="password")
 
         return attrs
 
@@ -74,11 +86,9 @@ class UserSerializer(serializers.ModelSerializer):
         if password:
             user_update_fields.append("password")
         user.save(update_fields=user_update_fields)
-        profile, _ = UserImage.objects.get_or_create(user=user)
+        profile, _ = UserProfileImage.objects.get_or_create(user=user)
         profile.profile_img = profile_data.get("profile_img", profile.profile_img)
-        profile.is_admin = role_name == ADMIN_GROUP_NAME
-        profile.active = user.is_active
-        profile.save()
+        profile.save(update_fields=["profile_img"])
         return user
 
     def update(self, instance, validated_data):
@@ -95,14 +105,12 @@ class UserSerializer(serializers.ModelSerializer):
         if update_fields:
             instance.save(update_fields=update_fields)
 
-        profile, _ = UserImage.objects.get_or_create(user=instance)
+        profile, _ = UserProfileImage.objects.get_or_create(user=instance)
         if "profile_img" in profile_data:
             profile.profile_img = profile_data["profile_img"]
+            profile.save(update_fields=["profile_img"])
         if role_name is not None:
             assign_global_role(instance, role_name)
-            profile.is_admin = role_name == ADMIN_GROUP_NAME
-        profile.active = instance.is_active
-        profile.save()
         return instance
 
 

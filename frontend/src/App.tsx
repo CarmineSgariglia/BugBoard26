@@ -7,7 +7,7 @@ import { ProjectsScreen } from "./features/projects/ProjectsScreen";
 import { ProjectIssuesScreen } from "./features/projects/ProjectIssuesScreen";
 import { ManageAccountSettingsPage } from "./features/settings/ManageAccountSettingsPage";
 import { AuthLayout } from "./components/layout/AuthLayout";
-import { useAuth } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/useAuth";
 import { MainLayout } from "./components/layout/MainLayout";
 import { BreadcrumbProvider } from "./contexts/BreadcrumbContext";
 import { IssuePage } from "./features/issue/issuePage";

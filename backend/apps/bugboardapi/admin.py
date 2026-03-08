@@ -11,15 +11,15 @@ from .models import (
     PasswordResetOTP,
     Project,
     ProjectMembership,
+    RevokedTokenSession,
     Tag,
-    UserImage,
+    UserProfileImage,
 )
 
 
-@admin.register(UserImage)
-class UserImageAdmin(admin.ModelAdmin):
-    list_display = ("user", "is_admin", "active")
-    list_filter = ("is_admin", "active")
+@admin.register(UserProfileImage)
+class UserProfileImageAdmin(admin.ModelAdmin):
+    list_display = ("user", "profile_img")
     search_fields = ("user__username", "user__email")
 
 
@@ -99,3 +99,10 @@ class PasswordResetOTPAdmin(admin.ModelAdmin):
     list_display = ("otp_id", "user", "code", "created_at", "expires_at", "is_used")
     list_filter = ("is_used",)
     search_fields = ("user__username", "user__email", "code")
+
+
+@admin.register(RevokedTokenSession)
+class RevokedTokenSessionAdmin(admin.ModelAdmin):
+    list_display = ("sid", "user", "expires_at", "revoked_at")
+    list_filter = ("revoked_at",)
+    search_fields = ("sid", "user__username", "user__email")

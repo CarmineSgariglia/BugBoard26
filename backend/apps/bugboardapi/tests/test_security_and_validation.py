@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.test import SimpleTestCase
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
 from apps.bugboardapi.models import Project, ProjectMembership, Tag
@@ -32,7 +32,6 @@ class UserPermissionTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.user.refresh_from_db()
-        self.assertFalse(self.user.profile.is_admin)
         self.assertFalse(self.user.is_staff)
 
     def test_non_admin_cannot_toggle_active_flag(self):
@@ -67,7 +66,6 @@ class UserPermissionTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
-        self.assertTrue(self.user.profile.is_admin)
         self.assertTrue(self.user.is_staff)
 
     def test_admin_cannot_deactivate_self_via_patch(self):
@@ -186,6 +184,55 @@ class AuthThrottleConfigurationTests(SimpleTestCase):
         rates = settings.REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {})
         self.assertIn("login", rates)
         self.assertIn("otp", rates)
+
+
+class AuthCsrfTests(APITestCase):
+    def setUp(self):
+        self.user = create_user_with_profile(
+            username="csrf_user",
+            email="csrf@example.com",
+            password="StrongPass123!",
+        )
+
+    def test_csrf_endpoint_sets_cookie(self):
+        client = APIClient(enforce_csrf_checks=True)
+        response = client.get("/api/auth/csrf")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("csrftoken", response.cookies)
+
+    def test_login_requires_csrf_and_succeeds_with_token(self):
+        client = APIClient(enforce_csrf_checks=True)
+        blocked_response = client.post(
+            "/api/auth/login",
+            {"email": self.user.email, "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(blocked_response.status_code, status.HTTP_403_FORBIDDEN)
+
+        csrf_response = client.get("/api/auth/csrf")
+        csrf_token = csrf_response.cookies["csrftoken"].value
+        login_response = client.post(
+            "/api/auth/login",
+            {"email": self.user.email, "password": "StrongPass123!"},
+            format="json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+
+    def test_otp_endpoints_require_csrf(self):
+        client = APIClient(enforce_csrf_checks=True)
+        otp_calls = [
+            ("/api/auth/password/otp/request", {"email": self.user.email}),
+            ("/api/auth/password/otp/verify", {"email": self.user.email, "code": "123456"}),
+            (
+                "/api/auth/password/reset",
+                {"email": self.user.email, "code": "123456", "newPassword": "NewStrongPass123!"},
+            ),
+        ]
+
+        for path, payload in otp_calls:
+            response = client.post(path, payload, format="json")
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class JwtAuthFlowTests(APITestCase):

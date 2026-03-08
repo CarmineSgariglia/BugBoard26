@@ -15,7 +15,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         count = options["count"]
-        user = User.objects.filter(profile__active=True).first()
+        user = User.objects.filter(is_active=True).first()
         if not user:
             self.stderr.write(self.style.ERROR("No active user found."))
             return

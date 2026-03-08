@@ -3,7 +3,7 @@ import { SettingsSidebar } from "../../components/settings/SettingsSidebar";
 import { ProfileSettingsSection } from "../../components/settings/ProfileSettingsSection";
 import { AddUsersSection } from "../../components/settings/AddUsersSection";
 import { ManageUsersSection } from "../../components/settings/ManageUsersSection";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 
 export function ManageAccountSettingsPage() {
     const { user } = useAuth();

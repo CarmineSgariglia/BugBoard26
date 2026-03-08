@@ -4,7 +4,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import random
-import uuid
 from datetime import datetime, timedelta
 
 from django.conf import settings
@@ -15,9 +14,11 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from ..models import PasswordResetOTP, UserImage
+from ..models import PasswordResetOTP, UserProfileImage
+from ..passwords import ensure_valid_password
 from ..permissions import is_admin
 from ..serializers import UserSerializer
+from ..upload_security import store_upload, validate_profile_image
 
 logger = logging.getLogger(__name__)
 
@@ -84,17 +85,17 @@ def issue_otp_for_email(email: str) -> None:
     now = timezone.now()
     with transaction.atomic():
         PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
-        code = f"{random.randint(0, 999999):06d}"
-        otp = PasswordResetOTP.objects.create(
+        raw_code = f"{random.randint(0, 999999):06d}"
+        PasswordResetOTP.objects.create(
             user=user,
-            code=code,
+            code=raw_code,
             expires_at=now + timedelta(minutes=OTP_EXPIRY_MINUTES),
             attempt_count=0,
             last_attempt_at=None,
         )
 
     try:
-        _send_otp_email(email=user.email, code=otp.code)
+        _send_otp_email(email=user.email, code=raw_code)
         logger.info("otp_request_sent user_id=%s email_hash=%s", user.id, _email_hash(user.email))
     except Exception:
         logger.exception("otp_request_send_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))
@@ -108,7 +109,7 @@ def _validate_and_consume_attempt(*, user: User, code: str) -> tuple[bool, Passw
     if not otp.is_valid():
         return False, None
 
-    if otp.code == code:
+    if otp.matches_code(code):
         return True, otp
 
     otp.attempt_count += 1
@@ -145,6 +146,8 @@ def reset_password_with_otp(email: str, code: str, new_password: str) -> bool:
         logger.info("otp_reset_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))
         return False
 
+    ensure_valid_password(new_password, user=user, field_name="newPassword")
+
     with transaction.atomic():
         user.set_password(new_password)
         user.save(update_fields=["password"])
@@ -162,19 +165,15 @@ def save_profile_image_for_user(*, request, user: User):
     image = request.FILES.get("image") or request.FILES.get("profile_img")
     if image is None:
         raise ValidationError({"image": "Image file is required"})
-    if image.size > 2 * 1024 * 1024:
-        raise ValidationError({"image": "Max image size is 2MB"})
+    extension, _size = validate_profile_image(image)
+    saved = store_upload(
+        uploaded_file=image,
+        storage_dir=f"profile-images/{user.id}",
+        filename_suffix=f".{extension}",
+    )
+    saved_path = saved.path
 
-    content_type = (getattr(image, "content_type", "") or "").lower()
-    allowed_types = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
-    if content_type not in allowed_types:
-        raise ValidationError({"image": "Allowed formats: JPEG, PNG, WEBP"})
-
-    extension = allowed_types[content_type]
-    upload_path = f"profile-images/{user.id}/{uuid.uuid4().hex}.{extension}"
-    saved_path = default_storage.save(upload_path, image)
-
-    profile, _ = UserImage.objects.get_or_create(user=user)
+    profile, _ = UserProfileImage.objects.get_or_create(user=user)
     old_path = profile.profile_img
     profile.profile_img = saved_path
     profile.save(update_fields=["profile_img"])

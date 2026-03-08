@@ -1,6 +1,7 @@
 from datetime import timedelta
 from io import StringIO
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
@@ -26,6 +27,7 @@ from apps.bugboardapi.models import (
     NotifyUser,
     PasswordResetOTP,
     ProjectMembership,
+    RevokedTokenSession,
     Tag,
 )
 from apps.bugboardapi.services.notifications import notify_users
@@ -77,14 +79,15 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertEqual(PasswordResetOTP.objects.count(), 0)
 
     def test_otp_verify_and_reset_flow(self):
+        raw_code = "123456"
         otp = PasswordResetOTP.objects.create(
             user=self.user,
-            code="123456",
+            code=raw_code,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
         verify_response = self.client.post(
             "/api/auth/password/otp/verify",
-            {"email": self.user.email, "code": otp.code},
+            {"email": self.user.email, "code": raw_code},
             format="json",
         )
         self.assertEqual(verify_response.status_code, status.HTTP_200_OK)
@@ -94,7 +97,7 @@ class AuthOtpEndpointTests(APITestCase):
             "/api/auth/password/reset",
             {
                 "email": self.user.email,
-                "code": otp.code,
+                "code": raw_code,
                 "newPassword": "NewStrongPass123!",
             },
             format="json",
@@ -102,6 +105,7 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertEqual(reset_response.status_code, status.HTTP_200_OK)
         otp.refresh_from_db()
         self.assertTrue(otp.is_used)
+        self.assertNotEqual(otp.code, raw_code)
         self.assertTrue(
             authenticate(username=self.user.username, password="NewStrongPass123!")
         )
@@ -157,16 +161,17 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertTrue(otp.is_used)
 
     def test_password_reset_rejects_expired_or_locked_otp(self):
+        expired_code = "555555"
         expired = PasswordResetOTP.objects.create(
             user=self.user,
-            code="555555",
+            code=expired_code,
             expires_at=timezone.now() - timedelta(minutes=1),
         )
         expired_response = self.client.post(
             "/api/auth/password/reset",
             {
                 "email": self.user.email,
-                "code": expired.code,
+                "code": expired_code,
                 "newPassword": "NewStrongPass123!",
             },
             format="json",
@@ -174,9 +179,10 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertEqual(expired_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("detail", expired_response.data)
 
+        locked_code = "666666"
         locked = PasswordResetOTP.objects.create(
             user=self.user,
-            code="666666",
+            code=locked_code,
             expires_at=timezone.now() + timedelta(minutes=5),
             is_used=True,
         )
@@ -184,7 +190,7 @@ class AuthOtpEndpointTests(APITestCase):
             "/api/auth/password/reset",
             {
                 "email": self.user.email,
-                "code": locked.code,
+                "code": locked_code,
                 "newPassword": "NewStrongPass123!",
             },
             format="json",
@@ -221,6 +227,38 @@ class AuthOtpEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(mock_send_mail.called)
+
+    @override_settings(EMAIL_PROVIDER="console")
+    @patch("apps.bugboardapi.services.users.send_mail")
+    def test_otp_request_email_contains_raw_six_digit_code_not_hash(self, mock_send_mail):
+        response = self.client.post(
+            "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        message = mock_send_mail.call_args.kwargs["message"]
+        self.assertRegex(message, r"\b\d{6}\b")
+        self.assertIsNone(re.search(r"\b[a-f0-9]{64}\b", message))
+
+    def test_password_reset_rejects_weak_password(self):
+        raw_code = "654123"
+        otp = PasswordResetOTP.objects.create(
+            user=self.user,
+            code=raw_code,
+            expires_at=timezone.now() + timedelta(minutes=5),
+        )
+        response = self.client.post(
+            "/api/auth/password/reset",
+            {
+                "email": self.user.email,
+                "code": raw_code,
+                "newPassword": "12345678",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("newPassword", response.data)
+        otp.refresh_from_db()
+        self.assertFalse(otp.is_used)
 
     @override_settings(
         EMAIL_PROVIDER="brevo",
@@ -305,8 +343,6 @@ class UserManagementEndpointTests(APITestCase):
     def test_admin_user_list_status_filter_active_and_inactive(self):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])
-        self.member.profile.active = False
-        self.member.profile.save(update_fields=["active"])
 
         self.client.force_authenticate(user=self.admin)
         active_response = self.client.get("/api/users?status=Active")
@@ -356,6 +392,20 @@ class UserManagementEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_admin_user_create_rejects_weak_password(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/users",
+            {
+                "username": "weak_user",
+                "email": "weak_user@example.com",
+                "password": "12345678",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
     def test_user_delete_endpoint_is_disabled(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.delete(f"/api/users/{self.member.id}")
@@ -365,8 +415,6 @@ class UserManagementEndpointTests(APITestCase):
     def test_admin_can_toggle_user_status_with_status_endpoint(self):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])
-        self.member.profile.active = False
-        self.member.profile.save(update_fields=["active"])
 
         self.client.force_authenticate(user=self.admin)
         activate = self.client.post(
@@ -497,6 +545,26 @@ class UserManagementEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("currentPassword", response.data)
+
+    def test_change_password_rejects_weak_password(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password",
+            {"currentPassword": "StrongPass123!", "newPassword": "12345678"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("newPassword", response.data)
+
+    def test_generic_user_patch_password_is_rejected(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.patch(
+            f"/api/users/{self.member.id}",
+            {"password": "AnotherStrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
 
     def test_admin_can_reset_password_for_other_user_without_current(self):
         self.client.force_authenticate(user=self.admin)
@@ -806,6 +874,45 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(issue_tag_names, {"api", "ops"})
         self.assertEqual(Tag.objects.filter(name__iexact="api").count(), 1)
 
+    def test_issue_update_with_tag_names_creates_missing_tags_for_non_admin(self):
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"tagNames": ["api", "new-tag"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Tag.objects.filter(name__iexact="new-tag").exists())
+
+    def test_issue_update_rejects_assignee_outside_project(self):
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"assigneeIds": [self.outsider.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("assigneeIds", response.data)
+        self.assertFalse(
+            IssueAssignee.objects.filter(issue=self.issue, user=self.outsider).exists()
+        )
+
+    def test_outsider_cannot_create_tag_indirectly_via_issue_update(self):
+        self.client.force_authenticate(user=self.outsider)
+
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"tagNames": ["forbidden-tag"]},
+            format="json",
+        )
+        self.assertIn(
+            response.status_code,
+            (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND),
+        )
+        self.assertFalse(Tag.objects.filter(name__iexact="forbidden-tag").exists())
+
     def test_assign_requires_admin(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
@@ -878,14 +985,37 @@ class IssueWorkflowEndpointTests(APITestCase):
             message="comment",
         )
         self.client.force_authenticate(user=self.outsider)
+        uploaded = SimpleUploadedFile(
+            "notes.txt", b"hello outsider", content_type="text/plain"
+        )
         response = self.client.post(
             f"/api/issue-events/{event.update_id}/attachments",
-            {"path": "uploads/file.txt", "mimeType": "text/plain", "size": 12},
-            format="json",
+            {"file": uploaded},
+            format="multipart",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_attachment_upload_success_for_assignee(self):
+        event = IssueEvent.objects.create(
+            issue=self.issue,
+            actor=self.member,
+            event_type=EventType.COMMENT,
+            message="comment",
+        )
+        self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile(
+            "notes.txt", b"hello assignee", content_type="text/plain"
+        )
+        response = self.client.post(
+            f"/api/issue-events/{event.update_id}/attachments",
+            {"file": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        attachment = Attachment.objects.get(update=event)
+        self.assertTrue(attachment.path.startswith(f"issue-attachments/{self.issue.issue_id}/"))
+
+    def test_attachment_upload_rejects_json_path_payload(self):
         event = IssueEvent.objects.create(
             issue=self.issue,
             actor=self.member,
@@ -898,10 +1028,8 @@ class IssueWorkflowEndpointTests(APITestCase):
             {"path": "uploads/file.txt", "mimeType": "text/plain", "size": 12},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(
-            Attachment.objects.filter(update=event, path="uploads/file.txt").exists()
-        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("file", response.data)
 
     def test_issue_partial_update_creates_edit_event_and_notification(self):
         self.client.force_authenticate(user=self.member)
@@ -949,16 +1077,17 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_attachments_api_create_list_and_delete(self):
         self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile(
+            "manual.txt", b"manual upload", content_type="text/plain"
+        )
         create_response = self.client.post(
             "/api/attachments",
             {
                 "issueId": self.issue.issue_id,
                 "message": "file attached",
-                "path": "uploads/manual.txt",
-                "mimeType": "text/plain",
-                "size": 33,
+                "file": uploaded,
             },
-            format="json",
+            format="multipart",
         )
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
         attachment_id = create_response.data["attachmentId"]
@@ -1018,12 +1147,30 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_attachments_api_create_requires_target(self):
         self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile(
+            "manual.txt", b"manual upload", content_type="text/plain"
+        )
         response = self.client.post(
             "/api/attachments",
-            {"path": "uploads/manual.txt", "mimeType": "text/plain", "size": 33},
+            {"file": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_attachments_api_rejects_json_path_payload(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            "/api/attachments",
+            {
+                "issueId": self.issue.issue_id,
+                "path": "uploads/manual.txt",
+                "mimeType": "text/plain",
+                "size": 33,
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("file", response.data)
 
     def test_issue_delete_requires_admin(self):
         self.client.force_authenticate(user=self.member)
@@ -1225,6 +1372,16 @@ class OtpCleanupCommandTests(APITestCase):
             expires_at=timezone.now() + timedelta(minutes=10),
             is_used=False,
         )
+        expired_session = RevokedTokenSession.objects.create(
+            sid="expired-session",
+            user=self.user,
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+        valid_session = RevokedTokenSession.objects.create(
+            sid="valid-session",
+            user=self.user,
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
 
         output = StringIO()
         call_command("cleanup_otps", stdout=output)
@@ -1234,4 +1391,6 @@ class OtpCleanupCommandTests(APITestCase):
         )
         self.assertFalse(PasswordResetOTP.objects.filter(otp_id=used.otp_id).exists())
         self.assertTrue(PasswordResetOTP.objects.filter(otp_id=valid.otp_id).exists())
+        self.assertFalse(RevokedTokenSession.objects.filter(sid=expired_session.sid).exists())
+        self.assertTrue(RevokedTokenSession.objects.filter(sid=valid_session.sid).exists())
         self.assertIn("Deleted", output.getvalue())
