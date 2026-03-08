@@ -37,6 +37,7 @@ from ..services import (
     request_user_ids,
 )
 from ..permissions import (
+    check_assignee_or_admin,
     check_admin,
     ensure_issue_access,
     user_project_ids,
@@ -142,8 +143,7 @@ class IssueViewSet(
     def update_status(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
-            raise PermissionDenied("Only assigned users or admins can change status")
+        check_assignee_or_admin(request.user, issue)
 
         new_status = request.data.get("status")
         if new_status not in dict(IssueStatus.choices):
@@ -178,8 +178,7 @@ class IssueViewSet(
             events = issue.events.select_related("actor").prefetch_related("attachments").all()
             return Response(IssueEventSerializer(events, many=True).data)
 
-        if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
-            raise PermissionDenied("Only assigned users or admins can add updates")
+        check_assignee_or_admin(request.user, issue)
 
         message = request.data.get("message", "")
         if not message:
@@ -227,15 +226,13 @@ class IssueViewSet(
     def partial_update(self, request, *args, **kwargs):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
-            raise PermissionDenied("Only assigned users or admins can edit issues")
+        check_assignee_or_admin(request.user, issue)
         return super().partial_update(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=issue, user=request.user).exists()):
-            raise PermissionDenied("Only assigned users or admins can edit issues")
+        check_assignee_or_admin(request.user, issue)
         return super().update(request, *args, **kwargs)
 
 
@@ -248,12 +245,11 @@ class AttachmentUploadView(APIView):
         if not event:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_issue_access(request.user, event.issue)
-        if not (is_admin(request.user) or IssueAssignee.objects.filter(issue=event.issue, user=request.user).exists()):
-            raise PermissionDenied("Not allowed")
+        check_assignee_or_admin(request.user, event.issue)
 
         attachment = maybe_create_attachment(event, request.data)
         if not attachment:
-            raise ValidationError({"detail": "Either `file` or `path` is required"})
+            raise ValidationError({"file": "Attachment file is required"})
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
 
@@ -282,8 +278,7 @@ class AttachmentViewSet(
 
     def _ensure_attachment_write_access(self, issue: Issue) -> None:
         ensure_issue_access(self.request.user, issue)
-        if not (is_admin(self.request.user) or IssueAssignee.objects.filter(issue=issue, user=self.request.user).exists()):
-            raise PermissionDenied("Not allowed")
+        check_assignee_or_admin(self.request.user, issue)
 
     def create(self, request, *args, **kwargs):
         update_id = request.data.get("updateId")
@@ -313,7 +308,7 @@ class AttachmentViewSet(
 
         attachment = maybe_create_attachment(event, request.data)
         if not attachment:
-            raise ValidationError({"detail": "Either `file` or `path` is required"})
+            raise ValidationError({"file": "Attachment file is required"})
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):

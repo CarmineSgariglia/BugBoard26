@@ -1,66 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import brandLogo from "../../assets/LogoBugBoard26.webp";
-import { listProjectsApi, getIssueApi } from "../../services/api";
-import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
+import { getIssueApi } from "../../services/api";
+import { useBreadcrumbs } from "../../contexts/useBreadcrumbs";
 
 export function DynamicBreadcrumbs() {
     const location = useLocation();
     const { projectId, issueId } = useParams();
     const { labels } = useBreadcrumbs();
-    const [projectName, setProjectName] = useState<string>("");
-    const [issueTitle, setIssueTitle] = useState<string>("");
+    const [fetchedIssueTitle, setFetchedIssueTitle] = useState<string>("");
+
+    const projectName = useMemo(
+        () => (projectId ? labels[`project:${projectId}`] || `Project #${projectId}` : ""),
+        [labels, projectId]
+    );
+    const issueTitle = useMemo(
+        () => (issueId ? labels[`issue:${issueId}`] || fetchedIssueTitle : ""),
+        [fetchedIssueTitle, issueId, labels]
+    );
 
     useEffect(() => {
-        // Use context label if available
-        if (projectId && labels[`project:${projectId}`]) {
-            setProjectName(labels[`project:${projectId}`]);
-        }
-        if (issueId && labels[`issue:${issueId}`]) {
-            setIssueTitle(labels[`issue:${issueId}`]);
-        }
-
-        const fetchProjectName = async () => {
-            if (projectId && !labels[`project:${projectId}`]) {
-                try {
-                    const projects = await listProjectsApi();
-                    const currentProject = projects.find(p => String(p.projectId) === projectId);
-                    if (currentProject) {
-                        setProjectName(currentProject.name);
-                    } else {
-                        setProjectName(`Project #${projectId}`);
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch project for breadcrumbs", error);
-                    setProjectName(`Project #${projectId}`);
-                }
-            }
-        };
+        let isCancelled = false;
 
         const fetchIssueName = async () => {
             if (issueId && !labels[`issue:${issueId}`]) {
                 try {
-                    // fall back to getIssueApi
                     const issue = await getIssueApi(issueId);
-                    if (issue) {
-                        setIssueTitle(issue.title);
-                    } else {
-                        setIssueTitle(`Issue #${issueId}`);
+                    if (!isCancelled) {
+                        setFetchedIssueTitle(issue?.title || `Issue #${issueId}`);
                     }
                 } catch (error) {
                     console.error("Failed to fetch issue for breadcrumbs", error);
-                    setIssueTitle(`Issue #${issueId}`);
+                    if (!isCancelled) {
+                        setFetchedIssueTitle(`Issue #${issueId}`);
+                    }
                 }
             }
-        }
-
-        if (location.pathname.includes("/projects/") && projectId) {
-            fetchProjectName();
-        }
+        };
 
         if (issueId) {
-            fetchIssueName();
+            void fetchIssueName();
         }
+
+        return () => {
+            isCancelled = true;
+        };
     }, [location.pathname, projectId, issueId, labels]);
 
     const isSettings = location.pathname.startsWith("/settings");

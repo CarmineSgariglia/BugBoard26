@@ -9,5 +9,13 @@ class Tag(models.Model):
         db_table = "Tag"
         ordering = ["name"]
 
+    @staticmethod
+    def normalize_name(name: str) -> str:
+        return (name or "").strip().lower()
+
+    def save(self, *args, **kwargs):
+        self.name = self.normalize_name(self.name)
+        super().save(*args, **kwargs)
+
     def __str__(self) -> str:
         return self.name

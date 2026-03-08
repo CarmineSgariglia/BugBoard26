@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
 import { FooterActions } from "../../components/ui/FooterActions";
@@ -20,14 +20,7 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
     const [error, setError] = useState("");
     const [search, setSearch] = useState("");
 
-    useEffect(() => {
-        if (isOpen) {
-            setSelectedUserIds(issue.assignees.map(a => a.userId));
-            fetchMembers();
-        }
-    }, [isOpen, issue]);
-
-    const fetchMembers = async () => {
+    const fetchMembers = useCallback(async () => {
         try {
             setIsLoading(true);
             const data = await listProjectMembersApi(issue.projectId);
@@ -46,7 +39,14 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [issue.projectId]);
+
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedUserIds(issue.assignees.map(a => a.userId));
+            void fetchMembers();
+        }
+    }, [fetchMembers, isOpen, issue]);
 
     const handleToggleUser = (userId: number) => {
         setSelectedUserIds(prev =>

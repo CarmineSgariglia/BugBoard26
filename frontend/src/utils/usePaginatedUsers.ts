@@ -7,6 +7,13 @@ interface UsePaginatedUsersOptions {
     initialStatus?: "All" | "Active" | "Inactive";
 }
 
+type ListUsersQuery = {
+    page: number;
+    search?: string;
+    role?: "Admin" | "User";
+    status?: "Active" | "Inactive";
+};
+
 export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
     const [users, setUsers] = useState<AuthUser[]>([]);
     const [totalItems, setTotalItems] = useState(0);
@@ -23,7 +30,7 @@ export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
         setIsLoading(true);
         setError("");
         try {
-            const params: any = { page: currentPage };
+            const params: ListUsersQuery = { page: currentPage };
 
             if (search.trim()) params.search = search.trim();
             if (roleFilter !== "All") params.role = roleFilter;

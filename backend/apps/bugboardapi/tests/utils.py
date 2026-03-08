@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 
-from apps.bugboardapi.models import Project, ProjectMembership, UserImage
+from apps.bugboardapi.models import Project, ProjectMembership, UserProfileImage
 from apps.bugboardapi.roles import (
     ADMIN_GROUP_NAME,
     DEVELOPER_GROUP_NAME,
@@ -11,7 +11,7 @@ from apps.bugboardapi.roles import (
 def create_user_with_profile(*, username: str, email: str, password: str, is_admin: bool = False) -> User:
     user = User.objects.create_user(username=username, email=email, password=password, is_staff=is_admin)
     assign_global_role(user, ADMIN_GROUP_NAME if is_admin else DEVELOPER_GROUP_NAME)
-    UserImage.objects.create(user=user, is_admin=is_admin, active=True)
+    UserProfileImage.objects.create(user=user)
     return user
 
 

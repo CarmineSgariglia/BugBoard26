@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from ..issue_rules import validate_project_assignee_ids
 from ..models import Attachment, Issue, IssueAssignee, IssueEvent, IssueStatus, IssueTag, Tag
 from ..utils import build_media_url
 from .tags import TagSerializer
@@ -58,6 +59,21 @@ class IssueSerializer(serializers.ModelSerializer):
             for user in obj.assignees.all()
         ]
 
+    def validate(self, attrs):
+        assignee_ids = attrs.get("assigneeIds")
+        project = self.context.get("project") or getattr(self.instance, "project", None)
+        if project is not None:
+            validate_project_assignee_ids(project=project, assignee_ids=assignee_ids)
+
+        tag_ids = attrs.get("tagIds")
+        if tag_ids is not None:
+            existing_tag_ids = set(Tag.objects.filter(tag_id__in=tag_ids).values_list("tag_id", flat=True))
+            missing_tag_ids = [tag_id for tag_id in tag_ids if tag_id not in existing_tag_ids]
+            if missing_tag_ids:
+                raise serializers.ValidationError({"tagIds": f"Invalid tag ids: {missing_tag_ids}"})
+
+        return attrs
+
     def _resolve_tag_ids(self, *, tag_ids: list[int], tag_names: list[str]) -> list[int]:
         resolved: list[int] = []
         seen: set[int] = set()
@@ -73,12 +89,12 @@ class IssueSerializer(serializers.ModelSerializer):
                     resolved.append(tag_id)
 
         for raw_name in tag_names:
-            name = (raw_name or "").strip()
+            name = Tag.normalize_name(raw_name)
             if not name:
                 continue
-            tag = Tag.objects.filter(name__iexact=name).first()
+            tag = Tag.objects.filter(name__iexact=name).order_by("tag_id").first()
             if not tag:
-                tag = Tag.objects.create(name=name)
+                tag, _ = Tag.objects.get_or_create(name=name)
             if tag.tag_id not in seen:
                 seen.add(tag.tag_id)
                 resolved.append(tag.tag_id)

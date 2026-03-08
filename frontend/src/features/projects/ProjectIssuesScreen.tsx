@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { listProjectIssuesApi, listProjectsApi, listProjectMembersApi, type Issue, type Project, type ProjectMembership } from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
-import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
+import { getProjectApi, listProjectIssuesApi, listProjectMembersApi, type Issue, type Project, type ProjectMembership } from "../../services/api";
+import { useAuth } from "../../contexts/useAuth";
+import { useBreadcrumbs } from "../../contexts/useBreadcrumbs";
 
 import { CATEGORIES, PRIORITIES, STATUSES } from "../../utils/issueConstants";
 
@@ -52,7 +52,7 @@ export function ProjectIssuesScreen() {
   // Issue Modal
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!projectId) {
       setError("Missing project id");
       setIsLoading(false);
@@ -61,31 +61,27 @@ export function ProjectIssuesScreen() {
     setIsLoading(true);
     setError("");
     try {
-      // Fetch issues, projects and members in parallel
-      const [issuesData, projectsData, membersData] = await Promise.all([
+      const [issuesData, projectData, membersData] = await Promise.all([
         listProjectIssuesApi(projectId),
-        listProjectsApi(),
+        getProjectApi(projectId),
         listProjectMembersApi(projectId)
       ]);
 
       setIssues(issuesData);
       setMembers(membersData);
-      const foundProject = projectsData.find(p => String(p.projectId) === projectId);
-      if (foundProject) {
-        setProject(foundProject);
-        setLabel(`project:${projectId}`, foundProject.name);
-      }
+      setProject(projectData);
+      setLabel(`project:${projectId}`, projectData.name);
 
     } catch {
       setError("Unable to load project data. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId, setLabel]);
 
   useEffect(() => {
     fetchData();
-  }, [projectId]);
+  }, [fetchData]);
 
   const filteredIssues = useMemo(() => {
     return issues

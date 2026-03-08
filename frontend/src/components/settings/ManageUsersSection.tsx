@@ -10,12 +10,15 @@ import { FiEdit2 } from "react-icons/fi";
 import { MdGroupOff } from "react-icons/md";
 import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
 import { setUserActiveApi, type AuthUser } from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 
 
 export interface ManageUsersSectionProps {
     onEditingChange?: (isEditing: boolean) => void;
 }
+
+type RoleFilter = "All" | "Admin" | "User";
+type StatusFilter = "All" | "Active" | "Inactive";
 
 export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps) {
     const { user: currentUser } = useAuth();
@@ -104,7 +107,7 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
                 <div className="w-full sm:w-48">
                     <Select
                         value={roleFilter}
-                        onChange={(value) => setRoleFilter(value as any)}
+                        onChange={(value) => setRoleFilter(value as RoleFilter)}
                         options={[
                             { label: "All Roles", value: "All" },
                             { label: "Administrators", value: "Admin" },
@@ -115,7 +118,7 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
                 <div className="w-full sm:w-48">
                     <Select
                         value={statusFilter}
-                        onChange={(value) => setStatusFilter(value as any)}
+                        onChange={(value) => setStatusFilter(value as StatusFilter)}
                         options={[
                             { label: "All Users", value: "All" },
                             { label: "Active Users", value: "Active" },

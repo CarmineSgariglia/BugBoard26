@@ -16,6 +16,7 @@ const api = axios.create({
 
 let accessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
+let csrfPromise: Promise<void> | null = null;
 
 function readCookie(name: string): string {
   const escapedName = name.replace(/[-[\]/{}()*+?.\\^$|]/g, "\\$&");
@@ -23,7 +24,24 @@ function readCookie(name: string): string {
   return match ? decodeURIComponent(match[1]) : "";
 }
 
-api.interceptors.request.use((config) => {
+async function ensureCsrfToken(): Promise<void> {
+  if (readCookie("csrftoken")) {
+    return;
+  }
+
+  if (!csrfPromise) {
+    csrfPromise = api
+      .get("/auth/csrf", { skipAuthRefresh: true } as RetryableRequestConfig)
+      .then(() => undefined)
+      .finally(() => {
+        csrfPromise = null;
+      });
+  }
+
+  await csrfPromise;
+}
+
+api.interceptors.request.use(async (config) => {
   const requestConfig = config as RetryableRequestConfig;
   const method = (config.method ?? "get").toUpperCase();
   const requiresCsrf = method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE";
@@ -32,6 +50,8 @@ api.interceptors.request.use((config) => {
     requestConfig.headers.Authorization = `Bearer ${accessToken}`;
   }
   if (!requiresCsrf) return requestConfig;
+
+  await ensureCsrfToken();
 
   const csrfToken = readCookie("csrftoken");
   if (csrfToken) {
@@ -344,6 +364,11 @@ export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
 export async function listProjectsApi(search?: string): Promise<Project[]> {
   const params = search ? { q: search } : undefined;
   const { data } = await api.get<Project[]>("/projects", { params });
+  return data;
+}
+
+export async function getProjectApi(projectId: string | number): Promise<Project> {
+  const { data } = await api.get<Project>(`/projects/${projectId}`);
   return data;
 }
 

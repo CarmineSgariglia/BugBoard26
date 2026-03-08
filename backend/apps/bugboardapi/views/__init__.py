@@ -1,6 +1,7 @@
 """BugBoardAPI views package."""
 
 from .auth import (  # noqa: F401
+    CSRFTokenView,
     LoginView,
     LogoutView,
     MeView,

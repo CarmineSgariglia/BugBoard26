@@ -7,7 +7,7 @@ import { ChangePasswordSection } from "./ChangePasswordSection";
 import { FooterActions } from "../ui/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
 import { resolveMediaUrl, uploadProfileImageApi, changePasswordApi, updateUserApi } from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { getErrorMessage } from "../../utils/error";
 import { handleGetHelp } from "../../utils/help";
 import { RiArrowGoBackLine } from "react-icons/ri";

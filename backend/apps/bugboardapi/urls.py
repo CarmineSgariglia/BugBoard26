@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AttachmentUploadView,
     AttachmentViewSet,
+    CSRFTokenView,
     IssueViewSet,
     LoginView,
     LogoutView,
@@ -31,6 +32,7 @@ router.register("tags", TagViewSet, basename="tags")
 
 urlpatterns = [
     path("health", health_check, name="health-check"),
+    path("auth/csrf", CSRFTokenView.as_view(), name="csrf-token"),
     path("auth/login", LoginView.as_view(), name="login"),
     path("auth/refresh", RefreshView.as_view(), name="refresh"),
     path("auth/logout", LogoutView.as_view(), name="logout"),

@@ -6,7 +6,7 @@ import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
 import { logoutApi } from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
 import { IoIosNotificationsOutline } from "react-icons/io";
 
@@ -137,4 +137,3 @@ export function TopNav() {
         </nav>
     );
 }
-
