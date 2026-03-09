@@ -50,14 +50,7 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
         } finally {
             setIsLoading(false);
         }
-    }, [issue.projectId]);
-
-    useEffect(() => {
-        if (isOpen) {
-            setSelectedUserIds(issue.assignees.map(a => a.userId));
-            void fetchMembers();
-        }
-    }, [fetchMembers, isOpen, issue]);
+    };
 
     const handleToggleUser = (userId: number) => {
         setSelectedUserIds((prev) =>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { listProjectIssuesApi, listProjectsApi, listProjectMembersApi } from "../../shared/api/modules/projects";
 import type { Issue } from "../../shared/api/types/issues";
@@ -54,7 +54,7 @@ export function ProjectIssuesScreen() {
   // Issue Modal
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     if (!projectId) {
       setError("Missing project id");
       setIsLoading(false);
@@ -63,27 +63,31 @@ export function ProjectIssuesScreen() {
     setIsLoading(true);
     setError("");
     try {
-      const [issuesData, projectData, membersData] = await Promise.all([
+      // Fetch issues, projects and members in parallel
+      const [issuesData, projectsData, membersData] = await Promise.all([
         listProjectIssuesApi(projectId),
-        getProjectApi(projectId),
+        listProjectsApi(),
         listProjectMembersApi(projectId)
       ]);
 
       setIssues(issuesData);
       setMembers(membersData);
-      setProject(projectData);
-      setLabel(`project:${projectId}`, projectData.name);
+      const foundProject = projectsData.find(p => String(p.projectId) === projectId);
+      if (foundProject) {
+        setProject(foundProject);
+        setLabel(`project:${projectId}`, foundProject.name);
+      }
 
     } catch {
       setError("Unable to load project data. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, setLabel]);
+  };
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [projectId]);
 
   const filteredIssues = useMemo(() => {
     return issues
