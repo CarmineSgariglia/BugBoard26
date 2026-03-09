@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 import { FooterActions } from "../../components/ui/FooterActions";
 import { generateRandomNumber } from "../../utils/number";
-import { deleteProjectApi } from "../../services/api";
+import { deleteProjectApi } from "../../shared/api/modules/projects";
 import { RiCloseLine } from "react-icons/ri";
 import { FiTrash2 } from "react-icons/fi";
 

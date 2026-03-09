@@ -88,7 +88,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                     title={title}
                     onChangeTitle={setTitle}
                     maxLength={20}
-                    placeholder="Insert your Project Title..."
+                    placeholder="Insert your Project Title in minimum 3 characters..."
                     label="Project Title"
                 />
             </div>
@@ -98,7 +98,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                     description={description}
                     onChangeDescription={setDescription}
                     maxLength={256}
-                    placeholder="Describe the project goals and objectives..."
+                    placeholder="Describe the project goals in minimum 5 characters..."
                     label="Description"
                 />
             </div>

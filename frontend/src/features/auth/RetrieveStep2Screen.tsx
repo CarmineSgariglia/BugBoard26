@@ -3,7 +3,7 @@ import { FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { isValidPassword, isValidCode } from "../../utils/validation";
-import { resetPasswordApi, verifyOtpApi } from "../../services/api";
+import { resetPasswordApi, verifyOtpApi } from "../../shared/api/modules/auth";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export function RetrieveStep2Screen() {
