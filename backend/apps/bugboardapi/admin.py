@@ -35,13 +35,6 @@ class ProjectAdmin(admin.ModelAdmin):
     inlines = [ProjectMembershipInline]
 
 
-@admin.register(ProjectMembership)
-class ProjectMembershipAdmin(admin.ModelAdmin):
-    list_display = ("project_membership_id", "project", "user", "role")
-    list_filter = ("role",)
-    search_fields = ("project__name", "user__username", "user__email")
-
-
 class IssueAssigneeInline(admin.TabularInline):
     model = IssueAssignee
     extra = 0

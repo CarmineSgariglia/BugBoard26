@@ -688,7 +688,11 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             project_id=project_id, user=self.admin
         ).first()
         self.assertIsNotNone(membership)
-        self.assertEqual(membership.role, ProjectMembership.Role.ADMIN)
+        self.assertEqual(response.data["createdBy"], self.admin.id)
+
+    def test_project_membership_is_exposed_through_many_to_many_relation(self):
+        self.assertIn(self.member, self.project.members.all())
+        self.assertIn(self.project, self.member.projects.all())
 
     def test_project_create_accepts_team_alias_and_emits_added_notification(self):
         self.client.force_authenticate(user=self.admin)
@@ -738,14 +742,12 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             ProjectMembership.objects.filter(
                 project=self.project,
                 user=self.outsider,
-                role=ProjectMembership.Role.DEVELOPER,
             ).exists()
         )
         self.assertFalse(
             ProjectMembership.objects.filter(
                 project=self.project,
                 user=self.member,
-                role=ProjectMembership.Role.DEVELOPER,
             ).exists()
         )
         # Creator/admin membership must remain untouched.
@@ -753,7 +755,6 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             ProjectMembership.objects.filter(
                 project=self.project,
                 user=self.admin,
-                role=ProjectMembership.Role.ADMIN,
             ).exists()
         )
 

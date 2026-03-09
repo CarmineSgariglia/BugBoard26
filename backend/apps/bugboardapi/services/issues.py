@@ -6,7 +6,8 @@ from django.core.files.storage import default_storage
 from rest_framework.exceptions import ValidationError
 
 from ..issue_rules import validate_project_assignee_ids
-from ..models import Attachment, EventType, IssueEvent, ProjectMembership, NotifyType
+from ..models import Attachment, EventType, IssueEvent, NotifyType
+from ..roles import is_admin_user
 from ..upload_security import store_upload, validate_issue_attachment
 from .notifications import notify_users
 
@@ -103,10 +104,10 @@ def create_issue_for_project(*, request, project):
     issue = serializer.save(project=project, reporter=request.user)
     IssueEvent.objects.create(issue=issue, actor=request.user, event_type=EventType.CREATE, message="Issue created")
 
-    admins = User.objects.filter(
+    project_members = User.objects.filter(
         project_memberships__project=project,
-        project_memberships__role=ProjectMembership.Role.ADMIN,
         is_active=True,
-    )
+    ).distinct()
+    admins = [user for user in project_members if is_admin_user(user)]
     notify_users(notify_type=NotifyType.ISSUE_ADDED, users=list(admins), issue=issue)
     return issue
