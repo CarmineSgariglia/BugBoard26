@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ProjectTeamStep } from "./ProjectTeamStep";
-import { updateProjectApi, listProjectMembersApi, type Project } from "../../services/api";
+import { updateProjectApi, listProjectMembersApi } from "../../shared/api/modules/projects";
+import type { Project } from "../../shared/api/types/projects";
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 
 interface EditTeamFlowProps {

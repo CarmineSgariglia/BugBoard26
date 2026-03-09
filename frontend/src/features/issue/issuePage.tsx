@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { getIssueApi, type Issue } from "../../services/api";
+import { getIssueApi } from "../../shared/api/modules/issues";
+import type { Issue } from "../../shared/api/types/issues";
 import { useAuth } from "../../contexts/AuthContext";
 import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";

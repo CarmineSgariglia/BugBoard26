@@ -4,7 +4,9 @@ import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
 import { CreateProjectFlow } from "./CreateProjectFlow";
-import { listProjectsApi, resolveMediaUrl, type Project } from "../../services/api";
+import { listProjectsApi } from "../../shared/api/modules/projects";
+import { resolveMediaUrl } from "../../shared/api/core/media";
+import type { Project } from "../../shared/api/types/projects";
 import { getProjectIcon } from "../../utils/projectIcons";
 import { useAuth } from "../../contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query"; // UTILIZZARE QUESTA LOGICA PER LE ALTRE PAGINE APPENA FACCIO IL REFACTORING

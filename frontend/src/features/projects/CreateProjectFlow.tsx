@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
 import { ProjectTeamStep } from "./ProjectTeamStep";
-import { createProjectApi } from "../../services/api";
+import { createProjectApi } from "../../shared/api/modules/projects";
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 
 interface CreateProjectFlowProps {

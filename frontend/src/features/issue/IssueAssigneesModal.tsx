@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
-import { ModalOverlay } from "../../components/layout/ModalOverlay";
-import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
-import { FooterActions } from "../../components/ui/FooterActions";
-import { UserSelectorTable } from "../../components/ui/UserSelectorTable";
-import { listProjectMembersApi, updateIssueApi, type AuthUser, type Issue } from "../../services/api";
+import { RiCloseLine } from "react-icons/ri";
+
+import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
+import { ProjectFormLayout } from "../../widgets/layout/ProjectFormLayout";
+import { FooterActions } from "../../shared/ui/FooterActions";
+import { UserSelectorTable } from "../../shared/ui/UserSelectorTable";
+import { listProjectMembersApi } from "../../shared/api/modules/projects";
+import { updateIssueApi } from "../../shared/api/modules/issues";
+import type { AuthUser } from "../../shared/api/types/auth";
+import type { Issue } from "../../shared/api/types/issues";
 
 interface IssueAssigneesModalProps {
     issue: Issue;
@@ -22,7 +27,7 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
 
     useEffect(() => {
         if (isOpen) {
-            setSelectedUserIds(issue.assignees.map(a => a.userId));
+            setSelectedUserIds(issue.assignees.map((a) => a.userId));
             fetchMembers();
         }
     }, [isOpen, issue]);
@@ -32,16 +37,15 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
             setIsLoading(true);
             const data = await listProjectMembersApi(issue.projectId);
 
-            // "Trucchetto": Mappiamo ProjectMembership in AuthUser così UserSelectorTable è felice
-            const mappedUsers: AuthUser[] = data.map(m => ({
+            const mappedUsers: AuthUser[] = data.map((m) => ({
                 userId: m.userId,
                 username: m.username,
-                email: m.role, // Mostrerà "Admin" o "Developer" nella colonna email!
-                firstName: m.username, // Forza a mostrare l'username come nome principale
+                email: m.role,
+                firstName: m.username,
                 profileImg: m.profileImg || undefined,
             }));
             setMembers(mappedUsers);
-        } catch (err) {
+        } catch {
             setError("Failed to load project members.");
         } finally {
             setIsLoading(false);
@@ -49,8 +53,8 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
     };
 
     const handleToggleUser = (userId: number) => {
-        setSelectedUserIds(prev =>
-            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        setSelectedUserIds((prev) =>
+            prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
         );
     };
 
@@ -60,7 +64,7 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
             const updated = await updateIssueApi(issue.issueId, { assigneeIds: selectedUserIds });
             onSuccess(updated);
             onClose();
-        } catch (err) {
+        } catch {
             setError("Failed to update assignees.");
         } finally {
             setIsSubmitting(false);
@@ -76,11 +80,11 @@ export function IssueAssigneesModal({ issue, isOpen, onClose, onSuccess }: Issue
                 subtitle={`Assign team members to issue #${issue.issueId}`}
                 footer={
                     <FooterActions
-                        isSaveEnabled={true}
+                        isSaveEnabled
                         onSave={handleSave}
                         isSaving={isSubmitting}
                         saveLabel="Save Changes"
-                        links={[{ label: "Cancel", onClick: onClose }]}
+                        links={[{ label: "Cancel", icon: <RiCloseLine size={16} />, onClick: onClose }]}
                     />
                 }
             >

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
-import { updateProjectApi, type Project } from "../../services/api";
+import { updateProjectApi } from "../../shared/api/modules/projects";
+import type { Project } from "../../shared/api/types/projects";
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 
 interface EditProjectFlowProps {

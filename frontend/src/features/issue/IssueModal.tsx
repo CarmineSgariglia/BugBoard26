@@ -11,7 +11,10 @@ import { TagInput } from "../../components/ui/TagInput";
 import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
 import { FiX } from "react-icons/fi";
 import { Button } from "../../components/ui/Button";
-import { createProjectIssueApi, updateIssueDetailsApi, uploadAttachmentApi, type Issue } from "../../services/api";
+import { createProjectIssueApi } from "../../shared/api/modules/projects";
+import { updateIssueDetailsApi } from "../../shared/api/modules/issues";
+import { uploadAttachmentApi } from "../../shared/api/modules/attachments";
+import type { Issue } from "../../shared/api/types/issues";
 
 
 interface IssueModalProps {

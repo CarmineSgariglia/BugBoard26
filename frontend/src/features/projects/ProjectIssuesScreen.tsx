@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { listProjectIssuesApi, listProjectsApi, listProjectMembersApi, type Issue, type Project, type ProjectMembership } from "../../services/api";
+import { listProjectIssuesApi, listProjectsApi, listProjectMembersApi } from "../../shared/api/modules/projects";
+import type { Issue } from "../../shared/api/types/issues";
+import type { Project, ProjectMembership } from "../../shared/api/types/projects";
 import { useAuth } from "../../contexts/AuthContext";
 import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 
