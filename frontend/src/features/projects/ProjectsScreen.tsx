@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+
 import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
@@ -9,7 +11,6 @@ import { resolveMediaUrl } from "../../shared/api/core/media";
 import type { Project } from "../../shared/api/types/projects";
 import { getProjectIcon } from "../../utils/projectIcons";
 import { useAuth } from "../../contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query"; // UTILIZZARE QUESTA LOGICA PER LE ALTRE PAGINE APPENA FACCIO IL REFACTORING
 
 function projectIcon(iconId?: string) {
   return getProjectIcon(iconId || "folder", 30);
@@ -25,23 +26,21 @@ export function ProjectsScreen() {
     data: projects = [],
     isLoading,
     error,
-    refetch: fetchProjects // Rinominiamo refetch in fetchProjects per non rompere il CreateProjectFlow
+    refetch: fetchProjects,
   } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ["projects"],
     queryFn: async () => {
       const projectsData = await listProjectsApi();
-      // Manteniamo la tua logica di ordinamento e risoluzione URL
-      const sorted = [...projectsData].sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      const sorted = [...projectsData].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      return sorted.map(p => ({
+      return sorted.map((p) => ({
         ...p,
-        authorProfileImg: resolveMediaUrl(p.authorProfileImg || undefined)
+        authorProfileImg: resolveMediaUrl(p.authorProfileImg || undefined),
       })) as Project[];
     },
-    staleTime: 30000, // I famosi 30 secondi!
+    staleTime: 30_000,
   });
-
 
   const filteredCards = useMemo(() => {
     if (!searchQuery.trim()) return projects;
@@ -49,19 +48,17 @@ export function ProjectsScreen() {
     return projects.filter((p) => p.name.toLowerCase().includes(lowerQuery));
   }, [projects, searchQuery]);
 
-
-
   return (
     <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
-      {/* Page Content: z-10 ensures it floats above the background */}
-      <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex  mt-8 flex-col">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex mt-8 flex-col">
         <div className="mb-10 w-full max-w-xl mx-auto text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-            Hello, {currentUser?.firstName || currentUser?.lastName ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : currentUser?.username || 'User'}
+            Hello,{" "}
+            {currentUser?.firstName || currentUser?.lastName
+              ? `${currentUser.firstName} ${currentUser.lastName}`.trim()
+              : currentUser?.username || "User"}
           </h1>
-          <p className="text-[#9CA3AF]">
-            Select a project folder to view its issues and boards.
-          </p>
+          <p className="text-[#9CA3AF]">Select a project folder to view its issues and boards.</p>
         </div>
 
         <div className="mb-14 w-full max-w-xl mx-auto">
@@ -78,12 +75,10 @@ export function ProjectsScreen() {
 
         {error ? <p className="text-sm text-red-400">Unable to load data. Please login again.</p> : null}
 
-
-        {/* CSS Grid for the folders */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-          {currentUser?.isAdmin && !searchQuery.trim() && (
+          {currentUser?.isAdmin && !searchQuery.trim() ? (
             <CreateProjectCard onClick={() => setIsCreateModalOpen(true)} />
-          )}
+          ) : null}
 
           {filteredCards.map((project) => (
             <ProjectFolderCard
@@ -99,22 +94,24 @@ export function ProjectsScreen() {
               }}
             />
           ))}
-
         </div>
+
         {!isLoading && !error && filteredCards.length === 0 ? (
           <p className="text-sm text-[#9CA3AF] mt-8 text-center">
-            {projects.length === 0 ? "No projects found." : `No projects found matching "${searchQuery}".`}
+            {projects.length === 0
+              ? "No projects found."
+              : `No projects found matching "${searchQuery}".`}
           </p>
         ) : null}
       </div>
 
-      {isCreateModalOpen && (
+      {isCreateModalOpen ? (
         <CreateProjectFlow
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSuccess={fetchProjects}
         />
-      )}
+      ) : null}
     </div>
   );
 }

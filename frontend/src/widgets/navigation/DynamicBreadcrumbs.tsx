@@ -1,122 +1,92 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+﻿import { Link, useLocation, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+
 import brandLogo from "../../assets/LogoBugBoard26.webp";
 import { listProjectsApi } from "../../shared/api/modules/projects";
 import { getIssueApi } from "../../shared/api/modules/issues";
 import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 
 export function DynamicBreadcrumbs() {
-    const location = useLocation();
-    const { projectId, issueId } = useParams();
-    const { labels } = useBreadcrumbs();
-    const [projectName, setProjectName] = useState<string>("");
-    const [issueTitle, setIssueTitle] = useState<string>("");
+  const location = useLocation();
+  const { projectId, issueId } = useParams();
+  const { labels } = useBreadcrumbs();
 
-    useEffect(() => {
-        // Use context label if available
-        if (projectId && labels[`project:${projectId}`]) {
-            setProjectName(labels[`project:${projectId}`]);
-        }
-        if (issueId && labels[`issue:${issueId}`]) {
-            setIssueTitle(labels[`issue:${issueId}`]);
-        }
+  const projectLabel = projectId ? labels[`project:${projectId}`] : "";
+  const issueLabel = issueId ? labels[`issue:${issueId}`] : "";
 
-        const fetchProjectName = async () => {
-            if (projectId && !labels[`project:${projectId}`]) {
-                try {
-                    const projects = await listProjectsApi();
-                    const currentProject = projects.find(p => String(p.projectId) === projectId);
-                    if (currentProject) {
-                        setProjectName(currentProject.name);
-                    } else {
-                        setProjectName(`Project #${projectId}`);
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch project for breadcrumbs", error);
-                    setProjectName(`Project #${projectId}`);
-                }
-            }
-        };
+  const { data: fetchedProjectName } = useQuery({
+    queryKey: ["breadcrumb", "project", projectId],
+    queryFn: async () => {
+      const projects = await listProjectsApi();
+      const currentProject = projects.find((p) => String(p.projectId) === projectId);
+      return currentProject ? currentProject.name : `Project #${projectId}`;
+    },
+    enabled: !!projectId && !projectLabel && location.pathname.includes("/projects/"),
+    staleTime: 0,
+  });
 
-        const fetchIssueName = async () => {
-            if (issueId && !labels[`issue:${issueId}`]) {
-                try {
-                    // fall back to getIssueApi
-                    const issue = await getIssueApi(issueId);
-                    if (issue) {
-                        setIssueTitle(issue.title);
-                    } else {
-                        setIssueTitle(`Issue #${issueId}`);
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch issue for breadcrumbs", error);
-                    setIssueTitle(`Issue #${issueId}`);
-                }
-            }
-        }
+  const { data: fetchedIssueTitle } = useQuery({
+    queryKey: ["breadcrumb", "issue", issueId],
+    queryFn: async () => {
+      const issue = await getIssueApi(issueId!);
+      return issue ? issue.title : `Issue #${issueId}`;
+    },
+    enabled: !!issueId && !issueLabel,
+    staleTime: 0,
+  });
 
-        if (location.pathname.includes("/projects/") && projectId) {
-            fetchProjectName();
-        }
+  const projectName = projectLabel || fetchedProjectName || "";
+  const issueTitle = issueLabel || fetchedIssueTitle || "";
 
-        if (issueId) {
-            fetchIssueName();
-        }
-    }, [location.pathname, projectId, issueId, labels]);
+  const isSettings = location.pathname.startsWith("/settings");
+  const isProjects = location.pathname === "/projects";
 
-    const isSettings = location.pathname.startsWith("/settings");
-    const isProjects = location.pathname === "/projects";
+  return (
+    <div className="flex items-center gap-3">
+      <Link to="/projects" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+        <img src={brandLogo} alt="Logo_BugBoard26" className="w-8 h-6" />
+      </Link>
 
-    return (
-        <div className="flex items-center gap-3">
-            {/* Logo + Root link */}
-            <Link to="/projects" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                <img src={brandLogo} alt="Logo_BugBoard26" className="w-8 h-6" />
-            </Link>
+      <div className="flex items-center text-xl font-medium tracking-wide">
+        <Link
+          to="/projects"
+          className={`transition-colors ${
+            isProjects ? "text-white cursor-default" : "text-neutral-500 hover:text-white"
+          }`}
+        >
+          Projects
+        </Link>
 
-            {/* Separator / Breadcrumb chain */}
-            <div className="flex items-center text-xl font-medium tracking-wide">
-                <Link
-                    to="/projects"
-                    className={`transition-colors ${isProjects ? "text-white cursor-default" : "text-neutral-500 hover:text-white"}`}
-                >
-                    Projects
-                </Link>
+        {projectId ? (
+          <>
+            <span className="mx-2 text-neutral-600">/</span>
+            {issueId ? (
+              <Link
+                to={`/projects/${projectId}/issues`}
+                className="text-neutral-500 hover:text-white transition-colors"
+              >
+                {projectName || "..."}
+              </Link>
+            ) : (
+              <span className="text-white">{projectName || "..."}</span>
+            )}
+          </>
+        ) : null}
 
-                {projectId && (
-                    <>
-                        <span className="mx-2 text-neutral-600">/</span>
-                        {issueId ? (
-                            <Link
-                                to={`/projects/${projectId}/issues`}
-                                className="text-neutral-500 hover:text-white transition-colors"
-                            >
-                                {projectName || "..."}
-                            </Link>
-                        ) : (
-                            <span className="text-white">
-                                {projectName || "..."}
-                            </span>
-                        )}
-                    </>
-                )}
+        {issueId ? (
+          <>
+            <span className="mx-2 text-neutral-600">/</span>
+            <span className="text-white">{issueTitle || "..."}</span>
+          </>
+        ) : null}
 
-                {issueId && (
-                    <>
-                        <span className="mx-2 text-neutral-600">/</span>
-                        <span className="text-white">
-                            {issueTitle || "..."}
-                        </span>
-                    </>
-                )}
-
-                {isSettings && (
-                    <>
-                        <span className="mx-2 text-neutral-600">/</span>
-                        <span className="text-white">Settings</span>
-                    </>
-                )}
-            </div>
-        </div>
-    );
+        {isSettings ? (
+          <>
+            <span className="mx-2 text-neutral-600">/</span>
+            <span className="text-white">Settings</span>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
 }

@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+
 import { getIssueApi } from "../../shared/api/modules/issues";
-import type { Issue } from "../../shared/api/types/issues";
 import { useAuth } from "../../contexts/AuthContext";
 import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";
@@ -11,43 +12,45 @@ import { IssueModal } from "./IssueModal";
 
 export function IssuePage() {
     const { issueId } = useParams();
-    const { user: currentUser } = useAuth(); // Prendiamo l'utente loggato
+    const { user: currentUser } = useAuth();
     const { setLabel } = useBreadcrumbs();
-    const [issue, setIssue] = useState<Issue | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
     const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetchIssueDetails = () => {
-        if (issueId) {
-            getIssueApi(issueId)
-                .then(data => {
-                    setIssue(data);
-                    setLabel(`issue:${issueId}`, data.title);
-                })
-                .finally(() => setIsLoading(false));
-        }
-    };
+    const { data: issue, isLoading, isFetching, refetch } = useQuery({
+        queryKey: ["issue", issueId],
+        queryFn: () => getIssueApi(issueId!),
+        enabled: !!issueId,
+        staleTime: 0,
+    });
+
+    const isRefreshing = isFetching && !isLoading;
+
+    const numericIssueId = issueId ? Number(issueId) : NaN;
+    const safeIssue = issue && issue.issueId === numericIssueId ? issue : null;
 
     useEffect(() => {
-        fetchIssueDetails();
-    }, [issueId, setLabel]);
-
+        if (issueId && safeIssue) {
+            setLabel(`issue:${issueId}`, safeIssue.title);
+        }
+    }, [issueId, safeIssue, setLabel]);
 
     const isAssigned = useMemo(() => {
-        if (!issue || !currentUser) return false;
-        return issue.assignees.some(a => a.userId === currentUser.userId);
-    }, [issue, currentUser]);
+        if (!safeIssue || !currentUser) return false;
+        return safeIssue.assignees.some((a) => a.userId === currentUser.userId);
+    }, [safeIssue, currentUser]);
 
-    if (isLoading) return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
-    if (!issue) return <div className="pt-24 px-6 text-white text-center">Issue not found</div>;
+    if (isLoading || !safeIssue) {
+        return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
+    }
 
     return (
         <div className="pt-24 pb-12 px-6">
             <SidebarLayout
                 sidebar={
                     <IssueDetailsSidebar
-                        issue={issue}
+                        issue={safeIssue}
                         isAdmin={currentUser?.isAdmin}
                         isAssigned={isAssigned}
                         onEditClick={() => setIsModalOpen(true)}
@@ -56,25 +59,32 @@ export function IssuePage() {
                 }
             >
                 <div className="rounded-2xl border border-white/5 bg-[#121620]/20 p-8 min-h-[500px]">
-                    <h3 className="text-xl font-bold text-white mb-6">Activity Feed</h3>
-                    <p className="text-neutral-500 italic">Buonasera caro</p>
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-bold text-white">Activity Feed</h3>
+                        {isRefreshing ? <span className="text-xs text-neutral-500">Refreshing...</span> : null}
+                    </div>
+                    <p className="text-neutral-500 italic">Activity updates will appear here.</p>
                 </div>
             </SidebarLayout>
+
             <IssueAssigneesModal
-                issue={issue}
+                issue={safeIssue}
                 isOpen={isAssigneesModalOpen}
                 onClose={() => setIsAssigneesModalOpen(false)}
-                onSuccess={(updatedIssue) => setIssue(updatedIssue)}
+                onSuccess={() => {
+                    void refetch();
+                }}
             />
+
             <IssueModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 mode="edit"
-                issue={issue}
-                initialData={issue}
-                onSuccess={() => {
+                issue={safeIssue}
+                initialData={safeIssue}
+                onSuccess={async () => {
                     setIsModalOpen(false);
-                    fetchIssueDetails();
+                    await refetch();
                 }}
             />
         </div>

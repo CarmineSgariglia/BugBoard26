@@ -1,10 +1,12 @@
-import { useState } from "react";
+﻿import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+
 import { isValidEmail, isValidPassword } from "../../utils/validation";
 import { FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { loginApi } from "../../shared/api/modules/auth";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthContext";
 
 export function LoginScreen() {
@@ -13,33 +15,30 @@ export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const isEmailValid = isValidEmail(email);
   const isPasswordValid = isValidPassword(password);
   const isFormValid = isEmailValid && isPasswordValid;
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isFormValid || isLoading) return;
-
-    setIsLoading(true);
-    setError("");
-
-    /*login API */
-
-    try {
-      await loginApi(email.trim(), password);
+  const loginMutation = useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      await loginApi(email, password);
       await refreshUser();
-      //TODO: Remove this and rely on the user state change to trigger the redirect in PublicOnly component
-      //const data: AuthUser = await loginApi(email.trim(), password);
-      //setUser(data);
+    },
+    onSuccess: () => {
       navigate("/projects");
-    } catch {
+    },
+    onError: () => {
       setError("Invalid credentials");
-    } finally {
-      setIsLoading(false);
-    }
+    },
+  });
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid || loginMutation.isPending) return;
+
+    setError("");
+    loginMutation.mutate({ email: email.trim(), password });
   };
 
   return (
@@ -64,8 +63,8 @@ export function LoginScreen() {
         {error ? <p className="text-sm text-rose-400">{error}</p> : null}
         <Button
           type="submit"
-          disabled={!isFormValid || isLoading}
-          isLoading={isLoading}
+          disabled={!isFormValid || loginMutation.isPending}
+          isLoading={loginMutation.isPending}
         >
           Login
         </Button>

@@ -13,6 +13,11 @@ export async function listProjectsApi(search?: string): Promise<Project[]> {
   return data;
 }
 
+export async function getProjectApi(projectId: string | number): Promise<Project> {
+  const { data } = await apiClient.get<Project>(`/projects/${projectId}`);
+  return data;
+}
+
 export async function createProjectApi(payload: CreateProjectPayload): Promise<Project> {
   const { data } = await apiClient.post<Project>("/projects", payload);
   return data;

@@ -1,58 +1,64 @@
-import { useRef, useEffect, useState } from "react";
+﻿import { useRef, useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+
 import { isValidEmail } from "../../utils/validation";
 import { FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
-import { useNavigate } from "react-router-dom";
 import { requestOtpApi } from "../../shared/api/modules/auth";
 
 export function RetrieveStep1Screen() {
-    const navigate = useNavigate();
-    const emailInputRef = useRef<HTMLInputElement>(null);
-    const [email, setEmail] = useState("");
-    const [error, setError] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
 
-    const isEmailValid = isValidEmail(email);
+  const isEmailValid = isValidEmail(email);
 
-    useEffect(() => {
-        emailInputRef.current?.focus();
-    }, []);
+  useEffect(() => {
+    emailInputRef.current?.focus();
+  }, []);
 
-    const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!isEmailValid || isLoading) return;
+  const requestOtpMutation = useMutation({
+    mutationFn: (emailValue: string) => requestOtpApi(emailValue),
+    onSuccess: (_data, emailValue) => {
+      navigate(`/forgot-password/verify?email=${encodeURIComponent(emailValue)}`);
+    },
+    onError: () => {
+      setError("Impossibile inviare il codice OTP");
+    },
+  });
 
-        setError("");
-        setIsLoading(true);
-        try {
-            await requestOtpApi(email.trim());
-            navigate(`/forgot-password/verify?email=${encodeURIComponent(email.trim())}`);
-        } catch {
-            setError("Impossibile inviare il codice OTP");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isEmailValid || requestOtpMutation.isPending) return;
 
-    return (
-        <div className="flex flex-col gap-3">
+    setError("");
+    requestOtpMutation.mutate(email.trim());
+  };
 
-            <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-                <FormField>
-                    <Input
-                        ref={emailInputRef}
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                </FormField>
-                {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-                <Button type="submit" disabled={!isEmailValid || isLoading} isLoading={isLoading}>
-                    Send Code
-                </Button>
-            </form>
-        </div>
-    );
+  return (
+    <div className="flex flex-col gap-3">
+      <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+        <FormField>
+          <Input
+            ref={emailInputRef}
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </FormField>
+        {error ? <p className="text-sm text-rose-400">{error}</p> : null}
+        <Button
+          type="submit"
+          disabled={!isEmailValid || requestOtpMutation.isPending}
+          isLoading={requestOtpMutation.isPending}
+        >
+          Send Code
+        </Button>
+      </form>
+    </div>
+  );
 }

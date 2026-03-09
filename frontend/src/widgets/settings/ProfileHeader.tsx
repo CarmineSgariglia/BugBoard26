@@ -29,7 +29,7 @@ export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUpl
     };
 
     return (
-        <div className={`flex flex-col items-center pt-10 pb-6 px-8 text-center ${className}`.trim()}>
+        <div className={`flex flex-col items-center pt-10 pb-6 px-4 text-center ${className}`.trim()}>
             {isViewMode ? (
                 <div className="h-[72px] w-[72px] rounded-full bg-blue-500/10 flex items-center justify-center mb-5 border border-blue-500/20">
                     <HiOutlineUser size={32} className="text-white/70" />
@@ -64,7 +64,7 @@ export function ProfileHeader({ avatarUrl, title, subtitle, onImageSelect, isUpl
                 </div>
             )}
             <h1 className="text-xl font-bold text-white mb-1.5 tracking-tight">{title}</h1>
-            <p className="text-sm-p-6 text-neutral-400 text-center max-w-sm">{subtitle}</p>
+            <p className="text-sm text-neutral-400 text-center max-w-sm mx-auto">{subtitle}</p>
         </div>
     );
 }
