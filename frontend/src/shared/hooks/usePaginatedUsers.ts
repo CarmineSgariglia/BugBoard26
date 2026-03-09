@@ -47,12 +47,12 @@ export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
         return () => clearTimeout(timeoutId);
     }, [fetchUsers]);
 
-    // Quando i filtri cambiano, torniamo alla pagina 1
+    // When filters change, return to page 1
     useEffect(() => {
         setCurrentPage(1);
     }, [search, roleFilter, statusFilter]);
 
-    // Funzione utile per aggiornare un singolo utente (es. dopo averne invertito lo stato o modificato i dati)
+    // Function to update a single user (e.g., after inverting their status or modifying their data)
     const updateLocalUser = useCallback((updatedUser: AuthUser) => {
         setUsers(prev => prev.map(u => u.userId === updatedUser.userId ? updatedUser : u));
     }, []);

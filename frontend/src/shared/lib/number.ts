@@ -1,7 +1,6 @@
 /**
- * Generates a random numeric string of the specified length.
- * @param length The length of the numeric string to generate.
- * @returns A string of random digits.
+ Generates a random numeric string of the specified length.
+ It is used to generate random codes for password recovery.
  */
 export function generateRandomNumber(length: number): string {
     let result = "";
