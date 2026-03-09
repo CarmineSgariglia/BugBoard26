@@ -57,7 +57,7 @@ class Command(BaseCommand):
 
             notif = Notification.objects.create(
                 notify_type=notify_type,
-                project=project if not issue else None,
+                project=project,
                 issue=issue,
             )
             NotifyUser.objects.create(notification=notif, user=user, is_read=False)

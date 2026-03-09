@@ -151,8 +151,7 @@ class IssueViewSet(
 
         old_status = issue.status
         issue.status = new_status
-        issue.closed_at = timezone.now() if new_status == IssueStatus.DONE else None
-        issue.save(update_fields=["status", "closed_at", "updated_at"])
+        issue.save(update_fields=["status"])
 
         message = request.data.get("message", "")
         event = IssueEvent.objects.create(

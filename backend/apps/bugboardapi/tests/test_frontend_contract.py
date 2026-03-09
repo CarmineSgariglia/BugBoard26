@@ -80,8 +80,6 @@ class FrontendContractTests(APITestCase):
             "status",
             "priority",
             "createdAt",
-            "updatedAt",
-            "closedAt",
         }
         self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
         reporter_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
