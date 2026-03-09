@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-
+# Helper function to build a User instance for password validation, using provided attributes or existing instance data
 def build_password_validation_user(
     *,
     instance: User | None = None,
@@ -19,7 +19,7 @@ def build_password_validation_user(
     user.last_name = attrs.get("last_name", getattr(user, "last_name", ""))
     return user
 
-
+# Helper function to validate a password against Django's validators, raising a DRF ValidationError with field-specific messages if validation fails
 def ensure_valid_password(
     password: str,
     *,
