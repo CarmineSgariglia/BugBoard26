@@ -39,12 +39,10 @@ def create_project_with_members(
         ProjectMembership.objects.get_or_create(
             project=project,
             user=user,
-            defaults={"role": ProjectMembership.Role.ADMIN},
         )
     for user in developer_members:
         ProjectMembership.objects.get_or_create(
             project=project,
             user=user,
-            defaults={"role": ProjectMembership.Role.DEVELOPER},
         )
     return project

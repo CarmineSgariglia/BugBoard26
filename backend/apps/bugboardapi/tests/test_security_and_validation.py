@@ -117,8 +117,8 @@ class IssueCreationValidationTests(APITestCase):
             icon="",
             created_by=self.admin,
         )
-        ProjectMembership.objects.create(project=self.project, user=self.admin, role=ProjectMembership.Role.ADMIN)
-        ProjectMembership.objects.create(project=self.project, user=self.member, role=ProjectMembership.Role.DEVELOPER)
+        ProjectMembership.objects.create(project=self.project, user=self.admin)
+        ProjectMembership.objects.create(project=self.project, user=self.member)
         self.tag = Tag.objects.create(name="backend")
 
     def test_create_issue_rejects_assignee_outside_project(self):
