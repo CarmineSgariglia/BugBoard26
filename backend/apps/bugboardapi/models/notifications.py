@@ -26,12 +26,7 @@ class Notification(models.Model):
 
     class Meta:
         db_table = "Notification"
-        constraints = [
-            models.CheckConstraint(
-                check=(Q(issue__isnull=False, project__isnull=True) | Q(issue__isnull=True, project__isnull=False)),
-                name="notification_xor_target",
-            )
-        ]
+        
         ordering = ["-created_at"]
 
 # Intermediate table to manage the many-to-many relationship between Notification and User, with fields to track read status and timestamp of when the notification was read

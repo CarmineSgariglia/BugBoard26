@@ -56,7 +56,7 @@ def seed_notifications():
 
         notif = Notification.objects.create(
             notify_type=notify_type,
-            project=project if not issue else None,
+            project=project,
             issue=issue
         )
         

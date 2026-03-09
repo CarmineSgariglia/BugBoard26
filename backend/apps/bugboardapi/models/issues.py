@@ -52,8 +52,6 @@ class Issue(models.Model):
     status = models.CharField(max_length=32, choices=IssueStatus.choices, default=IssueStatus.TODO)
     priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.MEDIUM)
     created_at = models.DateTimeField(auto_now_add=True, db_column="createdAt")
-    updated_at = models.DateTimeField(auto_now=True, db_column="updatedAt")
-    closed_at = models.DateTimeField(null=True, blank=True, db_column="closedAt")
     assignees = models.ManyToManyField(User, through="IssueAssignee", related_name="assigned_issues")
     tags = models.ManyToManyField(Tag, through="IssueTag", related_name="issues")
 
@@ -91,7 +89,7 @@ class IssueEvent(models.Model):
     actor = models.ForeignKey(User, on_delete=models.PROTECT, db_column="actorId", related_name="issue_events")
     event_type = models.CharField(max_length=32, choices=EventType.choices, db_column="eventType")
     at = models.DateTimeField(auto_now_add=True)
-    message = models.CharField(max_length=256, blank=True, default="")
+    message = models.CharField(max_length=512, blank=True, default="")
     old_status = models.CharField(max_length=32, choices=IssueStatus.choices, blank=True, default="", db_column="oldStatus")
     new_status = models.CharField(max_length=32, choices=IssueStatus.choices, blank=True, default="", db_column="newStatus")
 

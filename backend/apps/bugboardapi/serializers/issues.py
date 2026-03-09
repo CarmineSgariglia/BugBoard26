@@ -14,8 +14,6 @@ class IssueSerializer(serializers.ModelSerializer):
     reporterId = serializers.IntegerField(source="reporter.id", read_only=True)
     reporter = UserSerializer(read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
-    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
-    closedAt = serializers.DateTimeField(source="closed_at", read_only=True)
     type = serializers.CharField(source="issue_type")
     assigneeIds = serializers.ListField(child=serializers.IntegerField(min_value=1), write_only=True, required=False)
     tagIds = serializers.ListField(child=serializers.IntegerField(min_value=1), write_only=True, required=False)
@@ -40,8 +38,7 @@ class IssueSerializer(serializers.ModelSerializer):
             "status",
             "priority",
             "createdAt",
-            "updatedAt",
-            "closedAt",
+
             "assigneeIds",
             "tagIds",
             "tagNames",
@@ -121,10 +118,7 @@ class IssueSerializer(serializers.ModelSerializer):
             instance.issue_type = validated_data.pop("issue_type")
         for key, value in validated_data.items():
             setattr(instance, key, value)
-        if instance.status == IssueStatus.DONE and instance.closed_at is None:
-            instance.closed_at = timezone.now()
-        if instance.status != IssueStatus.DONE:
-            instance.closed_at = None
+       
         instance.save()
 
         if assignee_ids is not None:

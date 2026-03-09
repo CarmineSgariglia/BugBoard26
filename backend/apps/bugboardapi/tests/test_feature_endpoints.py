@@ -943,7 +943,6 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.issue.refresh_from_db()
         self.assertEqual(self.issue.status, IssueStatus.DONE)
-        self.assertIsNotNone(self.issue.closed_at)
 
     def test_add_update_requires_message(self):
         self.client.force_authenticate(user=self.member)
