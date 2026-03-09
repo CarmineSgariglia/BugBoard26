@@ -1,9 +1,19 @@
-﻿import apiClient from "../core/client";
+import apiClient, { setAccessToken } from "../core/client";
 import type { AuthUser } from "../types/auth";
 
+type LoginResponse = {
+  accessToken: string;
+  user: AuthUser;
+};
+
+type RefreshResponse = {
+  accessToken: string;
+};
+
 export async function loginApi(email: string, password: string): Promise<AuthUser> {
-  const { data } = await apiClient.post<AuthUser>("/auth/login", { email, password });
-  return data;
+  const { data } = await apiClient.post<LoginResponse>("/auth/login", { email, password });
+  setAccessToken(data.accessToken);
+  return data.user;
 }
 
 export async function requestOtpApi(email: string): Promise<void> {
@@ -26,8 +36,18 @@ export async function resetPasswordApi(
   await apiClient.post("/auth/password/reset", { email, code, newPassword });
 }
 
+export async function refreshApi(): Promise<string> {
+  const { data } = await apiClient.post<RefreshResponse>("/auth/refresh", {});
+  setAccessToken(data.accessToken);
+  return data.accessToken;
+}
+
 export async function logoutApi(): Promise<void> {
-  await apiClient.post("/auth/logout");
+  try {
+    await apiClient.post("/auth/logout");
+  } finally {
+    setAccessToken(null);
+  }
 }
 
 export async function meApi(): Promise<AuthUser> {
