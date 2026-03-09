@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { listProjectIssuesApi, listProjectsApi, listProjectMembersApi } from "../../shared/api/modules/projects";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  listProjectIssuesApi,
+  getProjectApi,
+  listProjectMembersApi,
+} from "../../shared/api/modules/projects";
 import type { Issue } from "../../shared/api/types/issues";
-import type { Project, ProjectMembership } from "../../shared/api/types/projects";
+import type { ProjectMembership } from "../../shared/api/types/projects";
 import { useAuth } from "../../contexts/AuthContext";
 import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
 
@@ -19,11 +24,15 @@ import { EditTeamFlow } from "./EditTeamFlow";
 import { DeleteProjectFlow } from "./DeleteProjectFlow";
 import { SidebarLayout } from "../../components/layout/SidebarLayout";
 
-
 // Icons
 import { FiPlus } from "react-icons/fi";
 import { BiCategoryAlt } from "react-icons/bi";
-import { HiOutlineFlag, HiOutlineCollection, HiOutlineSortAscending, HiOutlineSortDescending } from "react-icons/hi";
+import {
+  HiOutlineFlag,
+  HiOutlineCollection,
+  HiOutlineSortAscending,
+  HiOutlineSortDescending,
+} from "react-icons/hi";
 import { IssueModal } from "../issue/IssueModal";
 
 export function ProjectIssuesScreen() {
@@ -31,80 +40,104 @@ export function ProjectIssuesScreen() {
   const { projectId } = useParams();
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
-
-  // States
-  const [project, setProject] = useState<Project | null>(null);
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [members, setMembers] = useState<ProjectMembership[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isViewTeamModalOpen, setIsViewTeamModalOpen] = useState(false);
-
-  // Issue Modal
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
-  const fetchData = async () => {
-    if (!projectId) {
-      setError("Missing project id");
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    setError("");
-    try {
-      // Fetch issues, projects and members in parallel
-      const [issuesData, projectsData, membersData] = await Promise.all([
-        listProjectIssuesApi(projectId),
-        listProjectsApi(),
-        listProjectMembersApi(projectId)
-      ]);
+  const {
+    data: issues = [],
+    isLoading: isIssuesLoading,
+    isFetching: isIssuesFetching,
+    error: issuesError,
+  } = useQuery({
+    queryKey: ["project", projectId, "issues"],
+    queryFn: () => listProjectIssuesApi(projectId!),
+    enabled: !!projectId,
+    staleTime: 0,
+  });
 
-      setIssues(issuesData);
-      setMembers(membersData);
-      const foundProject = projectsData.find(p => String(p.projectId) === projectId);
-      if (foundProject) {
-        setProject(foundProject);
-        setLabel(`project:${projectId}`, foundProject.name);
-      }
+  const {
+    data: members = [],
+    isLoading: isMembersLoading,
+    isFetching: isMembersFetching,
+    error: membersError,
+  } = useQuery({
+    queryKey: ["project", projectId, "members"],
+    queryFn: () => listProjectMembersApi(projectId!),
+    enabled: !!projectId,
+    staleTime: 0,
+  });
 
-    } catch {
-      setError("Unable to load project data. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    data: project = null,
+    isLoading: isProjectLoading,
+    isFetching: isProjectFetching,
+    error: projectError,
+  } = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => getProjectApi(projectId!),
+    enabled: !!projectId,
+    staleTime: 0,
+  });
 
   useEffect(() => {
-    fetchData();
-  }, [projectId]);
+    if (projectId && project) {
+      setLabel(`project:${projectId}`, project.name);
+    }
+  }, [projectId, project, setLabel]);
 
+  const refreshProjectData = useCallback(() => {
+    if (!projectId) return;
+    void queryClient.invalidateQueries({ queryKey: ["project", projectId, "issues"] });
+    void queryClient.invalidateQueries({ queryKey: ["project", projectId, "members"] });
+    void queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    void queryClient.invalidateQueries({ queryKey: ["projects"] });
+  }, [projectId, queryClient]);
+
+
+  // Filtering issues 
   const filteredIssues = useMemo(() => {
     return issues
-      .filter(issue => {
-        const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      .filter((issue) => {
+        const matchesSearch =
+          issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           issue.description.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || issue.status.toLowerCase() === statusFilter.toLowerCase();
-        const matchesPriority = priorityFilter === "all" || issue.priority.toLowerCase() === priorityFilter.toLowerCase();
-        const matchesType = typeFilter === "all" || issue.type.toLowerCase() === typeFilter.toLowerCase();
+        const matchesStatus =
+          statusFilter === "all" || issue.status.toLowerCase() === statusFilter.toLowerCase();
+        const matchesPriority =
+          priorityFilter === "all" || issue.priority.toLowerCase() === priorityFilter.toLowerCase();
+        const matchesType =
+          typeFilter === "all" || issue.type.toLowerCase() === typeFilter.toLowerCase();
         return matchesSearch && matchesStatus && matchesPriority && matchesType;
       })
       .sort((a, b) => {
         const timeA = new Date(a.createdAt).getTime();
         const timeB = new Date(b.createdAt).getTime();
-        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+        return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
       });
   }, [issues, searchQuery, statusFilter, priorityFilter, typeFilter, sortOrder]);
+
+  // Loading states
+  const isLoading = isIssuesLoading || isMembersLoading || isProjectLoading;
+  const isRefreshing =
+    (isIssuesFetching || isMembersFetching || isProjectFetching) && !isLoading;
+  const error =
+    !projectId
+      ? "Missing project id"
+      : issuesError || membersError || projectError
+        ? "Unable to load project data. Please try again."
+        : "";
 
   if (!isLoading && !project && !error) {
     return (
@@ -117,54 +150,45 @@ export function ProjectIssuesScreen() {
   return (
     <div className="min-h-screen pt-24 pb-12 px-6">
       <div className="max-w-[1400px] mx-auto flex flex-col gap-8">
-
-        {/* Header & Filter Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-4 flex-1">
             <div className="w-full md:w-80">
-              <SearchBar
-                placeholder="Search issues..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
+              <SearchBar placeholder="Search issues..." value={searchQuery} onChange={setSearchQuery} />
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar w-full md:w-auto">
               <Select
                 value={statusFilter}
                 onChange={setStatusFilter}
-                options={[
-                  { value: "all", label: "All Status" },
-                  ...STATUSES,
-                ]}
+                options={[{ value: "all", label: "All Status" }, ...STATUSES]}
                 icon={<HiOutlineCollection size={16} />}
               />
               <Select
                 value={priorityFilter}
-                onChange={priorityFilter => setPriorityFilter(priorityFilter)}
-                options={[
-                  { value: "all", label: "All Priority" },
-                  ...PRIORITIES,
-                ]}
+                onChange={(v) => setPriorityFilter(v)}
+                options={[{ value: "all", label: "All Priority" }, ...PRIORITIES]}
                 icon={<HiOutlineFlag size={16} />}
               />
               <Select
                 value={typeFilter}
-                onChange={typeFilter => setTypeFilter(typeFilter)}
-                options={[
-                  { value: "all", label: "All Type" },
-                  ...CATEGORIES,
-                ]}
+                onChange={(v) => setTypeFilter(v)}
+                options={[{ value: "all", label: "All Type" }, ...CATEGORIES]}
                 icon={<BiCategoryAlt size={16} />}
               />
               <Select
                 value={sortOrder}
-                onChange={(val) => setSortOrder(val as 'desc' | 'asc')}
+                onChange={(val) => setSortOrder(val as "desc" | "asc")}
                 options={[
                   { value: "desc", label: "Newest First" },
-                  { value: "asc", label: "Oldest First" }
+                  { value: "asc", label: "Oldest First" },
                 ]}
-                icon={sortOrder === 'desc' ? <HiOutlineSortDescending size={16} /> : <HiOutlineSortAscending size={16} />}
+                icon={
+                  sortOrder === "desc" ? (
+                    <HiOutlineSortDescending size={16} />
+                  ) : (
+                    <HiOutlineSortAscending size={16} />
+                  )
+                }
               />
             </div>
           </div>
@@ -181,14 +205,15 @@ export function ProjectIssuesScreen() {
           </Button>
         </div>
 
-        {/* Main Content Grid */}
-        {/* Main Content Grid */}
         <SidebarLayout
           sidebar={
             project ? (
               <ProjectSidebar
                 project={project}
-                members={members.map(m => ({ username: m.username, profileImg: m.profileImg }))}
+                members={members.map((m: ProjectMembership) => ({
+                  username: m.username,
+                  profileImg: m.profileImg,
+                }))}
                 isAdmin={currentUser?.isAdmin}
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
@@ -200,8 +225,6 @@ export function ProjectIssuesScreen() {
             )
           }
         >
-
-          {/* Left Column: Issues List */}
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-white tracking-tight">Manage Issues</h2>
@@ -210,11 +233,15 @@ export function ProjectIssuesScreen() {
               </span>
             </div>
 
-            {error && (
+            {isRefreshing ? (
+              <div className="text-xs text-neutral-500">Refreshing...</div>
+            ) : null}
+
+            {error ? (
               <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm">
                 {error}
               </div>
-            )}
+            ) : null}
 
             <div className="flex flex-col gap-4 max-h-[calc(100vh-270px)] overflow-y-auto pr-2 custom-scrollbar">
               {isLoading ? (
@@ -222,7 +249,7 @@ export function ProjectIssuesScreen() {
                   <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
                 ))
               ) : filteredIssues.length > 0 ? (
-                filteredIssues.map(issue => (
+                filteredIssues.map((issue: Issue) => (
                   <IssueCard
                     key={issue.issueId}
                     issue={issue}
@@ -242,7 +269,6 @@ export function ProjectIssuesScreen() {
               )}
             </div>
           </div>
-
         </SidebarLayout>
 
         {isEditModalOpen && project && (
@@ -251,7 +277,7 @@ export function ProjectIssuesScreen() {
             project={project}
             onUpdated={() => {
               setIsEditModalOpen(false);
-              fetchData();
+              refreshProjectData();
             }}
           />
         )}
@@ -262,31 +288,26 @@ export function ProjectIssuesScreen() {
             project={project}
             onUpdated={() => {
               setIsEditTeamModalOpen(false);
-              fetchData();
+              refreshProjectData();
             }}
           />
         )}
 
-        {project && (
+        {project ? (
           <DeleteProjectFlow
             isOpen={isDeleteModalOpen}
             onClose={() => setIsDeleteModalOpen(false)}
             projectId={project.projectId}
             projectName={project.name}
           />
-        )}
+        ) : null}
 
-        {isViewTeamModalOpen && project && (
-          <EditTeamFlow
-            onClose={() => setIsViewTeamModalOpen(false)}
-            project={project}
-            readOnly
-          />
-        )}
-
+        {isViewTeamModalOpen && project ? (
+          <EditTeamFlow onClose={() => setIsViewTeamModalOpen(false)} project={project} readOnly />
+        ) : null}
       </div>
 
-      {isIssueModalOpen && (
+      {isIssueModalOpen ? (
         <IssueModal
           isOpen={isIssueModalOpen}
           onClose={() => setIsIssueModalOpen(false)}
@@ -294,10 +315,11 @@ export function ProjectIssuesScreen() {
           mode="create"
           onSuccess={() => {
             setIsIssueModalOpen(false);
-            fetchData();
+            refreshProjectData();
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }
+

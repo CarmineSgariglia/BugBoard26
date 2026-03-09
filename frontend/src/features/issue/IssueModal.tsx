@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { FiX } from "react-icons/fi";
+
 import { ModalOverlay } from "../../components/layout/ModalOverlay";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { FormField } from "../../components/ui/FormField";
@@ -8,215 +11,199 @@ import { Select } from "../../components/ui/Select";
 import { FileAttachment } from "../../components/ui/FileAttachment";
 import { PrioritySelector } from "../../components/ui/PrioritySelector";
 import { TagInput } from "../../components/ui/TagInput";
-import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
-import { FiX } from "react-icons/fi";
 import { Button } from "../../components/ui/Button";
+import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
 import { createProjectIssueApi } from "../../shared/api/modules/projects";
 import { updateIssueDetailsApi } from "../../shared/api/modules/issues";
 import { uploadAttachmentApi } from "../../shared/api/modules/attachments";
 import type { Issue } from "../../shared/api/types/issues";
 
-
 interface IssueModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    mode: "create" | "edit";
-    projectId?: string | number;
-    issue?: Issue | null;
-    initialData?: Issue | null;
-    onSuccess?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+  mode: "create" | "edit";
+  projectId?: string | number;
+  issue?: Issue | null;
+  initialData?: Issue | null;
+  onSuccess?: () => void;
 }
 
 export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialData, onSuccess }: IssueModalProps) {
-    // --- States ---
-    const [title, setTitle] = useState(initialData?.title || "");
-    const [description, setDescription] = useState(initialData?.description || "");
-    const [category, setCategory] = useState(initialData?.type || CATEGORIES[0].value);
-    const [priority, setPriority] = useState(initialData?.priority || "MEDIUM");
-    const [status, setStatus] = useState(initialData?.status || STATUSES[0].value); // DEVO INSERIRE QUESTA LOGICA <----------------
-    const [tags, setTags] = useState<string[]>(initialData?.tags?.map(tag => tag.name) || []);
-    const [files, setFiles] = useState<File[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [title, setTitle] = useState(initialData?.title || "");
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [category, setCategory] = useState(initialData?.type || CATEGORIES[0].value);
+  const [priority, setPriority] = useState(initialData?.priority || "MEDIUM");
+  const [status, setStatus] = useState(initialData?.status || STATUSES[0].value);
+  const [tags, setTags] = useState<string[]>(initialData?.tags?.map((tag) => tag.name) || []);
+  const [files, setFiles] = useState<File[]>([]);
 
-    useEffect(() => {
-        if (isOpen) {
-            if (mode === "edit" && initialData) {
-                setTitle(initialData.title);
-                setDescription(initialData.description);
-                setCategory(initialData.type || CATEGORIES[0].value);
-                setPriority(initialData.priority || "MEDIUM");
-                setStatus(initialData.status || STATUSES[0].value);
-                setTags(initialData.tags?.map(t => t.name) || []);
-                setFiles([]);
-            } else if (mode === "create") {
-                setTitle("");
-                setDescription("");
-                setCategory(CATEGORIES[0].value);
-                setPriority("MEDIUM");
-                setStatus(STATUSES[0].value);
-                setTags([]);
-                setFiles([]);
-            }
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (mode === "edit" && initialData) {
+      setTitle(initialData.title);
+      setDescription(initialData.description);
+      setCategory(initialData.type || CATEGORIES[0].value);
+      setPriority(initialData.priority || "MEDIUM");
+      setStatus(initialData.status || STATUSES[0].value);
+      setTags(initialData.tags?.map((t) => t.name) || []);
+      setFiles([]);
+      return;
+    }
+
+    if (mode === "create") {
+      setTitle("");
+      setDescription("");
+      setCategory(CATEGORIES[0].value);
+      setPriority("MEDIUM");
+      setStatus(STATUSES[0].value);
+      setTags([]);
+      setFiles([]);
+    }
+  }, [isOpen, initialData, mode]);
+
+  const hasChanges = useMemo(() => {
+    if (mode === "create") return true;
+    if (!initialData) return false;
+
+    const titleChanged = title !== initialData.title;
+    const descChanged = description !== initialData.description;
+    const categoryChanged = category !== (initialData.type || "");
+    const priorityChanged = priority !== (initialData.priority || "");
+    const statusChanged = status !== (initialData.status || "");
+    const tagsChanged = JSON.stringify(tags) !== JSON.stringify(initialData.tags?.map((t) => t.name) || []);
+    const filesChanged = files.length > 0;
+
+    return titleChanged || descChanged || categoryChanged || priorityChanged || statusChanged || tagsChanged || filesChanged;
+  }, [mode, initialData, title, description, category, priority, status, tags, files]);
+
+  const isFormValid = title.trim().length >= 3 && description.trim().length >= 5;
+
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      let resultIssue: Issue | null = null;
+
+      if (mode === "create" && projectId) {
+        resultIssue = await createProjectIssueApi(projectId, {
+          title,
+          description,
+          type: category,
+          priority,
+          tagNames: tags,
+        });
+      } else if (mode === "edit" && issue?.issueId) {
+        resultIssue = await updateIssueDetailsApi(issue.issueId, {
+          title,
+          description,
+          type: category,
+          priority,
+          status,
+          tagNames: tags,
+        });
+      }
+
+      if (resultIssue && files.length > 0) {
+        for (const file of files) {
+          await uploadAttachmentApi(file, resultIssue.issueId);
         }
-    }, [isOpen, initialData, mode]);
+      }
+    },
+    onSuccess: () => {
+      onSuccess?.();
+    },
+    onError: (error) => {
+      console.error("Failed to submit issue", error);
+    },
+  });
 
+  const handleSubmit = () => {
+    if (!isFormValid || submitMutation.isPending) return;
+    submitMutation.mutate();
+  };
 
+  return (
+    <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
+      <GlassCard className="max-h-[85vh]">
+        <div className="flex items-center justify-between p-6 border-b border-white/5">
+          <h2 className="text-lg font-bold text-white tracking-tight">
+            {mode === "create" ? "Create New Issue" : "Edit Issue"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-neutral-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
 
-    // Dirty check: abilita "Save Changes" solo se qualcosa è cambiato
-    const hasChanges = useMemo(() => {
-        if (mode === "create") return true; // In create mode, sempre abilitato
-        if (!initialData) return false;
+        <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+            <div className="md:col-span-2">
+              <TitleFieldWithLenght
+                label="Title"
+                title={title}
+                onChangeTitle={setTitle}
+                placeholder="What's the issue?"
+                maxLength={30}
+              />
+            </div>
+            <div>
+              <FormField label="Status">
+                <Select
+                  options={STATUSES}
+                  value={status}
+                  onChange={setStatus}
+                  className="[&>select]:rounded-lg"
+                />
+              </FormField>
+            </div>
+            <div>
+              <FormField label="Category">
+                <Select
+                  options={CATEGORIES}
+                  value={category}
+                  onChange={setCategory}
+                  className="[&>select]:rounded-lg"
+                />
+              </FormField>
+            </div>
+          </div>
 
-        const titleChanged = title !== initialData.title;
-        const descChanged = description !== initialData.description;
-        const categoryChanged = category !== (initialData.type || "");
-        const priorityChanged = priority !== (initialData.priority || "");
-        const statusChanged = status !== (initialData.status || "");
-        const tagsChanged = JSON.stringify(tags) !== JSON.stringify(initialData.tags?.map(t => t.name) || []);
-        const filesChanged = files.length > 0;
+          <DescriptionFieldWithLenght
+            label="Description"
+            description={description}
+            onChangeDescription={setDescription}
+            placeholder="Provide more details about the issue..."
+            maxLength={1000}
+          />
 
-        return titleChanged || descChanged || categoryChanged || priorityChanged || statusChanged || tagsChanged || filesChanged;
-    }, [mode, initialData, title, description, category, priority, status, tags, files]);
+          <FileAttachment onFilesChange={setFiles} />
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <PrioritySelector value={priority} onChange={setPriority} />
+            <TagInput tags={tags} onChange={setTags} />
+          </div>
+        </div>
 
-    // Validation (simple example)
-    const isFormValid = title.trim().length >= 3 && description.trim().length >= 5;
-
-    const handleSubmit = async () => {
-        if (!isFormValid) return;
-        setIsSubmitting(true);
-        try {
-            let resultIssue: Issue | null = null;
-
-            if (mode === "create" && projectId) {
-                resultIssue = await createProjectIssueApi(projectId, {
-                    title,
-                    description,
-                    type: category,
-                    priority,
-                    tagNames: tags,
-                });
-            } else if (mode === "edit" && issue?.issueId) {
-                resultIssue = await updateIssueDetailsApi(issue.issueId, {
-                    title,
-                    description,
-                    type: category,
-                    priority,
-                    status,
-                    tagNames: tags,
-                });
-            }
-
-            // Upload file allegati
-            if (resultIssue && files.length > 0) {
-                for (const file of files) {
-                    await uploadAttachmentApi(file, resultIssue.issueId);
-                }
-            }
-
-            if (onSuccess) onSuccess();
-        } catch (error) {
-            console.error("Failed to submit issue", error);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-
-    return (
-        <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
-            <GlassCard className="max-h-[85vh]">
-
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/5">
-                    <h2 className="text-lg font-bold text-white tracking-tight">
-                        {mode === "create" ? "Create New Issue" : "Edit Issue"}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="p-2 text-neutral-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                        <FiX size={20} />
-                    </button>
-                </div>
-
-                {/* Body (Scrollable if content is too long) */}
-                <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
-
-                    {/* Title, Status & Category Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
-                        <div className="md:col-span-2">
-                            <TitleFieldWithLenght
-                                label="Title"
-                                title={title}
-                                onChangeTitle={setTitle}
-                                placeholder="What's the issue?"
-                                maxLength={30}
-                            />
-                        </div>
-                        <div>
-                            <FormField label="Status">
-                                <Select
-                                    options={STATUSES}
-                                    value={status}
-                                    onChange={setStatus}
-                                    className="[&>select]:rounded-lg"
-                                />
-                            </FormField>
-                        </div>
-                        <div>
-                            <FormField label="Category">
-                                <Select
-                                    options={CATEGORIES}
-                                    value={category}
-                                    onChange={setCategory}
-                                    className="[&>select]:rounded-lg"
-                                />
-                            </FormField>
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    <DescriptionFieldWithLenght
-                        label="Description"
-                        description={description}
-                        onChangeDescription={setDescription}
-                        placeholder="Provide more details about the issue..."
-                        maxLength={1000}
-                    />
-
-                    {/* File Attachment */}
-                    <FileAttachment onFilesChange={setFiles} />
-
-                    {/* Priority & Tags Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                        <PrioritySelector value={priority} onChange={setPriority} />
-                        <TagInput tags={tags} onChange={setTags} />
-                    </div>
-
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between p-6 border-t border-white/5 bg-[#0D0D12]/30">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <Button
-                        variant="primary"
-                        onClick={handleSubmit}
-                        disabled={!isFormValid || isSubmitting || !hasChanges}
-                        isLoading={isSubmitting}
-                        fullWidth={false}
-                    >
-                        {mode === "create" ? "Create Issue" : "Save Changes"}
-                    </Button>
-                </div>
-
-            </GlassCard>
-        </ModalOverlay>
-    );
+        <div className="flex items-center justify-between p-6 border-t border-white/5 bg-[#0D0D12]/30">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={!isFormValid || submitMutation.isPending || !hasChanges}
+            isLoading={submitMutation.isPending}
+            fullWidth={false}
+          >
+            {mode === "create" ? "Create Issue" : "Save Changes"}
+          </Button>
+        </div>
+      </GlassCard>
+    </ModalOverlay>
+  );
 }
