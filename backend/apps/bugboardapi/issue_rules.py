@@ -4,7 +4,7 @@ from rest_framework.exceptions import ValidationError
 
 from .models import ProjectMembership
 
-
+# Validation helper to ensure that provided assignee IDs are valid members of the project
 def validate_project_assignee_ids(*, project, assignee_ids: list[int] | None) -> None:
     if assignee_ids is None:
         return

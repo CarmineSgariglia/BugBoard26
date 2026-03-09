@@ -7,13 +7,13 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import RevokedTokenSession
 
-
+# Custom session authentication that enforces CSRF checks
 class CSRFAwareSessionAuthentication(SessionAuthentication):
     def authenticate(self, request):
         self.enforce_csrf(request)
         return None
 
-
+# Custom JWT authentication class that checks for revoked token sessions
 class RevocableJWTAuthentication(JWTAuthentication):
     def authenticate(self, request):
         result = super().authenticate(request)

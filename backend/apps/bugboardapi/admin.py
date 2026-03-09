@@ -81,17 +81,18 @@ class TagAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
+class NotifyUserInline(admin.TabularInline):
+    model = NotifyUser
+    extra = 0
+
+
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ("notification_id", "notify_type", "issue", "project", "created_at")
     list_filter = ("notify_type", "created_at")
+    inlines = [NotifyUserInline]
 
 
-@admin.register(NotifyUser)
-class NotifyUserAdmin(admin.ModelAdmin):
-    list_display = ("notify_user_id", "notification", "user", "is_read", "read_at")
-    list_filter = ("is_read",)
-    search_fields = ("user__username", "user__email")
 
 
 @admin.register(PasswordResetOTP)

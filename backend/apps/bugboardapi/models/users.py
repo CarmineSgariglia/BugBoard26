@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
-
+# Model to represent a user's profile image, with a one-to-one relationship to the User model and a field for storing the profile image URL. The model uses the user's ID as the primary key and includes a string representation method that returns the username.
 class UserProfileImage(models.Model):
     user = models.OneToOneField(
         User,
@@ -23,6 +23,7 @@ class UserProfileImage(models.Model):
     def __str__(self) -> str:
         return self.user.username
 
+# Model to represent a password reset OTP (One-Time Password) for a user
 
 class PasswordResetOTP(models.Model):
     otp_id = models.AutoField(primary_key=True, db_column="otpId")
@@ -61,7 +62,7 @@ class PasswordResetOTP(models.Model):
     def is_valid(self) -> bool:
         return not self.is_used and timezone.now() <= self.expires_at
 
-
+ # Model to represent a revoked token session for a user
 class RevokedTokenSession(models.Model):
     sid = models.CharField(max_length=64, primary_key=True)
     user = models.ForeignKey(
