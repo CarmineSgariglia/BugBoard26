@@ -4,11 +4,11 @@
  * email pattern (containing @ and a domain with a dot).
  */
 export function isValidEmail(email: string): boolean {
-    if (!email || email.length < 8) return false;
+    const value = email?.trim();
+    if (!value || value.length < 8) return false;
 
-    // Standard email regex structure
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return emailRegex.test(value);
 }
 
 /**
@@ -17,11 +17,11 @@ export function isValidEmail(email: string): boolean {
  * name pattern (containing only letters).
  */
 export function isValidName(name: string): boolean {
-    if (!name || name.length < 3) return false;
+    const value = name?.trim();
+    if (!value || value.length < 3) return false;
 
-    // Standard name regex structure
-    const nameRegex = /^[a-zA-Z\s]+$/;
-    return nameRegex.test(name);
+    const nameRegex = /^[\p{L}\s]+$/u;
+    return nameRegex.test(value);
 }
 
 /**
@@ -29,11 +29,7 @@ export function isValidName(name: string): boolean {
  * It checks that the code is exactly 6 digits long.
  */
 export function isValidCode(code: string): boolean {
-    if (!code || code.length !== 6) return false;
-
-    // Standard code regex structure
-    const codeRegex = /^\d{6}$/;
-    return codeRegex.test(code);
+    return /^\d{6}$/.test(code);
 }
 
 /**
@@ -42,10 +38,11 @@ export function isValidCode(code: string): boolean {
  * contains at least one number, and at least one special character.
  */
 export function isValidPassword(password: string): boolean {
-    if (!password || password.length < 8) return false;
+    const value = password?.trim();
+    if (!value || value.length < 8) return false;
 
-    const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const hasNumber = /\d/.test(value);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(value);
 
     return hasNumber && hasSpecialChar;
 }
