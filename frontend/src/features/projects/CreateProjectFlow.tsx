@@ -68,7 +68,7 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
             if (onSuccess) onSuccess();
             onClose();
 
-        } catch {
+        } catch (error) {
             // Se fallisce mostriamo l'errore
             setError("Errore durante la creazione del progetto");
         } finally {

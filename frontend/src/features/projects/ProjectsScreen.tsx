@@ -8,7 +8,7 @@ import { listProjectsApi } from "../../shared/api/modules/projects";
 import { resolveMediaUrl } from "../../shared/api/core/media";
 import type { Project } from "../../shared/api/types/projects";
 import { getProjectIcon } from "../../utils/projectIcons";
-import { useAuth } from "../../contexts/useAuth";
+import { useAuth } from "../../contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query"; // UTILIZZARE QUESTA LOGICA PER LE ALTRE PAGINE APPENA FACCIO IL REFACTORING
 
 function projectIcon(iconId?: string) {
