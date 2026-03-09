@@ -3,9 +3,9 @@ import { isValidEmail, isValidPassword } from "../../utils/validation";
 import { FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
-import { loginApi} from "../../services/api";
+import { loginApi } from "../../shared/api/modules/auth";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../contexts/useAuth";
+import { useAuth } from "../../app/providers/AuthContext";
 
 export function LoginScreen() {
   const navigate = useNavigate();

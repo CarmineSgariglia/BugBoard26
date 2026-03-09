@@ -4,7 +4,7 @@ import { FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { useNavigate } from "react-router-dom";
-import { requestOtpApi } from "../../services/api";
+import { requestOtpApi } from "../../shared/api/modules/auth";
 
 export function RetrieveStep1Screen() {
     const navigate = useNavigate();
