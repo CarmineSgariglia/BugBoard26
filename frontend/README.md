@@ -43,6 +43,12 @@ export default defineConfig([
 ])
 ```
 
+## Authentication model
+
+- The frontend keeps the JWT access token only in runtime memory (no persistent storage).
+- The refresh token is stored by the backend in an HttpOnly cookie.
+- On `401`, the API client performs a single shared refresh request and retries failed calls.
+
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js

@@ -1,37 +1,15 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 const apiBaseURL = import.meta.env.VITE_API_BASE_URL ?? "/api";
-const ACCESS_TOKEN_STORAGE_KEY = "bugboard_access_token";
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
-function readStoredAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-let accessToken: string | null = readStoredAccessToken();
+let accessToken: string | null = null;
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
-
-  if (typeof window === "undefined") return;
-
-  try {
-    if (token) {
-      window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
-    } else {
-      window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
-    }
-  } catch {
-    // Ignore storage failures (private mode, quota, etc.)
-  }
 }
 
 export function getAccessToken(): string | null {
@@ -63,6 +41,7 @@ function readCookie(name: string): string {
 }
 
 let csrfBootstrapPromise: Promise<unknown> | null = null;
+let refreshPromise: Promise<string> | null = null;
 
 async function ensureCsrfCookie(): Promise<void> {
   if (readCookie("csrftoken")) return;
@@ -84,6 +63,26 @@ function methodRequiresCsrf(method?: string): boolean {
     normalized !== "OPTIONS" &&
     normalized !== "TRACE"
   );
+}
+
+async function refreshAccessTokenSingleFlight(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = refreshClient
+      .post<{ accessToken: string }>("/auth/refresh", {})
+      .then(({ data }) => {
+        setAccessToken(data.accessToken);
+        return data.accessToken;
+      })
+      .catch((error) => {
+        setAccessToken(null);
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
 }
 
 refreshClient.interceptors.request.use(async (config) => {
@@ -137,15 +136,9 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
 
     try {
-      const { data } = await refreshClient.post<{ accessToken: string }>("/auth/refresh", {});
-      setAccessToken(data.accessToken);
-
-      originalRequest.headers = originalRequest.headers ?? {};
-      (originalRequest.headers as Record<string, string>)["Authorization"] = `Bearer ${data.accessToken}`;
-
+      await refreshAccessTokenSingleFlight();
       return apiClient(originalRequest);
     } catch (refreshError) {
-      setAccessToken(null);
       return Promise.reject(refreshError);
     }
   },
