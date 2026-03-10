@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RiCloseLine } from "react-icons/ri";
 
-import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
-import { ProjectFormLayout } from "../../widgets/layout/ProjectFormLayout";
-import { FooterActions } from "../../shared/ui/FooterActions";
-import { UserSelectorTable } from "../../shared/ui/UserSelectorTable";
-import { listProjectMembersApi } from "../../shared/api/modules/projects";
-import { updateIssueApi } from "../../shared/api/modules/issues";
-import type { AuthUser } from "../../shared/api/types/auth";
-import type { Issue } from "../../shared/api/types/issues";
+import { updateIssueApi } from "@shared/api/modules/issues";
+import { listProjectMembersApi } from "@shared/api/modules/projects";
+import type { AuthUser } from "@shared/api/types/auth";
+import type { Issue } from "@shared/api/types/issues";
+import { FooterActions } from "@shared/ui/FooterActions";
+import { UserSelectorTable } from "@shared/ui/UserSelectorTable";
+import { ModalOverlay } from "@widgets/layout/ModalOverlay";
+import { ProjectFormLayout } from "@widgets/layout/ProjectFormLayout";
 
 interface IssueAssigneesModalProps {
   issue: Issue;

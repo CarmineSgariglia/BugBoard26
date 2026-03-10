@@ -72,7 +72,7 @@ export function AuthLayout() {
                         )}
                     </div>
 
-                    <Outlet /> {/* Here we render the LoginScreen, RetrieveStep1Screen, or RetrieveStep2Screen */}
+                    <Outlet /> {/* Here we render the LoginPage, RecoverPasswordRequestPage, or RecoverPasswordVerifyPage */}
 
                     <div className="mt-5 text-center">
                         <Link
@@ -88,3 +88,4 @@ export function AuthLayout() {
         </div>
     );
 }
+

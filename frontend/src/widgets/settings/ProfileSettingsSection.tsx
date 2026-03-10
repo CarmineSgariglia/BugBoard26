@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { RiArrowGoBackLine } from "react-icons/ri";
@@ -16,7 +16,7 @@ import {
   changePasswordApi,
   updateUserApi,
 } from "../../shared/api/modules/users";
-import { useAuth } from "../../app/providers/AuthContext";
+import { useAuth } from "@shared/providers/AuthContext";
 import { getErrorMessage } from "../../shared/lib/error";
 import { handleGetHelp } from "../../shared/lib/help";
 

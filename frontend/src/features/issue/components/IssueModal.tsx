@@ -1,22 +1,22 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { FiX } from "react-icons/fi";
 
-import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
-import { GlassCard } from "../../shared/ui/GlassCard";
-import { FormField } from "../../shared/ui/FormField";
-import { TitleFieldWithLenght } from "../../shared/ui/TitleFieldWithLenght";
-import { DescriptionFieldWithLenght } from "../../shared/ui/DescriptionFieldWithLenght";
-import { Select } from "../../shared/ui/Select";
-import { FileAttachment } from "../../shared/ui/FileAttachment";
-import { PrioritySelector } from "../../shared/ui/PrioritySelector";
-import { TagInput } from "../../shared/ui/TagInput";
-import { Button } from "../../shared/ui/Button";
-import { CATEGORIES, STATUSES } from "../../shared/constants/issueConstants";
-import { createProjectIssueApi } from "../../shared/api/modules/projects";
-import { updateIssueDetailsApi } from "../../shared/api/modules/issues";
-import { uploadAttachmentApi } from "../../shared/api/modules/attachments";
-import type { Issue } from "../../shared/api/types/issues";
+import { uploadAttachmentApi } from "@shared/api/modules/attachments";
+import { updateIssueDetailsApi } from "@shared/api/modules/issues";
+import { createProjectIssueApi } from "@shared/api/modules/projects";
+import type { Issue } from "@shared/api/types/issues";
+import { CATEGORIES, STATUSES } from "@shared/constants/issueConstants";
+import { Button } from "@shared/ui/Button";
+import { DescriptionFieldWithLenght } from "@shared/ui/DescriptionFieldWithLenght";
+import { FileAttachment } from "@shared/ui/FileAttachment";
+import { FormField } from "@shared/ui/FormField";
+import { GlassCard } from "@shared/ui/GlassCard";
+import { PrioritySelector } from "@shared/ui/PrioritySelector";
+import { Select } from "@shared/ui/Select";
+import { TagInput } from "@shared/ui/TagInput";
+import { TitleFieldWithLenght } from "@shared/ui/TitleFieldWithLenght";
+import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 
 interface IssueModalProps {
   isOpen: boolean;

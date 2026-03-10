@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { FiEdit2 } from "react-icons/fi";
 import { MdGroupOff } from "react-icons/md";
@@ -13,7 +13,7 @@ import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 import { usePaginatedUsers } from "../../shared/hooks/usePaginatedUsers";
 import { setUserActiveApi } from "../../shared/api/modules/users";
 import type { AuthUser } from "../../shared/api/types/auth";
-import { useAuth } from "../../app/providers/AuthContext";
+import { useAuth } from "@shared/providers/AuthContext";
 
 export interface ManageUsersSectionProps {
   onEditingChange?: (isEditing: boolean) => void;
