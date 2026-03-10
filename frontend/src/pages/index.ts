@@ -1,7 +1,7 @@
-export { LoginScreen as LoginPage } from "../features/auth/LoginScreen";
-export { RetrieveStep1Screen as RecoverPasswordRequestPage } from "../features/auth/RetrieveStep1Screen";
-export { RetrieveStep2Screen as RecoverPasswordVerifyPage } from "../features/auth/RetrieveStep2Screen";
-export { ProjectsScreen as ProjectsPage } from "../features/projects/ProjectsScreen";
-export { ProjectIssuesScreen as ProjectIssuesPage } from "../features/projects/ProjectIssuesScreen";
-export { IssuePage } from "../features/issue/IssuePage";
-export { ManageAccountSettingsPage } from "../features/settings/ManageAccountSettingsPage";
+export { LoginPage } from "./auth/LoginPage";
+export { RecoverPasswordRequestPage } from "./auth/RecoverPasswordRequestPage";
+export { RecoverPasswordVerifyPage } from "./auth/RecoverPasswordVerifyPage";
+export { ProjectsPage } from "./projects/ProjectsPage";
+export { ProjectIssuesPage } from "./projects/ProjectIssuesPage";
+export { IssuePage } from "./issues/IssuePage";
+export { ManageAccountSettingsPage } from "./settings/ManageAccountSettingsPage";

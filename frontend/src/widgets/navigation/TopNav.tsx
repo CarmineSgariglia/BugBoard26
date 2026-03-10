@@ -1,4 +1,4 @@
-﻿import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { IoIosNotificationsOutline } from "react-icons/io";
@@ -9,7 +9,7 @@ import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
 import { logoutApi } from "../../shared/api/modules/auth";
-import { useAuth } from "../../app/providers/AuthContext";
+import { useAuth } from "@shared/providers/AuthContext";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
 
 type NavState = {

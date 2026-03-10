@@ -1,8 +1,8 @@
-﻿import React, { createContext, useContext, useCallback } from "react";
+import { useCallback, createContext, useContext, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { meApi } from "../../shared/api/modules/auth";
-import type { AuthUser } from "../../shared/api/types/auth";
+import { meApi } from "@shared/api/modules/auth";
+import type { AuthUser } from "@shared/api/types/auth";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -12,7 +12,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user = null, isLoading, refetch } = useQuery<AuthUser | null>({
     queryKey: ["auth", "me"],
     queryFn: async () => {

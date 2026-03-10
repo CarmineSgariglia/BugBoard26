@@ -1,17 +1,19 @@
-﻿import { type ReactElement } from "react";
-import { BrowserRouter, Navigate, Route, Routes, Outlet } from "react-router-dom";
+import { type ReactElement } from "react";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 
-import { AuthLayout } from "../widgets/layout/AuthLayout";
-import { MainLayout } from "../widgets/layout/MainLayout";
-import { useAuth } from "./providers/AuthContext";
-import { BreadcrumbProvider } from "./providers/BreadcrumbContext";
-import { LoginPage } from "../pages/auth/LoginPage";
-import { RecoverPasswordRequestPage } from "../pages/auth/RecoverPasswordRequestPage";
-import { RecoverPasswordVerifyPage } from "../pages/auth/RecoverPasswordVerifyPage";
-import { ProjectsPage } from "../pages/projects/ProjectsPage";
-import { ProjectIssuesPage } from "../pages/projects/ProjectIssuesPage";
-import { IssuePage } from "../pages/issues/IssuePage";
-import { ManageAccountSettingsPage } from "../pages/settings/ManageAccountSettingsPage";
+import { useAuth } from "@shared/providers/AuthContext";
+import { BreadcrumbProvider } from "@shared/providers/BreadcrumbContext";
+import {
+  IssuePage,
+  LoginPage,
+  ManageAccountSettingsPage,
+  ProjectIssuesPage,
+  ProjectsPage,
+  RecoverPasswordRequestPage,
+  RecoverPasswordVerifyPage,
+} from "@pages/index";
+import { AuthLayout } from "@widgets/layout/AuthLayout";
+import { MainLayout } from "@widgets/layout/MainLayout";
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { user, isLoading } = useAuth();
