@@ -1,4 +1,4 @@
-﻿import type { AuthUser } from "./auth";
+import type { AuthUser } from "./auth";
 
 export type Tag = {
   tagId: number;
@@ -54,6 +54,7 @@ export type UpdateIssuePayload = {
   assigneeIds?: number[];
   tagIds?: number[];
   tagNames?: string[];
+  message?: string;
 };
 
 export type CreateIssuePayload = {
@@ -75,4 +76,17 @@ export type IssueUpdate = {
   oldStatus?: string;
   newStatus?: string;
   attachments: IssueAttachment[];
+};
+
+export type IssueEventType =
+  | "CREATE"
+  | "EDIT"
+  | "STATUS_CHANGE"
+  | "ASSIGN"
+  | "UNASSIGN"
+  | "COMMENT";
+
+export type CreateIssueUpdatePayload = {
+  message: string;
+  file?: File | null;
 };

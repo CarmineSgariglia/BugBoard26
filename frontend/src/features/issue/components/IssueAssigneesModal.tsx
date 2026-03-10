@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RiCloseLine } from "react-icons/ri";
 
-import { updateIssueApi } from "@shared/api/modules/issues";
+import {
+  assignIssueUsersApi,
+  getIssueApi,
+  unassignIssueUsersApi,
+} from "@shared/api/modules/issues";
 import { listProjectMembersApi } from "@shared/api/modules/projects";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { Issue } from "@shared/api/types/issues";
@@ -58,7 +62,23 @@ export function IssueAssigneesModal({
   }, [projectMembers]);
 
   const saveMutation = useMutation({
-    mutationFn: () => updateIssueApi(issue.issueId, { assigneeIds: selectedUserIds }),
+    mutationFn: async () => {
+      const previousIds = issue.assignees.map((a) => a.userId);
+      const nextIds = selectedUserIds;
+
+      const added = nextIds.filter((id) => !previousIds.includes(id));
+      const removed = previousIds.filter((id) => !nextIds.includes(id));
+
+      if (added.length > 0) {
+        await assignIssueUsersApi(issue.issueId, added);
+      }
+
+      if (removed.length > 0) {
+        await unassignIssueUsersApi(issue.issueId, removed);
+      }
+
+      return getIssueApi(issue.issueId);
+    },
     onSuccess: (updatedIssue) => {
       onSuccess(updatedIssue);
       onClose();
