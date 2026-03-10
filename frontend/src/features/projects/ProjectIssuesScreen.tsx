@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,7 +21,6 @@ import { IssueCard } from "../../widgets/issues/IssueCard";
 import { ProjectSidebar } from "../../widgets/projects/ProjectSidebar";
 import { EditProjectFlow } from "./EditProjectFlow";
 import { EditTeamFlow } from "./EditTeamFlow";
-import { DeleteProjectFlow } from "./DeleteProjectFlow";
 import { SidebarLayout } from "../../widgets/layout/SidebarLayout";
 
 // Icons
@@ -51,7 +50,6 @@ export function ProjectIssuesScreen() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isViewTeamModalOpen, setIsViewTeamModalOpen] = useState(false);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
@@ -217,7 +215,6 @@ export function ProjectIssuesScreen() {
                 isAdmin={currentUser?.isAdmin}
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
-                onDeleteProjectClick={() => setIsDeleteModalOpen(true)}
                 onViewTeamClick={() => setIsViewTeamModalOpen(true)}
               />
             ) : (
@@ -293,14 +290,6 @@ export function ProjectIssuesScreen() {
           />
         )}
 
-        {project ? (
-          <DeleteProjectFlow
-            isOpen={isDeleteModalOpen}
-            onClose={() => setIsDeleteModalOpen(false)}
-            projectId={project.projectId}
-            projectName={project.name}
-          />
-        ) : null}
 
         {isViewTeamModalOpen && project ? (
           <EditTeamFlow onClose={() => setIsViewTeamModalOpen(false)} project={project} readOnly />
@@ -322,4 +311,5 @@ export function ProjectIssuesScreen() {
     </div>
   );
 }
+
 

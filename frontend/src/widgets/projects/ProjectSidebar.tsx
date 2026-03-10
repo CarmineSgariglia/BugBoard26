@@ -1,4 +1,4 @@
-import { FiSettings, FiTrash2 } from "react-icons/fi";
+import { FiSettings } from "react-icons/fi";
 import { SidebarMembersSection } from "../layout/SidebarMembersSection";
 import type { Project } from "../../shared/api/types/projects";
 import { SidebarCard } from "../layout/SidebarCard";
@@ -11,13 +11,12 @@ interface ProjectSidebarProps {
     isAdmin?: boolean;
     onSettingsClick?: () => void;
     onEditTeamClick?: () => void;
-    onDeleteProjectClick?: () => void;
     onViewTeamClick?: () => void;
 }
 
 export function ProjectSidebar({
     project, members, isAdmin,
-    onSettingsClick, onEditTeamClick, onDeleteProjectClick, onViewTeamClick
+    onSettingsClick, onEditTeamClick, onViewTeamClick
 }: ProjectSidebarProps) {
     return (
         <SidebarCard>
@@ -46,13 +45,6 @@ export function ProjectSidebar({
                             label="Edit Project"
                             onClick={onSettingsClick}
                             variant="primary"
-                        />
-
-                        <SidebarButton
-                            icon={<FiTrash2 size={18} />}
-                            label="Delete Project"
-                            onClick={onDeleteProjectClick}
-                            variant="danger"
                         />
                     </div>
                 )}

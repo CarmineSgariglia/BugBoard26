@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ProjectFormLayout } from "../../widgets/layout/ProjectFormLayout";
 import { FooterActions } from "../../shared/ui/FooterActions";
 import { RiArrowGoBackLine } from "react-icons/ri";
@@ -24,9 +24,10 @@ interface ProjectDetailsStepProps {
     initialData?: ProjectDetailsData;
     onNext: (data: ProjectDetailsData) => void;
     onExit: () => void;
+    headerAction?: ReactNode;
 }
 
-export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, onExit }: ProjectDetailsStepProps) {
+export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, onExit, headerAction }: ProjectDetailsStepProps) {
 
     // 1. STATI
     const [title, setTitle] = useState(initialData?.title || "");
@@ -72,6 +73,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                     : "Your Projects informations"
             }
             stepInfo={mode === "create" ? "STEP 1 OF 2" : undefined}
+            headerAction={headerAction}
 
             footer={
                 <FooterActions
@@ -174,3 +176,4 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
         </ProjectFormLayout>
     );
 }
+
