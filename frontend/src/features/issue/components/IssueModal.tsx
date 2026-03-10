@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { FiX } from "react-icons/fi";
 
+import { buildIssueEditActivityMessage } from "@features/issue/lib/buildIssueEditActivityMessage";
 import { uploadAttachmentApi } from "@shared/api/modules/attachments";
 import { updateIssueDetailsApi } from "@shared/api/modules/issues";
 import { createProjectIssueApi } from "@shared/api/modules/projects";
@@ -92,6 +93,17 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
           tagNames: tags,
         });
       } else if (mode === "edit" && issue?.issueId) {
+        const editMessage = initialData
+          ? buildIssueEditActivityMessage(initialData, {
+              title,
+              description,
+              type: category,
+              status,
+              priority,
+              tags,
+            })
+          : "Issue updated";
+
         resultIssue = await updateIssueDetailsApi(issue.issueId, {
           title,
           description,
@@ -99,6 +111,7 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
           priority,
           status,
           tagNames: tags,
+          message: editMessage,
         });
       }
 

@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
-import { IssueAssigneesModal } from "@features/issue/components/IssueAssigneesModal";
-import { IssueDetailsSidebar } from "@features/issue/components/IssueDetailsSidebar";
-import { IssueModal } from "@features/issue/components/IssueModal";
+import {
+  IssueActivityPanel,
+  IssueAssigneesModal,
+  IssueDetailsSidebar,
+  IssueModal,
+} from "@features/issue/components";
 import { getIssueApi } from "@shared/api/modules/issues";
 import { useAuth } from "@shared/providers/AuthContext";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
@@ -18,14 +21,13 @@ export function IssuePage() {
   const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data: issue, isLoading, isFetching, refetch } = useQuery({
+  const { data: issue, isLoading, refetch } = useQuery({
     queryKey: ["issue", issueId],
     queryFn: () => getIssueApi(issueId!),
     enabled: !!issueId,
     staleTime: 0,
   });
 
-  const isRefreshing = isFetching && !isLoading;
 
   const numericIssueId = issueId ? Number(issueId) : Number.NaN;
   const safeIssue = issue && issue.issueId === numericIssueId ? issue : null;
@@ -46,8 +48,10 @@ export function IssuePage() {
   }
 
   return (
-    <div className="pt-24 pb-12 px-6">
+    <div className="h-screen overflow-hidden flex flex-col pt-24 pb-6 px-6">
       <SidebarLayout
+        className="flex-1 min-h-0"
+        gridClassName="items-stretch h-full"
         sidebar={
           <IssueDetailsSidebar
             issue={safeIssue}
@@ -58,12 +62,8 @@ export function IssuePage() {
           />
         }
       >
-        <div className="rounded-2xl border border-white/5 bg-[#121620]/20 p-8 min-h-[500px]">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-white">Activity Feed</h3>
-            {isRefreshing ? <span className="text-xs text-neutral-500">Refreshing...</span> : null}
-          </div>
-          <p className="text-neutral-500 italic">Activity updates will appear here.</p>
+        <div className="h-full">
+          <IssueActivityPanel issueId={safeIssue.issueId} currentUser={currentUser} className="h-full" />
         </div>
       </SidebarLayout>
 
@@ -91,3 +91,6 @@ export function IssuePage() {
     </div>
   );
 }
+
+
+
