@@ -3,9 +3,9 @@ import { SidebarCard } from "../../widgets/layout/SidebarCard";
 import { StatusBadge } from "../../shared/ui/StatusBadge";
 import { Priority } from "../../shared/ui/Priority";
 import { Tag } from "../../shared/ui/Tag";
-import { AvatarGroup } from "../../shared/ui/AvatarGroup";
 import type { Issue } from "../../shared/api/types/issues";
-import { FiEdit2, FiUsers } from "react-icons/fi";
+import { FiEdit2 } from "react-icons/fi";
+import { SidebarMembersSection } from "../../widgets/layout/SidebarMembersSection";
 import { SidebarButton } from "../../shared/ui/SidebarButton";
 import { Avatar } from "../../shared/ui/Avatar";
 import { ScrollComponent } from "../../shared/ui/ScrollComponent";
@@ -28,7 +28,7 @@ export function IssueDetailsSidebar({
 }: IssueDetailsSidebarProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    // Logica 256 parole per la descrizione
+
     const description = issue.description || "";
     const words = description.split(/\s+/);
     const isLongDescription = words.length > 256;
@@ -36,7 +36,6 @@ export function IssueDetailsSidebar({
         ? description
         : words.slice(0, 256).join(" ") + "...";
 
-    // Mappa colori per StatusBadge
     const getStatusColor = (status: string) => {
         switch (status.toUpperCase()) {
             case "DONE": return "emerald-500";
@@ -123,15 +122,17 @@ export function IssueDetailsSidebar({
                 </div>
             </SidebarCard.Section>
 
-            <SidebarCard.Section title="Assigned To">
-                {issue.assignees && issue.assignees.length > 0 ? (
-                    <AvatarGroup members={issue.assignees} max={5} />
-                ) : (
-                    <span className="text-xs text-neutral-600 italic">No one assigned</span>
-                )}
-            </SidebarCard.Section>
+            <SidebarMembersSection
+                title="Assigned To"
+                members={issue.assignees}
+                isAdmin={isAdmin}
+                onActionClick={onManageMembersClick}
+                max={5}
+                adminLabel="Manage members"
+                userLabel="View members"
+                emptyText="No one assigned"
+            />
 
-            {/* Azioni con permessi */}
             <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
                 {(isAssigned || isAdmin) && (
                     <SidebarButton
@@ -139,14 +140,6 @@ export function IssueDetailsSidebar({
                         label="Edit Issue"
                         onClick={onEditClick}
                         variant="primary"
-                    />
-                )}
-                {isAdmin && (
-                    <SidebarButton
-                        icon={<FiUsers size={14} />}
-                        label="Edit Members"
-                        onClick={onManageMembersClick}
-                        variant="success"
                     />
                 )}
             </div>
