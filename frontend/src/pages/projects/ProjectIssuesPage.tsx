@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BiCategoryAlt } from "react-icons/bi";
-import { FiPlus } from "react-icons/fi";
+import { FiPlus, FiUser } from "react-icons/fi";
 import {
   HiOutlineCollection,
   HiOutlineFlag,
@@ -42,6 +42,8 @@ export function ProjectIssuesPage() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [assigneeFilter, setAssigneeFilter] = useState<"all" | "assigned-to-you">("all");
+
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
@@ -110,14 +112,18 @@ export function ProjectIssuesPage() {
           priorityFilter === "all" || issue.priority.toLowerCase() === priorityFilter.toLowerCase();
         const matchesType =
           typeFilter === "all" || issue.type.toLowerCase() === typeFilter.toLowerCase();
-        return matchesSearch && matchesStatus && matchesPriority && matchesType;
+        const matchesAssignee =
+          assigneeFilter === "all" ||
+          issue.assignees.some((assignee) => assignee.userId === currentUser?.userId);
+
+        return matchesSearch && matchesStatus && matchesPriority && matchesType && matchesAssignee;
       })
       .sort((a, b) => {
         const timeA = new Date(a.createdAt).getTime();
         const timeB = new Date(b.createdAt).getTime();
         return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
       });
-  }, [issues, searchQuery, statusFilter, priorityFilter, typeFilter, sortOrder]);
+  }, [issues, searchQuery, statusFilter, priorityFilter, typeFilter, sortOrder, assigneeFilter, currentUser?.userId]);
 
   const isLoading = isIssuesLoading || isMembersLoading || isProjectLoading;
   const isRefreshing = (isIssuesFetching || isMembersFetching || isProjectFetching) && !isLoading;
@@ -146,6 +152,15 @@ export function ProjectIssuesPage() {
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar w-full md:w-auto">
+              <Select
+                value={assigneeFilter}
+                onChange={(v) => setAssigneeFilter(v as "all" | "assigned-to-you")}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "assigned-to-you", label: "Assigned to you" },
+                ]}
+                icon={<FiUser size={16} />}
+              />
               <Select
                 value={statusFilter}
                 onChange={setStatusFilter}
