@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
-import { FooterActions } from "../../components/ui/FooterActions";
+import { ProjectFormLayout } from "../../widgets/layout/ProjectFormLayout";
+import { FooterActions } from "../../shared/ui/FooterActions";
 import { RiArrowGoBackLine } from "react-icons/ri";
-import { PREDEFINED_ICONS, PREDEFINED_COLORS } from "../../utils/projectIcons";
+import { PREDEFINED_ICONS, PREDEFINED_COLORS } from "../../shared/constants/projectIcons";
 import { HexColorPicker } from "react-colorful";
 import { IoColorPalette } from "react-icons/io5";
-import { TitleFieldWithLenght } from "../../components/ui/TitleFieldWithLenght";
-import { DescriptionFieldWithLenght } from "../../components/ui/DescriptionFieldWithLenght";
-import { FormField } from "../../components/ui/FormField";
-import { ScrollComponent } from "../../components/ui/ScrollComponent";
+import { TitleFieldWithLenght } from "../../shared/ui/TitleFieldWithLenght";
+import { DescriptionFieldWithLenght } from "../../shared/ui/DescriptionFieldWithLenght";
+import { FormField } from "../../shared/ui/FormField";
+import { ScrollComponent } from "../../shared/ui/ScrollComponent";
 
 export interface ProjectDetailsData {
     title: string;

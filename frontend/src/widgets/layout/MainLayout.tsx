@@ -7,7 +7,7 @@
 
 import { Outlet } from "react-router-dom";
 import { AppBackground } from "./AppBackground";
-import { TopNav } from "../../components/navigation/TopNav";
+import { TopNav } from "../../widgets/navigation/TopNav";
 
 export function MainLayout() {
     return (

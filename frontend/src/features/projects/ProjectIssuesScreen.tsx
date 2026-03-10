@@ -8,21 +8,21 @@ import {
 } from "../../shared/api/modules/projects";
 import type { Issue } from "../../shared/api/types/issues";
 import type { ProjectMembership } from "../../shared/api/types/projects";
-import { useAuth } from "../../contexts/AuthContext";
-import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
+import { useAuth } from "../../app/providers/AuthContext";
+import { useBreadcrumbs } from "../../app/providers/BreadcrumbContext";
 
-import { CATEGORIES, PRIORITIES, STATUSES } from "../../utils/issueConstants";
+import { CATEGORIES, PRIORITIES, STATUSES } from "../../shared/constants/issueConstants";
 
 // UI Components
-import { SearchBar } from "../../components/ui/SearchBar";
-import { Select } from "../../components/ui/Select";
-import { Button } from "../../components/ui/Button";
-import { IssueCard } from "../../components/issues/IssueCard";
-import { ProjectSidebar } from "../../components/projects/ProjectSidebar";
+import { SearchBar } from "../../shared/ui/SearchBar";
+import { Select } from "../../shared/ui/Select";
+import { Button } from "../../shared/ui/Button";
+import { IssueCard } from "../../widgets/issues/IssueCard";
+import { ProjectSidebar } from "../../widgets/projects/ProjectSidebar";
 import { EditProjectFlow } from "./EditProjectFlow";
 import { EditTeamFlow } from "./EditTeamFlow";
 import { DeleteProjectFlow } from "./DeleteProjectFlow";
-import { SidebarLayout } from "../../components/layout/SidebarLayout";
+import { SidebarLayout } from "../../widgets/layout/SidebarLayout";
 
 // Icons
 import { FiPlus } from "react-icons/fi";

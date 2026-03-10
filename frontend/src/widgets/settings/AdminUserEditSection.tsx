@@ -2,13 +2,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { RiArrowGoBackLine } from "react-icons/ri";
 
-import { GlassCard } from "../ui/GlassCard";
+import { GlassCard } from "../../shared/ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { FooterActions } from "../ui/FooterActions";
-import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
-import { getErrorMessage } from "../../utils/error";
+import { FooterActions } from "../../shared/ui/FooterActions";
+import { isValidName, isValidEmail, isValidPassword } from "../../shared/lib/validation";
+import { getErrorMessage } from "../../shared/lib/error";
 import { resolveMediaUrl } from "../../shared/api/core/media";
 import {
   updateUserApi,

@@ -3,9 +3,9 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { getIssueApi } from "../../shared/api/modules/issues";
-import { useAuth } from "../../contexts/AuthContext";
-import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
-import { SidebarLayout } from "../../components/layout/SidebarLayout";
+import { useAuth } from "../../app/providers/AuthContext";
+import { useBreadcrumbs } from "../../app/providers/BreadcrumbContext";
+import { SidebarLayout } from "../../widgets/layout/SidebarLayout";
 import { IssueDetailsSidebar } from "./IssueDetailsSidebar";
 import { IssueAssigneesModal } from "./IssueAssigneesModal";
 import { IssueModal } from "./IssueModal";

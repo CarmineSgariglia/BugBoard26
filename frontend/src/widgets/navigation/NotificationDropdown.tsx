@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GlassCard } from "../ui/GlassCard";
+import { GlassCard } from "../../shared/ui/GlassCard";
 import { NotificationItem } from "./NotificationItem";
 import {
     listNotificationsApi,

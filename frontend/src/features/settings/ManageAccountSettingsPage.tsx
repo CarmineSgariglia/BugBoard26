@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { SettingsSidebar } from "../../components/settings/SettingsSidebar";
-import { ProfileSettingsSection } from "../../components/settings/ProfileSettingsSection";
-import { AddUsersSection } from "../../components/settings/AddUsersSection";
-import { ManageUsersSection } from "../../components/settings/ManageUsersSection";
-import { useAuth } from "../../contexts/AuthContext";
+import { SettingsSidebar } from "../../widgets/settings/SettingsSidebar";
+import { ProfileSettingsSection } from "../../widgets/settings/ProfileSettingsSection";
+import { AddUsersSection } from "../../widgets/settings/AddUsersSection";
+import { ManageUsersSection } from "../../widgets/settings/ManageUsersSection";
+import { useAuth } from "../../app/providers/AuthContext";
 
 export function ManageAccountSettingsPage() {
     const { user } = useAuth();

@@ -2,10 +2,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { FormField } from "../../components/ui/FormField";
-import { Input } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
-import { isValidPassword, isValidCode } from "../../utils/validation";
+import { FormField } from "../../shared/ui/FormField";
+import { Input } from "../../shared/ui/Input";
+import { Button } from "../../shared/ui/Button";
+import { isValidPassword, isValidCode } from "../../shared/lib/validation";
 import { resetPasswordApi, verifyOtpApi } from "../../shared/api/modules/auth";
 
 export function RetrieveStep2Screen() {

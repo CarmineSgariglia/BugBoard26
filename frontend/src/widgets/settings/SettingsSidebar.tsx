@@ -1,6 +1,6 @@
-import { GlassCard } from "../ui/GlassCard";
+import { GlassCard } from "../../shared/ui/GlassCard";
 import { useNavigate } from "react-router-dom";
-import { handleGetHelp } from "../../utils/help";
+import { handleGetHelp } from "../../shared/lib/help";
 
 // Icons
 import { FaUser, FaUserFriends } from "react-icons/fa";

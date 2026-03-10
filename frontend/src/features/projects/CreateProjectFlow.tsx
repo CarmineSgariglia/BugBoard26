@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
 import { ProjectTeamStep } from "./ProjectTeamStep";
 import { createProjectApi } from "../../shared/api/modules/projects";
-import { ModalOverlay } from "../../components/layout/ModalOverlay";
+import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
 
 interface CreateProjectFlowProps {
   isOpen: boolean;

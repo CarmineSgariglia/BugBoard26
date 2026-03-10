@@ -1,4 +1,4 @@
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { ConfirmModal } from "../../shared/ui/ConfirmModal";
 import { MdGroupOff, MdGroup } from "react-icons/md";
 import type { AuthUser } from "../../shared/api/types/auth";
 

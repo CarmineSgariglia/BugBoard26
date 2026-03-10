@@ -3,17 +3,17 @@ import { useMutation } from "@tanstack/react-query";
 import { FiEdit2 } from "react-icons/fi";
 import { MdGroupOff } from "react-icons/md";
 
-import { GlassCard } from "../ui/GlassCard";
-import { SearchBar } from "../ui/SearchBar";
-import { Select } from "../ui/Select";
-import { Pagination } from "../ui/Pagination";
-import { UserTable } from "../ui/UserTable";
+import { GlassCard } from "../../shared/ui/GlassCard";
+import { SearchBar } from "../../shared/ui/SearchBar";
+import { Select } from "../../shared/ui/Select";
+import { Pagination } from "../../shared/ui/Pagination";
+import { UserTable } from "../../shared/ui/UserTable";
 import { AdminUserEditSection } from "./AdminUserEditSection";
 import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
-import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
+import { usePaginatedUsers } from "../../shared/hooks/usePaginatedUsers";
 import { setUserActiveApi } from "../../shared/api/modules/users";
 import type { AuthUser } from "../../shared/api/types/auth";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../app/providers/AuthContext";
 
 export interface ManageUsersSectionProps {
   onEditingChange?: (isEditing: boolean) => void;

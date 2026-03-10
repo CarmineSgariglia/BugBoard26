@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { RiCloseLine } from "react-icons/ri";
 import { FiTrash2 } from "react-icons/fi";
 
-import { ModalOverlay } from "../../components/layout/ModalOverlay";
-import { FooterActions } from "../../components/ui/FooterActions";
-import { generateRandomNumber } from "../../utils/number";
+import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
+import { FooterActions } from "../../shared/ui/FooterActions";
+import { generateRandomNumber } from "../../shared/lib/number";
 import { deleteProjectApi } from "../../shared/api/modules/projects";
 
 interface DeleteProjectFlowProps {

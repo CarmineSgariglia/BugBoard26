@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { SidebarCard } from "../../components/layout/SidebarCard";
-import { StatusBadge } from "../../components/ui/StatusBadge";
-import { Priority } from "../../components/ui/Priority";
-import { Tag } from "../../components/ui/Tag";
-import { AvatarGroup } from "../../components/ui/AvatarGroup";
+import { SidebarCard } from "../../widgets/layout/SidebarCard";
+import { StatusBadge } from "../../shared/ui/StatusBadge";
+import { Priority } from "../../shared/ui/Priority";
+import { Tag } from "../../shared/ui/Tag";
+import { AvatarGroup } from "../../shared/ui/AvatarGroup";
 import type { Issue } from "../../shared/api/types/issues";
 import { FiEdit2, FiUsers } from "react-icons/fi";
-import { SidebarButton } from "../../components/ui/SidebarButton";
-import { Avatar } from "../../components/ui/Avatar";
-import { ScrollComponent } from "../../components/ui/ScrollComponent";
+import { SidebarButton } from "../../shared/ui/SidebarButton";
+import { Avatar } from "../../shared/ui/Avatar";
+import { ScrollComponent } from "../../shared/ui/ScrollComponent";
 
 
 interface IssueDetailsSidebarProps {

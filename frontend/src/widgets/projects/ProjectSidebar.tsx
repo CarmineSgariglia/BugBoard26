@@ -1,11 +1,11 @@
 import { FiSettings, FiTrash2 } from "react-icons/fi";
 import { TiUserAdd } from "react-icons/ti";
 import { HiOutlineUsers } from "react-icons/hi";
-import { AvatarGroup } from "../ui/AvatarGroup";
+import { AvatarGroup } from "../../shared/ui/AvatarGroup";
 import type { Project } from "../../shared/api/types/projects";
 import { SidebarCard } from "../layout/SidebarCard";
-import { SidebarButton } from "../ui/SidebarButton";
-import { ScrollComponent } from "../ui/ScrollComponent";
+import { SidebarButton } from "../../shared/ui/SidebarButton";
+import { ScrollComponent } from "../../shared/ui/ScrollComponent";
 
 interface ProjectSidebarProps {
     project: Project;

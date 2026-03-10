@@ -2,15 +2,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { ProjectFolderCard } from "../../components/projects/ProjectFolderCard";
-import { SearchBar } from "../../components/ui/SearchBar";
-import { CreateProjectCard } from "../../components/projects/CreateProjectCard";
+import { ProjectFolderCard } from "../../widgets/projects/ProjectFolderCard";
+import { SearchBar } from "../../shared/ui/SearchBar";
+import { CreateProjectCard } from "../../widgets/projects/CreateProjectCard";
 import { CreateProjectFlow } from "./CreateProjectFlow";
 import { listProjectsApi } from "../../shared/api/modules/projects";
 import { resolveMediaUrl } from "../../shared/api/core/media";
 import type { Project } from "../../shared/api/types/projects";
-import { getProjectIcon } from "../../utils/projectIcons";
-import { useAuth } from "../../contexts/AuthContext";
+import { getProjectIcon } from "../../shared/constants/projectIcons";
+import { useAuth } from "../../app/providers/AuthContext";
 
 function projectIcon(iconId?: string) {
   return getProjectIcon(iconId || "folder", 30);

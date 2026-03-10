@@ -2,10 +2,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { isValidEmail } from "../../utils/validation";
-import { FormField } from "../../components/ui/FormField";
-import { Input } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
+import { isValidEmail } from "../../shared/lib/validation";
+import { FormField } from "../../shared/ui/FormField";
+import { Input } from "../../shared/ui/Input";
+import { Button } from "../../shared/ui/Button";
 import { requestOtpApi } from "../../shared/api/modules/auth";
 
 export function RetrieveStep1Screen() {

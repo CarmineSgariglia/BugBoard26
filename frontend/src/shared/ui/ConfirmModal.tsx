@@ -2,7 +2,7 @@ import React from "react";
 import { createPortal } from "react-dom"; // Importo createPortal per renderizzare il modal nel DOM root
 import { GlassCard } from "./GlassCard";
 import { Button } from "./Button";
-import { useLockBodyScroll } from "../../utils/useLockBodyScroll";
+import { useLockBodyScroll } from "../../shared/hooks/useLockBodyScroll";
 
 interface ConfirmModalProps {
     isOpen: boolean;

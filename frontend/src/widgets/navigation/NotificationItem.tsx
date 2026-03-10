@@ -1,6 +1,6 @@
 import { HiOutlineCheckCircle } from "react-icons/hi";
 import { FiX } from "react-icons/fi";
-import { Button } from "../ui/Button";
+import { Button } from "../../shared/ui/Button";
 
 interface NotificationItemProps {
     title: string;

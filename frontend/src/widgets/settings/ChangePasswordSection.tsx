@@ -1,4 +1,4 @@
-import { Input } from "../ui/Input";
+import { Input } from "../../shared/ui/Input";
 
 interface ChangePasswordSectionProps {
     requireCurrentPassword: boolean;
