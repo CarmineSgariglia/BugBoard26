@@ -152,7 +152,7 @@ export function ProjectIssuesPage() {
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar w-full md:w-auto">
-              <Select
+              {!currentUser?.isAdmin && <Select
                 value={assigneeFilter}
                 onChange={(v) => setAssigneeFilter(v as "all" | "assigned-to-you")}
                 options={[
@@ -160,7 +160,7 @@ export function ProjectIssuesPage() {
                   { value: "assigned-to-you", label: "Assigned to you" },
                 ]}
                 icon={<FiUser size={16} />}
-              />
+              />}
               <Select
                 value={statusFilter}
                 onChange={setStatusFilter}
