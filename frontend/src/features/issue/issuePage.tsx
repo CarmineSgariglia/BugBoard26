@@ -69,6 +69,7 @@ export function IssuePage() {
 
             <IssueAssigneesModal
                 issue={safeIssue}
+                readOnly={!currentUser?.isAdmin}
                 isOpen={isAssigneesModalOpen}
                 onClose={() => setIsAssigneesModalOpen(false)}
                 onSuccess={() => {

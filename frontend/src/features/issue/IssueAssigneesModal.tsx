@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { RiCloseLine } from "react-icons/ri";
 
@@ -16,6 +16,7 @@ interface IssueAssigneesModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (updatedIssue: Issue) => void;
+  readOnly?: boolean;
 }
 
 export function IssueAssigneesModal({
@@ -23,6 +24,7 @@ export function IssueAssigneesModal({
   isOpen,
   onClose,
   onSuccess,
+  readOnly = false,
 }: IssueAssigneesModalProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [error, setError] = useState("");
@@ -84,14 +86,19 @@ export function IssueAssigneesModal({
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-4xl">
       <ProjectFormLayout
-        title="Manage Assignees"
-        subtitle={`Assign team members to issue #${issue.issueId}`}
+        title={readOnly ? "Team Members" : "Manage Assignees"}
+        subtitle={
+          readOnly
+            ? `Members for issue #${issue.issueId}`
+            : `Assign team members to issue #${issue.issueId}`
+        }
         footer={
           <FooterActions
-            isSaveEnabled
-            onSave={handleSave}
-            isSaving={saveMutation.isPending}
-            saveLabel="Save Changes"
+            isSaveEnabled={!readOnly}
+            onSave={readOnly ? undefined : handleSave}
+            isSaving={readOnly ? false : saveMutation.isPending}
+            saveLabel={readOnly ? undefined : "Save Changes"}
+            showSave={!readOnly}
             links={[{ label: "Cancel", icon: <RiCloseLine size={16} />, onClick: onClose }]}
           />
         }
@@ -99,11 +106,12 @@ export function IssueAssigneesModal({
         <UserSelectorTable
           users={members}
           selectedUserIds={selectedUserIds}
-          onToggleUser={handleToggleUser}
+          onToggleUser={readOnly ? undefined : handleToggleUser}
           isLoading={isLoading}
           error={uiError}
           search={search}
           onSearchChange={setSearch}
+          isViewMode={readOnly}
         />
       </ProjectFormLayout>
     </ModalOverlay>
