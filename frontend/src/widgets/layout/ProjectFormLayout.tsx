@@ -5,6 +5,7 @@ interface ProjectFormLayoutProps {
     title: string;
     subtitle: string;
     stepInfo?: string; // Es: "STEP 1 OF 2"
+    headerAction?: ReactNode;
     children: ReactNode; // Il contenuto centrale del form
     footer?: ReactNode; // I bottoni in basso (Next, Exit, ecc.)
 }
@@ -13,6 +14,7 @@ export function ProjectFormLayout({
     title,
     subtitle,
     stepInfo,
+    headerAction,
     children,
     footer,
 }: ProjectFormLayoutProps) {
@@ -22,9 +24,12 @@ export function ProjectFormLayout({
     return (
         <GlassCard className="w-full max-w-2xl mx-auto flex flex-col px-8 pt-5 pb-0 gap-2 shadow-2xl">
             {/* Header: Titolo, Sottotitolo e Indicatore Step */}
-            <div>
-                <h2 className="text-xl font-bold text-white mb-1">{title}</h2>
-                <p className="text-sm text-neutral-400">{subtitle}</p>
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <h2 className="text-xl font-bold text-white mb-1">{title}</h2>
+                    <p className="text-sm text-neutral-400">{subtitle}</p>
+                </div>
+                {headerAction ? <div className="pt-1">{headerAction}</div> : null}
             </div>
             {stepInfo && (
                 <div className="flex flex-col items-end gap-1">
@@ -53,4 +58,3 @@ export function ProjectFormLayout({
         </GlassCard>
     );
 }
-
