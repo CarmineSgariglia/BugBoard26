@@ -409,7 +409,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_user_delete_endpoint_is_disabled(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.delete(f"/api/users/{self.member.id}")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertTrue(User.objects.filter(id=self.member.id).exists())
 
     def test_admin_can_toggle_user_status_with_status_endpoint(self):
@@ -484,6 +484,24 @@ class UserManagementEndpointTests(APITestCase):
         )
         response = self.client.post(
             "/api/users/me/upload_profile_image",
+            {"profile_img": image},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.member.refresh_from_db()
+        self.assertTrue(
+            self.member.profile.profile_img.startswith(
+                f"profile-images/{self.member.id}/"
+            )
+        )
+
+    def test_profile_image_upload_me_endpoint_kebab_case_alias(self):
+        self.client.force_authenticate(user=self.member)
+        image = SimpleUploadedFile(
+            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+        )
+        response = self.client.post(
+            "/api/users/me/upload-profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -668,6 +686,13 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         response = self.client.get("/api/projects")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
+
+    def test_project_retrieve_returns_single_project(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/projects/{self.project.project_id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["projectId"], self.project.project_id)
+        self.assertEqual(response.data["name"], self.project.name)
 
     def test_project_create_adds_admin_as_member(self):
         self.client.force_authenticate(user=self.admin)
@@ -856,7 +881,7 @@ class IssueWorkflowEndpointTests(APITestCase):
 
         created_issue = Issue.objects.get(issue_id=response.data["issueId"])
         issue_tag_names = set(created_issue.tags.values_list("name", flat=True))
-        self.assertEqual(issue_tag_names, {"api", "frontend"})
+        self.assertEqual(issue_tag_names, {"Api", "Frontend"})
         self.assertEqual(Tag.objects.filter(name__iexact="api").count(), 1)
         self.assertEqual(Tag.objects.filter(name__iexact="frontend").count(), 1)
 
@@ -872,7 +897,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.issue.refresh_from_db()
         issue_tag_names = set(self.issue.tags.values_list("name", flat=True))
-        self.assertEqual(issue_tag_names, {"api", "ops"})
+        self.assertEqual(issue_tag_names, {"Api", "Ops"})
         self.assertEqual(Tag.objects.filter(name__iexact="api").count(), 1)
 
     def test_issue_update_with_tag_names_creates_missing_tags_for_non_admin(self):
@@ -1072,7 +1097,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(self.issue.title, "Details endpoint title")
         self.assertEqual(self.issue.status, IssueStatus.IN_PROGRESS)
         self.assertEqual(
-            set(self.issue.tags.values_list("name", flat=True)), {"api", "frontend"}
+            set(self.issue.tags.values_list("name", flat=True)), {"Api", "Frontend"}
         )
 
     def test_attachments_api_create_list_and_delete(self):
@@ -1329,6 +1354,20 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         delete_ok = self.client.delete(f"/api/tags/{tag_id}", format="json")
         self.assertEqual(delete_ok.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_tags_update_and_retrieve_are_not_exposed(self):
+        self.client.force_authenticate(user=self.admin)
+        tag = Tag.objects.create(name="ops")
+
+        retrieve_response = self.client.get(f"/api/tags/{tag.tag_id}")
+        self.assertEqual(retrieve_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        patch_response = self.client.patch(
+            f"/api/tags/{tag.tag_id}",
+            {"name": "platform"},
+            format="json",
+        )
+        self.assertEqual(patch_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_meta_enums_requires_auth_and_returns_payload(self):
         anon_response = self.client.get("/api/meta/enums")
