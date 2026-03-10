@@ -69,7 +69,6 @@ Notes:
   - `tags`: `list`, `create`, `destroy`
 - Current flow/custom endpoints stay on `APIView`:
   - auth endpoints under `/api/auth/*`
-  - `/api/meta/enums`
   - nested project issue flow `/api/projects/{id}/issues`
   - upload flow `/api/issue-events/{id}/attachments`
 - Multiword custom action paths should use kebab-case. Legacy aliases may exist temporarily for compatibility.
