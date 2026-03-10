@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import logging
 
-from rest_framework import permissions, status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes as perm_classes
+from rest_framework import mixins, permissions, status, viewsets
+from rest_framework.decorators import api_view, permission_classes as perm_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,7 +22,12 @@ def health_check(_request):
     return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
 
-class TagViewSet(viewsets.ModelViewSet):
+class TagViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = TagSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Tag.objects.all()

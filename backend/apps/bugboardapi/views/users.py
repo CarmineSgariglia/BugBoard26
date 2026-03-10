@@ -5,7 +5,7 @@ import logging
 
 from django.contrib.auth.models import User
 from django.db.models import Q
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
@@ -27,7 +27,13 @@ class UserListPagination(PageNumberPagination):
     max_page_size = 100
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = User.objects.all().order_by("id")
@@ -94,9 +100,6 @@ class UserViewSet(viewsets.ModelViewSet):
         self._validate_user_update_permissions(request, user)
         return super().update(request, *args, **kwargs)
 
-    def destroy(self, request, *args, **kwargs):
-        raise PermissionDenied("User deletion is disabled. Use status toggle instead.")
-
     @action(detail=True, methods=["post"], url_path="status")
     def set_status(self, request, userId=None):
         check_admin(request.user)
@@ -121,6 +124,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="me/upload_profile_image")
     def upload_profile_image_me(self, request):
+        payload = save_profile_image_for_user(request=request, user=request.user)
+        return Response(payload, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="me/upload-profile-image")
+    def upload_profile_image_me_kebab(self, request):
         payload = save_profile_image_for_user(request=request, user=request.user)
         return Response(payload, status=status.HTTP_200_OK)
 

@@ -5,7 +5,7 @@ import logging
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,7 +33,14 @@ from ..permissions import check_admin, ensure_project_access, user_project_ids
 logger = logging.getLogger(__name__)
 
 
-class ProjectViewSet(viewsets.ModelViewSet):
+class ProjectViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Project.objects.select_related("created_by", "created_by__profile").all()

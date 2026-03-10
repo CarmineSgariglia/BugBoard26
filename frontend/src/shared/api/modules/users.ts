@@ -49,7 +49,7 @@ export async function setUserActiveApi(userId: number, active: boolean): Promise
 export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
   const formData = new FormData();
   formData.append("profile_img", file);
-  const { data } = await apiClient.post<AuthUser>("/users/me/upload_profile_image", formData, {
+  const { data } = await apiClient.post<AuthUser>("/users/me/upload-profile-image", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },

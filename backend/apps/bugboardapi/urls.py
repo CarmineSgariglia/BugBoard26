@@ -22,6 +22,7 @@ from .views import (
     health_check,
 )
 
+# Router-backed resource roots use ViewSet + mixins; flow-oriented endpoints stay on APIView.
 router = DefaultRouter(trailing_slash=False)
 router.register("users", UserViewSet, basename="users")
 router.register("projects", ProjectViewSet, basename="projects")
@@ -31,6 +32,7 @@ router.register("notifications", NotificationViewSet, basename="notifications")
 router.register("tags", TagViewSet, basename="tags")
 
 urlpatterns = [
+    # Flow/bootstrap endpoints that are not resource roots.
     path("health", health_check, name="health-check"),
     path("auth/csrf", CSRFTokenView.as_view(), name="csrf-token"),
     path("auth/login", LoginView.as_view(), name="login"),

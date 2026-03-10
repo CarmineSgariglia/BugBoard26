@@ -47,11 +47,32 @@ Notes:
 ## API Endpoints
 
 - `GET /api/health`: health check
-- `GET /api/issues`: list issues
-- `POST /api/issues`: create issue
+- `GET /api/projects`: list visible projects
+- `GET /api/projects/{id}`: retrieve a project
+- `GET /api/projects/{id}/issues`: list issues for a project
+- `POST /api/projects/{id}/issues`: create an issue inside a project
 - `GET /api/issues/{id}`: retrieve issue
 - `PUT/PATCH /api/issues/{id}`: update issue
 - `DELETE /api/issues/{id}`: delete issue
+
+## Backend API Conventions
+
+- Router-backed resource roots use `GenericViewSet + mixins`, not `ModelViewSet`.
+- `APIView` is reserved for flow-oriented or custom endpoints that are not a resource root.
+- Resource roots registered in the router should expose only the HTTP methods the product actually supports.
+- Current resource roots follow this rule:
+  - `users`: `list`, `retrieve`, `create`, `update`
+  - `projects`: `list`, `retrieve`, `create`, `update`, `destroy`
+  - `issues`: router-backed resource with explicit mixins plus custom actions
+  - `attachments`: router-backed resource with explicit mixins
+  - `notifications`: router-backed resource with explicit mixins
+  - `tags`: `list`, `create`, `destroy`
+- Current flow/custom endpoints stay on `APIView`:
+  - auth endpoints under `/api/auth/*`
+  - `/api/meta/enums`
+  - nested project issue flow `/api/projects/{id}/issues`
+  - upload flow `/api/issue-events/{id}/attachments`
+- Multiword custom action paths should use kebab-case. Legacy aliases may exist temporarily for compatibility.
 
 ## Notes
 

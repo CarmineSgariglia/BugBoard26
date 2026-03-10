@@ -121,6 +121,21 @@ class FrontendContractTests(APITestCase):
         self.assertEqual(change_password_response.status_code, status.HTTP_200_OK)
         self.assertEqual(change_password_response.data["detail"], "Password updated")
 
+    def test_profile_image_upload_contract_uses_canonical_kebab_case_path(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.client.force_authenticate(user=self.member)
+        image = SimpleUploadedFile(
+            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+        )
+        response = self.client.post(
+            "/api/users/me/upload-profile-image",
+            {"profile_img": image},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("profileImg", response.data)
+
     def test_admin_reset_other_user_password_contract(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
