@@ -1,4 +1,4 @@
-import { PRIORITIES } from "../../utils/issueConstants";
+import { PRIORITIES } from "../../shared/constants/issueConstants";
 
 interface PrioritySelectorProps {
     value: string;

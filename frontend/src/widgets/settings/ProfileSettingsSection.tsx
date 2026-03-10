@@ -4,21 +4,21 @@ import { useNavigate } from "react-router-dom";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";
 
-import { GlassCard } from "../ui/GlassCard";
+import { GlassCard } from "../../shared/ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { FooterActions } from "../ui/FooterActions";
-import { isValidName, isValidEmail, isValidPassword } from "../../utils/validation";
+import { FooterActions } from "../../shared/ui/FooterActions";
+import { isValidName, isValidEmail, isValidPassword } from "../../shared/lib/validation";
 import { resolveMediaUrl } from "../../shared/api/core/media";
 import {
   uploadProfileImageApi,
   changePasswordApi,
   updateUserApi,
 } from "../../shared/api/modules/users";
-import { useAuth } from "../../contexts/AuthContext";
-import { getErrorMessage } from "../../utils/error";
-import { handleGetHelp } from "../../utils/help";
+import { useAuth } from "../../app/providers/AuthContext";
+import { getErrorMessage } from "../../shared/lib/error";
+import { handleGetHelp } from "../../shared/lib/help";
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const navigate = useNavigate();

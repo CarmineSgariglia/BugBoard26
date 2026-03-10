@@ -1,6 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
-import { useLockBodyScroll } from "../../utils/useLockBodyScroll";
+import { useLockBodyScroll } from "../../shared/hooks/useLockBodyScroll";
 
 interface ModalOverlayProps {
     isOpen: boolean;

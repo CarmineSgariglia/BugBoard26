@@ -1,4 +1,4 @@
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { ConfirmModal } from "../../shared/ui/ConfirmModal";
 import { IoIosLogOut } from "react-icons/io";
 
 interface LogoutConfirmModalProps {

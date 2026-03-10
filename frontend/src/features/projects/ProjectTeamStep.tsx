@@ -1,7 +1,7 @@
-import { ProjectFormLayout } from "../../components/layout/ProjectFormLayout";
-import { FooterActions } from "../../components/ui/FooterActions";
-import { UserSelectorTable } from "../../components/ui/UserSelectorTable";
-import { usePaginatedUsers } from "../../utils/usePaginatedUsers";
+import { ProjectFormLayout } from "../../widgets/layout/ProjectFormLayout";
+import { FooterActions } from "../../shared/ui/FooterActions";
+import { UserSelectorTable } from "../../shared/ui/UserSelectorTable";
+import { usePaginatedUsers } from "../../shared/hooks/usePaginatedUsers";
 import { RiArrowLeftLine } from "react-icons/ri";
 
 interface ProjectTeamStepProps {

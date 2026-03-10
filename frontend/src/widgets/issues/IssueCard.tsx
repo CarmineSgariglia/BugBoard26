@@ -1,6 +1,6 @@
-import { Tag } from "../ui/Tag";
+import { Tag } from "../../shared/ui/Tag";
 import type { Issue } from "../../shared/api/types/issues";
-import { Priority } from "../ui/Priority";
+import { Priority } from "../../shared/ui/Priority";
 
 
 interface IssueCardProps {

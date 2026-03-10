@@ -1,2 +1,2 @@
-export { IssuePage } from "../../features/issue/issuePage";
+export { IssuePage } from "../../features/issue/IssuePage";
 

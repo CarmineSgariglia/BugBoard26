@@ -2,17 +2,17 @@
 import { useMutation } from "@tanstack/react-query";
 import { FiX } from "react-icons/fi";
 
-import { ModalOverlay } from "../../components/layout/ModalOverlay";
-import { GlassCard } from "../../components/ui/GlassCard";
-import { FormField } from "../../components/ui/FormField";
-import { TitleFieldWithLenght } from "../../components/ui/TitleFieldWithLenght";
-import { DescriptionFieldWithLenght } from "../../components/ui/DescriptionFieldWithLenght";
-import { Select } from "../../components/ui/Select";
-import { FileAttachment } from "../../components/ui/FileAttachment";
-import { PrioritySelector } from "../../components/ui/PrioritySelector";
-import { TagInput } from "../../components/ui/TagInput";
-import { Button } from "../../components/ui/Button";
-import { CATEGORIES, STATUSES } from "../../utils/issueConstants";
+import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
+import { GlassCard } from "../../shared/ui/GlassCard";
+import { FormField } from "../../shared/ui/FormField";
+import { TitleFieldWithLenght } from "../../shared/ui/TitleFieldWithLenght";
+import { DescriptionFieldWithLenght } from "../../shared/ui/DescriptionFieldWithLenght";
+import { Select } from "../../shared/ui/Select";
+import { FileAttachment } from "../../shared/ui/FileAttachment";
+import { PrioritySelector } from "../../shared/ui/PrioritySelector";
+import { TagInput } from "../../shared/ui/TagInput";
+import { Button } from "../../shared/ui/Button";
+import { CATEGORIES, STATUSES } from "../../shared/constants/issueConstants";
 import { createProjectIssueApi } from "../../shared/api/modules/projects";
 import { updateIssueDetailsApi } from "../../shared/api/modules/issues";
 import { uploadAttachmentApi } from "../../shared/api/modules/attachments";

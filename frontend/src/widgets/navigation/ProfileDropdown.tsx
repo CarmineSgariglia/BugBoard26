@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { GlassCard } from "../ui/GlassCard";
-import { Button } from "../ui/Button";
+import { GlassCard } from "../../shared/ui/GlassCard";
+import { Button } from "../../shared/ui/Button";
 import { IoIosLogOut } from "react-icons/io";
 import { IoMdSettings } from "react-icons/io";
 

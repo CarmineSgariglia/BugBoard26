@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ProjectTeamStep } from "./ProjectTeamStep";
 import { updateProjectApi, listProjectMembersApi } from "../../shared/api/modules/projects";
 import type { Project } from "../../shared/api/types/projects";
-import { ModalOverlay } from "../../components/layout/ModalOverlay";
+import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
 
 interface EditTeamFlowProps {
   project: Project;

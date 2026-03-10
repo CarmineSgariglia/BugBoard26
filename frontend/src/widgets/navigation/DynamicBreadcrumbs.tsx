@@ -1,10 +1,10 @@
-﻿import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import brandLogo from "../../assets/LogoBugBoard26.webp";
+import brandLogo from "../../shared/assets/images/LogoBugBoard26.webp";
 import { listProjectsApi } from "../../shared/api/modules/projects";
 import { getIssueApi } from "../../shared/api/modules/issues";
-import { useBreadcrumbs } from "../../contexts/BreadcrumbContext";
+import { useBreadcrumbs } from "../../app/providers/BreadcrumbContext";
 
 export function DynamicBreadcrumbs() {
   const location = useLocation();

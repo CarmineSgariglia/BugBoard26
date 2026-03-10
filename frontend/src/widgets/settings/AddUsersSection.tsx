@@ -1,14 +1,14 @@
 ﻿import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { GlassCard } from "../ui/GlassCard";
-import { Toggle } from "../ui/Toggle";
-import { isValidEmail, isValidName } from "../../utils/validation";
-import { getErrorMessage } from "../../utils/error";
+import { GlassCard } from "../../shared/ui/GlassCard";
+import { Toggle } from "../../shared/ui/Toggle";
+import { isValidEmail, isValidName } from "../../shared/lib/validation";
+import { getErrorMessage } from "../../shared/lib/error";
 import { createUserApi } from "../../shared/api/modules/users";
 import { IdentityFields } from "./IdentityFields";
 import { ProfileHeader } from "./ProfileHeader";
-import { FooterActions } from "../ui/FooterActions";
+import { FooterActions } from "../../shared/ui/FooterActions";
 
 function buildUsernameFromEmail(email: string): string {
   const localPart = email.split("@")[0] ?? "user";

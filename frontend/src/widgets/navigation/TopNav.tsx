@@ -9,7 +9,7 @@ import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
 import { logoutApi } from "../../shared/api/modules/auth";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../app/providers/AuthContext";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
 
 type NavState = {

@@ -3,8 +3,8 @@
     It is used in the ProfileSettingsSection component.
 */
 
-import { FormField } from "../ui/FormField";
-import { Input } from "../ui/Input";
+import { FormField } from "../../shared/ui/FormField";
+import { Input } from "../../shared/ui/Input";
 
 interface IdentityFieldsProps {
     name: string;
