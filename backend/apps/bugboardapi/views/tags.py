@@ -1,4 +1,4 @@
-"""Tag and metadata enum views."""
+"""Tag views."""
 from __future__ import annotations
 
 import logging
@@ -7,9 +7,8 @@ from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import api_view, permission_classes as perm_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
-from ..models import Issue, IssueEvent, NotifyType, Tag
+from ..models import Tag
 from ..permissions import is_admin
 from ..serializers import TagSerializer
 
@@ -43,18 +42,3 @@ class TagViewSet(
         if not is_admin(request.user):
             raise PermissionDenied("Only admins can delete tags")
         return super().destroy(request, *args, **kwargs)
-
-
-class MetaEnumsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, _request):
-        return Response(
-            {
-                "issueType": [value for value, _ in Issue._meta.get_field("issue_type").choices],
-                "issueStatus": [value for value, _ in Issue._meta.get_field("status").choices],
-                "priority": [value for value, _ in Issue._meta.get_field("priority").choices],
-                "eventType": [value for value, _ in IssueEvent._meta.get_field("event_type").choices],
-                "notifyType": [value for value, _ in NotifyType.choices],
-            }
-        )

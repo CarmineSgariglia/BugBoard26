@@ -1369,21 +1369,6 @@ class NotificationTagMetaEndpointTests(APITestCase):
         )
         self.assertEqual(patch_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    def test_meta_enums_requires_auth_and_returns_payload(self):
-        anon_response = self.client.get("/api/meta/enums")
-        self.assertIn(
-            anon_response.status_code,
-            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
-        )
-
-        self.client.force_authenticate(user=self.member)
-        auth_response = self.client.get("/api/meta/enums")
-        self.assertEqual(auth_response.status_code, status.HTTP_200_OK)
-        self.assertIn("issueType", auth_response.data)
-        self.assertIn("issueStatus", auth_response.data)
-        self.assertIn("priority", auth_response.data)
-
-
 class OtpCleanupCommandTests(APITestCase):
     def setUp(self):
         self.user = create_user_with_profile(

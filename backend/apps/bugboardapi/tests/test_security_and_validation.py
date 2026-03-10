@@ -290,7 +290,6 @@ class JwtAuthFlowTests(APITestCase):
             ("get", "/api/auth/me"),
             ("get", "/api/projects"),
             ("get", "/api/notifications"),
-            ("get", "/api/meta/enums"),
             ("get", "/api/projects/999/issues"),
             ("get", "/api/issues/999"),
         ]

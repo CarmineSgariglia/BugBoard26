@@ -9,7 +9,6 @@ from .views import (
     LoginView,
     LogoutView,
     MeView,
-    MetaEnumsView,
     NotificationViewSet,
     PasswordOTPRequestView,
     PasswordOTPVerifyView,
@@ -43,7 +42,6 @@ urlpatterns = [
     path("auth/password/otp/verify", PasswordOTPVerifyView.as_view(), name="otp-verify"),
     path("auth/password/reset", PasswordResetView.as_view(), name="password-reset"),
     path("projects/<int:projectId>/issues", ProjectIssueListCreateView.as_view(), name="project-issues"),
-    path("meta/enums", MetaEnumsView.as_view(), name="meta-enums"),
     path("issue-events/<int:updateId>/attachments", AttachmentUploadView.as_view(), name="issue-event-attachment"),
     *router.urls,
 ]
