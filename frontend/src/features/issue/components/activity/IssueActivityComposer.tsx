@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { FiPaperclip, FiSend, FiX, FiAlertCircle } from "react-icons/fi";
+import { useFileValidation } from "@shared/hooks/useFileValidation";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLenght } from "@shared/ui/DescriptionFieldWithLenght";
 
@@ -21,8 +22,13 @@ export function IssueActivityComposer({
     isSubmitting,
 }: Props) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [fileError, setFileError] = useState<string | null>(null);
     const [showAllFiles, setShowAllFiles] = useState(false);
+
+    const { error: fileError, handleFiles, removeFile } = useFileValidation({
+        maxFiles: 10,
+        initialFiles: files,
+        onFilesChange: onFilesChange,
+    });
 
     return (
         <div className="border-t border-white/10 bg-[#0D1322] p-3">
@@ -74,18 +80,7 @@ export function IssueActivityComposer({
                     multiple
                     className="hidden"
                     onChange={(e) => {
-                        const next = e.target.files ? Array.from(e.target.files) : [];
-                        const totalTokens = files.length + next.length;
-                        if (totalTokens > 10) {
-                            setFileError("Max 10 files allowed per comment. Extra files were discarded.");
-                            const allowed = 10 - files.length;
-                            if (allowed > 0) {
-                                onFilesChange([...files, ...next.slice(0, allowed)]);
-                            }
-                        } else {
-                            setFileError(null);
-                            onFilesChange([...files, ...next]);
-                        }
+                        handleFiles(e.target.files);
                         if (fileInputRef.current) {
                             fileInputRef.current.value = "";
                         }
@@ -103,10 +98,8 @@ export function IssueActivityComposer({
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        setFileError(null);
-                                        const newFiles = files.filter((_, i) => i !== (showAllFiles ? idx : idx));
-                                        onFilesChange(newFiles);
-                                        if (newFiles.length <= 3) setShowAllFiles(false);
+                                        removeFile(idx);
+                                        if (files.length - 1 <= 3) setShowAllFiles(false);
                                     }}
                                     className="text-neutral-400 hover:text-white"
                                 >
