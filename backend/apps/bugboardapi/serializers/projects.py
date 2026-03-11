@@ -10,12 +10,15 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
     projectId = serializers.IntegerField(source="project.project_id", read_only=True)
     userId = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
+    firstName = serializers.CharField(source="user.first_name", read_only=True)
+    lastName = serializers.CharField(source="user.last_name", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
     profileImg = serializers.CharField(source="user.profile.profile_img", read_only=True)
     role = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectMembership
-        fields = ["projectMembershipId", "projectId", "userId", "username", "role", "profileImg"]
+        fields = ["projectMembershipId", "projectId", "userId", "username", "firstName", "lastName", "email", "role", "profileImg"]
 
     def get_role(self, instance):
         return get_global_role(instance.user) or DEVELOPER_GROUP_NAME

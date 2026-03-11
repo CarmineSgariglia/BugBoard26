@@ -9,6 +9,9 @@ import {
   IssueModal,
 } from "@features/issue/components";
 import { getIssueApi } from "@shared/api/modules/issues";
+import { listProjectMembersApi } from "@shared/api/modules/projects";
+import type { ProjectMembership } from "@shared/api/types/projects";
+import { isAdminLike } from "@shared/lib";
 import { useAuth } from "@shared/providers/AuthContext";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
@@ -28,9 +31,15 @@ export function IssuePage() {
     staleTime: 0,
   });
 
-
   const numericIssueId = issueId ? Number(issueId) : Number.NaN;
   const safeIssue = issue && issue.issueId === numericIssueId ? issue : null;
+
+  const { data: projectMembers = [] } = useQuery({
+    queryKey: ["project", safeIssue?.projectId, "members"],
+    queryFn: () => listProjectMembersApi(safeIssue!.projectId),
+    enabled: Boolean(safeIssue?.projectId),
+    staleTime: 0,
+  });
 
   useEffect(() => {
     if (issueId && safeIssue) {
@@ -42,6 +51,21 @@ export function IssuePage() {
     if (!safeIssue || !currentUser) return false;
     return safeIssue.assignees.some((a) => a.userId === currentUser.userId);
   }, [safeIssue, currentUser]);
+
+  const visibleAssignees = useMemo(() => {
+    if (!safeIssue) return [];
+    if (!projectMembers.length) return safeIssue.assignees;
+
+    const adminIds = new Set(
+      projectMembers
+        .filter((member: ProjectMembership) => isAdminLike({ role: member.role }))
+        .map((member: ProjectMembership) => member.userId)
+    );
+
+    return safeIssue.assignees.filter((assignee) => !adminIds.has(assignee.userId));
+  }, [safeIssue, projectMembers]);
+
+  const canCompose = isAssigned || Boolean(currentUser?.isAdmin);
 
   if (isLoading || !safeIssue) {
     return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
@@ -55,6 +79,7 @@ export function IssuePage() {
         sidebar={
           <IssueDetailsSidebar
             issue={safeIssue}
+            assignees={visibleAssignees}
             isAdmin={currentUser?.isAdmin}
             isAssigned={isAssigned}
             onEditClick={() => setIsModalOpen(true)}
@@ -63,7 +88,7 @@ export function IssuePage() {
         }
       >
         <div className="h-full">
-          <IssueActivityPanel issueId={safeIssue.issueId} currentUser={currentUser} canCompose={isAssigned} className="h-full" />
+          <IssueActivityPanel issueId={safeIssue.issueId} currentUser={currentUser} canCompose={canCompose} className="h-full" />
         </div>
       </SidebarLayout>
 
@@ -91,6 +116,3 @@ export function IssuePage() {
     </div>
   );
 }
-
-
-

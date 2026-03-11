@@ -61,6 +61,18 @@ class UserViewSet(
         search_query = self.request.query_params.get("search")
         role_filter = self.request.query_params.get("role")
         status_filter = self.request.query_params.get("status")
+        
+        user_ids = self.request.query_params.get("userIds")
+        if user_ids:
+            ids = [int(i.strip()) for i in user_ids.split(",") if i.strip()]
+            if ids:
+                queryset = queryset.filter(id__in=ids)
+                
+        exclude_user_ids = self.request.query_params.get("excludeUserIds")
+        if exclude_user_ids:
+            ids = [int(i.strip()) for i in exclude_user_ids.split(",") if i.strip()]
+            if ids:
+                queryset = queryset.exclude(id__in=ids)
 
         if search_query:
             queryset = queryset.filter(

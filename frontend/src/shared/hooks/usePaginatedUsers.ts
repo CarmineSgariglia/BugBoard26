@@ -10,6 +10,8 @@ import { getErrorMessage } from "../lib/error";
 interface UsePaginatedUsersOptions {
   initialRole?: "All" | "Admin" | "User";
   initialStatus?: "All" | "Active" | "Inactive";
+  userIds?: number[];
+  excludeUserIds?: number[];
 }
 
 function patchUserInPage(
@@ -57,9 +59,11 @@ export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
     if (trimmedSearch) params.search = trimmedSearch;
     if (roleFilter !== "All") params.role = roleFilter;
     if (statusFilter !== "All") params.status = statusFilter;
+    if (options.userIds?.length) params.userIds = options.userIds.join(",");
+    if (options.excludeUserIds?.length) params.excludeUserIds = options.excludeUserIds.join(",");
 
     return params;
-  }, [currentPage, debouncedSearch, roleFilter, statusFilter]);
+  }, [currentPage, debouncedSearch, roleFilter, statusFilter, options.userIds, options.excludeUserIds]);
 
   const query = useQuery({
     queryKey: ["users", queryParams],

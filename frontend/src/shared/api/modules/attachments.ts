@@ -1,18 +1,21 @@
-﻿import apiClient from "../core/client";
+import apiClient from "../core/client";
 import type { IssueAttachment } from "../types/issues";
+
+type AttachmentTarget =
+  | { issueId: number; updateId?: never }
+  | { updateId: number; issueId?: never };
 
 export async function uploadAttachmentApi(
   file: File,
-  issueId: number,
+  target: AttachmentTarget,
   message?: string
 ): Promise<IssueAttachment> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("issueId", String(issueId));
+  if ("issueId" in target) formData.append("issueId", String(target.issueId));
+  if ("updateId" in target) formData.append("updateId", String(target.updateId));
   if (message) formData.append("message", message);
-  const { data } = await apiClient.post<IssueAttachment>("/attachments", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await apiClient.post<IssueAttachment>("/attachments", formData);
   return data;
 }
 

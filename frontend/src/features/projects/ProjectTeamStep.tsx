@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ProjectFormLayout } from "../../widgets/layout/ProjectFormLayout";
 import { FooterActions } from "../../shared/ui/FooterActions";
 import { UserSelectorTable } from "../../shared/ui/UserSelectorTable";
@@ -14,12 +15,15 @@ interface ProjectTeamStepProps {
 }
 
 export function ProjectTeamStep({ selectedUserIds, onToggleUser, onBack, onConfirm, isSubmitting, mode }: ProjectTeamStepProps) {
+    const isViewMode = mode === "view";
+    const [membershipFilter, setMembershipFilter] = useState<string>(isViewMode ? "Added" : "All");
+
     const { users, totalItems, isLoading, error, search, setSearch, currentPage, setCurrentPage } = usePaginatedUsers({
         initialRole: "User",
         initialStatus: "Active",
+        userIds: membershipFilter === "Added" ? selectedUserIds : undefined,
+        excludeUserIds: membershipFilter === "NotAdded" ? selectedUserIds : undefined,
     });
-
-    const isViewMode = mode === "view";
 
     return (
         <ProjectFormLayout
@@ -55,6 +59,7 @@ export function ProjectTeamStep({ selectedUserIds, onToggleUser, onBack, onConfi
                 onPageChange={setCurrentPage}
                 search={search}
                 onSearchChange={setSearch}
+                onMembershipFilterChange={setMembershipFilter}
             />
         </ProjectFormLayout>
     );
