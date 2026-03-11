@@ -871,6 +871,24 @@ class IssueWorkflowEndpointTests(APITestCase):
             ).exists()
         )
 
+    def test_issue_create_auto_assigns_reporter(self):
+        self.client.force_authenticate(user=self.member)
+        payload = {
+            "title": "Reporter assigned issue",
+            "description": "Created from test",
+            "type": "BUG",
+            "status": "TODO",
+            "priority": "MEDIUM",
+        }
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_issue = Issue.objects.get(issue_id=response.data["issueId"])
+        self.assertTrue(
+            IssueAssignee.objects.filter(issue=new_issue, user=self.member).exists()
+        )
+
     def test_issue_create_with_tag_names_reuses_existing_and_creates_missing(self):
         self.client.force_authenticate(user=self.admin)
         payload = {

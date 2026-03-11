@@ -13,7 +13,11 @@ runtime:
     - type: tests
       code: |-
         test("Issue updates get status", function () {
-          expect([200, 403, 404]).to.include(res.getStatus());
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Issue updates get returns array", function () {
+          expect(res.getBody()).to.be.an("array");
         });
 
 settings:

@@ -18,11 +18,6 @@ runtime:
           const pickedProjectId = body[0].projectId;
           bru.setVar("project_id", pickedProjectId);
           bru.setEnvVar("project_id", String(pickedProjectId));
-        } else {
-          const fallbackProjectId = bru.getEnvVar("invalid_id") || "999999";
-          bru.setVar("project_id", fallbackProjectId);
-          bru.setEnvVar("project_id", String(fallbackProjectId));
-          console.warn("No project available for current user. Falling back to invalid_id.");
         }
     - type: tests
       code: |-
@@ -32,6 +27,13 @@ runtime:
 
         test("Response is array", function () {
           expect(res.getBody()).to.be.an("array");
+        });
+
+        test("Project setup resolved a valid project id", function () {
+          const projectId = bru.getEnvVar("project_id");
+          expect(projectId).to.be.a("string");
+          expect(projectId).to.not.equal("");
+          expect(projectId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
         });
 
 settings:

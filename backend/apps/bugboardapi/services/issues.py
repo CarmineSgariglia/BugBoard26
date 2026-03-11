@@ -7,7 +7,7 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from ..issue_rules import validate_project_assignee_ids
-from ..models import Attachment, EventType, IssueEvent, NotifyType
+from ..models import Attachment, EventType, IssueAssignee, IssueEvent, NotifyType
 from ..roles import is_admin_user
 from ..upload_security import store_upload, validate_issue_attachment
 from .notifications import notify_users
@@ -124,6 +124,7 @@ def create_issue_for_project(*, request, project):
     serializer.is_valid(raise_exception=True)
 
     issue = serializer.save(project=project, reporter=request.user)
+    IssueAssignee.objects.get_or_create(issue=issue, user=request.user)
     IssueEvent.objects.create(issue=issue, actor=request.user, event_type=EventType.CREATE, message="Issue created")
 
     project_members = User.objects.filter(
