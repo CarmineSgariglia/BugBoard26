@@ -264,7 +264,8 @@ class AttachmentUploadView(APIView):
         attachment = create_attachment_for_event(event, request.data)
         if not attachment:
             raise ValidationError({"file": "Attachment file is required"})
-        return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+        created_attachment = attachment[0] if isinstance(attachment, list) else attachment
+        return Response(AttachmentSerializer(created_attachment).data, status=status.HTTP_201_CREATED)
 
 
 class AttachmentViewSet(

@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -10,6 +11,7 @@ from ..issue_rules import validate_project_assignee_ids
 from ..models import Attachment, EventType, IssueAssignee, IssueEvent, NotifyType
 from ..roles import is_admin_user
 from ..upload_security import store_upload, validate_issue_attachment
+from .media import transcode_video_upload
 from .notifications import notify_users
 
 logger = logging.getLogger(__name__)
@@ -81,7 +83,19 @@ def apply_issue_filters(queryset, request):
 
 
 def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
-    content_type, size = validate_issue_attachment(uploaded_file)
+    content_type, size = validate_issue_attachment(
+        uploaded_file,
+        max_size_bytes=getattr(settings, "BUGBOARD_MAX_ATTACHMENT_FILE_BYTES", 10 * 1024 * 1024),
+    )
+    if content_type.startswith("video/"):
+        if size > getattr(settings, "BUGBOARD_MAX_ATTACHMENT_VIDEO_BYTES", 50 * 1024 * 1024):
+            raise ValidationError({"file": "Max video size is 50MB"})
+        result = transcode_video_upload(
+            uploaded_file=uploaded_file,
+            storage_dir=f"{base_dir}/{issue_id}",
+        )
+        return result.path, result.mime_type, result.size
+
     suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
     saved = store_upload(
         uploaded_file=uploaded_file,

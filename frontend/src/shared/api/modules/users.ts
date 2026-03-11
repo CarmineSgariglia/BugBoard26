@@ -2,6 +2,7 @@
 import type { AuthUser } from "../types/auth";
 import type { PaginatedResponse } from "../types/common";
 import type { CreateUserPayload, ListUsersParams, UpdateUserPayload } from "../types/users";
+import { prepareProfileImageUpload } from "../../lib/media";
 
 export async function updateUserApi(userId: number, payload: UpdateUserPayload): Promise<AuthUser> {
   const { data } = await apiClient.patch<AuthUser>(`/users/${userId}`, payload);
@@ -21,8 +22,9 @@ export async function adminChangePasswordApi(userId: number, newPassword: string
 }
 
 export async function adminUploadProfileImageApi(userId: number, file: File): Promise<AuthUser> {
+  const preparedFile = await prepareProfileImageUpload(file);
   const formData = new FormData();
-  formData.append("profile_img", file);
+  formData.append("profile_img", preparedFile);
   const { data } = await apiClient.post<AuthUser>(`/users/${userId}/admin-upload-image`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
@@ -47,8 +49,9 @@ export async function setUserActiveApi(userId: number, active: boolean): Promise
 }
 
 export async function uploadProfileImageApi(file: File): Promise<AuthUser> {
+  const preparedFile = await prepareProfileImageUpload(file);
   const formData = new FormData();
-  formData.append("profile_img", file);
+  formData.append("profile_img", preparedFile);
   const { data } = await apiClient.post<AuthUser>("/users/me/upload-profile-image", formData, {
     headers: {
       "Content-Type": "multipart/form-data",

@@ -165,7 +165,10 @@ def save_profile_image_for_user(*, request, user: User):
     image = request.FILES.get("image") or request.FILES.get("profile_img")
     if image is None:
         raise ValidationError({"image": "Image file is required"})
-    extension, _size = validate_profile_image(image)
+    extension, _size = validate_profile_image(
+        image,
+        max_size_bytes=getattr(settings, "BUGBOARD_MAX_PROFILE_IMAGE_BYTES", 2 * 1024 * 1024),
+    )
     saved = store_upload(
         uploaded_file=image,
         storage_dir=f"profile-images/{user.id}",
