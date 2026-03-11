@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
 import { FiUploadCloud, FiX, FiFile } from "react-icons/fi";
+import { useFileValidation } from "../hooks/useFileValidation";
 
 interface FileAttachmentProps {
     onFilesChange: (files: File[]) => void;
@@ -7,34 +7,11 @@ interface FileAttachmentProps {
 }
 
 export function FileAttachment({ onFilesChange, maxSizeMB = 10 }: FileAttachmentProps) {
-    const [files, setFiles] = useState<File[]>([]);
-    const [error, setError] = useState<string | null>(null);
-
-    const handleFiles = useCallback((newFiles: FileList | null) => {
-        if (!newFiles) return;
-        setError(null);
-
-        const validFiles: File[] = [];
-        const maxSize = maxSizeMB * 1024 * 1024;
-
-        Array.from(newFiles).forEach(file => {
-            if (file.size > maxSize) {
-                setError(`File too large (Max ${maxSizeMB}MB)`);
-            } else {
-                validFiles.push(file);
-            }
-        });
-
-        const updatedFiles = [...files, ...validFiles];
-        setFiles(updatedFiles);
-        onFilesChange(updatedFiles);
-    }, [files, maxSizeMB, onFilesChange]);
-
-    const removeFile = (index: number) => {
-        const updatedFiles = files.filter((_, i) => i !== index);
-        setFiles(updatedFiles);
-        onFilesChange(updatedFiles);
-    };
+    const { files, error, handleFiles, removeFile } = useFileValidation({
+        maxFiles: 10,
+        maxSizeMB,
+        onFilesChange,
+    });
 
     return (
         <div className="flex flex-col gap-3">
