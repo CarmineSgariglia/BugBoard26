@@ -1,0 +1,28 @@
+info:
+  name: Delete_role_aware
+  type: http
+  seq: 1
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/tags/{{tag_id}}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Tag delete role aware", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            expect([204, 404]).to.include(res.getStatus());
+          } else {
+            expect([403, 404]).to.include(res.getStatus());
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

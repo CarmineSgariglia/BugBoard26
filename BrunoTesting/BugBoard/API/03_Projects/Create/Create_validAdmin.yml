@@ -1,0 +1,63 @@
+info:
+  name: Create_validAdmin
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseURL}}/projects"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: "Bruno Project {{request_ts}}"
+      - name: description
+        type: text
+        value: project created with bruno
+      - name: color
+        type: text
+        value: "#3dff81"
+      - name: icon
+        type: text
+        value: connectdevelop
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        bru.setVar("request_ts", Date.now());
+    - type: after-response
+      code: |-
+        const body = res.getBody();
+        if (body?.projectId) {
+          bru.setVar("project_id", body.projectId);
+          bru.setEnvVar("project_id", String(body.projectId));
+        }
+    - type: tests
+      code: |-
+        test("Admin create returns 201", function () {
+          const email = bru.getEnvVar("email") || "";
+          const status = res.getStatus();
+          if (email.includes("admin")) {
+            expect(status).to.equal(201);
+          } else {
+            expect([403, 404]).to.include(status);
+          }
+        });
+
+        test("Created project payload is valid", function () {
+          const email = bru.getEnvVar("email") || "";
+          const body = res.getBody();
+          if (email.includes("admin")) {
+            expect(body).to.have.property("projectId");
+            expect(body).to.have.property("name");
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

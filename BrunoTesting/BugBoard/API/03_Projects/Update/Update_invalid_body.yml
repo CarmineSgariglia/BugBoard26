@@ -1,0 +1,35 @@
+info:
+  name: Update_invalid_body
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: "{{baseURL}}/projects/{{project_id}}"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: ""
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Update invalid payload is rejected for admin or forbidden for developer", function () {
+          const email = bru.getEnvVar("email") || "";
+          const status = res.getStatus();
+          if (email.includes("admin")) {
+            expect(status).to.equal(400);
+          } else {
+            expect([403, 404]).to.include(status);
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

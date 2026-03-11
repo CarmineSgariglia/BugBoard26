@@ -1,0 +1,39 @@
+info:
+  name: Otp_verify_invalid_code
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/password/otp/verify"
+  body:
+    type: multipart-form
+    data:
+      - name: email
+        type: text
+        value: "{{email}}"
+      - name: code
+        type: text
+        value: "000000"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("OTP verify invalid code handled", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("OTP verify returns valid false", function () {
+          const body = res.getBody();
+          expect(body.valid).to.equal(false);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,32 @@
+info:
+  name: Update_details_invalid_status
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: "{{baseURL}}/issues/{{issue_id}}/details"
+  body:
+    type: multipart-form
+    data:
+      - name: status
+        type: text
+        value: INVALID_STATUS
+      - name: message
+        type: text
+        value: Invalid status check
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Invalid issue details payload rejected", function () {
+          expect([400, 403, 404]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

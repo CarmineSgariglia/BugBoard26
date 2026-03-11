@@ -1,0 +1,23 @@
+info:
+  name: Get_auth
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/users/{{target_user_id}}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Get user authorized", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

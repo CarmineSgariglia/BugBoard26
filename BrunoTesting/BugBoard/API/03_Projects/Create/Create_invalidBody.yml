@@ -1,0 +1,41 @@
+info:
+  name: Create_invalidBody
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseURL}}/projects"
+  body:
+    type: multipart-form
+    data:
+      - name: description
+        type: text
+        value: missing name field
+      - name: color
+        type: text
+        value: "#3dff81"
+      - name: icon
+        type: text
+        value: connectdevelop
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Invalid body is rejected", function () {
+          const email = bru.getEnvVar("email") || "";
+          const status = res.getStatus();
+          if (email.includes("admin")) {
+            expect(status).to.equal(400);
+          } else {
+            expect([403, 404]).to.include(status);
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

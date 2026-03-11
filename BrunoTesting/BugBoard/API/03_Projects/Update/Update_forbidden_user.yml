@@ -1,0 +1,35 @@
+info:
+  name: Update_forbidden_user
+  type: http
+  seq: 3
+
+http:
+  method: PATCH
+  url: "{{baseURL}}/projects/{{project_id}}"
+  body:
+    type: multipart-form
+    data:
+      - name: description
+        type: text
+        value: forbidden update attempt
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Update by non-admin is forbidden", function () {
+          const email = bru.getEnvVar("email") || "";
+          const status = res.getStatus();
+          if (email.includes("admin")) {
+            expect(status).to.equal(200);
+          } else {
+            expect([403, 404]).to.include(status);
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

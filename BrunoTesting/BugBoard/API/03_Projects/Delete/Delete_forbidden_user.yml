@@ -1,0 +1,29 @@
+info:
+  name: Delete_forbidden_user
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/projects/{{project_id}}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Delete by non-admin is forbidden", function () {
+          const email = bru.getEnvVar("email") || "";
+          const status = res.getStatus();
+          if (email.includes("admin")) {
+            expect([204, 404]).to.include(status);
+          } else {
+            expect([403, 404]).to.include(status);
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

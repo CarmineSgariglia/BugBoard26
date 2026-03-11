@@ -1,0 +1,43 @@
+info:
+  name: Update_valid_admin
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: "{{baseURL}}/projects/{{project_id}}"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: Updated Project{{request_ts}}
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Update is role-aware", function () {
+          const email = bru.getEnvVar("email") || "";
+          const status = res.getStatus();
+          if (email.includes("admin")) {
+            expect(status).to.equal(200);
+          } else {
+            expect([403, 404]).to.include(status);
+          }
+        });
+
+        test("Project name updated for admin", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            const body = res.getBody();
+            expect(body.name).to.equal("Updated Project request_ts");
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

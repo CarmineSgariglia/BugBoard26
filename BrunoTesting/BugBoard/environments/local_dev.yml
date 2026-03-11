@@ -1,0 +1,30 @@
+name: local_dev
+color: "#2E8A54"
+variables:
+  - name: baseURL
+    value: http://localhost:8000/api
+  - name: email
+    value: dev@test.it
+  - secret: true
+    name: password
+    value: StrongPass123!
+  - name: invalid_id
+    value: "999999"
+  - name: invalid_token
+    value: abc.def.ghi
+  - name: current_user_id
+    value: "8"
+  - name: target_user_id
+    value: "1"
+  - name: project_id
+    value: "1"
+  - name: issue_id
+    value: "1"
+  - name: notification_id
+    value: "1"
+  - name: tag_id
+    value: "1"
+  - name: attachment_id
+    value: "1"
+  - name: access_token
+    value: ""
