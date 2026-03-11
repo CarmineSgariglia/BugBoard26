@@ -6,7 +6,7 @@ on:
       - "BrunoTesting/**"
       - "backend/**"
       - "docker-compose.yml"
-      - ".env.example"
+      - "env/**"
       - "scripts/bootstrap_bruno_bugboard_ci.sh"
       - ".github/workflows/bruno-safe.yml"
   pull_request:
@@ -14,7 +14,7 @@ on:
       - "BrunoTesting/**"
       - "backend/**"
       - "docker-compose.yml"
-      - ".env.example"
+      - "env/**"
       - "scripts/bootstrap_bruno_bugboard_ci.sh"
       - ".github/workflows/bruno-safe.yml"
   workflow_dispatch:
@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create CI env file
-        run: cp .env.example .env
+        run: cp env/bruno-safe.ci.env .env
 
       - name: Start database and backend
         run: docker compose up -d --build db backend
