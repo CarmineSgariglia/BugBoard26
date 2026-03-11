@@ -49,4 +49,4 @@ def sync_project_team_members(*, project: Project, raw_user_ids):
     if added_users:
         notify_users(notify_type=NotifyType.PROJECT_ADDED, users=added_users, project=project)
     if removed_users:
-        notify_users(notify_type=NotifyType.PROJECT_REMOVED, users=removed_users, project=project)
+        notify_users(notify_type=NotifyType.PROJECT_UNASSIGNED, users=removed_users, project=project)

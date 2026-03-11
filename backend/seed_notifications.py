@@ -24,7 +24,7 @@ def seed_notifications():
         project = None
         issue = None
         
-        if notify_type in [NotifyType.PROJECT_ADDED, NotifyType.PROJECT_REMOVED]:
+        if notify_type in [NotifyType.PROJECT_ADDED, NotifyType.PROJECT_REMOVED, NotifyType.PROJECT_UNASSIGNED]:
             if projects:
                 project = random.choice(projects)
         else:
