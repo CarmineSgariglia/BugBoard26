@@ -1,4 +1,8 @@
-﻿import { useState, useEffect, useMemo, useCallback } from "react";
+﻿/*
+* It is used for the pagination logic (Only in the team page)
+*/
+
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listUsersApi } from "../api/modules/users";

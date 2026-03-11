@@ -99,7 +99,9 @@ export function IssueActivityPanel({ issueId, currentUser, canCompose, className
     });
 
     const items = useMemo(() => {
-        const mapped = updates.map(formatIssueActivityEvent);
+        const mapped = updates
+            .filter((update) => update.eventType !== "CREATE")
+            .map(formatIssueActivityEvent);
 
         const filtered =
             scope === "YOURS" && currentUser
