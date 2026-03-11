@@ -1009,6 +1009,27 @@ class IssueWorkflowEndpointTests(APITestCase):
         response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_issue_update_invalid_attachment_rolls_back_comment(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/updates",
+            {
+                "message": "comment with invalid file",
+                "file": "uploads/file.txt",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("file", response.data)
+        self.assertFalse(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                actor=self.member,
+                event_type=EventType.COMMENT,
+                message="comment with invalid file",
+            ).exists()
+        )
+
     def test_attachment_upload_requires_issue_access(self):
         event = IssueEvent.objects.create(
             issue=self.issue,
