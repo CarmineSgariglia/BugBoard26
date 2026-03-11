@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from ..issue_rules import validate_project_assignee_ids
 from ..models import Attachment, Issue, IssueAssignee, IssueEvent, IssueStatus, IssueTag, Tag
+from ..roles import is_admin_user
 from ..utils import build_media_url
 from .tags import TagSerializer
 from .users import UserSerializer
@@ -54,6 +55,7 @@ class IssueSerializer(serializers.ModelSerializer):
                 "profileImg": build_media_url(self, getattr(getattr(user, "profile", None), "profile_img", "")),
             }
             for user in obj.assignees.all()
+            if not is_admin_user(user)
         ]
 
     def validate(self, attrs):
