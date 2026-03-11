@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { FiPaperclip, FiSend, FiX, FiAlertCircle } from "react-icons/fi";
 import { useFileValidation } from "@shared/hooks/useFileValidation";
+import { ATTACHMENT_FILE_INPUT_ACCEPT, formatBytes } from "@shared/lib/media";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLenght } from "@shared/ui/DescriptionFieldWithLenght";
 
@@ -24,7 +25,7 @@ export function IssueActivityComposer({
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [showAllFiles, setShowAllFiles] = useState(false);
 
-    const { error: fileError, handleFiles, removeFile } = useFileValidation({
+    const { error: fileError, isPreparingFiles, handleFiles, removeFile } = useFileValidation({
         maxFiles: 10,
         initialFiles: files,
         onFilesChange: onFilesChange,
@@ -48,7 +49,7 @@ export function IssueActivityComposer({
                     type="button"
                     variant="primary"
                     fullWidth={false}
-                    disabled={!message.trim() || isSubmitting}
+                    disabled={!message.trim() || isSubmitting || isPreparingFiles}
                     isLoading={isSubmitting}
                     onClick={onSubmit}
                     icon={<FiSend size={14} />}
@@ -71,13 +72,14 @@ export function IssueActivityComposer({
                     className="text-xs text-neutral-300 hover:text-white inline-flex items-center gap-1"
                 >
                     <FiPaperclip size={14} />
-                    Add file (max 10)
+                    Add media/file (max 10)
                 </button>
 
                 <input
                     ref={fileInputRef}
                     type="file"
                     multiple
+                    accept={ATTACHMENT_FILE_INPUT_ACCEPT}
                     className="hidden"
                     onChange={(e) => {
                         handleFiles(e.target.files);
@@ -85,7 +87,9 @@ export function IssueActivityComposer({
                             fileInputRef.current.value = "";
                         }
                     }}
-                />
+                    />
+
+                {isPreparingFiles ? <span className="text-xs text-sky-300">Optimizing media...</span> : null}
 
                 {files.length > 0 && (
                     <div className="flex flex-wrap gap-2 items-center">
@@ -94,7 +98,7 @@ export function IssueActivityComposer({
                                 key={`${f.name}-${idx}`}
                                 className="text-xs px-2 py-1 rounded border border-white/15 text-neutral-200 inline-flex items-center gap-1"
                             >
-                                {f.name}
+                                {f.name} ({formatBytes(f.size)})
                                 <button
                                     type="button"
                                     onClick={() => {

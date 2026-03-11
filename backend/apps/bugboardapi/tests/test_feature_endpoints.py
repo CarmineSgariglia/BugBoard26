@@ -1,6 +1,7 @@
 from datetime import timedelta
 from io import StringIO
 from pathlib import Path
+import subprocess
 import re
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -32,6 +33,10 @@ from apps.bugboardapi.models import (
 )
 from apps.bugboardapi.services.notifications import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
+
+
+def make_fake_mp4_bytes() -> bytes:
+    return b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom"
 
 
 class AuthOtpEndpointTests(APITestCase):
@@ -1346,6 +1351,72 @@ class IssueWorkflowEndpointTests(APITestCase):
                     delete_response.status_code, status.HTTP_204_NO_CONTENT
                 )
                 self.assertFalse((Path(tmp_dir) / attachment.path).exists())
+
+    def test_attachments_api_transcodes_video_to_mp4(self):
+        self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile(
+            "demo.mov",
+            make_fake_mp4_bytes(),
+            content_type="video/quicktime",
+        )
+
+        def fake_ffmpeg_run(command, check, capture_output, text):
+            Path(command[-1]).write_bytes(make_fake_mp4_bytes() + b"compressed")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with TemporaryDirectory() as tmp_dir:
+            with override_settings(MEDIA_ROOT=tmp_dir):
+                with patch(
+                    "apps.bugboardapi.services.media.subprocess.run",
+                    side_effect=fake_ffmpeg_run,
+                ) as run_mock:
+                    response = self.client.post(
+                        "/api/attachments",
+                        {
+                            "issueId": self.issue.issue_id,
+                            "message": "video upload",
+                            "file": uploaded,
+                        },
+                        format="multipart",
+                    )
+
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                attachment = Attachment.objects.get(
+                    attachment_id=response.data["attachmentId"]
+                )
+                self.assertEqual(response.data["mimeType"], "video/mp4")
+                self.assertTrue(attachment.path.endswith(".mp4"))
+                self.assertTrue((Path(tmp_dir) / attachment.path).exists())
+                self.assertGreater(response.data["size"], 0)
+                self.assertTrue(run_mock.called)
+
+    def test_attachments_api_rejects_video_when_transcoding_fails(self):
+        self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile(
+            "broken.mp4",
+            make_fake_mp4_bytes(),
+            content_type="video/mp4",
+        )
+
+        with patch(
+            "apps.bugboardapi.services.media.subprocess.run",
+            side_effect=subprocess.CalledProcessError(1, ["ffmpeg"]),
+        ):
+            response = self.client.post(
+                "/api/attachments",
+                {
+                    "issueId": self.issue.issue_id,
+                    "message": "broken video",
+                    "file": uploaded,
+                },
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["file"],
+            "Video file is invalid or could not be compressed",
+        )
 
     def test_attachments_api_create_requires_target(self):
         self.client.force_authenticate(user=self.member)

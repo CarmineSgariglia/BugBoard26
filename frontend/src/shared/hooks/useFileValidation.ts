@@ -1,16 +1,8 @@
-/*
-* File Validation Hook
-* 
-* This hook is used to validate files that are uploaded by the user.
-* It checks if the files are valid and if they are within the allowed size limit.
-* It also checks if the number of files is within the allowed limit.
-*/
-
 import { useCallback, useState, useEffect } from "react";
+import { prepareAttachmentUpload } from "../lib/media";
 
 interface UseFileValidationOptions {
     maxFiles?: number;
-    maxSizeMB?: number;
     onFilesChange?: (files: File[]) => void;
     initialFiles?: File[];
 }
@@ -19,55 +11,59 @@ const EMPTY_FILES: File[] = [];
 
 export function useFileValidation({
     maxFiles = 10,
-    maxSizeMB = 10,
     onFilesChange,
     initialFiles = EMPTY_FILES,
 }: UseFileValidationOptions = {}) {
     const [files, setFiles] = useState<File[]>(initialFiles);
     const [error, setError] = useState<string | null>(null);
+    const [isPreparingFiles, setIsPreparingFiles] = useState(false);
 
     const handleFiles = useCallback(
-        (newFiles: FileList | File[] | null) => {
+        async (newFiles: FileList | File[] | null) => {
             if (!newFiles) return;
             setError(null);
+            setIsPreparingFiles(true);
 
-            const incomingFiles = Array.isArray(newFiles) ? newFiles : Array.from(newFiles);
-            const validFiles: File[] = [];
-            let sizeErrorTriggered = false;
+            try {
+                const incomingFiles = Array.isArray(newFiles) ? newFiles : Array.from(newFiles);
+                const validFiles: File[] = [];
+                const fileErrors: string[] = [];
 
-            const maxSizeBytes = maxSizeMB * 1024 * 1024;
-
-            for (const file of incomingFiles) {
-                if (file.size > maxSizeBytes) {
-                    sizeErrorTriggered = true;
-                } else {
-                    validFiles.push(file);
+                for (const incomingFile of incomingFiles) {
+                    try {
+                        const preparedFile = await prepareAttachmentUpload(incomingFile);
+                        validFiles.push(preparedFile);
+                    } catch (err) {
+                        const message = err instanceof Error ? err.message : "Some files were discarded.";
+                        if (!fileErrors.includes(message)) {
+                            fileErrors.push(message);
+                        }
+                    }
                 }
-            }
 
-            const totalAfterAddition = files.length + validFiles.length;
-            const canAddCount = maxFiles - files.length;
-            const acceptedFiles = validFiles.slice(0, Math.max(0, canAddCount));
+                const totalAfterAddition = files.length + validFiles.length;
+                const canAddCount = maxFiles - files.length;
+                const acceptedFiles = validFiles.slice(0, Math.max(0, canAddCount));
+                const limitErrorTriggered = totalAfterAddition > maxFiles;
 
-            const limitErrorTriggered = totalAfterAddition > maxFiles;
-
-            if (sizeErrorTriggered && limitErrorTriggered) {
-                setError(`Max ${maxFiles} files allowed, some were discarded. Excluded files exceeding ${maxSizeMB}MB.`);
-            } else if (sizeErrorTriggered) {
-                setError(`Excluded files exceeding the ${maxSizeMB}MB size limit.`);
-            } else if (limitErrorTriggered) {
-                setError(`Max ${maxFiles} files allowed. Extra files were discarded.`);
-            }
-
-            if (acceptedFiles.length > 0) {
-                const updatedFiles = [...files, ...acceptedFiles];
-                setFiles(updatedFiles);
-                if (onFilesChange) {
-                    onFilesChange(updatedFiles);
+                if (limitErrorTriggered) {
+                    fileErrors.push(`Max ${maxFiles} files allowed. Extra files were discarded.`);
                 }
+
+                if (acceptedFiles.length > 0) {
+                    const updatedFiles = [...files, ...acceptedFiles];
+                    setFiles(updatedFiles);
+                    if (onFilesChange) {
+                        onFilesChange(updatedFiles);
+                    }
+                }
+
+                setError(fileErrors.length > 0 ? fileErrors.join(" ") : null);
+            } finally {
+                setIsPreparingFiles(false);
             }
         },
-        [files, maxFiles, maxSizeMB, onFilesChange]
+        [files, maxFiles, onFilesChange]
     );
 
     const removeFile = useCallback(
@@ -97,6 +93,7 @@ export function useFileValidation({
     return {
         files,
         error,
+        isPreparingFiles,
         handleFiles,
         removeFile,
         resetFiles,

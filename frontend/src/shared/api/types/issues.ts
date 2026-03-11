@@ -89,4 +89,5 @@ export type IssueEventType =
 export type CreateIssueUpdatePayload = {
   message: string;
   file?: File | null;
+  files?: File[];
 };
