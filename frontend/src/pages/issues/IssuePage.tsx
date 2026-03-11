@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
 import {
@@ -20,6 +20,7 @@ export function IssuePage() {
   const { issueId } = useParams();
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
+  const queryClient = useQueryClient();
 
   const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,8 +98,9 @@ export function IssuePage() {
         readOnly={!currentUser?.isAdmin}
         isOpen={isAssigneesModalOpen}
         onClose={() => setIsAssigneesModalOpen(false)}
-        onSuccess={() => {
-          void refetch();
+        onSuccess={async () => {
+          await refetch();
+          await queryClient.invalidateQueries({ queryKey: ["issue", numericIssueId, "updates"] });
         }}
       />
 
@@ -111,6 +113,7 @@ export function IssuePage() {
         onSuccess={async () => {
           setIsModalOpen(false);
           await refetch();
+          await queryClient.invalidateQueries({ queryKey: ["issue", numericIssueId, "updates"] });
         }}
       />
     </div>

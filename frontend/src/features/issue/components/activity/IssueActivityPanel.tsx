@@ -77,20 +77,24 @@ export function IssueActivityPanel({ issueId, currentUser, canCompose, className
             const text = message.trim();
             if (!text) throw new Error("Message required");
 
-            await createIssueUpdateApi(issueId, { message: text, files });
+            const newUpdate = await createIssueUpdateApi(issueId, { message: text, files });
+            return newUpdate;
         },
         onMutate: () => {
             setSubmitError(null);
         },
-        onSuccess: () => {
+        onSuccess: (newUpdate) => {
             setMessage("");
             setFiles([]);
+
+            // Aggiornamento ottimistico: appendiamo l'entità appena creata alla fine dell'array corrente.
+            qc.setQueryData(["issue", issueId, "updates"], (oldData: any) => {
+                if (!oldData) return [newUpdate];
+                return [...oldData, newUpdate];
+            });
         },
         onError: (error) => {
             setSubmitError(getSubmitErrorMessage(error));
-        },
-        onSettled: async () => {
-            await qc.invalidateQueries({ queryKey: ["issue", issueId, "updates"] });
         },
     });
 
