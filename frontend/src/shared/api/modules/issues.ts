@@ -1,4 +1,4 @@
-﻿import apiClient from "../core/client";
+import apiClient from "../core/client";
 import type { Issue, IssueUpdate, UpdateIssuePayload } from "../types/issues";
 
 export async function updateIssueDetailsApi(
@@ -35,9 +35,7 @@ export async function createIssueUpdateApi(
     formData.append("message", payload.message);
     if (payload.file) formData.append("file", payload.file);
 
-    const { data } = await apiClient.post<IssueUpdate>(`/issues/${issueId}/updates`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const { data } = await apiClient.post<IssueUpdate>(`/issues/${issueId}/updates`, formData);
     return data;
   }
 
