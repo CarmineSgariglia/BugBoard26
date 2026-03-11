@@ -1,10 +1,8 @@
-import { useState } from "react";
 import { FiEdit2 } from "react-icons/fi";
 
 import type { Issue, IssueAssignee } from "@shared/api/types/issues";
 import { Avatar } from "@shared/ui/Avatar";
 import { Priority } from "@shared/ui/Priority";
-import { ScrollComponent } from "@shared/ui/ScrollComponent";
 import { SidebarButton } from "@shared/ui/SidebarButton";
 import { StatusBadge } from "@shared/ui/StatusBadge";
 import { Tag } from "@shared/ui/Tag";
@@ -28,14 +26,6 @@ export function IssueDetailsSidebar({
   onEditClick,
   onManageMembersClick,
 }: IssueDetailsSidebarProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const description = issue.description || "";
-  const words = description.split(/\s+/);
-  const isLongDescription = words.length > 256;
-  const displayDescription =
-    isExpanded || !isLongDescription ? description : `${words.slice(0, 256).join(" ")}...`;
-
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
       case "DONE":
@@ -72,21 +62,6 @@ export function IssueDetailsSidebar({
         </SidebarCard.Section>
       </div>
 
-      <SidebarCard.Section title="Description">
-        <div className="flex flex-col gap-2">
-          <p className="text-sm text-neutral-400 leading-relaxed break-words">
-            <ScrollComponent maxHeight="max-h-[150px]">{displayDescription}</ScrollComponent>
-          </p>
-          {isLongDescription && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors w-fit"
-            >
-              {isExpanded ? "Show Less" : "Read More"}
-            </button>
-          )}
-        </div>
-      </SidebarCard.Section>
 
       <SidebarCard.Section title="Reporter">
         <div className="flex items-center gap-3">

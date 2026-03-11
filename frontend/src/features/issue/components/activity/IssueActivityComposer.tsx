@@ -35,7 +35,7 @@ export function IssueActivityComposer({
                     hideLabel={true}
                     placeholder="Add a comment..."
                     containerClassName="flex-1"
-                    textareaClassName="min-h-[44px] max-h-40 rounded-xl bg-[#121620] border-white/10 px-3 py-2 text-sm placeholder:text-neutral-500"
+                    textareaClassName="min-h-[38px] h-[38px] max-h-40 rounded-xl bg-[#121620] border-white/10 px-3 py-2 leading-[20px] text-sm placeholder:text-neutral-500"
                     counterClassName="text-neutral-500"
                 />
                 <Button
