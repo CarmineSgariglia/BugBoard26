@@ -11,12 +11,14 @@ Containerized three-tier architecture:
 - `backend/`: Django REST API app
 - `docker-compose.yml`: Orchestrates all tiers
 - `docker-compose.prod.yml`: Production overrides
-- `.env.example`: Environment variable template
+- `env/dev.example`: Local development environment template
+- `env/bruno-safe.ci.env`: Safe CI environment for Bruno workflow
+- `env/production.example`: Production environment template
 
 ## Development
 
 1. Create environment file:
-   - `cp .env.example .env`
+   - `cp env/dev.example .env`
 2. Build and run the development stack:
    - `docker compose up --build`
 3. Open applications:
@@ -27,9 +29,15 @@ Notes:
 - In development, the frontend is served by the Vite dev server.
 - Browser DevTools can inspect the client source more directly in this mode.
 
+## CI
+
+- The `Bruno Safe Suite` GitHub workflow generates `.env` from `env/bruno-safe.ci.env`.
+- `env/bruno-safe.ci.env` is intentionally minimal and uses only fake/local-safe values.
+- Do not use the CI env file for local development or production.
+
 ## Production (GCP VM)
 
-- Use `.env.production.example` as template for production secrets and security flags.
+- Use `env/production.example` as template for production secrets and security flags.
 - Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs` and `GS_BUCKET_NAME`.
 - Start production stack with:
   - `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`

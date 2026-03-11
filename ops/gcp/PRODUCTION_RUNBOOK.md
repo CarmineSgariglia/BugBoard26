@@ -14,7 +14,7 @@
 ## 2) Deploy stack
 1. Copia repo in `/opt/bugboard/BugBoard26`
 2. Crea file env produzione:
-   - `cp .env.production.example .env`
+   - `cp env/production.example .env`
    - sostituisci tutti i `CHANGE_ME_*`
 3. Avvio:
    - `docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile proxy up -d --build`

@@ -9,8 +9,6 @@ __pycache__/
 
 # Environment
 .env
-.env.example
-.env.production.example
 
 # macOS
 .DS_Store
