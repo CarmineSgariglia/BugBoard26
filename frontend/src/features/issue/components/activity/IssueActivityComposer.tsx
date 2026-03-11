@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { FiPaperclip, FiSend, FiX } from "react-icons/fi";
+import { useRef, useState } from "react";
+import { FiPaperclip, FiSend, FiX, FiAlertCircle } from "react-icons/fi";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLenght } from "@shared/ui/DescriptionFieldWithLenght";
 
@@ -21,6 +21,8 @@ export function IssueActivityComposer({
     isSubmitting,
 }: Props) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [fileError, setFileError] = useState<string | null>(null);
+    const [showAllFiles, setShowAllFiles] = useState(false);
 
     return (
         <div className="border-t border-white/10 bg-[#0D1322] p-3">
@@ -49,6 +51,13 @@ export function IssueActivityComposer({
                 </Button>
             </div>
 
+            {fileError && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-rose-400">
+                    <FiAlertCircle size={14} />
+                    {fileError}
+                </div>
+            )}
+
             <div className="mt-2 flex items-center gap-3">
                 <button
                     type="button"
@@ -56,7 +65,7 @@ export function IssueActivityComposer({
                     className="text-xs text-neutral-300 hover:text-white inline-flex items-center gap-1"
                 >
                     <FiPaperclip size={14} />
-                    Add file
+                    Add file (max 10)
                 </button>
 
                 <input
@@ -66,13 +75,26 @@ export function IssueActivityComposer({
                     className="hidden"
                     onChange={(e) => {
                         const next = e.target.files ? Array.from(e.target.files) : [];
-                        onFilesChange(next);
+                        const totalTokens = files.length + next.length;
+                        if (totalTokens > 10) {
+                            setFileError("Max 10 files allowed per comment. Extra files were discarded.");
+                            const allowed = 10 - files.length;
+                            if (allowed > 0) {
+                                onFilesChange([...files, ...next.slice(0, allowed)]);
+                            }
+                        } else {
+                            setFileError(null);
+                            onFilesChange([...files, ...next]);
+                        }
+                        if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                        }
                     }}
                 />
 
                 {files.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                        {files.slice(0, 3).map((f, idx) => (
+                    <div className="flex flex-wrap gap-2 items-center">
+                        {(showAllFiles ? files : files.slice(0, 3)).map((f, idx) => (
                             <span
                                 key={`${f.name}-${idx}`}
                                 className="text-xs px-2 py-1 rounded border border-white/15 text-neutral-200 inline-flex items-center gap-1"
@@ -80,14 +102,36 @@ export function IssueActivityComposer({
                                 {f.name}
                                 <button
                                     type="button"
-                                    onClick={() => onFilesChange(files.filter((_, i) => i !== idx))}
+                                    onClick={() => {
+                                        setFileError(null);
+                                        const newFiles = files.filter((_, i) => i !== (showAllFiles ? idx : idx));
+                                        onFilesChange(newFiles);
+                                        if (newFiles.length <= 3) setShowAllFiles(false);
+                                    }}
                                     className="text-neutral-400 hover:text-white"
                                 >
                                     <FiX size={12} />
                                 </button>
                             </span>
                         ))}
-                        {files.length > 3 && <span className="text-xs text-neutral-400">+{files.length - 3} more</span>}
+                        {!showAllFiles && files.length > 3 && (
+                            <button
+                                type="button"
+                                onClick={() => setShowAllFiles(true)}
+                                className="text-xs text-neutral-400 hover:text-white hover:underline transition-colors"
+                            >
+                                +{files.length - 3} more
+                            </button>
+                        )}
+                        {showAllFiles && files.length > 3 && (
+                            <button
+                                type="button"
+                                onClick={() => setShowAllFiles(false)}
+                                className="text-xs text-neutral-400 hover:text-white hover:underline transition-colors ml-1"
+                            >
+                                Show less
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

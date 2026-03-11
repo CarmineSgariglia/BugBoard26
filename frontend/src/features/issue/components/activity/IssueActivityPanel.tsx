@@ -77,15 +77,7 @@ export function IssueActivityPanel({ issueId, currentUser, canCompose, className
             const text = message.trim();
             if (!text) throw new Error("Message required");
 
-            if (!files.length) {
-                await createIssueUpdateApi(issueId, { message: text });
-                return;
-            }
-
-            // Backend currently supports one file per request; submit one request per file.
-            for (const file of files) {
-                await createIssueUpdateApi(issueId, { message: text, file });
-            }
+            await createIssueUpdateApi(issueId, { message: text, files });
         },
         onMutate: () => {
             setSubmitError(null);

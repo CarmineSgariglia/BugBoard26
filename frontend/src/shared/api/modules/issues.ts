@@ -26,14 +26,20 @@ export async function listIssueUpdatesApi(issueId: string | number): Promise<Iss
 
 export async function createIssueUpdateApi(
   issueId: number | string,
-  payload: { message: string; file?: File | null }
+  payload: { message: string; files?: File[] }
 ): Promise<IssueUpdate> {
-  const hasFile = Boolean(payload.file);
+  const hasFiles = Boolean(payload.files && payload.files.length > 0);
 
-  if (hasFile) {
+  if (hasFiles) {
     const formData = new FormData();
     formData.append("message", payload.message);
-    if (payload.file) formData.append("file", payload.file);
+
+    // Append each file using the same key "file" so the backend's getlist("file") picks them all up
+    if (payload.files) {
+      for (const file of payload.files) {
+        formData.append("file", file);
+      }
+    }
 
     const { data } = await apiClient.post<IssueUpdate>(`/issues/${issueId}/updates`, formData);
     return data;
