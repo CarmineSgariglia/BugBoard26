@@ -1,0 +1,7 @@
+info:
+  name: 05_Notifications
+  type: folder
+  seq: 3
+
+request:
+  auth: inherit

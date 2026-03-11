@@ -1,0 +1,36 @@
+info:
+  name: Refresh_NoCookie
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8000/api/auth/refresh
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const jar = bru.cookies.jar();
+          const csrfCookie = await jar.getCookie("{{baseURL}}/auth/csrf", "csrftoken");
+
+          if (csrfCookie?.value) {
+            req.setHeader("X-CSRFToken", csrfCookie.value);
+          }
+    - type: tests
+      code: |-
+        test("refresh without cookie is rejected", function () {
+          expect([401, 403]).to.include(res.getStatus());
+        });
+
+        test("refresh without cookie returns error body", function () {
+          const body = res.getBody();
+          expect(body.detail).to.equal("Refresh token missing");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

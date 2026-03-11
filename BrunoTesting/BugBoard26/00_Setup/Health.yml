@@ -1,0 +1,28 @@
+info:
+  name: Health
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseURL}}/health"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("health returns 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("health response exists", function () {
+          const body = res.getBody();
+          expect(body).to.exist;
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
