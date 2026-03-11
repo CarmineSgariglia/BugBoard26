@@ -9,6 +9,7 @@ from .projects import Project
 class NotifyType(models.TextChoices):
     PROJECT_ADDED = "PROJECT_ADDED", "Project Added"
     PROJECT_REMOVED = "PROJECT_REMOVED", "Project Removed"
+    PROJECT_UNASSIGNED = "PROJECT_UNASSIGNED", "Project Unassigned"
     ISSUE_ASSIGNED = "ISSUE_ASSIGNED", "Issue Assigned"
     ISSUE_ADDED = "ISSUE_ADDED", "Issue Added"
     ISSUE_CLOSED = "ISSUE_CLOSED", "Issue Closed"

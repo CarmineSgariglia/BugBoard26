@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { GlassCard } from "../../shared/ui/GlassCard";
 import { NotificationItem } from "./NotificationItem";
 import {
@@ -7,6 +8,7 @@ import {
     readNotificationApi,
     deleteNotificationApi,
 } from "../../shared/api/modules/notifications";
+import { getIssueApi } from "../../shared/api/modules/issues";
 import type { NotificationItem as NotificationApiItem } from "../../shared/api/types/notifications";
 
 interface NotificationDropdownProps {
@@ -14,8 +16,33 @@ interface NotificationDropdownProps {
     onClose: () => void;
 }
 
+type NotificationListItem = {
+    id: number;
+    type: string;
+    issueId: number | null;
+    projectId: number | null;
+    targetKind: "issue" | "project" | "none";
+    title: string;
+    description: string;
+    time: string;
+    isRead: boolean;
+};
+
+// Notification target kind
+type NotificationTargetKind = "issue" | "project" | "none";
+
+function getNotificationTargetKind(type: string): NotificationTargetKind {
+    if (type.startsWith("ISSUE_")) return "issue";
+    if (type === "PROJECT_ADDED") return "project";
+    if (type === "UNASSIGNED_PROJECT" || type === "PROJECT_REMOVED") return "none";
+    return "none";
+}
+
 export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const [pendingNotificationId, setPendingNotificationId] = useState<number | null>(null);
+    const [navError, setNavError] = useState<string | null>(null);
 
     const {
         data: notifications = [],
@@ -72,9 +99,13 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         },
     });
 
-    const items = useMemo(() => {
+    const items = useMemo<NotificationListItem[]>(() => {
         return notifications.map((notification) => ({
             id: notification.notifyUserId,
+            type: notification.type,
+            issueId: notification.issueId ?? null,
+            projectId: notification.projectId ?? null,
+            targetKind: getNotificationTargetKind(notification.type),
             title: notification.type.replaceAll("_", " "),
             description:
                 notification.issueId != null
@@ -87,12 +118,58 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         }));
     }, [notifications]);
 
+
     const onRead = (notifyUserId: number) => {
         readMutation.mutate(notifyUserId);
     };
 
     const onDelete = (notifyUserId: number) => {
         deleteMutation.mutate(notifyUserId);
+    };
+
+    async function resolveNotificationRoute(item: NotificationListItem): Promise<string | null> {
+        if (item.targetKind === "none") return null;
+
+        if (item.targetKind === "project") {
+            if (item.projectId == null) return null;
+            return `/projects/${item.projectId}/issues`;
+        }
+
+        if (item.issueId == null) return null;
+
+        if (item.projectId != null) {
+            return `/projects/${item.projectId}/issues/${item.issueId}`;
+        }
+
+        try {
+            const issue = await getIssueApi(item.issueId);
+            return `/projects/${issue.projectId}/issues/${item.issueId}`;
+        } catch {
+            return null;
+        }
+    }
+
+    const onNotificationClick = async (item: NotificationListItem) => {
+        if (pendingNotificationId !== null) return;
+
+        setNavError(null);
+        setPendingNotificationId(item.id);
+
+        try {
+            // Sempre mark-as-read al click, anche se la navigazione fallisce.
+            onRead(item.id);
+
+            const route = await resolveNotificationRoute(item);
+            if (!route) {
+                setNavError("Target non disponibile.");
+                return;
+            }
+
+            onClose();
+            navigate(route);
+        } finally {
+            setPendingNotificationId(null);
+        }
     };
 
     if (!isOpen) return null;
@@ -106,6 +183,11 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                     <div className="px-4 py-3 font-semibold text-white text-sm border-b border-white/5 shrink-0">
                         Notifications
                     </div>
+                    {navError ? (
+                        <div className="px-4 py-2 text-xs text-amber-300 bg-amber-500/10 border-b border-amber-400/20">
+                            {navError}
+                        </div>
+                    ) : null}
 
                     <div
                         className="flex flex-col gap-1 p-2 max-h-[306px] overflow-y-auto no-scrollbar"
@@ -127,7 +209,10 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                                 title={n.title}
                                 description={n.description}
                                 time={n.time}
-                                onClick={() => onRead(n.id)}
+                                onClick={() => {
+                                    if (pendingNotificationId === n.id) return;
+                                    void onNotificationClick(n);
+                                }}
                                 onMarkRead={() => onRead(n.id)}
                                 onDelete={() => onDelete(n.id)}
                                 unread={!n.isRead}
