@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { HiOutlineCheckCircle } from "react-icons/hi";
 import { FiX } from "react-icons/fi";
 import { Button } from "../../shared/ui/Button";
@@ -7,13 +8,14 @@ interface NotificationItemProps {
     description: string;
     time: string;
     imageUrl?: string;
+    icon?: ReactNode;
     unread?: boolean;
     onClick?: () => void;
     onMarkRead?: () => void;
     onDelete?: () => void;
 }
 
-export function NotificationItem({ title, description, time, imageUrl, unread = false, onClick, onMarkRead, onDelete }: NotificationItemProps) {
+export function NotificationItem({ title, description, time, imageUrl, icon, unread = false, onClick, onMarkRead, onDelete }: NotificationItemProps) {
     return (
         <Button
             variant="glass"
@@ -21,9 +23,11 @@ export function NotificationItem({ title, description, time, imageUrl, unread = 
             onClick={onClick}
         >
             {/* Avatar / Icon Placeholder */}
-            <div className="w-10 h-10 rounded-lg bg-neutral-800 flex-shrink-0 flex items-center justify-center overflow-hidden">
+            <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden ${!imageUrl && icon ? "bg-white/5" : "bg-neutral-800"}`}>
                 {imageUrl ? (
                     <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : icon ? (
+                    icon
                 ) : (
                     <div className="w-full h-full bg-slate-700"></div>
                 )}

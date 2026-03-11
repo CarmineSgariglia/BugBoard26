@@ -10,6 +10,7 @@ import {
 } from "../../shared/api/modules/notifications";
 import { getIssueApi } from "../../shared/api/modules/issues";
 import type { NotificationItem as NotificationApiItem } from "../../shared/api/types/notifications";
+import { getNotificationIcon } from "../../shared/lib/notifications";
 
 interface NotificationDropdownProps {
     isOpen: boolean;
@@ -209,6 +210,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                                 title={n.title}
                                 description={n.description}
                                 time={n.time}
+                                icon={getNotificationIcon(n.type as any)}
                                 onClick={() => {
                                     if (pendingNotificationId === n.id) return;
                                     void onNotificationClick(n);
