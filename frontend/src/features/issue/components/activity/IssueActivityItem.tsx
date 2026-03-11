@@ -1,5 +1,6 @@
 import { Avatar } from "@shared/ui/Avatar";
 import type { UiActivityItem } from "@features/issue/lib/formatIssueActivityEvent";
+import { TextWithLinks } from "@shared/ui/TextWithLinks";
 
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleString();
@@ -21,7 +22,9 @@ export function IssueActivityItem({ item }: Props) {
                     className={`mt-2 rounded-xl border border-white/10 p-3 ${item.isComment ? "bg-[#1A2234]" : "bg-[#121620]/60"
                         }`}
                 >
-                    <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words">{item.message}</p>
+                    <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words">
+                        <TextWithLinks text={item.message} />
+                    </p>
 
                     {item.attachments.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
