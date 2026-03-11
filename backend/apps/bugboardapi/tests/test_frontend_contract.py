@@ -151,7 +151,7 @@ class FrontendContractTests(APITestCase):
         response = self.client.get(f"/api/projects/{self.project.project_id}/members")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
-        expected_keys = {"projectMembershipId", "projectId", "userId", "username", "role"}
+        expected_keys = {"projectMembershipId", "projectId", "userId", "username", "firstName", "lastName", "email", "role"}
         self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
         returned_user_ids = {item["userId"] for item in response.data}
         self.assertNotIn(self.admin.id, returned_user_ids)

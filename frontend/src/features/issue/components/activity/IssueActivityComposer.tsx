@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { FiPaperclip, FiSend, FiX } from "react-icons/fi";
 import { Button } from "@shared/ui/Button";
+import { DescriptionFieldWithLenght } from "@shared/ui/DescriptionFieldWithLenght";
 
 type Props = {
     message: string;
@@ -23,12 +24,17 @@ export function IssueActivityComposer({
 
     return (
         <div className="border-t border-white/10 bg-[#0D1322] p-3">
-            <div className="flex gap-2">
-                <textarea
-                    value={message}
-                    onChange={(e) => onMessageChange(e.target.value)}
+            <div className="flex gap-2 items-start">
+                <DescriptionFieldWithLenght
+                    description={message}
+                    onChangeDescription={onMessageChange}
+                    maxLength={1000}
+                    label="Comment"
+                    hideLabel={true}
                     placeholder="Add a comment..."
-                    className="flex-1 min-h-[44px] max-h-40 rounded-xl bg-[#121620] border border-white/10 px-3 py-2 text-sm text-white placeholder:text-neutral-500 outline-none"
+                    containerClassName="flex-1"
+                    textareaClassName="min-h-[44px] max-h-40 rounded-xl bg-[#121620] border-white/10 px-3 py-2 text-sm placeholder:text-neutral-500"
+                    counterClassName="text-neutral-500"
                 />
                 <Button
                     type="button"

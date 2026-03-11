@@ -31,6 +31,20 @@ function getSubmitErrorMessage(error: unknown): string {
         }
 
         if (typeof data === "object" && data !== null) {
+            if ("message" in data) {
+                const messageField = (data as { message?: unknown }).message;
+                if (typeof messageField === "string" && messageField.trim()) {
+                    return messageField;
+                }
+                if (
+                    Array.isArray(messageField) &&
+                    messageField.length > 0 &&
+                    typeof messageField[0] === "string" &&
+                    messageField[0].trim()
+                ) {
+                    return messageField[0];
+                }
+            }
             if ("file" in data && typeof (data as { file?: unknown }).file === "string") {
                 return (data as { file: string }).file;
             }

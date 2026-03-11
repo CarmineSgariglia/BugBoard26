@@ -24,6 +24,9 @@ export type ProjectMembership = {
   projectId: number;
   userId: number;
   username: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   role: string;
   profileImg?: string | null;
 };

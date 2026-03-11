@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FiEdit2 } from "react-icons/fi";
 
-import type { Issue } from "@shared/api/types/issues";
+import type { Issue, IssueAssignee } from "@shared/api/types/issues";
 import { Avatar } from "@shared/ui/Avatar";
 import { Priority } from "@shared/ui/Priority";
 import { ScrollComponent } from "@shared/ui/ScrollComponent";
@@ -15,6 +15,7 @@ interface IssueDetailsSidebarProps {
   issue: Issue;
   isAdmin?: boolean;
   isAssigned?: boolean;
+  assignees?: IssueAssignee[];
   onEditClick?: () => void;
   onManageMembersClick?: () => void;
 }
@@ -23,6 +24,7 @@ export function IssueDetailsSidebar({
   issue,
   isAdmin,
   isAssigned,
+  assignees,
   onEditClick,
   onManageMembersClick,
 }: IssueDetailsSidebarProps) {
@@ -120,7 +122,7 @@ export function IssueDetailsSidebar({
 
       <SidebarMembersSection
         title="Assigned To"
-        members={issue.assignees}
+        members={assignees || issue.assignees}
         isAdmin={isAdmin}
         onActionClick={onManageMembersClick}
         max={5}

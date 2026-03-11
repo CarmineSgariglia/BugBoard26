@@ -23,6 +23,7 @@ import type { ProjectMembership } from "@shared/api/types/projects";
 import { CATEGORIES, PRIORITIES, STATUSES } from "@shared/constants/issueConstants";
 import { useAuth } from "@shared/providers/AuthContext";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
+import { isAdminLike } from "@shared/lib";
 import { Button } from "@shared/ui/Button";
 import { SearchBar } from "@shared/ui/SearchBar";
 import { Select } from "@shared/ui/Select";
@@ -125,6 +126,8 @@ export function ProjectIssuesPage() {
       });
   }, [issues, searchQuery, statusFilter, priorityFilter, typeFilter, sortOrder, assigneeFilter, currentUser?.userId]);
 
+  const nonAdminMembers = useMemo(() => members.filter((m) => !isAdminLike({ role: m.role })), [members]);
+
   const isLoading = isIssuesLoading || isMembersLoading || isProjectLoading;
   const isRefreshing = (isIssuesFetching || isMembersFetching || isProjectFetching) && !isLoading;
   const error =
@@ -214,7 +217,7 @@ export function ProjectIssuesPage() {
             project ? (
               <ProjectSidebar
                 project={project}
-                members={members.map((m: ProjectMembership) => ({
+                members={nonAdminMembers.map((m: ProjectMembership) => ({
                   username: m.username,
                   profileImg: m.profileImg,
                 }))}
@@ -314,3 +317,5 @@ export function ProjectIssuesPage() {
     </div>
   );
 }
+
+

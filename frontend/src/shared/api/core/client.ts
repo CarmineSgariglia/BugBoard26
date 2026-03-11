@@ -20,24 +20,29 @@ const apiClient = axios.create({
   baseURL: apiBaseURL,
   timeout: 10000,
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 const refreshClient = axios.create({
   baseURL: apiBaseURL,
   timeout: 10000,
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 function readCookie(name: string): string {
   const escapedName = name.replace(/[-[\]/{}()*+?.\\^$|]/g, "\\$&");
   const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : "";
+}
+
+function hasContentTypeHeader(headers: unknown): boolean {
+  if (!headers || typeof headers !== "object") return false;
+  return Object.keys(headers as Record<string, unknown>).some(
+    (key) => key.toLowerCase() === "content-type"
+  );
+}
+
+function isFormDataPayload(payload: unknown): boolean {
+  return typeof FormData !== "undefined" && payload instanceof FormData;
 }
 
 let csrfBootstrapPromise: Promise<unknown> | null = null;
@@ -112,6 +117,15 @@ apiClient.interceptors.request.use(async (config) => {
   if (token) {
     config.headers = config.headers ?? {};
     (config.headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+
+  if (
+    config.data !== undefined &&
+    !isFormDataPayload(config.data) &&
+    !hasContentTypeHeader(config.headers)
+  ) {
+    config.headers = config.headers ?? {};
+    (config.headers as Record<string, string>)["Content-Type"] = "application/json";
   }
 
   return config;

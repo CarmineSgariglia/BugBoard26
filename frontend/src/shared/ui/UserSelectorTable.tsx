@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { SearchBar } from "./SearchBar";
 import { UserTable } from "./UserTable";
 import { Pagination } from "./Pagination";
@@ -6,6 +6,7 @@ import { Select } from "./Select";
 import { FiPlus, FiX } from "react-icons/fi";
 import { ScrollComponent } from "./ScrollComponent";
 import type { AuthUser } from "../api/types/auth";
+import { isAdminLike } from "../lib";
 
 interface UserSelectorTableProps {
     users: AuthUser[];
@@ -14,13 +15,12 @@ interface UserSelectorTableProps {
     isLoading?: boolean;
     error?: string;
     isViewMode?: boolean;
-    // Props per la paginazione interna (se vuoi rimetterla qui) o dall'esterno
     currentPage?: number;
     totalItems?: number;
     onPageChange?: (page: number) => void;
-    // Props per la ricerca
     search?: string;
     onSearchChange?: (val: string) => void;
+    onMembershipFilterChange?: (filter: string) => void;
 }
 
 export function UserSelectorTable({
@@ -34,40 +34,44 @@ export function UserSelectorTable({
     totalItems = 0,
     onPageChange,
     search = "",
-    onSearchChange
+    onSearchChange,
+    onMembershipFilterChange
 }: UserSelectorTableProps) {
     const [membershipFilter, setMembershipFilter] = useState<string>(isViewMode ? "Added" : "All");
 
-    // Filtriamo localmente per Search, per Ruolo (no admin) e per Added/Not Added
-    const filteredUsers = users.filter(user => {
-        // 1. Escludiamo gli Admin (nel "trucchetto" il ruolo è nel campo email)
-        const isUserAdmin = user.isAdmin || user.email?.toLowerCase() === "admin";
-        if (isUserAdmin) return false;
+    const handleMembershipFilterChange = (value: string) => {
+        setMembershipFilter(value);
+        onMembershipFilterChange?.(value);
+    };
 
-        // 2. Filtro per Ricerca (username o nome/cognome)
-        const searchLower = search.toLowerCase();
-        const matchesSearch = !search ||
-            user.username.toLowerCase().includes(searchLower) ||
-            (user.firstName && user.firstName.toLowerCase().includes(searchLower)) ||
-            (user.lastName && user.lastName.toLowerCase().includes(searchLower));
+    const filteredUsers = useMemo(() => {
+        return users.filter(user => {
+            if (isAdminLike(user)) return false;
 
-        if (!matchesSearch) return false;
+            const searchLower = search.trim().toLowerCase();
+            const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim().toLowerCase();
+            const matchesSearch = !searchLower ||
+                user.username.toLowerCase().includes(searchLower) ||
+                fullName.includes(searchLower) ||
+                (user.email && user.email.toLowerCase().includes(searchLower));
 
-        // 3. Filtro per Membri Aggiunti/Non Aggiunti
-        if (membershipFilter === "Added") return selectedUserIds.includes(user.userId);
-        if (membershipFilter === "NotAdded") return !selectedUserIds.includes(user.userId);
-        return true;
-    });
+            if (!matchesSearch) return false;
+
+            if (membershipFilter === "Added") return selectedUserIds.includes(user.userId);
+            if (membershipFilter === "NotAdded") return !selectedUserIds.includes(user.userId);
+
+            return true;
+        });
+    }, [users, membershipFilter, selectedUserIds, search]);
 
     return (
         <div className="flex flex-col gap-4 h-full">
-            {/* Search Bar + Select + Selected Count */}
             <div className="flex items-center gap-4">
                 <div className="flex-1">
                     <SearchBar
                         value={search}
                         onChange={onSearchChange || (() => { })}
-                        placeholder="Search developers by name..."
+                        placeholder="Search developers by name or username..."
                         bgColor="bg-[#0D0D12]/50"
                         textColor="text-white"
                         iconColor="text-neutral-500"
@@ -78,7 +82,7 @@ export function UserSelectorTable({
                 {!isViewMode && (
                     <Select
                         value={membershipFilter}
-                        onChange={(val) => setMembershipFilter(val)}
+                        onChange={(val) => handleMembershipFilterChange(val)}
                         className="w-48"
                         options={[
                             { label: "All Members", value: "All" },
@@ -107,7 +111,7 @@ export function UserSelectorTable({
                             const isSelected = selectedUserIds.includes(user.userId);
                             return (
                                 <button
-                                    type="button" // Previene il submit del form
+                                    type="button"
                                     onClick={() => onToggleUser?.(user.userId)}
                                     className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-[90px] ${isSelected
                                         ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
@@ -131,7 +135,6 @@ export function UserSelectorTable({
                     />
                 </ScrollComponent>
 
-                {/* Pagination */}
                 {totalItems > 0 && !isLoading && !error && onPageChange && (
                     <div className="border-t border-white/5 bg-[#0D0D12]/20">
                         <Pagination

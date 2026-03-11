@@ -3,6 +3,8 @@
   search?: string;
   role?: string;
   status?: string;
+  userIds?: string;
+  excludeUserIds?: string;
 };
 
 export type UpdateUserPayload = {

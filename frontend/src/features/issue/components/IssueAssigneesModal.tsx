@@ -10,6 +10,7 @@ import {
 import { listProjectMembersApi } from "@shared/api/modules/projects";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { Issue } from "@shared/api/types/issues";
+import { isAdminLike } from "@shared/lib";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { UserSelectorTable } from "@shared/ui/UserSelectorTable";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
@@ -34,12 +35,6 @@ export function IssueAssigneesModal({
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setSelectedUserIds(issue.assignees.map((a) => a.userId));
-    setError("");
-  }, [isOpen, issue]);
-
   const {
     data: projectMembers = [],
     isLoading,
@@ -51,20 +46,40 @@ export function IssueAssigneesModal({
     staleTime: 0,
   });
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const allowedIds = new Set(
+      projectMembers
+        .filter((m) => !isAdminLike({ role: m.role }))
+        .map((m) => m.userId)
+    );
+    const initialIds = issue.assignees
+      .map((a) => a.userId)
+      .filter((id) => (allowedIds.size ? allowedIds.has(id) : true));
+
+    setSelectedUserIds(initialIds);
+    setError("");
+  }, [isOpen, issue, projectMembers]);
+
   const members = useMemo<AuthUser[]>(() => {
-    return projectMembers.map((m) => ({
-      userId: m.userId,
-      username: m.username,
-      email: m.role,
-      firstName: m.username,
-      profileImg: m.profileImg || undefined,
-    }));
+    return projectMembers
+      .map((m) => ({
+        userId: m.userId,
+        username: m.username,
+        email: m.email ?? "",
+        firstName: m.firstName ?? "",
+        lastName: m.lastName ?? "",
+        profileImg: m.profileImg || undefined,
+        isAdmin: isAdminLike({ role: m.role }),
+      }))
+      .filter((m) => !m.isAdmin);
   }, [projectMembers]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const previousIds = issue.assignees.map((a) => a.userId);
-      const nextIds = selectedUserIds;
+      const allowed = new Set(members.map((m) => m.userId));
+      const previousIds = issue.assignees.map((a) => a.userId).filter((id) => allowed.has(id));
+      const nextIds = selectedUserIds.filter((id) => allowed.has(id));
 
       const added = nextIds.filter((id) => !previousIds.includes(id));
       const removed = previousIds.filter((id) => !nextIds.includes(id));

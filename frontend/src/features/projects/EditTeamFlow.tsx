@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { ProjectTeamStep } from "./ProjectTeamStep";
 import { updateProjectApi, listProjectMembersApi } from "../../shared/api/modules/projects";
 import type { Project } from "../../shared/api/types/projects";
+import { isAdminLike } from "../../shared/lib";
 import { ModalOverlay } from "../../widgets/layout/ModalOverlay";
 
 interface EditTeamFlowProps {
@@ -34,8 +35,8 @@ export function EditTeamFlow({
   });
 
   useEffect(() => {
-    const admins = members.filter((m) => m.role === "Admin").map((m) => m.userId);
-    const devs = members.filter((m) => m.role !== "Admin").map((m) => m.userId);
+    const admins = members.filter((m) => isAdminLike({ role: m.role })).map((m) => m.userId);
+    const devs = members.filter((m) => !isAdminLike({ role: m.role })).map((m) => m.userId);
     setAdminIds(admins);
     setSelectedUserIds(devs);
   }, [members, project.projectId]);
