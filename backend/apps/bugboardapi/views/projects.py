@@ -29,6 +29,7 @@ from ..services import (
     sync_project_team_members,
 )
 from ..permissions import check_admin, ensure_project_access, user_project_ids
+from ..roles import is_admin_user
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,9 @@ class ProjectViewSet(
         ensure_project_access(request.user, project)
 
         memberships = ProjectMembership.objects.filter(project=project).select_related("user")
+        include_admins = str(request.query_params.get("includeAdmins", "")).lower() in {"1", "true", "yes"}
+        if not include_admins:
+            memberships = [membership for membership in memberships if not is_admin_user(membership.user)]
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
 

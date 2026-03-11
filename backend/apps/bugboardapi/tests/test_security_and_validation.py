@@ -136,6 +136,24 @@ class IssueCreationValidationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("assigneeIds", response.data)
 
+    def test_create_issue_rejects_admin_assignee(self):
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "title": "Issue admin assignee",
+            "description": "Should fail",
+            "type": "BUG",
+            "status": "TODO",
+            "priority": "HIGH",
+            "assigneeIds": [self.admin.id],
+            "tagIds": [self.tag.tag_id],
+        }
+        response = self.client.post(f"/api/projects/{self.project.project_id}/issues", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            str(response.data["assigneeIds"][0]),
+            f"Admin users cannot be assigned to issues: [{self.admin.id}]",
+        )
+
     def test_create_issue_rejects_invalid_tag_ids(self):
         self.client.force_authenticate(user=self.admin)
         payload = {

@@ -1,6 +1,14 @@
 name: Bruno Safe Suite
 
 on:
+  push:
+    paths:
+      - "BrunoTesting/**"
+      - "backend/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "scripts/bootstrap_bruno_bugboard_ci.sh"
+      - ".github/workflows/bruno-safe.yml"
   pull_request:
     paths:
       - "BrunoTesting/**"

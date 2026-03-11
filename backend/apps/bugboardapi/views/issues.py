@@ -43,6 +43,7 @@ from ..permissions import (
     ensure_issue_access,
     user_project_ids,
 )
+from ..roles import is_admin_user
 
 logger = logging.getLogger(__name__)
 
@@ -109,12 +110,16 @@ class IssueViewSet(
         if not user_ids:
             raise ValidationError({"userIds": "At least one userId is required"})
 
-        allowed_ids = set(
-            ProjectMembership.objects.filter(project=issue.project, user_id__in=user_ids).values_list("user_id", flat=True)
+        memberships = list(
+            ProjectMembership.objects.filter(project=issue.project, user_id__in=user_ids).select_related("user")
         )
+        allowed_ids = {membership.user_id for membership in memberships}
         disallowed_ids = [uid for uid in user_ids if uid not in allowed_ids]
         if disallowed_ids:
             raise ValidationError({"userIds": f"Users must be members of project: {disallowed_ids}"})
+        admin_ids = [membership.user_id for membership in memberships if is_admin_user(membership.user)]
+        if admin_ids:
+            raise ValidationError({"userIds": f"Admin users cannot be assigned to issues: {admin_ids}"})
 
         assigned_users = []
         for user_id in user_ids:
@@ -220,6 +225,7 @@ class IssueViewSet(
                 "openAssignments": user.open_count,
             }
             for user in member_counts
+            if not is_admin_user(user)
         ]
         return Response(payload)
 

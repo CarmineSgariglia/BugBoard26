@@ -754,6 +754,24 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             response.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
         )
 
+    def test_members_endpoint_excludes_admins_by_default(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/projects/{self.project.project_id}/members")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_user_ids = {item["userId"] for item in response.data}
+        self.assertIn(self.member.id, returned_user_ids)
+        self.assertNotIn(self.admin.id, returned_user_ids)
+
+    def test_members_endpoint_can_include_admins_with_flag(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(
+            f"/api/projects/{self.project.project_id}/members?includeAdmins=true"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_user_ids = {item["userId"] for item in response.data}
+        self.assertIn(self.member.id, returned_user_ids)
+        self.assertIn(self.admin.id, returned_user_ids)
+
     def test_project_patch_team_sync_adds_and_removes_developers(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
@@ -889,6 +907,25 @@ class IssueWorkflowEndpointTests(APITestCase):
             IssueAssignee.objects.filter(issue=new_issue, user=self.member).exists()
         )
 
+    def test_issue_create_rejects_admin_assignee(self):
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "title": "Created issue",
+            "description": "Created from test",
+            "type": "BUG",
+            "status": "TODO",
+            "priority": "MEDIUM",
+            "assigneeIds": [self.admin.id],
+        }
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            str(response.data["assigneeIds"][0]),
+            f"Admin users cannot be assigned to issues: [{self.admin.id}]",
+        )
+
     def test_issue_create_with_tag_names_reuses_existing_and_creates_missing(self):
         self.client.force_authenticate(user=self.admin)
         payload = {
@@ -950,6 +987,19 @@ class IssueWorkflowEndpointTests(APITestCase):
             IssueAssignee.objects.filter(issue=self.issue, user=self.outsider).exists()
         )
 
+    def test_issue_update_rejects_admin_assignee(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"assigneeIds": [self.admin.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            str(response.data["assigneeIds"][0]),
+            f"Admin users cannot be assigned to issues: [{self.admin.id}]",
+        )
+
     def test_outsider_cannot_create_tag_indirectly_via_issue_update(self):
         self.client.force_authenticate(user=self.outsider)
 
@@ -982,6 +1032,39 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("userIds", response.data)
+
+    def test_assign_rejects_admin_assignee(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/assign",
+            {"userIds": [self.admin.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["userIds"],
+            f"Admin users cannot be assigned to issues: [{self.admin.id}]",
+        )
+
+    def test_suggestions_exclude_admins(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/suggestions")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        suggested_user_ids = {item["userId"] for item in response.data}
+        self.assertIn(self.member.id, suggested_user_ids)
+        self.assertNotIn(self.admin.id, suggested_user_ids)
+
+    def test_issue_payload_excludes_admin_assignees(self):
+        IssueAssignee.objects.get_or_create(issue=self.issue, user=self.admin)
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/projects/{self.project.project_id}/issues")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        issue_payload = next(
+            item for item in response.data if item["issueId"] == self.issue.issue_id
+        )
+        assignee_ids = {item["userId"] for item in issue_payload["assignees"]}
+        self.assertIn(self.member.id, assignee_ids)
+        self.assertNotIn(self.admin.id, assignee_ids)
 
     def test_assignee_can_change_status_to_done(self):
         self.client.force_authenticate(user=self.member)
