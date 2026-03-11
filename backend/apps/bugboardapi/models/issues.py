@@ -89,7 +89,7 @@ class IssueEvent(models.Model):
     actor = models.ForeignKey(User, on_delete=models.PROTECT, db_column="actorId", related_name="issue_events")
     event_type = models.CharField(max_length=32, choices=EventType.choices, db_column="eventType")
     at = models.DateTimeField(auto_now_add=True)
-    message = models.CharField(max_length=512, blank=True, default="")
+    message = models.CharField(max_length=1000, blank=True, default="")
     old_status = models.CharField(max_length=32, choices=IssueStatus.choices, blank=True, default="", db_column="oldStatus")
     new_status = models.CharField(max_length=32, choices=IssueStatus.choices, blank=True, default="", db_column="newStatus")
 
