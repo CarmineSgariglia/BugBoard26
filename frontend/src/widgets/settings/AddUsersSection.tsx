@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { GlassCard } from "../../shared/ui/GlassCard";
 import { Toggle } from "../../shared/ui/Toggle";
@@ -38,6 +38,7 @@ export function AddUsersSection() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const queryClient = useQueryClient();
 
   const isNameValid = useMemo(() => name === "" || isValidName(name.trim()), [name]);
   const isSurnameValid = useMemo(() => surname === "" || isValidName(surname.trim()), [surname]);
@@ -75,6 +76,7 @@ export function AddUsersSection() {
       setSuccess(
         `User created. \n Username: ${payload.username} \n Temporary password: ${payload.temporaryPassword}`
       );
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (err) => {
       setError(getErrorMessage(err, "Unable to create user"));

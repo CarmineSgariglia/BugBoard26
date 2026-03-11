@@ -100,7 +100,7 @@ export function UserSelectorTable({
             </div>
 
             <div className="flex-1 min-h-0 border border-white/5 bg-[#121620]/30 rounded-xl overflow-hidden flex flex-col">
-                <ScrollComponent maxHeight="max-h-[300px]" hideBorder>
+                <ScrollComponent maxHeight="h-[300px]" hideBorder>
                     <UserTable
                         users={filteredUsers}
                         isLoading={isLoading}

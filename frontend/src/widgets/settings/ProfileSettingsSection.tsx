@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";
@@ -23,6 +23,7 @@ import { handleGetHelp } from "../../shared/lib/help";
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
@@ -132,6 +133,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
     },
     onSettled: async () => {
       await refreshUser();
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
     },
   });
 
