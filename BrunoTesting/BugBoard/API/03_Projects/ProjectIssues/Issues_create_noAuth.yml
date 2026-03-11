@@ -1,0 +1,44 @@
+info:
+  name: Issues_create_noAuth
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseURL}}/projects/{{project_id}}/issues"
+  body:
+    type: multipart-form
+    data:
+      - name: title
+        type: text
+        value: no auth issue
+      - name: description
+        type: text
+        value: unauthenticated issue create attempt
+      - name: type
+        type: text
+        value: BUG
+      - name: status
+        type: text
+        value: TODO
+      - name: priority
+        type: text
+        value: MEDIUM
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        req.setHeader("Authorization", "");
+    - type: tests
+      code: |-
+        test("Issue create without auth is rejected", function () {
+          expect([401, 403]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

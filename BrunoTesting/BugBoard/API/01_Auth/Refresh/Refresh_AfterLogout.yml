@@ -1,0 +1,23 @@
+info:
+  name: Refresh_legacy_after_logout
+  type: http
+  seq: 99
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/refresh"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Legacy refresh after logout handled", function () {
+          expect([200, 401]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,41 @@
+info:
+  name: Set_project_context
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/projects"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const body = res.getBody();
+
+        if (Array.isArray(body) && body.length > 0 && body[0].projectId) {
+          const pickedProjectId = body[0].projectId;
+          bru.setVar("project_id", pickedProjectId);
+          bru.setEnvVar("project_id", String(pickedProjectId));
+        } else {
+          const fallbackProjectId = bru.getEnvVar("invalid_id") || "999999";
+          bru.setVar("project_id", fallbackProjectId);
+          bru.setEnvVar("project_id", String(fallbackProjectId));
+          console.warn("No project available for current user. Falling back to invalid_id.");
+        }
+    - type: tests
+      code: |-
+        test("Status is 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Response is array", function () {
+          expect(res.getBody()).to.be.an("array");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

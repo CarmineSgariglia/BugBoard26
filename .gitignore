@@ -19,6 +19,9 @@ __pycache__/
 *.log
 backend_logs*.txt
 
+# Local-only script tweak
+scripts/dev_https_up.sh
+scripts/dev_https_down.sh
 
 # Media (Uploads)
 backend/media/

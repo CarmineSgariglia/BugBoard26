@@ -1,0 +1,27 @@
+info:
+  name: List_auth
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/tags"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Tags list returns 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Tags list is array", function () {
+          expect(res.getBody()).to.be.an("array");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,29 @@
+info:
+  name: Refresh_no_cookie
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/refresh"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        req.setHeader("Cookie", "");
+        req.setHeader("Authorization", "");
+    - type: tests
+      code: |-
+        test("Refresh without cookie rejected", function () {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

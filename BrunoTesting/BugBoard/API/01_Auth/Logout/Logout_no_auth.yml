@@ -1,0 +1,27 @@
+info:
+  name: Logout_no_auth
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/logout"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: before-request
+      code: req.setHeader("Authorization", "");
+    - type: tests
+      code: |-
+        test("Logout without auth still returns 204", function () {
+          expect(res.getStatus()).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
