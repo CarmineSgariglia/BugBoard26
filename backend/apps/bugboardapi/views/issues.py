@@ -31,8 +31,9 @@ from ..serializers import (
 )
 from ..services import (
     apply_issue_filters,
+    create_attachment_for_event,
+    create_issue_event_with_attachment,
     delete_media_path,
-    maybe_create_attachment,
     notify_users,
     request_user_ids,
 )
@@ -154,15 +155,15 @@ class IssueViewSet(
         issue.save(update_fields=["status"])
 
         message = request.data.get("message", "")
-        event = IssueEvent.objects.create(
+        event = create_issue_event_with_attachment(
             issue=issue,
             actor=request.user,
             event_type=EventType.STATUS_CHANGE,
             message=message,
+            payload=request.data,
             old_status=old_status,
             new_status=new_status,
         )
-        maybe_create_attachment(event, request.data)
 
         if new_status == IssueStatus.DONE:
             notify_users(notify_type=NotifyType.ISSUE_CLOSED, users=[issue.reporter], issue=issue)
@@ -183,8 +184,13 @@ class IssueViewSet(
         if not message:
             raise ValidationError({"message": "message is required"})
 
-        event = IssueEvent.objects.create(issue=issue, actor=request.user, event_type=EventType.COMMENT, message=message)
-        maybe_create_attachment(event, request.data)
+        event = create_issue_event_with_attachment(
+            issue=issue,
+            actor=request.user,
+            event_type=EventType.COMMENT,
+            message=message,
+            payload=request.data,
+        )
 
         recipients = list(User.objects.filter(issue_assignments__issue=issue).exclude(id=request.user.id).distinct())
         if recipients:
@@ -246,7 +252,7 @@ class AttachmentUploadView(APIView):
         ensure_issue_access(request.user, event.issue)
         check_assignee_or_admin(request.user, event.issue)
 
-        attachment = maybe_create_attachment(event, request.data)
+        attachment = create_attachment_for_event(event, request.data)
         if not attachment:
             raise ValidationError({"file": "Attachment file is required"})
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
@@ -292,20 +298,22 @@ class AttachmentViewSet(
             if not event:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(event.issue)
+            attachment = create_attachment_for_event(event, request.data)
         else:
             issue = Issue.objects.filter(issue_id=issue_id).select_related("project").first()
             if not issue:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(issue)
             message = (request.data.get("message", "") or "").strip() or "Attachment uploaded"
-            event = IssueEvent.objects.create(
+            event = create_issue_event_with_attachment(
                 issue=issue,
                 actor=request.user,
                 event_type=EventType.COMMENT,
                 message=message,
+                payload=request.data,
             )
+            attachment = event.attachments.first()
 
-        attachment = maybe_create_attachment(event, request.data)
         if not attachment:
             raise ValidationError({"file": "Attachment file is required"})
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)

@@ -40,7 +40,7 @@ function getSubmitErrorMessage(error: unknown): string {
         }
     }
 
-    return "Unable to send comment. Check attachment type/size and try again.";
+    return "File non valido o non supportato.";
 }
 
 export function IssueActivityPanel({ issueId, currentUser, canCompose, className = "h-full" }: Props) {

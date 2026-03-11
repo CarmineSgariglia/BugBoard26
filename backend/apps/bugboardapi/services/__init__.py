@@ -1,8 +1,9 @@
 from .issues import (
     apply_issue_filters,
+    create_attachment_for_event,
+    create_issue_event_with_attachment,
     create_issue_for_project,
     delete_media_path,
-    maybe_create_attachment,
     parse_int_or_none,
     request_user_ids,
     save_issue_uploaded_file,
@@ -18,11 +19,12 @@ from .users import (
 
 __all__ = [
     "apply_issue_filters",
+    "create_attachment_for_event",
+    "create_issue_event_with_attachment",
     "create_issue_for_project",
     "create_project_memberships",
     "delete_media_path",
     "issue_otp_for_email",
-    "maybe_create_attachment",
     "notify_users",
     "parse_int_or_none",
     "request_user_ids",

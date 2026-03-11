@@ -3,6 +3,7 @@ from pathlib import Path
 
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
+from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from ..issue_rules import validate_project_assignee_ids
@@ -73,7 +74,7 @@ def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
     return saved.path, content_type, size
 
 
-def maybe_create_attachment(event: IssueEvent, payload: dict):
+def create_attachment_for_event(event: IssueEvent, payload: dict):
     uploaded_file = payload.get("file")
     if uploaded_file is not None:
         saved_path, mime_type, size = save_issue_uploaded_file(
@@ -83,6 +84,27 @@ def maybe_create_attachment(event: IssueEvent, payload: dict):
         )
         return Attachment.objects.create(update=event, path=saved_path, mime_type=mime_type, size=size)
     return None
+
+
+def create_issue_event_with_attachment(
+    *,
+    issue,
+    actor,
+    event_type,
+    message,
+    payload: dict,
+    **extra_fields,
+):
+    with transaction.atomic():
+        event = IssueEvent.objects.create(
+            issue=issue,
+            actor=actor,
+            event_type=event_type,
+            message=message,
+            **extra_fields,
+        )
+        create_attachment_for_event(event, payload)
+    return event
 
 
 def delete_media_path(path: str) -> None:
