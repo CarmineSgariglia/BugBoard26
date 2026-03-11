@@ -15,12 +15,41 @@ type Props = {
     className?: string;
 };
 
+function getSubmitErrorMessage(error: unknown): string {
+    if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: unknown }).response === "object" &&
+        (error as { response?: unknown }).response !== null
+    ) {
+        const response = (error as { response: { data?: unknown } }).response;
+        const data = response.data;
+
+        if (typeof data === "string" && data.trim()) {
+            return data;
+        }
+
+        if (typeof data === "object" && data !== null) {
+            if ("file" in data && typeof (data as { file?: unknown }).file === "string") {
+                return (data as { file: string }).file;
+            }
+            if ("detail" in data && typeof (data as { detail?: unknown }).detail === "string") {
+                return (data as { detail: string }).detail;
+            }
+        }
+    }
+
+    return "Unable to send comment. Check attachment type/size and try again.";
+}
+
 export function IssueActivityPanel({ issueId, currentUser, canCompose, className = "h-full" }: Props) {
     const qc = useQueryClient();
     const [scope, setScope] = useState<"ALL" | "YOURS">("ALL");
     const [sort, setSort] = useState<"NEWEST" | "OLDEST">("OLDEST");
     const [message, setMessage] = useState("");
     const [files, setFiles] = useState<File[]>([]);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const { data: updates = [], isLoading } = useQuery({
         queryKey: ["issue", issueId, "updates"],
@@ -44,9 +73,17 @@ export function IssueActivityPanel({ issueId, currentUser, canCompose, className
                 await createIssueUpdateApi(issueId, { message: text, file });
             }
         },
-        onSuccess: async () => {
+        onMutate: () => {
+            setSubmitError(null);
+        },
+        onSuccess: () => {
             setMessage("");
             setFiles([]);
+        },
+        onError: (error) => {
+            setSubmitError(getSubmitErrorMessage(error));
+        },
+        onSettled: async () => {
             await qc.invalidateQueries({ queryKey: ["issue", issueId, "updates"] });
         },
     });
@@ -87,14 +124,21 @@ export function IssueActivityPanel({ issueId, currentUser, canCompose, className
             </div>
 
             {canCompose ? (
-                <IssueActivityComposer
-                    message={message}
-                    onMessageChange={setMessage}
-                    files={files}
-                    onFilesChange={setFiles}
-                    onSubmit={() => sendMutation.mutate()}
-                    isSubmitting={sendMutation.isPending}
-                />
+                <>
+                    {submitError ? (
+                        <div className="px-3 py-2 text-xs text-rose-300 bg-rose-500/10 border-t border-rose-500/20">
+                            {submitError}
+                        </div>
+                    ) : null}
+                    <IssueActivityComposer
+                        message={message}
+                        onMessageChange={setMessage}
+                        files={files}
+                        onFilesChange={setFiles}
+                        onSubmit={() => sendMutation.mutate()}
+                        isSubmitting={sendMutation.isPending}
+                    />
+                </>
             ) : null}
         </div>
     );
