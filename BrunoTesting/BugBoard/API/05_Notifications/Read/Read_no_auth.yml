@@ -1,20 +1,22 @@
 info:
-  name: List_no_auth
+  name: Read_no_auth
   type: http
-  seq: 2
+  seq: 3
 
 http:
-  method: GET
-  url: "{{baseURL}}/notifications"
+  method: POST
+  url: "{{baseURL}}/notifications/{{notify_user_id}}/read"
   auth: inherit
 
 runtime:
   scripts:
     - type: before-request
-      code: req.setHeader("Authorization", "");
+      code: |-
+        req.setHeader("Authorization", "");
+        req.setHeader("X-CSRFToken", "");
     - type: tests
       code: |-
-        test("Notifications list without auth rejected", function () {
+        test("Read without auth rejected", function () {
           expect(res.getStatus()).to.equal(401);
         });
 

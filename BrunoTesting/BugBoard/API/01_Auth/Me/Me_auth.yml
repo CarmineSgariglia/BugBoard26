@@ -10,6 +10,15 @@ http:
 
 runtime:
   scripts:
+    - type: after-response
+      code: |-
+        const body = res.getBody();
+
+        if (body?.userId) {
+          const currentUserId = String(body.userId);
+          bru.setVar("current_user_id", currentUserId);
+          bru.setEnvVar("current_user_id", currentUserId);
+        }
     - type: tests
       code: |-
         test("Me returns 200", function () {

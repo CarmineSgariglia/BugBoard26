@@ -13,18 +13,26 @@ runtime:
     - type: after-response
       code: |-
         const body = res.getBody();
-        let issueId = bru.getEnvVar("invalid_id") || "999999";
-
         if (Array.isArray(body) && body.length > 0 && body[0].issueId) {
-          issueId = String(body[0].issueId);
+          const issueId = String(body[0].issueId);
+          bru.setVar("issue_id", issueId);
+          bru.setEnvVar("issue_id", issueId);
         }
-
-        bru.setVar("issue_id", issueId);
-        bru.setEnvVar("issue_id", issueId);
     - type: tests
       code: |-
         test("Issue setup status", function () {
-          expect([200, 403, 404]).to.include(res.getStatus());
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Issue setup response is array", function () {
+          expect(res.getBody()).to.be.an("array");
+        });
+
+        test("Issue setup resolved a valid issue id", function () {
+          const issueId = bru.getEnvVar("issue_id");
+          expect(issueId).to.be.a("string");
+          expect(issueId).to.not.equal("");
+          expect(issueId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
         });
 
 settings:

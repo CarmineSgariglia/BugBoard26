@@ -27,7 +27,8 @@ Variabili chiave usate dalla suite:
 - `baseURL`
 - `access_token`
 - `current_user_id`
-- `project_id`, `issue_id`, `notification_id`, `tag_id`, `attachment_id`
+- `project_id`, `issue_id`, `notify_user_id`, `target_user_id`
+- `tag_id`, `attachment_id`
 - `target_user_id`, `invalid_id`, `invalid_token`
 
 I valori ID vengono aggiornati automaticamente dalle request `00_Setup` presenti nelle singole aree.
@@ -48,19 +49,18 @@ Esegui due run separati:
 
 ## CI/CD (GitHub Actions)
 
-Esempio step (schema):
+Workflow consigliato:
 
-```bash
-bru run BrunoTesting/BugBoard --env local_admin --output junit --output-file reports/bruno-admin.xml
-bru run BrunoTesting/BugBoard --env local_dev --output junit --output-file reports/bruno-dev.xml
-```
+- suite `safe`: `00_Setup`, `01_Auth/Me`, `02_Users/00_Setup`, `03_Projects/00_Setup`, `03_Projects/ProjectIssues/Issues_list_auth`, `04_Issues/00_Setup`, `05_Notifications/00_Setup`, `05_Notifications/List`
+- suite `mutating`: create/update/delete/read/status/assign/unassign, da eseguire separatamente o manualmente
 
 Best practice per pipeline:
 
 - avvia backend + db in job prima dei test
-- esegui seed dati iniziale per utenti/progetti/issue
-- pubblica report JUnit come artifact
+- esegui bootstrap dati iniziale per utenti/progetti/issue/notifiche
+- pubblica report JUnit o HTML come artifact
 - fallisci il job su qualunque request fallita
+- non accettare `404` nei test nominali
 
 ## Nota didattica
 
@@ -70,3 +70,4 @@ I test sono stati mantenuti semplici e leggibili, con assert essenziali ma robus
 - forma minima payload
 - permessi per ruolo (admin vs developer)
 - error handling (missing auth, invalid input, not found)
+- setup deterministici senza fallback permissivi agli ID invalidi

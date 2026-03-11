@@ -20,6 +20,24 @@ runtime:
           expect(res.getBody()).to.be.an("array");
         });
 
+        test("Notification payload has expected shape when present", function () {
+          const body = res.getBody();
+
+          if (body.length === 0) {
+            return;
+          }
+
+          const item = body[0];
+          expect(item).to.have.property("notifyUserId");
+          expect(item).to.have.property("notificationId");
+          expect(item).to.have.property("type");
+          expect(item).to.have.property("createdAt");
+          expect(item).to.have.property("issueId");
+          expect(item).to.have.property("projectId");
+          expect(item).to.have.property("isRead");
+          expect(item).to.have.property("readAt");
+        });
+
 settings:
   encodeUrl: true
   timeout: 0

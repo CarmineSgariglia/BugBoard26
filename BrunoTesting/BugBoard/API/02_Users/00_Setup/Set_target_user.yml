@@ -13,25 +13,30 @@ runtime:
     - type: after-response
       code: |-
         const body = res.getBody();
-        const email = bru.getEnvVar("email") || "";
+        const currentUserId = String(bru.getEnvVar("current_user_id") || "");
 
-        let targetId = bru.getEnvVar("invalid_id") || "999999";
+        let targetId = null;
 
         if (body?.results && Array.isArray(body.results) && body.results.length > 0) {
-          if (email.includes("admin")) {
-            const notMe = body.results.find(u => String(u.userId) !== String(bru.getEnvVar("current_user_id")));
-            targetId = String((notMe || body.results[0]).userId);
-          } else {
-            targetId = String(body.results[0].userId);
-          }
+          const notMe = body.results.find(u => String(u.userId) !== currentUserId);
+          targetId = String((notMe || body.results[0]).userId);
         }
 
-        bru.setVar("target_user_id", targetId);
-        bru.setEnvVar("target_user_id", targetId);
+        if (targetId) {
+          bru.setVar("target_user_id", targetId);
+          bru.setEnvVar("target_user_id", targetId);
+        }
     - type: tests
       code: |-
         test("Users list setup reachable", function () {
           expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Target user id resolved", function () {
+          const targetId = bru.getEnvVar("target_user_id");
+          expect(targetId).to.be.a("string");
+          expect(targetId).to.not.equal("");
+          expect(targetId).to.not.equal(String(bru.getEnvVar("current_user_id") || ""));
         });
 
 settings:

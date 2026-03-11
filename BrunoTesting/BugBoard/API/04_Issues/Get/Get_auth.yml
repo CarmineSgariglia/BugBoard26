@@ -13,7 +13,15 @@ runtime:
     - type: tests
       code: |-
         test("Get issue auth status", function () {
-          expect([200, 403, 404]).to.include(res.getStatus());
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Get issue returns expected shape", function () {
+          const body = res.getBody();
+          expect(body).to.have.property("issueId");
+          expect(body).to.have.property("projectId");
+          expect(body).to.have.property("title");
+          expect(body).to.have.property("status");
         });
 
 settings:

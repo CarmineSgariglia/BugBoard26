@@ -13,18 +13,27 @@ runtime:
     - type: after-response
       code: |-
         const body = res.getBody();
-        let notificationId = bru.getEnvVar("invalid_id") || "999999";
 
         if (Array.isArray(body) && body.length > 0 && body[0].notifyUserId) {
-          notificationId = String(body[0].notifyUserId);
+          const notifyUserId = String(body[0].notifyUserId);
+          bru.setVar("notify_user_id", notifyUserId);
+          bru.setEnvVar("notify_user_id", notifyUserId);
         }
-
-        bru.setVar("notification_id", notificationId);
-        bru.setEnvVar("notification_id", notificationId);
     - type: tests
       code: |-
         test("Notification setup status", function () {
           expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Notification setup response is array", function () {
+          expect(res.getBody()).to.be.an("array");
+        });
+
+        test("Notification setup resolved a valid notify_user_id", function () {
+          const notifyUserId = bru.getEnvVar("notify_user_id");
+          expect(notifyUserId).to.be.a("string");
+          expect(notifyUserId).to.not.equal("");
+          expect(notifyUserId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
         });
 
 settings:

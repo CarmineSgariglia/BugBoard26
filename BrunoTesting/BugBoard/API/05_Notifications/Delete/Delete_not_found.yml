@@ -1,19 +1,19 @@
 info:
-  name: Delete_valid
+  name: Delete_not_found
   type: http
-  seq: 1
+  seq: 2
 
 http:
   method: DELETE
-  url: "{{baseURL}}/notifications/{{notify_user_id}}"
+  url: "{{baseURL}}/notifications/{{invalid_id}}"
   auth: inherit
 
 runtime:
   scripts:
     - type: tests
       code: |-
-        test("Delete notification status", function () {
-          expect(res.getStatus()).to.equal(204);
+        test("Delete missing notification returns 404", function () {
+          expect(res.getStatus()).to.equal(404);
         });
 
 settings:
