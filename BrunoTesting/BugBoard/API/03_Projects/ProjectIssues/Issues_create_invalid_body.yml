@@ -1,0 +1,29 @@
+info:
+  name: Issues_create_invalid_body
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseURL}}/projects/{{project_id}}/issues"
+  body:
+    type: multipart-form
+    data:
+      - name: description
+        type: text
+        value: missing required title and type
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Issue create invalid body is rejected", function () {
+          expect(res.getStatus()).to.equal(400);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

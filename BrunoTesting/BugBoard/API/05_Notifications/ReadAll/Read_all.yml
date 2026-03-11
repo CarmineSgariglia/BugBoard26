@@ -1,0 +1,23 @@
+info:
+  name: Read_all
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseURL}}/notifications/read-all"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Read all notifications returns 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

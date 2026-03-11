@@ -1,0 +1,37 @@
+info:
+  name: Members_auth
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/projects/{{project_id}}/members"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Members endpoint returns 200 for project member/admin", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Members response is array", function () {
+          const body = res.getBody();
+          expect(body).to.be.an("array");
+        });
+
+        test("Member shape is valid when present", function () {
+          const body = res.getBody();
+          if (body.length > 0) {
+            expect(body[0]).to.have.property("projectMembershipId");
+            expect(body[0]).to.have.property("userId");
+            expect(body[0]).to.have.property("role");
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

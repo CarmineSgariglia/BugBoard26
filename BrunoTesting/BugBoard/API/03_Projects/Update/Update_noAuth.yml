@@ -1,0 +1,32 @@
+info:
+  name: Update_noAuth
+  type: http
+  seq: 4
+
+http:
+  method: PATCH
+  url: "{{baseURL}}/projects/{{project_id}}"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: Should not update
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        req.setHeader("Authorization", "");
+    - type: tests
+      code: |-
+        test("Update without auth is rejected", function () {
+          expect([401, 403]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

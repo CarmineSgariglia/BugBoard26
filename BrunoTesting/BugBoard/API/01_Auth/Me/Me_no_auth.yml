@@ -1,0 +1,25 @@
+info:
+  name: Me_no_auth
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseURL}}/auth/me"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: req.setHeader("Authorization", "");
+    - type: tests
+      code: |-
+        test("Me without auth rejected", function () {
+          expect([401, 403]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

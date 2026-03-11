@@ -1,0 +1,23 @@
+info:
+  name: Get_auth
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/issues/{{issue_id}}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Get issue auth status", function () {
+          expect([200, 403, 404]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

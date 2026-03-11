@@ -1,0 +1,50 @@
+info:
+  name: Issues_create_auth
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseURL}}/projects/{{project_id}}/issues"
+  body:
+    type: multipart-form
+    data:
+      - name: title
+        type: text
+        value: "Bruno issue {{request_ts}}"
+      - name: description
+        type: text
+        value: issue created by bruno
+      - name: type
+        type: text
+        value: BUG
+      - name: status
+        type: text
+        value: TODO
+      - name: priority
+        type: text
+        value: MEDIUM
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        bru.setVar("request_ts", Date.now());
+    - type: tests
+      code: |-
+        test("Issue create returns 201 for authorized member/admin", function () {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("Created issue payload is valid", function () {
+          const body = res.getBody();
+          expect(body).to.have.property("issueId");
+          expect(body).to.have.property("projectId");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

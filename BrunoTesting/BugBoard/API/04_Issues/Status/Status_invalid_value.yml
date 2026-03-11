@@ -1,0 +1,32 @@
+info:
+  name: Status_invalid_value
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseURL}}/issues/{{issue_id}}/status"
+  body:
+    type: multipart-form
+    data:
+      - name: status
+        type: text
+        value: INVALID
+      - name: message
+        type: text
+        value: Invalid status attempt
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Invalid status rejected", function () {
+          expect([400, 403, 404]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

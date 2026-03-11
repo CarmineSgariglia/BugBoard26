@@ -1,0 +1,23 @@
+info:
+  name: Delete_one
+  type: http
+  seq: 1
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/notifications/{{notification_id}}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Delete notification status", function () {
+          expect([204, 404]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

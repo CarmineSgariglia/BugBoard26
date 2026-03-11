@@ -1,0 +1,29 @@
+info:
+  name: Delete_valid_admin
+  type: http
+  seq: 1
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/projects/{{project_id}}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Delete is role-aware", function () {
+          const email = bru.getEnvVar("email") || "";
+          const status = res.getStatus();
+          if (email.includes("admin")) {
+            expect(status).to.equal(204);
+          } else {
+            expect([403, 404]).to.include(status);
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

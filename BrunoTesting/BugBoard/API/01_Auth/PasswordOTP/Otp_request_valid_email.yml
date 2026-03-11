@@ -1,0 +1,31 @@
+info:
+  name: Otp_request_valid_email
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/password/otp/request"
+  body:
+    type: multipart-form
+    data:
+      - name: email
+        type: text
+        value: "{{email}}"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("OTP request returns 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,27 @@
+info:
+  name: Refresh_legacy_no_cookie
+  type: http
+  seq: 100
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/refresh"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: before-request
+      code: req.setHeader("Cookie", "");
+    - type: tests
+      code: |-
+        test("Legacy refresh no cookie rejected", function () {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

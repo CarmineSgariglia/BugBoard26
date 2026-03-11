@@ -1,0 +1,34 @@
+info:
+  name: Login_legacy_valid
+  type: http
+  seq: 98
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/login"
+  body:
+    type: multipart-form
+    data:
+      - name: email
+        type: text
+        value: "{{email}}"
+      - name: password
+        type: text
+        value: "{{password}}"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Legacy login endpoint returns expected status", function () {
+          expect([200, 401]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
