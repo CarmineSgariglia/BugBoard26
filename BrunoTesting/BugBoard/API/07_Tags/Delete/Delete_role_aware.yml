@@ -15,9 +15,9 @@ runtime:
         test("Tag delete role aware", function () {
           const email = bru.getEnvVar("email") || "";
           if (email.includes("admin")) {
-            expect([204, 404]).to.include(res.getStatus());
+            expect(res.getStatus()).to.equal(204);
           } else {
-            expect([403, 404]).to.include(res.getStatus());
+            expect(res.getStatus()).to.equal(403);
           }
         });
 

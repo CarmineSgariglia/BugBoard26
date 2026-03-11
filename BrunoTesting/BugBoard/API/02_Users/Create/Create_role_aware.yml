@@ -34,7 +34,7 @@ runtime:
           if (email.includes("admin")) {
             expect(res.getStatus()).to.equal(201);
           } else {
-            expect([403, 404]).to.include(res.getStatus());
+            expect(res.getStatus()).to.equal(403);
           }
         });
 

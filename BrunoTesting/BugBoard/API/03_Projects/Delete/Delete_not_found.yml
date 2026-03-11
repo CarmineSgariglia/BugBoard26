@@ -12,8 +12,13 @@ runtime:
   scripts:
     - type: tests
       code: |-
-        test("Delete invalid project returns not found or forbidden", function () {
-          expect([403, 404]).to.include(res.getStatus());
+        test("Delete invalid project returns role-correct status", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            expect(res.getStatus()).to.equal(404);
+          } else {
+            expect(res.getStatus()).to.equal(403);
+          }
         });
 
 settings:

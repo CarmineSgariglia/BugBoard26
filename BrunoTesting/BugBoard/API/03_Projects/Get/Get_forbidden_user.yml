@@ -12,9 +12,8 @@ runtime:
   scripts:
     - type: tests
       code: |-
-        test("Get project in restricted context is handled", function () {
-          const status = res.getStatus();
-          expect([200, 403, 404]).to.include(status);
+        test("Get project in restricted context is forbidden for outsider", function () {
+          expect(res.getStatus()).to.equal(403);
         });
 
 settings:

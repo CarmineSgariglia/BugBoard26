@@ -13,7 +13,7 @@ runtime:
     - type: tests
       code: |-
         test("Attachment delete status", function () {
-          expect([204, 403, 404]).to.include(res.getStatus());
+          expect(res.getStatus()).to.equal(204);
         });
 
 settings:
