@@ -36,6 +36,7 @@ from ..services import (
     delete_media_path,
     notify_users,
     request_user_ids,
+    validate_issue_event_message,
 )
 from ..permissions import (
     check_assignee_or_admin,
@@ -185,9 +186,11 @@ class IssueViewSet(
 
         check_assignee_or_admin(request.user, issue)
 
-        message = request.data.get("message", "")
-        if not message:
-            raise ValidationError({"message": "message is required"})
+        message = validate_issue_event_message(
+            request.data.get("message", ""),
+            required=True,
+            strip=True,
+        )
 
         event = create_issue_event_with_attachment(
             issue=issue,

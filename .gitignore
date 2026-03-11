@@ -16,6 +16,7 @@ __pycache__/
 # Logs
 *.log
 backend_logs*.txt
+.tmp/
 
 # Local-only script tweak
 scripts/dev_https_up.sh

@@ -15,6 +15,7 @@ from .notifications import notify_users
 logger = logging.getLogger(__name__)
 
 MAX_USER_IDS = 100
+ISSUE_EVENT_MESSAGE_MAX_LEN = 1000
 
 
 def parse_int_or_none(raw_value):
@@ -38,6 +39,22 @@ def request_user_ids(raw_value):
         return [int(raw_value)]
     except (TypeError, ValueError):
         raise ValidationError({"userIds": "Value must be a valid integer"})
+
+
+def validate_issue_event_message(
+    message,
+    *,
+    required: bool = False,
+    strip: bool = False,
+):
+    normalized = "" if message is None else str(message)
+    if strip:
+        normalized = normalized.strip()
+    if required and not normalized:
+        raise ValidationError({"message": "message is required"})
+    if len(normalized) > ISSUE_EVENT_MESSAGE_MAX_LEN:
+        raise ValidationError({"message": "Must be at most 1000 characters"})
+    return normalized
 
 
 def apply_issue_filters(queryset, request):
@@ -95,6 +112,7 @@ def create_issue_event_with_attachment(
     payload: dict,
     **extra_fields,
 ):
+    message = validate_issue_event_message(message)
     with transaction.atomic():
         event = IssueEvent.objects.create(
             issue=issue,

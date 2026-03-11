@@ -1,4 +1,5 @@
 from .issues import (
+    ISSUE_EVENT_MESSAGE_MAX_LEN,
     apply_issue_filters,
     create_attachment_for_event,
     create_issue_event_with_attachment,
@@ -7,6 +8,7 @@ from .issues import (
     parse_int_or_none,
     request_user_ids,
     save_issue_uploaded_file,
+    validate_issue_event_message,
 )
 from .notifications import notify_users
 from .projects import create_project_memberships, sync_project_team_members
@@ -18,6 +20,7 @@ from .users import (
 )
 
 __all__ = [
+    "ISSUE_EVENT_MESSAGE_MAX_LEN",
     "apply_issue_filters",
     "create_attachment_for_event",
     "create_issue_event_with_attachment",
@@ -32,5 +35,6 @@ __all__ = [
     "save_issue_uploaded_file",
     "save_profile_image_for_user",
     "sync_project_team_members",
+    "validate_issue_event_message",
     "verify_otp",
 ]

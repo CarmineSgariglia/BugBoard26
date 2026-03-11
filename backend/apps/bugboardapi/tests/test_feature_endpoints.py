@@ -1077,6 +1077,25 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.issue.refresh_from_db()
         self.assertEqual(self.issue.status, IssueStatus.DONE)
 
+    def test_status_update_rejects_message_longer_than_1000(self):
+        self.client.force_authenticate(user=self.member)
+        too_long_message = "x" * 1001
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status",
+            {"status": "DONE", "message": too_long_message},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], "Must be at most 1000 characters")
+        self.assertFalse(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                actor=self.member,
+                event_type=EventType.STATUS_CHANGE,
+                message=too_long_message,
+            ).exists()
+        )
+
     def test_add_update_requires_message(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
@@ -1086,6 +1105,35 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("message", response.data)
+
+    def test_add_update_rejects_whitespace_only_message(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/updates",
+            {"message": "   "},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], "message is required")
+
+    def test_add_update_rejects_message_longer_than_1000(self):
+        self.client.force_authenticate(user=self.member)
+        too_long_message = "x" * 1001
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/updates",
+            {"message": too_long_message},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], "Must be at most 1000 characters")
+        self.assertFalse(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                actor=self.member,
+                event_type=EventType.COMMENT,
+                message=too_long_message,
+            ).exists()
+        )
 
     def test_issue_updates_list_returns_events_for_project_member(self):
         event = IssueEvent.objects.create(
