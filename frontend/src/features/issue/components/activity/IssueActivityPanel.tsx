@@ -11,13 +11,14 @@ import { IssueActivityComposer } from "./IssueActivityComposer";
 type Props = {
     issueId: number;
     currentUser: AuthUser | null;
+    canCompose: boolean;
     className?: string;
 };
 
-export function IssueActivityPanel({ issueId, currentUser, className = "h-full" }: Props) {
+export function IssueActivityPanel({ issueId, currentUser, canCompose, className = "h-full" }: Props) {
     const qc = useQueryClient();
     const [scope, setScope] = useState<"ALL" | "YOURS">("ALL");
-    const [sort, setSort] = useState<"NEWEST" | "OLDEST">("NEWEST");
+    const [sort, setSort] = useState<"NEWEST" | "OLDEST">("OLDEST");
     const [message, setMessage] = useState("");
     const [files, setFiles] = useState<File[]>([]);
 
@@ -38,7 +39,7 @@ export function IssueActivityPanel({ issueId, currentUser, className = "h-full" 
                 return;
             }
 
-            // NB: backend attuale lega 1 file alla request; con più file facciamo più POST
+            // Backend currently supports one file per request; submit one request per file.
             for (const file of files) {
                 await createIssueUpdateApi(issueId, { message: text, file });
             }
@@ -85,16 +86,16 @@ export function IssueActivityPanel({ issueId, currentUser, className = "h-full" 
                 )}
             </div>
 
-            <IssueActivityComposer
-                message={message}
-                onMessageChange={setMessage}
-                files={files}
-                onFilesChange={setFiles}
-                onSubmit={() => sendMutation.mutate()}
-                isSubmitting={sendMutation.isPending}
-            />
+            {canCompose ? (
+                <IssueActivityComposer
+                    message={message}
+                    onMessageChange={setMessage}
+                    files={files}
+                    onFilesChange={setFiles}
+                    onSubmit={() => sendMutation.mutate()}
+                    isSubmitting={sendMutation.isPending}
+                />
+            ) : null}
         </div>
     );
 }
-
-

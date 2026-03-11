@@ -41,7 +41,7 @@ export function ProjectIssuesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("asc");
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | "assigned-to-you">("all");
 
 
@@ -183,8 +183,8 @@ export function ProjectIssuesPage() {
                 value={sortOrder}
                 onChange={(val) => setSortOrder(val as "desc" | "asc")}
                 options={[
-                  { value: "desc", label: "Newest First" },
                   { value: "asc", label: "Oldest First" },
+                  { value: "desc", label: "Newest First" },
                 ]}
                 icon={
                   sortOrder === "desc" ? (

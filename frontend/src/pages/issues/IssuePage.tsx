@@ -63,7 +63,7 @@ export function IssuePage() {
         }
       >
         <div className="h-full">
-          <IssueActivityPanel issueId={safeIssue.issueId} currentUser={currentUser} className="h-full" />
+          <IssueActivityPanel issueId={safeIssue.issueId} currentUser={currentUser} canCompose={isAssigned} className="h-full" />
         </div>
       </SidebarLayout>
 
