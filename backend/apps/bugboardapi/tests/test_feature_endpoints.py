@@ -782,6 +782,13 @@ class ProjectAndMembershipEndpointTests(APITestCase):
                 user=self.admin,
             ).exists()
         )
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.PROJECT_UNASSIGNED,
+                notification__project=self.project,
+            ).exists()
+        )
 
     def test_project_delete_allows_plain_delete_for_current_frontend_flow(self):
         issue = Issue.objects.create(
