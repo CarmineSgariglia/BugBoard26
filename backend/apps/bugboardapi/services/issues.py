@@ -92,15 +92,29 @@ def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
 
 
 def create_attachment_for_event(event: IssueEvent, payload: dict):
-    uploaded_file = payload.get("file")
-    if uploaded_file is not None:
+    # Depending on the payload (dict vs QueryDict), getlist or get provides the list of files
+    uploaded_files = payload.getlist("file") if hasattr(payload, "getlist") else payload.get("file")
+    if not uploaded_files:
+        return []
+    
+    # If it's a single file, convert it to list
+    if not isinstance(uploaded_files, list):
+        uploaded_files = [uploaded_files]
+
+    if len(uploaded_files) > 10:
+        raise ValidationError({"file": "Maximum 10 files allowed per comment."})
+
+    attachments = []
+    for uploaded_file in uploaded_files:
         saved_path, mime_type, size = save_issue_uploaded_file(
             uploaded_file=uploaded_file,
             issue_id=event.issue_id,
             base_dir="issue-attachments",
         )
-        return Attachment.objects.create(update=event, path=saved_path, mime_type=mime_type, size=size)
-    return None
+        att = Attachment.objects.create(update=event, path=saved_path, mime_type=mime_type, size=size)
+        attachments.append(att)
+        
+    return attachments
 
 
 def create_issue_event_with_attachment(
