@@ -1,0 +1,30 @@
+info:
+  name: Me_invalidToken
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:8000/api/auth/me
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: req.setHeader("Authorization", "Bearer {{invalid_token}}");
+    - type: tests
+      code: |-
+        test("me with invalid token is rejected", function () {
+          expect([401, 403]).to.include(res.getStatus());
+        });
+
+        test("me with invalid token returns error body", function () {
+          const body = res.getBody();
+          expect(body.code).to.equal("token_not_valid");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

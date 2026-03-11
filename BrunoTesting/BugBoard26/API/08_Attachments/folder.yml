@@ -1,0 +1,7 @@
+info:
+  name: 08_Attachments
+  type: folder
+  seq: 7
+
+request:
+  auth: inherit

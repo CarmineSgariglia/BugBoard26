@@ -1,0 +1,28 @@
+info:
+  name: Me_noAuth
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:8000/api/auth/me
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("me without auth is rejected", function () {
+          expect([401, 403]).to.include(res.getStatus());
+        });
+
+        test("me without auth returns error body", function () {
+          const body = res.getBody();
+          expect(body.detail).to.equal("Authentication credentials were not provided.");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

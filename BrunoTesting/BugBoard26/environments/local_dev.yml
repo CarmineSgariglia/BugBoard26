@@ -1,0 +1,15 @@
+name: local_dev
+color: "#2E8A54"
+variables:
+  - name: email
+    value: dev@test.it
+  - secret: true
+    name: password
+  - name: invalid_id
+    value: "999999"
+  - name: invalid_token
+    value: abc.def.ghi
+  - name: current_user_id
+    value: "8"
+  - name: access_token
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzczMTYyMjA1LCJpYXQiOjE3NzMxNjEzMDUsImp0aSI6ImZmN2ZlZGI3ZjY0ZjRjZWViMmIwNGRkZjNlYTQxZTM1IiwidXNlcl9pZCI6IjgiLCJzaWQiOiIwMjhhZDJjZjAwNWE0ODZmOGYyMmY3NGJhMGMxN2I0MCJ9.HanxSyIpFc9af9-qk5DdXlCBBknR1mH1miOiNdr82Hk

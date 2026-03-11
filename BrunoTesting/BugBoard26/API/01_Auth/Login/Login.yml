@@ -1,0 +1,45 @@
+info:
+  name: Login
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseURL}}/auth/login"
+  body:
+    type: multipart-form
+    data:
+      - name: email
+        type: text
+        value: "{{email}}"
+      - name: password
+        type: text
+        value: "{{password}}"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const jar = bru.cookies.jar();
+          const csrfCookie = await jar.getCookie("{{baseURL}}/auth/csrf", "csrftoken");
+
+          if (csrfCookie?.value) {
+            req.setHeader("X-CSRFToken", csrfCookie.value);
+          }
+    - type: after-response
+      code: |-
+        const body = res.getBody();
+
+        if (body?.accessToken) {
+          bru.setEnvVar("access_token", body.accessToken, { persist: true });
+          console.log(body.accessToken);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
