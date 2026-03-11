@@ -49,6 +49,7 @@ export function TagInput({ tags, onChange, maxTags = 5 }: TagInputProps) {
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={tags.length === 0 ? "Add tag..." : ""}
+                        maxLength={15}
                         className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-neutral-600 min-w-[80px]"
                     />
                 )}

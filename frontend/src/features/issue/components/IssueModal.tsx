@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { FiX } from "react-icons/fi";
 
 import { buildIssueEditActivityMessage } from "@features/issue/lib/buildIssueEditActivityMessage";
-import { uploadAttachmentApi } from "@shared/api/modules/attachments";
+
 import { createIssueUpdateApi, updateIssueDetailsApi } from "@shared/api/modules/issues";
 import { createProjectIssueApi } from "@shared/api/modules/projects";
 import type { Issue } from "@shared/api/types/issues";
@@ -134,15 +134,10 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
         try {
           const firstMessage = description.trim();
           if (files.length > 0) {
-            const [firstFile, ...otherFiles] = files;
-            const firstUpdate = await createIssueUpdateApi(resultIssue.issueId, {
+            await createIssueUpdateApi(resultIssue.issueId, {
               message: firstMessage,
-              file: firstFile,
+              files: files,
             });
-
-            for (const file of otherFiles) {
-              await uploadAttachmentApi(file, { updateId: firstUpdate.updateId });
-            }
           } else {
             await createIssueUpdateApi(resultIssue.issueId, { message: firstMessage });
           }
@@ -153,13 +148,13 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
       } else if (mode === "edit" && issue?.issueId) {
         const editMessage = initialData
           ? buildIssueEditActivityMessage(initialData, {
-              title,
-              description,
-              type: category,
-              status,
-              priority,
-              tags,
-            })
+            title,
+            description,
+            type: category,
+            status,
+            priority,
+            tags,
+          })
           : "Issue updated";
 
         resultIssue = await updateIssueDetailsApi(issue.issueId, {
@@ -171,12 +166,6 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
           tagNames: tags,
           message: editMessage,
         });
-
-        if (resultIssue && files.length > 0) {
-          for (const file of files) {
-            await uploadAttachmentApi(file, { issueId: resultIssue.issueId });
-          }
-        }
       }
 
       return { warning };
@@ -255,7 +244,7 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
             maxLength={1000}
           />
 
-          <FileAttachment onFilesChange={setFiles} />
+          {mode === "create" && <FileAttachment onFilesChange={setFiles} />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
             <PrioritySelector value={priority} onChange={setPriority} />
