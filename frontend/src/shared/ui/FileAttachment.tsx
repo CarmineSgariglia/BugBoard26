@@ -15,7 +15,7 @@ export function FileAttachment({ onFilesChange, maxSizeMB = 10 }: FileAttachment
 
     return (
         <div className="flex flex-col gap-3">
-            <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">File Attachment</label>
+            <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">File Attachment (Max 10 files)</label>
 
             <div
                 onDragOver={(e) => e.preventDefault()}

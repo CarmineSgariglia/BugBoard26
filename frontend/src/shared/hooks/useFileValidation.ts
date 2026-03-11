@@ -1,3 +1,11 @@
+/*
+* File Validation Hook
+* 
+* This hook is used to validate files that are uploaded by the user.
+* It checks if the files are valid and if they are within the allowed size limit.
+* It also checks if the number of files is within the allowed limit.
+*/
+
 import { useCallback, useState, useEffect } from "react";
 
 interface UseFileValidationOptions {
@@ -7,11 +15,13 @@ interface UseFileValidationOptions {
     initialFiles?: File[];
 }
 
+const EMPTY_FILES: File[] = [];
+
 export function useFileValidation({
     maxFiles = 10,
     maxSizeMB = 10,
     onFilesChange,
-    initialFiles = [],
+    initialFiles = EMPTY_FILES,
 }: UseFileValidationOptions = {}) {
     const [files, setFiles] = useState<File[]>(initialFiles);
     const [error, setError] = useState<string | null>(null);
