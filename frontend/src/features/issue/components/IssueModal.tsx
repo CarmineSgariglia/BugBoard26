@@ -115,7 +115,7 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
     return titleChanged || descChanged || categoryChanged || priorityChanged || statusChanged || tagsChanged || filesChanged;
   }, [mode, initialData, title, description, category, priority, status, tags, files]);
 
-  const isFormValid = title.trim().length >= 3 && description.trim().length >= 5;
+  const isFormValid = title.trim().length >= 3 && (mode === "edit" || description.trim().length >= 5);
 
   const submitMutation = useMutation<SubmitResult>({
     mutationFn: async () => {
@@ -236,14 +236,16 @@ export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialDat
             </div>
           </div>
 
-          <DescriptionFieldWithLenght
-            label="Description"
-            description={description}
-            onChangeDescription={setDescription}
-            placeholder="Provide more details about the issue..."
-            maxLength={1000}
-          />
-
+          {mode === "create" && (
+            <DescriptionFieldWithLenght
+              label="Description"
+              description={description}
+              onChangeDescription={setDescription}
+              placeholder="Provide more details about the issue..."
+              maxLength={1000}
+              textareaClassName="!min-h-[80px]"
+            />
+          )}
           {mode === "create" && <FileAttachment onFilesChange={setFiles} />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
