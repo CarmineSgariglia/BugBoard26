@@ -16,9 +16,9 @@ runtime:
           const email = bru.getEnvVar("email") || "";
           const status = res.getStatus();
           if (email.includes("admin")) {
-            expect([204, 404]).to.include(status);
+            expect(status).to.equal(204);
           } else {
-            expect([403, 404]).to.include(status);
+            expect(status).to.equal(403);
           }
         });
 

@@ -1,26 +1,17 @@
 info:
-  name: Create_noAuth
+  name: Update_no_auth
   type: http
   seq: 4
 
 http:
-  method: POST
-  url: "{{baseURL}}/projects"
+  method: PATCH
+  url: "{{baseURL}}/projects/{{project_id}}"
   body:
     type: multipart-form
     data:
       - name: name
         type: text
-        value: no auth project
-      - name: description
-        type: text
-        value: unauthenticated create attempt
-      - name: color
-        type: text
-        value: "#3dff81"
-      - name: icon
-        type: text
-        value: connectdevelop
+        value: Should not update
   auth: inherit
 
 runtime:
@@ -30,7 +21,7 @@ runtime:
         req.setHeader("Authorization", "");
     - type: tests
       code: |-
-        test("Create without auth is rejected", function () {
+        test("Update without auth is rejected", function () {
           expect([401, 403]).to.include(res.getStatus());
         });
 

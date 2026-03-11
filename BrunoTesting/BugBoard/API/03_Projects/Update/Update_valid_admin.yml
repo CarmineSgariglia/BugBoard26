@@ -16,6 +16,9 @@ http:
 
 runtime:
   scripts:
+    - type: before-request
+      code: |-
+        bru.setVar("request_ts", Date.now());
     - type: tests
       code: |-
         test("Update is role-aware", function () {
@@ -24,7 +27,7 @@ runtime:
           if (email.includes("admin")) {
             expect(status).to.equal(200);
           } else {
-            expect([403, 404]).to.include(status);
+            expect(status).to.equal(403);
           }
         });
 
@@ -32,7 +35,7 @@ runtime:
           const email = bru.getEnvVar("email") || "";
           if (email.includes("admin")) {
             const body = res.getBody();
-            expect(body.name).to.equal("Updated Project request_ts");
+            expect(body.name).to.equal(`Updated Project${bru.getVar("request_ts")}`);
           }
         });
 

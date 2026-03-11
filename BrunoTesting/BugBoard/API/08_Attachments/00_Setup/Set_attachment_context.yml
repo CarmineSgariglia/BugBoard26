@@ -13,18 +13,26 @@ runtime:
     - type: after-response
       code: |-
         const body = res.getBody();
-        let attachmentId = bru.getEnvVar("invalid_id") || "999999";
-
         if (Array.isArray(body) && body.length > 0 && body[0].attachmentId) {
-          attachmentId = String(body[0].attachmentId);
+          const attachmentId = String(body[0].attachmentId);
+          bru.setVar("attachment_id", attachmentId);
+          bru.setEnvVar("attachment_id", attachmentId);
         }
-
-        bru.setVar("attachment_id", attachmentId);
-        bru.setEnvVar("attachment_id", attachmentId);
     - type: tests
       code: |-
         test("Attachment setup status", function () {
-          expect([200, 403, 404]).to.include(res.getStatus());
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Attachment setup response is array", function () {
+          expect(res.getBody()).to.be.an("array");
+        });
+
+        test("Attachment setup resolved a valid attachment id", function () {
+          const attachmentId = bru.getEnvVar("attachment_id");
+          expect(attachmentId).to.be.a("string");
+          expect(attachmentId).to.not.equal("");
+          expect(attachmentId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
         });
 
 settings:

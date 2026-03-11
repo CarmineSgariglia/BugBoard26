@@ -47,6 +47,35 @@ Esegui due run separati:
 1. `local_admin`
 2. `local_dev`
 
+### Bruno CLI locale
+
+Per il runner CLI, usa preferibilmente `--env-file` JSON esplicito invece di affidarti agli environment YAML della UI.
+
+Esempio minimale:
+
+```bash
+mkdir -p .tmp/bruno
+
+cat > .tmp/bruno/local_dev_ci.json <<'EOF'
+{
+  "name": "local_dev_ci",
+  "variables": [
+    { "name": "baseURL", "value": "http://127.0.0.1:8000/api", "enabled": true },
+    { "name": "email", "value": "dev@test.it", "enabled": true },
+    { "name": "password", "value": "StrongPass123!", "enabled": true },
+    { "name": "invalid_id", "value": "999999", "enabled": true },
+    { "name": "invalid_token", "value": "abc.def.ghi", "enabled": true },
+    { "name": "access_token", "value": "", "enabled": true }
+  ]
+}
+EOF
+
+cd BrunoTesting/BugBoard
+bru run 00_Setup/GetCSRF.yml 00_Setup/Login.yml --env-file ../../.tmp/bruno/local_dev_ci.json
+```
+
+Nota: in questo repository il login CLI e la suite safe sono stati verificati con `--env-file`; l’uso diretto di `--env local_dev` dipende dal runtime Bruno locale e non va considerato la modalità di riferimento per CI.
+
 ## CI/CD (GitHub Actions)
 
 Workflow consigliato:
@@ -58,6 +87,7 @@ Best practice per pipeline:
 
 - avvia backend + db in job prima dei test
 - esegui bootstrap dati iniziale per utenti/progetti/issue/notifiche
+- usa `--env-file` JSON generato nel job CI
 - pubblica report JUnit o HTML come artifact
 - fallisci il job su qualunque request fallita
 - non accettare `404` nei test nominali

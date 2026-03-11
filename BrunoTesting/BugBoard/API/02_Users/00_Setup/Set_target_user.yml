@@ -36,7 +36,18 @@ runtime:
           const targetId = bru.getEnvVar("target_user_id");
           expect(targetId).to.be.a("string");
           expect(targetId).to.not.equal("");
-          expect(targetId).to.not.equal(String(bru.getEnvVar("current_user_id") || ""));
+        });
+
+        test("Target user id is usable for current visibility scope", function () {
+          const targetId = String(bru.getEnvVar("target_user_id") || "");
+          const currentUserId = String(bru.getEnvVar("current_user_id") || "");
+          const body = res.getBody();
+
+          if (body?.count > 1) {
+            expect(targetId).to.not.equal(currentUserId);
+          } else {
+            expect(targetId).to.equal(currentUserId);
+          }
         });
 
 settings:
