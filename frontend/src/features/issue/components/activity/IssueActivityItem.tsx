@@ -1,6 +1,7 @@
 import { Avatar } from "@shared/ui/Avatar";
 import type { UiActivityItem } from "@features/issue/lib/formatIssueActivityEvent";
 import { TextWithLinks } from "@shared/ui/TextWithLinks";
+import { useAuth } from "@shared/providers/AuthContext";
 
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleString();
@@ -9,12 +10,22 @@ function formatDate(iso: string): string {
 type Props = { item: UiActivityItem };
 
 export function IssueActivityItem({ item }: Props) {
+    const { user } = useAuth();
+    const isMe = user?.userId === item.actorId;
+    
+    // Append (you) to the actor name if it's the current user's action
+    const displayTitle = isMe && item.isComment
+        ? `${item.actorName} (you)`
+        : isMe && !item.isComment
+            ? item.title.replace(item.actorName, `${item.actorName} (you)`)
+            : item.title;
+
     return (
         <div className="flex gap-3">
             <Avatar name={item.actorName} size="sm" />
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm text-white font-semibold">{item.title}</p>
+                    <p className="text-sm text-white font-semibold">{displayTitle}</p>
                     <span className="text-xs text-neutral-500">{formatDate(item.at)}</span>
                 </div>
 
