@@ -22,7 +22,7 @@ export function IssueActivityItem({ item }: Props) {
 
     return (
         <div className="flex gap-3">
-            <Avatar name={item.actorName} size="sm" />
+            <Avatar name={item.actorName} src={item.actorProfileImg} size="sm" />
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                     <p className="text-sm text-white font-semibold">{displayTitle}</p>
