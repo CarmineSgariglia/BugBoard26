@@ -752,6 +752,35 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             ).exists()
         )
 
+    def test_project_create_accepts_empty_team_array(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/projects",
+            {
+                "name": "Empty Team Project",
+                "description": "D",
+                "color": "#333333",
+                "icon": "folder",
+                "team": [],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        project_id = response.data["projectId"]
+
+        # Creator/admin membership must remain untouched.
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project_id=project_id,
+                user=self.admin,
+            ).exists()
+        )
+        self.assertFalse(
+            ProjectMembership.objects.filter(
+                project_id=project_id,
+                user=self.member,
+            ).exists()
+        )
     def test_members_endpoint_forbidden_for_non_member(self):
         self.client.force_authenticate(user=self.outsider)
         response = self.client.get(f"/api/projects/{self.project.project_id}/members")
@@ -792,6 +821,36 @@ class ProjectAndMembershipEndpointTests(APITestCase):
                 user=self.outsider,
             ).exists()
         )
+        self.assertFalse(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=self.member,
+            ).exists()
+        )
+        # Creator/admin membership must remain untouched.
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=self.admin,
+            ).exists()
+        )
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.PROJECT_UNASSIGNED,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_project_patch_team_accepts_empty_list_and_removes_all_developers(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/projects/{self.project.project_id}",
+            {"team": []},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
         self.assertFalse(
             ProjectMembership.objects.filter(
                 project=self.project,
@@ -1666,3 +1725,8 @@ class OtpCleanupCommandTests(APITestCase):
         self.assertFalse(RevokedTokenSession.objects.filter(sid=expired_session.sid).exists())
         self.assertTrue(RevokedTokenSession.objects.filter(sid=valid_session.sid).exists())
         self.assertIn("Deleted", output.getvalue())
+
+
+
+
+

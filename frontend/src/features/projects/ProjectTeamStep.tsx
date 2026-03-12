@@ -32,7 +32,7 @@ export function ProjectTeamStep({ selectedUserIds, onToggleUser, onBack, onConfi
             stepInfo={mode === "create" ? "STEP 2 OF 2" : undefined}
             footer={
                 <FooterActions
-                    isSaveEnabled={isViewMode ? false : selectedUserIds.length > 0}
+                    isSaveEnabled={!isViewMode}
                     onSave={isViewMode ? undefined : onConfirm}
                     isSaving={isSubmitting}
                     saveLabel={isViewMode ? undefined : mode === "create" ? "Create Project" : "Save Changes"}
