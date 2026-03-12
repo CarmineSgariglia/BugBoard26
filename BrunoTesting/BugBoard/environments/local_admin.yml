@@ -12,7 +12,7 @@ variables:
   - name: invalid_token
     value: abc.def.ghi
   - name: access_token
-    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzczMzE2MzkyLCJpYXQiOjE3NzMzMTU0OTIsImp0aSI6ImQwMzc4ZjdjM2UwZTRkMzNhYjY2MDQ4ZjE2ZjQ4YzQ0IiwidXNlcl9pZCI6IjEiLCJzaWQiOiI1MTA3M2FmZTNlMTA0MTY3YjkzY2RlNzZjY2Y3MDEyYSJ9.sqlSESEQsG784iF7wbUyUBNpYuuS4mshajTcllvOKUA
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzczMzM3NTAxLCJpYXQiOjE3NzMzMzY2MDEsImp0aSI6IjAzZDQ2ODNhZDVlYTRiNTRhZGRlMzc2YmE1YTFkZTAzIiwidXNlcl9pZCI6IjEiLCJzaWQiOiJjMTI0MWRkZDk4MWM0ZjFiYWJhMWM1ZjQzNzkwYjZhYSJ9.3hMZ9EfsDDtsQdPnja5gyIpuWrHdVgBSnfZfcMPib80
   - name: project_id
     value: "10"
   - name: issue_id

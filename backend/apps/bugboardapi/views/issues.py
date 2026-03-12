@@ -28,6 +28,7 @@ from ..serializers import (
     AttachmentSerializer,
     IssueEventSerializer,
     IssueSerializer,
+    ProjectMembershipSerializer,
 )
 from ..services import (
     apply_issue_filters,
@@ -210,26 +211,30 @@ class IssueViewSet(
     def suggestions(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        member_counts = (
-            User.objects.filter(project_memberships__project=issue.project, is_active=True)
+        memberships_qs = (
+            ProjectMembership.objects.filter(project=issue.project, user__is_active=True)
+            .select_related("user", "user__profile")
             .annotate(
                 open_count=Count(
-                    "issue_assignments",
-                    filter=Q(issue_assignments__issue__status__in=[IssueStatus.TODO, IssueStatus.IN_PROGRESS]),
+                    "user__issue_assignments",
+                    filter=Q(
+                        user__issue_assignments__issue__status__in=[
+                            IssueStatus.TODO,
+                            IssueStatus.IN_PROGRESS,
+                        ]
+                    ),
+                    distinct=True,
                 )
             )
-            .order_by("open_count", "username")
+            .order_by("open_count", "user__username")
         )
-        payload = [
-            {
-                "userId": user.id,
-                "username": user.username,
-                "suggestionScore": max(0, 100 - user.open_count * 10),
-                "openAssignments": user.open_count,
-            }
-            for user in member_counts
-            if not is_admin_user(user)
-        ]
+
+        # Suggestions must return only assignable users: active, project members, non-admin.
+        memberships = [membership for membership in memberships_qs if not is_admin_user(membership.user)]
+        payload = ProjectMembershipSerializer(memberships, many=True).data
+        open_count_by_user_id = {membership.user_id: membership.open_count for membership in memberships}
+        for item in payload:
+            item["openCount"] = open_count_by_user_id.get(item["userId"], 0)
         return Response(payload)
 
     @action(detail=True, methods=["patch"], url_path="details")
