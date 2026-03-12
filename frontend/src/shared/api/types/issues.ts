@@ -22,7 +22,8 @@ export type IssueSuggestion = {
   role?: string;
   profileImg?: string | null;
   suggestionScore?: number;
-  openAssignments: number;
+  openCount?: number;
+  openAssignments?: number;
 };
 
 export type Issue = {
