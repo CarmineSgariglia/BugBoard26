@@ -6,29 +6,50 @@ import axios from "axios";
  */
 export function getErrorMessage(error: unknown, fallback: string): string {
     if (!axios.isAxiosError(error)) return fallback;
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string" && detail.trim().length > 0) return detail;
+
+    const data = error.response?.data;
+    const keyPriority = [
+        "detail",
+        "non_field_errors",
+        "newPassword",
+        "currentPassword",
+        "password",
+        "email",
+        "username",
+    ] as const;
+
+    const readMessage = (value: unknown): string | null => {
+        if (typeof value === "string" && value.trim().length > 0) return value;
+
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                const nested = readMessage(item);
+                if (nested) return nested;
+            }
+            return null;
+        }
+
+        if (value && typeof value === "object") {
+            for (const nestedValue of Object.values(value as Record<string, unknown>)) {
+                const nested = readMessage(nestedValue);
+                if (nested) return nested;
+            }
+        }
+
+        return null;
+    };
+
+    if (data && typeof data === "object") {
+        const record = data as Record<string, unknown>;
+
+        for (const key of keyPriority) {
+            const message = readMessage(record[key]);
+            if (message) return message;
+        }
+
+        const firstFieldMessage = readMessage(record);
+        if (firstFieldMessage) return firstFieldMessage;
+    }
+
     return fallback;
 }
-
-
-/**
- Example of usage:
-
-
-try {
-  await resetPasswordApi(...);
-} catch (err) {
-  // "Impossibile resettare la password" è il tuo FALLBACK
-  const messaggio = getErrorMessage(err, "Impossibile resettare la password");
-  
-  showToast(messaggio);
-}
-
-Fallback is used when the error response does not contain a user-friendly error message.
-Axios is used to check if the error is inserted in the error object.
-
-If something unexpected happens and the function does not find the specific message,
-it returns the fallback you set with the `fallback` parameter.
-If detail is not empty, it returns the detail from the error object (backend response).
- */

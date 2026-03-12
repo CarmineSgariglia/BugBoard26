@@ -130,6 +130,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
     },
     onError: (err) => {
       console.error("Failed to save settings", err);
+      setPasswordError(getErrorMessage(err, "An error occurred while saving the profile."));
     },
     onSettled: async () => {
       await refreshUser();

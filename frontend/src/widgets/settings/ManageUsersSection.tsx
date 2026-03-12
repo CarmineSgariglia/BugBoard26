@@ -80,8 +80,7 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
           }}
           onUserUpdated={(updatedUser) => {
             updateLocalUser(updatedUser);
-            setEditingUser(null);
-            onEditingChange?.(false);
+            setEditingUser(updatedUser);
           }}
         />
       </div>

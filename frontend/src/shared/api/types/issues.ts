@@ -70,6 +70,7 @@ export type IssueUpdate = {
   issueId: number;
   actorId: number;
   actorUsername: string;
+  actorProfileImg?: string | null;
   eventType: string;
   at: string;
   message: string;

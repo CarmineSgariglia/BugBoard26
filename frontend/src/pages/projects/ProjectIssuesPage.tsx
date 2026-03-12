@@ -24,6 +24,7 @@ import { CATEGORIES, PRIORITIES, STATUSES } from "@shared/constants/issueConstan
 import { useAuth } from "@shared/providers/AuthContext";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 import { isAdminLike } from "@shared/lib";
+import { useFluidWheelContainer } from "@shared/hooks";
 import { Button } from "@shared/ui/Button";
 import { SearchBar } from "@shared/ui/SearchBar";
 import { Select } from "@shared/ui/Select";
@@ -37,6 +38,7 @@ export function ProjectIssuesPage() {
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
+  const issueListRef = useFluidWheelContainer<HTMLDivElement>(true);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -233,7 +235,7 @@ export function ProjectIssuesPage() {
         >
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white tracking-tight">Manage Issues</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight">{project ? `${project.name} - Manage Issues` : "Manage Issues"}</h2>
               <span className="text-xs font-medium text-neutral-500 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
                 {filteredIssues.length} {filteredIssues.length === 1 ? "Issue" : "Issues"}
               </span>
@@ -247,7 +249,7 @@ export function ProjectIssuesPage() {
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-4 max-h-[calc(100vh-270px)] overflow-y-auto pr-2 custom-scrollbar">
+            <div ref={issueListRef} className="flex flex-col gap-4 max-h-[calc(100vh-270px)] overflow-y-auto pr-2 custom-scrollbar smooth-scroll">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
@@ -317,5 +319,8 @@ export function ProjectIssuesPage() {
     </div>
   );
 }
+
+
+
 
 
