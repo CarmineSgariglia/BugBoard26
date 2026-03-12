@@ -1118,6 +1118,90 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertIn(self.member.id, suggested_user_ids)
         self.assertNotIn(self.admin.id, suggested_user_ids)
 
+    def test_suggestions_match_members_payload_plus_open_count(self):
+        self.client.force_authenticate(user=self.member)
+        members_response = self.client.get(f"/api/projects/{self.project.project_id}/members")
+        suggestions_response = self.client.get(f"/api/issues/{self.issue.issue_id}/suggestions")
+
+        self.assertEqual(members_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(suggestions_response.status_code, status.HTTP_200_OK)
+
+        member_by_user_id = {item["userId"]: item for item in members_response.data}
+        suggestion_by_user_id = {item["userId"]: item for item in suggestions_response.data}
+        self.assertIn(self.member.id, suggestion_by_user_id)
+
+        suggestion_item = suggestion_by_user_id[self.member.id]
+        members_item = member_by_user_id[self.member.id]
+
+        for key, value in members_item.items():
+            self.assertIn(key, suggestion_item)
+            self.assertEqual(suggestion_item[key], value)
+        self.assertIn("openCount", suggestion_item)
+        self.assertEqual(suggestion_item["openCount"], 1)
+
+    def test_suggestions_open_count_is_global_across_projects(self):
+        other_project = create_project_with_members(
+            created_by=self.admin,
+            name="Suggestions Global Count Project",
+            admin_members=[self.admin],
+            developer_members=[self.member],
+        )
+        other_issue = Issue.objects.create(
+            project=other_project,
+            reporter=self.admin,
+            title="Other project issue",
+            description="desc",
+            issue_type="BUG",
+            status=IssueStatus.TODO,
+            priority="MEDIUM",
+        )
+        IssueAssignee.objects.create(issue=other_issue, user=self.member)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/suggestions")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        suggestion_by_user_id = {item["userId"]: item for item in response.data}
+        self.assertEqual(suggestion_by_user_id[self.member.id]["openCount"], 2)
+
+    def test_suggestions_exclude_inactive_members(self):
+        inactive_member = create_user_with_profile(
+            username="issues_inactive_member",
+            email="issues_inactive_member@example.com",
+            password="StrongPass123!",
+        )
+        inactive_member.is_active = False
+        inactive_member.save(update_fields=["is_active"])
+        ProjectMembership.objects.create(project=self.project, user=inactive_member)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/suggestions")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        suggested_user_ids = {item["userId"] for item in response.data}
+        self.assertNotIn(inactive_member.id, suggested_user_ids)
+
+    def test_suggestions_ordered_by_open_count_then_username(self):
+        alpha_member = create_user_with_profile(
+            username="aaa_member",
+            email="aaa_member@example.com",
+            password="StrongPass123!",
+        )
+        beta_member = create_user_with_profile(
+            username="bbb_member",
+            email="bbb_member@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=alpha_member)
+        ProjectMembership.objects.create(project=self.project, user=beta_member)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/suggestions")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        usernames = [item["username"] for item in response.data]
+        open_counts = [item["openCount"] for item in response.data]
+        self.assertEqual(open_counts, sorted(open_counts))
+        self.assertLess(usernames.index("aaa_member"), usernames.index("bbb_member"))
+
     def test_issue_payload_excludes_admin_assignees(self):
         IssueAssignee.objects.get_or_create(issue=self.issue, user=self.admin)
         self.client.force_authenticate(user=self.member)
