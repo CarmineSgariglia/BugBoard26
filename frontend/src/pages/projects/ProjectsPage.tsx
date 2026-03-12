@@ -7,6 +7,7 @@ import { listProjectsApi } from "@shared/api/modules/projects";
 import type { Project } from "@shared/api/types/projects";
 import { resolveMediaUrl } from "@shared/api/core/media";
 import { getProjectIcon } from "@shared/constants/projectIcons";
+import { useFluidWheelWindow } from "@shared/hooks";
 import { useAuth } from "@shared/providers/AuthContext";
 import { SearchBar } from "@shared/ui/SearchBar";
 import { CreateProjectCard } from "@widgets/projects/CreateProjectCard";
@@ -21,6 +22,8 @@ export function ProjectsPage() {
   const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  useFluidWheelWindow(true);
 
   const {
     data: projects = [],
