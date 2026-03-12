@@ -1,8 +1,12 @@
-import { useEffect, useRef, type MutableRefObject } from "react";
+import { useEffect, useRef } from "react";
 
 const LINE_HEIGHT_PX = 16;
-const EASING = 0.16;
+const DEFAULT_EASING = 0.08;
 const MIN_DELTA = 0.1;
+
+export type FluidWheelOptions = {
+    easing?: number;
+};
 
 function prefersReducedMotion(): boolean {
     return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -18,35 +22,11 @@ function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
 }
 
-function animateScrollStep(
-    getCurrent: () => number,
-    setCurrent: (value: number) => void,
-    targetRef: MutableRefObject<number>,
-    rafRef: MutableRefObject<number | null>
-) {
-    if (rafRef.current !== null) return;
-
-    const step = () => {
-        const current = getCurrent();
-        const distance = targetRef.current - current;
-
-        if (Math.abs(distance) < 0.5) {
-            setCurrent(targetRef.current);
-            rafRef.current = null;
-            return;
-        }
-
-        setCurrent(current + distance * EASING);
-        rafRef.current = window.requestAnimationFrame(step);
-    };
-
-    rafRef.current = window.requestAnimationFrame(step);
-}
-
-export function useFluidWheelContainer<T extends HTMLElement>(enabled = true) {
+export function useFluidWheelContainer<T extends HTMLElement>(enabled = true, options: FluidWheelOptions = {}) {
     const ref = useRef<T | null>(null);
     const targetRef = useRef(0);
     const rafRef = useRef<number | null>(null);
+    const easing = options.easing ?? DEFAULT_EASING;
 
     useEffect(() => {
         const element = ref.current;
@@ -67,17 +47,25 @@ export function useFluidWheelContainer<T extends HTMLElement>(enabled = true) {
             if (scrollingUpAtTop || scrollingDownAtBottom) return;
 
             event.preventDefault();
-
             targetRef.current = clamp(targetRef.current + deltaY, 0, maxScrollTop);
 
-            animateScrollStep(
-                () => element.scrollTop,
-                (value) => {
-                    element.scrollTop = value;
-                },
-                targetRef,
-                rafRef
-            );
+            if (rafRef.current !== null) return;
+
+            const step = () => {
+                const current = element.scrollTop;
+                const distance = targetRef.current - current;
+
+                if (Math.abs(distance) < 0.5) {
+                    element.scrollTop = targetRef.current;
+                    rafRef.current = null;
+                    return;
+                }
+
+                element.scrollTop = current + distance * easing;
+                rafRef.current = window.requestAnimationFrame(step);
+            };
+
+            rafRef.current = window.requestAnimationFrame(step);
         };
 
         element.addEventListener("wheel", onWheel, { passive: false });
@@ -89,7 +77,7 @@ export function useFluidWheelContainer<T extends HTMLElement>(enabled = true) {
                 rafRef.current = null;
             }
         };
-    }, [enabled]);
+    }, [enabled, easing]);
 
     return ref;
 }
@@ -119,14 +107,23 @@ export function useFluidWheelWindow(enabled = true) {
 
             targetRef.current = clamp(targetRef.current + deltaY, 0, maxScrollTop);
 
-            animateScrollStep(
-                () => window.scrollY,
-                (value) => {
-                    window.scrollTo({ top: value, left: 0, behavior: "auto" });
-                },
-                targetRef,
-                rafRef
-            );
+            if (rafRef.current !== null) return;
+
+            const step = () => {
+                const current = window.scrollY;
+                const distance = targetRef.current - current;
+
+                if (Math.abs(distance) < 0.5) {
+                    window.scrollTo({ top: targetRef.current, left: 0, behavior: "auto" });
+                    rafRef.current = null;
+                    return;
+                }
+
+                window.scrollTo({ top: current + distance * DEFAULT_EASING, left: 0, behavior: "auto" });
+                rafRef.current = window.requestAnimationFrame(step);
+            };
+
+            rafRef.current = window.requestAnimationFrame(step);
         };
 
         window.addEventListener("wheel", onWheel, { passive: false });
@@ -140,4 +137,3 @@ export function useFluidWheelWindow(enabled = true) {
         };
     }, [enabled]);
 }
-

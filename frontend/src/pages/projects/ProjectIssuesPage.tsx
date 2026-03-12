@@ -38,7 +38,7 @@ export function ProjectIssuesPage() {
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
-  const issueListRef = useFluidWheelContainer<HTMLDivElement>(true);
+  const issueListRef = useFluidWheelContainer<HTMLDivElement>(true, { easing: 1 });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -319,6 +319,13 @@ export function ProjectIssuesPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 
