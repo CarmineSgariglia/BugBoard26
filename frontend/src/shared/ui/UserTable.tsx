@@ -13,6 +13,7 @@ export interface UserTableProps {
     showStatus?: boolean;
     showRole?: boolean;
     renderActions?: (user: AuthUser) => ReactNode;
+    renderProfileMeta?: (user: AuthUser) => ReactNode;
 }
 
 export function UserTable({
@@ -22,6 +23,7 @@ export function UserTable({
     showStatus = true,
     showRole = true,
     renderActions,
+    renderProfileMeta,
 }: UserTableProps) {
     if (isLoading) {
         return (
@@ -96,6 +98,7 @@ export function UserTable({
                                         <p className="whitespace-nowrap text-sm font-bold text-white">{displayName}</p>
                                         {displayUsername && <p className="whitespace-nowrap text-xs text-neutral-500">{displayUsername}</p>}
                                         <p className="whitespace-nowrap text-xs text-neutral-500 md:hidden">{user.email}</p>
+                                        {renderProfileMeta && <div className="mt-1">{renderProfileMeta(user)}</div>}
                                     </ScrollableCell>
                                 </div>
 

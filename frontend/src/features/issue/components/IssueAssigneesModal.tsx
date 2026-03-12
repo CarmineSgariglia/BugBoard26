@@ -5,11 +5,12 @@ import { RiCloseLine } from "react-icons/ri";
 import {
   assignIssueUsersApi,
   getIssueApi,
+  listIssueSuggestionsApi,
   unassignIssueUsersApi,
 } from "@shared/api/modules/issues";
 import { listProjectMembersApi } from "@shared/api/modules/projects";
 import type { AuthUser } from "@shared/api/types/auth";
-import type { Issue } from "@shared/api/types/issues";
+import type { Issue, IssueSuggestion } from "@shared/api/types/issues";
 import { isAdminLike } from "@shared/lib";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { UserSelectorTable } from "@shared/ui/UserSelectorTable";
@@ -37,11 +38,21 @@ export function IssueAssigneesModal({
 
   const {
     data: projectMembers = [],
-    isLoading,
+    isLoading: isMembersLoading,
     error: membersError,
   } = useQuery({
     queryKey: ["project", issue.projectId, "members"],
     queryFn: () => listProjectMembersApi(issue.projectId),
+    enabled: isOpen,
+    staleTime: 0,
+  });
+
+  const {
+    data: suggestions = [],
+    isLoading: isSuggestionsLoading,
+  } = useQuery<IssueSuggestion[]>({
+    queryKey: ["issue", issue.issueId, "suggestions"],
+    queryFn: () => listIssueSuggestionsApi(issue.issueId),
     enabled: isOpen,
     staleTime: 0,
   });
@@ -74,6 +85,18 @@ export function IssueAssigneesModal({
       }))
       .filter((m) => !m.isAdmin);
   }, [projectMembers]);
+
+  const suggestedMetaByUserId = useMemo(() => {
+    const map: Record<number, { openAssignments: number; suggestionScore?: number; rank: number }> = {};
+    suggestions.forEach((suggestion, index) => {
+      map[suggestion.userId] = {
+        openAssignments: suggestion.openAssignments ?? 0,
+        suggestionScore: suggestion.suggestionScore,
+        rank: index,
+      };
+    });
+    return map;
+  }, [suggestions]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -114,6 +137,7 @@ export function IssueAssigneesModal({
     await saveMutation.mutateAsync();
   };
 
+  const isLoading = isMembersLoading || isSuggestionsLoading;
   const uiError = error || (membersError ? "Failed to load project members." : "");
 
   if (!isOpen) return null;
@@ -147,6 +171,8 @@ export function IssueAssigneesModal({
           search={search}
           onSearchChange={setSearch}
           isViewMode={readOnly}
+          enableSuggestedFilter
+          suggestedMetaByUserId={suggestedMetaByUserId}
         />
       </ProjectFormLayout>
     </ModalOverlay>

@@ -7,6 +7,13 @@ import { FiPlus, FiX } from "react-icons/fi";
 import { ScrollComponent } from "./ScrollComponent";
 import type { AuthUser } from "../api/types/auth";
 import { isAdminLike } from "../lib";
+import { Tag } from "./Tag";
+
+type SuggestedMeta = {
+    openAssignments: number;
+    suggestionScore?: number;
+    rank: number;
+};
 
 interface UserSelectorTableProps {
     users: AuthUser[];
@@ -21,6 +28,8 @@ interface UserSelectorTableProps {
     search?: string;
     onSearchChange?: (val: string) => void;
     onMembershipFilterChange?: (filter: string) => void;
+    suggestedMetaByUserId?: Record<number, SuggestedMeta>;
+    enableSuggestedFilter?: boolean;
 }
 
 export function UserSelectorTable({
@@ -35,7 +44,9 @@ export function UserSelectorTable({
     onPageChange,
     search = "",
     onSearchChange,
-    onMembershipFilterChange
+    onMembershipFilterChange,
+    suggestedMetaByUserId = {},
+    enableSuggestedFilter = false,
 }: UserSelectorTableProps) {
     const [membershipFilter, setMembershipFilter] = useState<string>(isViewMode ? "Added" : "All");
 
@@ -45,7 +56,7 @@ export function UserSelectorTable({
     };
 
     const filteredUsers = useMemo(() => {
-        return users.filter(user => {
+        const baseUsers = users.filter(user => {
             if (isAdminLike(user)) return false;
 
             const searchLower = search.trim().toLowerCase();
@@ -62,7 +73,40 @@ export function UserSelectorTable({
 
             return true;
         });
-    }, [users, membershipFilter, selectedUserIds, search]);
+
+        if (membershipFilter !== "Suggested") return baseUsers;
+
+        return [...baseUsers].sort((a, b) => {
+            const aMeta = suggestedMetaByUserId[a.userId];
+            const bMeta = suggestedMetaByUserId[b.userId];
+            const aHasScore = typeof aMeta?.suggestionScore === "number";
+            const bHasScore = typeof bMeta?.suggestionScore === "number";
+            if (aHasScore && bHasScore) {
+                const scoreDiff = (bMeta!.suggestionScore as number) - (aMeta!.suggestionScore as number);
+                if (scoreDiff !== 0) return scoreDiff;
+            } else if (aHasScore !== bHasScore) {
+                return aHasScore ? -1 : 1;
+            }
+
+            const openDiff = (aMeta?.openAssignments ?? Number.MAX_SAFE_INTEGER) - (bMeta?.openAssignments ?? Number.MAX_SAFE_INTEGER);
+            if (openDiff !== 0) return openDiff;
+
+            const rankDiff = (aMeta?.rank ?? Number.MAX_SAFE_INTEGER) - (bMeta?.rank ?? Number.MAX_SAFE_INTEGER);
+            if (rankDiff !== 0) return rankDiff;
+
+            return a.username.localeCompare(b.username);
+        });
+    }, [users, membershipFilter, selectedUserIds, search, suggestedMetaByUserId]);
+
+    const membershipOptions = useMemo(() => {
+        const options = [{ label: "All Members", value: "All" }];
+        if (enableSuggestedFilter) {
+            options.push({ label: "Suggested", value: "Suggested" });
+        }
+        options.push({ label: "Already Added", value: "Added" });
+        options.push({ label: "Not Added", value: "NotAdded" });
+        return options;
+    }, [enableSuggestedFilter]);
 
     return (
         <div className="flex flex-col gap-4 h-full">
@@ -84,11 +128,7 @@ export function UserSelectorTable({
                         value={membershipFilter}
                         onChange={(val) => handleMembershipFilterChange(val)}
                         className="w-48"
-                        options={[
-                            { label: "All Members", value: "All" },
-                            { label: "Already Added", value: "Added" },
-                            { label: "Not Added", value: "NotAdded" }
-                        ]}
+                        options={membershipOptions}
                     />
                 )}
 
@@ -107,6 +147,17 @@ export function UserSelectorTable({
                         error={error}
                         showStatus={false}
                         showRole={false}
+                        renderProfileMeta={membershipFilter === "Suggested" ? (user) => {
+                            const meta = suggestedMetaByUserId[user.userId];
+                            if (!meta) return null;
+                            return (
+                                <Tag
+                                    text={`Open issues: ${meta.openAssignments}`}
+                                    textColor="text-amber-300"
+                                    borderColor="border-amber-300/30"
+                                />
+                            );
+                        } : undefined}
                         renderActions={isViewMode ? undefined : (user) => {
                             const isSelected = selectedUserIds.includes(user.userId);
                             return (
