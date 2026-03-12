@@ -17,7 +17,7 @@ export function IssueActivityTimeline({ items }: Props) {
         <ScrollComponent
             hideBorder
             smooth
-            wheelOptions={{ easing: 1 }}
+            wheelOptions={{ tailDurationMs: 760, tailIntensity: 0.2, tailMaxPx: 90, idleMs: 100 }}
             maxHeight="max-h-none"
             className="h-full p-0"
         >
