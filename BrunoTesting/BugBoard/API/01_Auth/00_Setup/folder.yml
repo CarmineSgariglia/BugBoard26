@@ -1,7 +1,0 @@
-info:
-  name: 00_Setup
-  type: folder
-  seq: 1
-
-request:
-  auth: inherit
