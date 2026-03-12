@@ -77,6 +77,17 @@ export function IssueDetailsSidebar({
         </div>
       </SidebarCard.Section>
 
+      <SidebarMembersSection
+        title="Assigned To"
+        members={assignees || issue.assignees}
+        isAdmin={isAdmin}
+        onActionClick={onManageMembersClick}
+        max={5}
+        adminLabel="Manage members"
+        userLabel="View members"
+        emptyText="No one assigned"
+      />
+
       <SidebarCard.Section title="Tags">
         <div className="flex flex-wrap gap-2">
           {issue.tags && issue.tags.length > 0 ? (
@@ -94,17 +105,6 @@ export function IssueDetailsSidebar({
           )}
         </div>
       </SidebarCard.Section>
-
-      <SidebarMembersSection
-        title="Assigned To"
-        members={assignees || issue.assignees}
-        isAdmin={isAdmin}
-        onActionClick={onManageMembersClick}
-        max={5}
-        adminLabel="Manage members"
-        userLabel="View members"
-        emptyText="No one assigned"
-      />
 
       <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
         {(isAssigned || isAdmin) && (

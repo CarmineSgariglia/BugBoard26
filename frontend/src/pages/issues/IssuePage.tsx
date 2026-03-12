@@ -89,7 +89,7 @@ export function IssuePage() {
         }
       >
         <div className="h-full">
-          <IssueActivityPanel issueId={safeIssue.issueId} currentUser={currentUser} canCompose={canCompose} className="h-full" />
+          <IssueActivityPanel issueId={safeIssue.issueId} issueTitle={safeIssue.title} currentUser={currentUser} canCompose={canCompose} className="h-full" />
         </div>
       </SidebarLayout>
 
@@ -119,3 +119,4 @@ export function IssuePage() {
     </div>
   );
 }
+

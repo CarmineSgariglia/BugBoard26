@@ -10,6 +10,7 @@ import { IssueActivityComposer } from "./IssueActivityComposer";
 
 type Props = {
     issueId: number;
+    issueTitle: string;
     currentUser: AuthUser | null;
     canCompose: boolean;
     className?: string;
@@ -57,7 +58,7 @@ function getSubmitErrorMessage(error: unknown): string {
     return "File non valido o non supportato.";
 }
 
-export function IssueActivityPanel({ issueId, currentUser, canCompose, className = "h-full" }: Props) {
+export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompose, className = "h-full" }: Props) {
     const qc = useQueryClient();
     const [scope, setScope] = useState<"ALL" | "YOURS">("ALL");
     const [sort, setSort] = useState<"NEWEST" | "OLDEST">("OLDEST");
@@ -118,7 +119,7 @@ export function IssueActivityPanel({ issueId, currentUser, canCompose, className
     return (
         <div className={`rounded-2xl border border-white/5 bg-[#121620]/20 flex flex-col overflow-hidden ${className}`}>
             <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
-                <h3 className="text-xl font-bold text-white">Activity</h3>
+                <h3 className="text-xl font-bold text-white">{`${issueTitle} - Activity`}</h3>
                 <IssueActivityFilters
                     scope={scope}
                     sort={sort}
@@ -155,3 +156,5 @@ export function IssueActivityPanel({ issueId, currentUser, canCompose, className
         </div>
     );
 }
+
+
