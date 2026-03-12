@@ -233,7 +233,7 @@ export function ProjectIssuesPage() {
         >
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white tracking-tight">Manage Issues</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight">{project ? `${project.name} - Manage Issues` : "Manage Issues"}</h2>
               <span className="text-xs font-medium text-neutral-500 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
                 {filteredIssues.length} {filteredIssues.length === 1 ? "Issue" : "Issues"}
               </span>

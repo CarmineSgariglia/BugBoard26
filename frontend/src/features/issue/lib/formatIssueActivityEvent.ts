@@ -6,6 +6,7 @@ export type UiActivityItem = {
     id: number;
     actorId: number;
     actorName: string;
+    actorProfileImg: string | null;
     at: string;
     eventType: string;
     title: string;
@@ -22,6 +23,7 @@ export function formatIssueActivityEvent(event: IssueUpdate): UiActivityItem {
             id: event.updateId,
             actorId: event.actorId,
             actorName: event.actorUsername,
+            actorProfileImg: event.actorProfileImg ?? null,
             at: event.at,
             eventType: type,
             title: event.actorUsername,
@@ -41,6 +43,7 @@ export function formatIssueActivityEvent(event: IssueUpdate): UiActivityItem {
         id: event.updateId,
         actorId: event.actorId,
         actorName: event.actorUsername,
+        actorProfileImg: event.actorProfileImg ?? null,
         at: event.at,
         eventType: type,
         title,
