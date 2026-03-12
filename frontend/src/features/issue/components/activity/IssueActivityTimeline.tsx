@@ -14,7 +14,13 @@ export function IssueActivityTimeline({ items }: Props) {
     }
 
     return (
-        <ScrollComponent hideBorder smooth maxHeight="max-h-none" className="h-full p-0">
+        <ScrollComponent
+            hideBorder
+            smooth
+            wheelOptions={{ easing: 1 }}
+            maxHeight="max-h-none"
+            className="h-full p-0"
+        >
             <div className="space-y-4 p-4">
                 {items.map((item) => (
                     <IssueActivityItem key={item.id} item={item} />
@@ -23,3 +29,10 @@ export function IssueActivityTimeline({ items }: Props) {
         </ScrollComponent>
     );
 }
+
+
+
+
+
+
+

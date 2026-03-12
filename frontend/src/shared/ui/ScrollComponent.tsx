@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { useFluidWheelContainer } from "@shared/hooks";
+import { useFluidWheelContainer, type FluidWheelOptions } from "@shared/hooks";
 
 interface ScrollComponentProps {
     children: ReactNode;
@@ -8,6 +8,7 @@ interface ScrollComponentProps {
     className?: string;
     hideBorder?: boolean;
     smooth?: boolean;
+    wheelOptions?: FluidWheelOptions;
 }
 
 export function ScrollComponent({
@@ -16,8 +17,9 @@ export function ScrollComponent({
     className = "",
     hideBorder = false,
     smooth = false,
+    wheelOptions,
 }: ScrollComponentProps) {
-    const scrollRef = useFluidWheelContainer<HTMLDivElement>(smooth);
+    const scrollRef = useFluidWheelContainer<HTMLDivElement>(smooth, wheelOptions);
 
     return (
         <div
