@@ -11,6 +11,20 @@ export type IssueAssignee = {
   profileImg?: string | null;
 };
 
+export type IssueSuggestion = {
+  projectMembershipId?: number;
+  projectId?: number;
+  userId: number;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+  profileImg?: string | null;
+  suggestionScore?: number;
+  openAssignments: number;
+};
+
 export type Issue = {
   issueId: number;
   projectId: number;

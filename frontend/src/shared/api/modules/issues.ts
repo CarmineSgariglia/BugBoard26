@@ -1,5 +1,5 @@
 import apiClient from "../core/client";
-import type { Issue, IssueUpdate, UpdateIssuePayload } from "../types/issues";
+import type { Issue, IssueSuggestion, IssueUpdate, UpdateIssuePayload } from "../types/issues";
 
 export async function updateIssueDetailsApi(
   issueId: number | string,
@@ -58,5 +58,10 @@ export async function assignIssueUsersApi(issueId: number | string, userIds: num
 
 export async function unassignIssueUsersApi(issueId: number | string, userIds: number[]): Promise<{ detail: string }> {
   const { data } = await apiClient.post<{ detail: string }>(`/issues/${issueId}/unassign`, { userIds });
+  return data;
+}
+
+export async function listIssueSuggestionsApi(issueId: number | string): Promise<IssueSuggestion[]> {
+  const { data } = await apiClient.get<IssueSuggestion[]>(`/issues/${issueId}/suggestions`);
   return data;
 }
