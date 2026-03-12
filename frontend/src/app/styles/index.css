@@ -18,15 +18,4 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
-
-  /* Opt-in smooth scrolling on specific containers/pages only. */
-  .smooth-scroll {
-    scroll-behavior: smooth;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .smooth-scroll {
-    scroll-behavior: auto;
-  }
 }
