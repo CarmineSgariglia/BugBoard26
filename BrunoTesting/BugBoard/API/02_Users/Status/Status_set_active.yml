@@ -5,13 +5,10 @@ info:
 
 http:
   method: POST
-  url: "{{baseURL}}/users/{{target_user_id}}/status"
+  url: "{{baseURL}}/users/3/status"
   body:
-    type: multipart-form
-    data:
-      - name: active
-        type: text
-        value: true
+    type: json
+    data: '{"active" : true}'
   auth: inherit
 
 runtime:

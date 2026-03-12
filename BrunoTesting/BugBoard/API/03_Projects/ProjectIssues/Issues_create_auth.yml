@@ -11,7 +11,7 @@ http:
     data:
       - name: title
         type: text
-        value: "Bruno issue {{request_ts}}"
+        value: Bruno issue {{request_ts}}
       - name: description
         type: text
         value: issue created by bruno
@@ -29,8 +29,14 @@ http:
 runtime:
   scripts:
     - type: before-request
+      code: bru.setVar("request_ts", Date.now());
+    - type: after-response
       code: |-
-        bru.setVar("request_ts", Date.now());
+        const body = res.getBody();
+        if (body?.issueId) {
+          bru.setVar("issue_id", body.issueId);
+          bru.setEnvVar("issue_id", String(body.issueId));
+        }
     - type: tests
       code: |-
         test("Issue create returns 201 for authorized member/admin", function () {

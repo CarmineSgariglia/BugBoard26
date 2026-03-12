@@ -7,10 +7,13 @@ variables:
     value: admin@admin.it
   - secret: true
     name: password
-    value: StrongPass123!
   - name: invalid_id
     value: "999999"
   - name: invalid_token
     value: abc.def.ghi
   - name: access_token
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzczMzE2MzkyLCJpYXQiOjE3NzMzMTU0OTIsImp0aSI6ImQwMzc4ZjdjM2UwZTRkMzNhYjY2MDQ4ZjE2ZjQ4YzQ0IiwidXNlcl9pZCI6IjEiLCJzaWQiOiI1MTA3M2FmZTNlMTA0MTY3YjkzY2RlNzZjY2Y3MDEyYSJ9.sqlSESEQsG784iF7wbUyUBNpYuuS4mshajTcllvOKUA
+  - name: project_id
+    value: "10"
+  - name: issue_id
     value: ""

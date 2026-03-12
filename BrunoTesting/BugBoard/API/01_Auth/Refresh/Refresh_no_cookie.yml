@@ -14,7 +14,7 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        req.setHeader("Cookie", "");
+        req.setHeader("cookie", "");
         req.setHeader("Authorization", "");
     - type: tests
       code: |-

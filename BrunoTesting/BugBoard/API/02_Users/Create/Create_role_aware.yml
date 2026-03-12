@@ -11,16 +11,16 @@ http:
     data:
       - name: username
         type: text
-        value: "bru_user_{{request_ts}}"
+        value: bru_user_{{request_ts}}
       - name: email
         type: text
-        value: "bru_user_{{request_ts}}@example.com"
+        value: bru_user_{{request_ts}}@example.com
       - name: password
         type: text
         value: StrongPass123!
       - name: group
         type: text
-        value: Developer
+        value: developer
   auth: inherit
 
 runtime:

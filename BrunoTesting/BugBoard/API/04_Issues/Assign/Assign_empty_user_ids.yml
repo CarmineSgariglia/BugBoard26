@@ -11,7 +11,7 @@ http:
     data:
       - name: userIds
         type: text
-        value: "[]"
+        value: ""
   auth: inherit
 
 runtime:

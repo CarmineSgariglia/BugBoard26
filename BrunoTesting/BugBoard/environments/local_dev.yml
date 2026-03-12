@@ -4,13 +4,12 @@ variables:
   - name: baseURL
     value: http://localhost:8000/api
   - name: email
-    value: dev@test.it
+    value: dev@bruno.it
   - secret: true
     name: password
-    value: StrongPass123!
   - name: invalid_id
     value: "999999"
   - name: invalid_token
     value: abc.def.ghi
   - name: access_token
-    value: ""
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzczMzE2NDUyLCJpYXQiOjE3NzMzMTU1NTIsImp0aSI6IjZhOTQyYzhiM2NiMTRmM2ZiNmUwYTcxZWY5ODNiNWRhIiwidXNlcl9pZCI6IjciLCJzaWQiOiJjNmViNGI1M2MwZWE0MTMwOTI0Zjc4NWM5OTFkNzk1MCJ9.9lK5tgc47zUMMnr3VVhPCfWTqyk3GDOfDRbeAFdFv9Y
