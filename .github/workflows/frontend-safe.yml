@@ -1,0 +1,89 @@
+name: Frontend Safe Suite
+
+on:
+  push:
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - "docker-compose.yml"
+      - "docker-compose.ci.yml"
+      - "env/**"
+      - "scripts/bootstrap_bruno_bugboard_ci.sh"
+      - ".github/workflows/frontend-safe.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - "docker-compose.yml"
+      - "docker-compose.ci.yml"
+      - "env/**"
+      - "scripts/bootstrap_bruno_bugboard_ci.sh"
+      - ".github/workflows/frontend-safe.yml"
+  workflow_dispatch:
+
+jobs:
+  frontend-safe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Create CI env file
+        run: cp env/bruno-safe.ci.env .env
+
+      - name: Start application stack
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db backend frontend
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml logs backend
+          exit 1
+
+      - name: Wait for frontend health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml logs frontend
+          exit 1
+
+      - name: Bootstrap frontend data
+        run: ./scripts/bootstrap_bruno_bugboard_ci.sh
+
+      - name: Run frontend build
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run build
+
+      - name: Run frontend unit and integration tests
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage
+
+      - name: Run frontend smoke E2E
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm playwright npm run test:e2e:smoke
+
+      - name: Upload frontend test artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-safe-artifacts
+          path: |
+            frontend/coverage
+            frontend/playwright-report
+            frontend/test-results
+
+      - name: Dump docker logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --no-color db backend frontend
+
+      - name: Stop stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v

@@ -1,0 +1,18 @@
+FROM node:20-bookworm AS base
+
+WORKDIR /workspace/frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend ./
+
+FROM base AS vitest
+
+CMD ["npm", "run", "test"]
+
+FROM base AS playwright
+
+RUN npx playwright install --with-deps chromium
+
+CMD ["npm", "run", "test:e2e:smoke"]
