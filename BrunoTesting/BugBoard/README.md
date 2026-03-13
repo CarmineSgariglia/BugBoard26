@@ -81,13 +81,16 @@ Nota: in questo repository il login CLI e la suite safe sono stati verificati co
 Workflow consigliato:
 
 - suite `safe`: `00_Setup`, `01_Auth/Me`, `02_Users/00_Setup`, `03_Projects/00_Setup`, `03_Projects/ProjectIssues/Issues_list_auth`, `04_Issues/00_Setup`, `05_Notifications/00_Setup`, `05_Notifications/List`
-- suite `mutating`: create/update/delete/read/status/assign/unassign, da eseguire separatamente o manualmente
+- suite `full`: superset della `safe` con test di validazione, read, create, update e delete; da eseguire solo manualmente
 
 Best practice per pipeline:
 
 - avvia backend + db in job prima dei test
+- se Bruno gira in container, usa l'hostname Docker `backend` invece di `127.0.0.1` per `baseURL`
 - esegui bootstrap dati iniziale per utenti/progetti/issue/notifiche
 - usa `--env-file` JSON generato nel job CI
+- esegui Bruno in un container dedicato Node 24 sulla stessa rete Docker dei servizi applicativi
+- mantieni la suite `safe` su `push` e `pull_request`, e la suite `full` solo su `workflow_dispatch`
 - pubblica report JUnit o HTML come artifact
 - fallisci il job su qualunque request fallita
 - non accettare `404` nei test nominali
