@@ -11,7 +11,7 @@ const featureImports = ['@features/*', '**/features/*']
 const widgetImports = ['@widgets/*', '**/widgets/*']
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'coverage', 'playwright-report', 'test-results']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -77,5 +77,22 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ['src/**/*.test.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        afterAll: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        beforeEach: 'readonly',
+        describe: 'readonly',
+        expect: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        vi: 'readonly',
+      },
+    },
+  },
 ])
-
