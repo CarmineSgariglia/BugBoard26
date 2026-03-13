@@ -89,8 +89,9 @@ export function IssueAssigneesModal({
   const suggestedMetaByUserId = useMemo(() => {
     const map: Record<number, { openAssignments: number; suggestionScore?: number; rank: number }> = {};
     suggestions.forEach((suggestion, index) => {
+      const openAssignments = suggestion.openAssignments ?? suggestion.openCount ?? 0;
       map[suggestion.userId] = {
-        openAssignments: suggestion.openAssignments ?? 0,
+        openAssignments,
         suggestionScore: suggestion.suggestionScore,
         rank: index,
       };

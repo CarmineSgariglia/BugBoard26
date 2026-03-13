@@ -26,7 +26,7 @@ export function ScrollComponent({
             ref={scrollRef}
             className={`
                 ${!hideBorder ? "border border-white/5 bg-[#121620]/50 rounded-xl" : ""} 
-                p-4 ${maxHeight} overflow-y-auto custom-scrollbar ${smooth ? "smooth-scroll" : ""} ${className}
+                p-4 ${maxHeight} overflow-y-auto custom-scrollbar ${className}
             `}
         >
             {children}

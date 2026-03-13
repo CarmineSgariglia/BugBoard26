@@ -38,7 +38,12 @@ export function ProjectIssuesPage() {
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
-  const issueListRef = useFluidWheelContainer<HTMLDivElement>(true, { easing: 1 });
+  const issueListRef = useFluidWheelContainer<HTMLDivElement>(true, {
+    tailDurationMs: 980,
+    tailIntensity: 0.34,
+    tailMaxPx: 140,
+    idleMs: 120,
+  });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -249,7 +254,7 @@ export function ProjectIssuesPage() {
               </div>
             ) : null}
 
-            <div ref={issueListRef} className="flex flex-col gap-4 max-h-[calc(100vh-270px)] overflow-y-auto pr-2 custom-scrollbar smooth-scroll">
+            <div ref={issueListRef} className="flex flex-col gap-4 max-h-[calc(100vh-270px)] overflow-y-auto pr-2 custom-scrollbar">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse border border-white/5" />

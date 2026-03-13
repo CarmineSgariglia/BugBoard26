@@ -1,0 +1,159 @@
+name: Bruno Full Suite
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bruno-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Create CI env file
+        run: cp env/bruno-safe.ci.env .env
+
+      - name: Start database and backend
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db backend
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml logs backend
+          exit 1
+
+      - name: Bootstrap Bruno data
+        run: ./scripts/bootstrap_bruno_bugboard_ci.sh
+
+      - name: Create Bruno CI environment
+        run: |
+          mkdir -p .tmp/bruno .tmp/bruno-reports
+          cat > .tmp/bruno/local_dev_ci.json <<'EOF'
+          {
+            "name": "local_dev_ci",
+            "variables": [
+              { "name": "baseURL", "value": "http://backend:8000/api", "enabled": true },
+              { "name": "email", "value": "dev@test.it", "enabled": true },
+              { "name": "password", "value": "StrongPass123!", "enabled": true },
+              { "name": "invalid_id", "value": "999999", "enabled": true },
+              { "name": "invalid_token", "value": "abc.def.ghi", "enabled": true },
+              { "name": "access_token", "value": "", "enabled": true }
+            ]
+          }
+          EOF
+
+      - name: Run Bruno full suite
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm bruno run \
+            00_Setup/Health.yml \
+            00_Setup/GetCSRF.yml \
+            00_Setup/Login.yml \
+            API/01_Auth/Login/Login_invalid_credentials.yml \
+            API/01_Auth/Login/Login_missing_fields.yml \
+            API/01_Auth/Login/Login_valid.yml \
+            API/01_Auth/Me/Me_auth.yml \
+            API/01_Auth/Me/Me_invalid_token.yml \
+            API/01_Auth/Me/Me_no_auth.yml \
+            API/01_Auth/Refresh/Refresh_valid.yml \
+            API/01_Auth/Refresh/Refresh_no_cookie.yml \
+            API/01_Auth/Logout/Logout_no_auth.yml \
+            API/01_Auth/Logout/Logout_auth.yml \
+            API/01_Auth/PasswordOTP/Otp_request_valid_email.yml \
+            API/01_Auth/PasswordOTP/Otp_verify_invalid_code.yml \
+            API/01_Auth/PasswordOTP/Password_reset_invalid_otp.yml \
+            API/02_Users/00_Setup/Set_target_user.yml \
+            API/02_Users/List/List_auth.yml \
+            API/02_Users/List/List_no_auth.yml \
+            API/02_Users/Get/Get_auth.yml \
+            API/02_Users/Get/Get_not_found.yml \
+            API/02_Users/Create/Create_invalid_password.yml \
+            API/02_Users/Create/Create_role_aware.yml \
+            API/02_Users/Update/Update_self.yml \
+            API/02_Users/Update/Update_other_forbidden_for_dev.yml \
+            API/02_Users/ChangePassword/Change_password_wrong_current.yml \
+            API/02_Users/ChangePassword/Change_password_weak.yml \
+            API/02_Users/Status/Status_set_active.yml \
+            API/03_Projects/00_Setup/Set_project_context.yml \
+            API/03_Projects/List/List_auth.yml \
+            API/03_Projects/List/List_no_auth.yml \
+            API/03_Projects/Get/Get_project.yml \
+            API/03_Projects/Get/Get_forbidden_user.yml \
+            API/03_Projects/Get/Get_no_auth.yml \
+            API/03_Projects/Get/Get_not_found.yml \
+            API/03_Projects/Members/Members_auth.yml \
+            API/03_Projects/Members/Members_no_auth.yml \
+            API/03_Projects/Members/Members_not_found.yml \
+            API/03_Projects/Create/Create_valid_admin.yml \
+            API/03_Projects/Create/Create_invalid_body.yml \
+            API/03_Projects/Create/Create_no_auth.yml \
+            API/03_Projects/Create/Create_forbidden_user.yml \
+            API/03_Projects/Update/Update_valid_admin.yml \
+            API/03_Projects/Update/Update_invalid_body.yml \
+            API/03_Projects/Update/Update_no_auth.yml \
+            API/03_Projects/Update/Update_forbidden_user.yml \
+            API/03_Projects/ProjectIssues/Issues_list_auth.yml \
+            API/03_Projects/ProjectIssues/Issues_list_no_auth.yml \
+            API/03_Projects/ProjectIssues/Issues_list_not_found.yml \
+            API/03_Projects/ProjectIssues/Issues_create_auth.yml \
+            API/03_Projects/ProjectIssues/Issues_create_invalid_body.yml \
+            API/03_Projects/ProjectIssues/Issues_create_no_auth.yml \
+            API/04_Issues/00_Setup/Set_issue_context.yml \
+            API/04_Issues/Get/Get_auth.yml \
+            API/04_Issues/Get/Get_no_auth.yml \
+            API/04_Issues/Updates/Updates_get.yml \
+            API/04_Issues/Updates/Updates_post_missing_message.yml \
+            API/04_Issues/Suggestions/Suggestions_get.yml \
+            API/04_Issues/Update/Update_details_invalid_status.yml \
+            API/04_Issues/Status/Status_invalid_value.yml \
+            API/04_Issues/Assign/Assign_empty_user_ids.yml \
+            API/04_Issues/Unassign/Unassign_empty_user_ids.yml \
+            API/05_Notifications/00_Setup/Set_notification_context.yml \
+            API/05_Notifications/List/List_auth.yml \
+            API/05_Notifications/List/List_no_auth.yml \
+            API/05_Notifications/Read/Read_valid.yml \
+            API/05_Notifications/Read/Read_no_auth.yml \
+            API/05_Notifications/Read/Read_not_found.yml \
+            API/05_Notifications/ReadAll/Read_all_auth.yml \
+            API/05_Notifications/ReadAll/Read_all_no_auth.yml \
+            API/05_Notifications/Delete/Delete_no_auth.yml \
+            API/05_Notifications/Delete/Delete_not_found.yml \
+            API/05_Notifications/Delete/Delete_valid.yml \
+            API/07_Tags/00_Setup/Set_tag_context.yml \
+            API/07_Tags/List/List_auth.yml \
+            API/07_Tags/Create/Create_invalid_blank_name.yml \
+            API/07_Tags/Create/Create_role_aware.yml \
+            API/07_Tags/Delete/Delete_role_aware.yml \
+            API/08_Attachments/00_Setup/Set_attachment_context.yml \
+            API/08_Attachments/List/List_auth.yml \
+            API/08_Attachments/Create/Create_missing_file.yml \
+            API/08_Attachments/Delete/Delete_role_aware.yml \
+            API/04_Issues/Delete/Delete_missing_title_confirmation.yml \
+            API/03_Projects/Delete/Delete_no_auth.yml \
+            API/03_Projects/Delete/Delete_not_found.yml \
+            API/03_Projects/Delete/Delete_forbidden_user.yml \
+            API/03_Projects/Delete/Delete_valid_admin.yml \
+            --env-file /workspace/.tmp/bruno/local_dev_ci.json \
+            --reporter-junit /workspace/.tmp/bruno-reports/bruno-full.junit.xml \
+            --reporter-html /workspace/.tmp/bruno-reports/bruno-full.html
+
+      - name: Upload Bruno reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: bruno-full-reports
+          path: .tmp/bruno-reports
+
+      - name: Dump docker logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --no-color db backend
+
+      - name: Stop stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
