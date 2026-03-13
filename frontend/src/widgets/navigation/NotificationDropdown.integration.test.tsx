@@ -1,13 +1,29 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { vi } from "vitest";
 
 import { renderWithProviders } from "../../test/render";
 import { server } from "../../test/mocks/server";
 import type { NotificationItem as NotificationApiItem } from "../../shared/api/types/notifications";
 import { NotificationDropdown } from "./NotificationDropdown";
 
+const navigateMock = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
+
 describe("NotificationDropdown", () => {
+  afterEach(() => {
+    navigateMock.mockReset();
+  });
+
   it("renders notifications and marks them as read on click", async () => {
     let readCalled = false;
     let notifications: NotificationApiItem[] = [
@@ -80,6 +96,102 @@ describe("NotificationDropdown", () => {
 
     await waitFor(() => {
       expect(screen.getByText("No notifications")).toBeInTheDocument();
+    });
+  });
+
+  it("navigates to the issue page by resolving the missing project id", async () => {
+    let notifications: NotificationApiItem[] = [
+      {
+        notifyUserId: 103,
+        notificationId: 12,
+        type: "ISSUE_UPDATED",
+        createdAt: "2026-03-13T12:00:00Z",
+        issueId: 77,
+        projectId: null,
+        isRead: false,
+        readAt: null,
+      },
+    ];
+
+    server.use(
+      http.get("/api/notifications", () => HttpResponse.json(notifications)),
+      http.post("/api/notifications/:notifyUserId/read", async () => {
+        notifications = notifications.map((notification) =>
+          notification.notifyUserId === 103
+            ? { ...notification, isRead: true, readAt: "2026-03-13T12:01:00Z" }
+            : notification,
+        );
+        return HttpResponse.json({ notifyUserId: 103, isRead: true });
+      }),
+      http.get("/api/issues/77", () =>
+        HttpResponse.json({
+          issueId: 77,
+          projectId: 9,
+          reporter: {
+            userId: 1,
+            username: "reporter",
+            email: "reporter@test.it",
+            role: "DEV",
+            firstName: "Test",
+            lastName: "Reporter",
+          },
+          title: "Broken issue",
+          description: "Needs fallback navigation",
+          type: "BUG",
+          status: "OPEN",
+          priority: "HIGH",
+          createdAt: "2026-03-13T12:00:00Z",
+          updatedAt: "2026-03-13T12:00:00Z",
+          closedAt: null,
+          tags: [],
+          assignees: [],
+        }),
+      ),
+    );
+
+    renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
+
+    await userEvent.click(await screen.findByText("ISSUE UPDATED"));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith("/projects/9/issues/77");
+    });
+  });
+
+  it("shows an error when issue navigation fallback cannot resolve a project", async () => {
+    let notifications: NotificationApiItem[] = [
+      {
+        notifyUserId: 104,
+        notificationId: 13,
+        type: "ISSUE_UPDATED",
+        createdAt: "2026-03-13T13:00:00Z",
+        issueId: 88,
+        projectId: null,
+        isRead: false,
+        readAt: null,
+      },
+    ];
+
+    server.use(
+      http.get("/api/notifications", () => HttpResponse.json(notifications)),
+      http.post("/api/notifications/:notifyUserId/read", async () => {
+        notifications = notifications.map((notification) =>
+          notification.notifyUserId === 104
+            ? { ...notification, isRead: true, readAt: "2026-03-13T13:01:00Z" }
+            : notification,
+        );
+        return HttpResponse.json({ notifyUserId: 104, isRead: true });
+      }),
+      http.get("/api/issues/88", () => new HttpResponse(null, { status: 404 })),
+    );
+
+    renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
+
+    await userEvent.click(await screen.findByText("ISSUE UPDATED"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Target non disponibile.")).toBeInTheDocument();
+      expect(navigateMock).not.toHaveBeenCalled();
     });
   });
 });

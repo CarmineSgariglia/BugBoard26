@@ -12,7 +12,7 @@ Containerized three-tier architecture:
 - `docker-compose.yml`: Orchestrates all tiers
 - `docker-compose.prod.yml`: Production overrides
 - `env/dev.example`: Local development environment template
-- `env/bruno-safe.ci.env`: Safe CI environment for Bruno workflow
+- `BrunoTesting/env/bruno-safe.ci.env`: Safe CI environment for Bruno and CI workflows
 - `env/production.example`: Production environment template
 
 ## Development
@@ -31,11 +31,11 @@ Notes:
 
 ## CI
 
-- The `Bruno Safe Suite` GitHub workflow generates `.env` from `env/bruno-safe.ci.env`.
-- `env/bruno-safe.ci.env` is intentionally minimal and uses only fake/local-safe values.
+- The CI workflows generate `.env` from `BrunoTesting/env/bruno-safe.ci.env`.
+- `BrunoTesting/env/bruno-safe.ci.env` is intentionally minimal and uses only fake/local-safe values.
 - Do not use the CI env file for local development or production.
 
-## Production (GCP VM)
+## Production
 
 - Use `env/production.example` as template for production secrets and security flags.
 - Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs` and `GS_BUCKET_NAME`.
@@ -49,8 +49,6 @@ Notes:
   - nginx serves the compiled files from `dist/`
   - sourcemaps are disabled
   - API and media requests go through the same origin (`/api`, `/media`)
-- Full runbook:
-  - `ops/gcp/PRODUCTION_RUNBOOK.md`
 
 ## API Endpoints
 

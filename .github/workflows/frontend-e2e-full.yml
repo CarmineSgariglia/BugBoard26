@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Create CI env file
-        run: cp env/bruno-safe.ci.env .env
+        run: cp BrunoTesting/env/bruno-safe.ci.env .env
 
       - name: Start application stack
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db backend frontend

@@ -113,6 +113,7 @@ if DEBUG:
         {
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "http://frontend:5173",
             "http://172.21.160.1:5173",
             "https://localhost",
             "https://127.0.0.1",
