@@ -6,6 +6,7 @@ on:
       - "BrunoTesting/**"
       - "backend/**"
       - "docker-compose.yml"
+      - "docker-compose.ci.yml"
       - "env/**"
       - "scripts/bootstrap_bruno_bugboard_ci.sh"
       - ".github/workflows/bruno-safe.yml"
@@ -14,6 +15,7 @@ on:
       - "BrunoTesting/**"
       - "backend/**"
       - "docker-compose.yml"
+      - "docker-compose.ci.yml"
       - "env/**"
       - "scripts/bootstrap_bruno_bugboard_ci.sh"
       - ".github/workflows/bruno-safe.yml"
@@ -26,13 +28,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create CI env file
         run: cp env/bruno-safe.ci.env .env
 
       - name: Start database and backend
-        run: docker compose up -d --build db backend
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db backend
 
       - name: Wait for backend health
         run: |
@@ -48,14 +50,6 @@ jobs:
       - name: Bootstrap Bruno data
         run: ./scripts/bootstrap_bruno_bugboard_ci.sh
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install Bruno CLI
-        run: npm install --global @usebruno/cli
-
       - name: Create Bruno CI environment
         run: |
           mkdir -p .tmp/bruno .tmp/bruno-reports
@@ -63,7 +57,7 @@ jobs:
           {
             "name": "local_dev_ci",
             "variables": [
-              { "name": "baseURL", "value": "http://127.0.0.1:8000/api", "enabled": true },
+              { "name": "baseURL", "value": "http://backend:8000/api", "enabled": true },
               { "name": "email", "value": "dev@test.it", "enabled": true },
               { "name": "password", "value": "StrongPass123!", "enabled": true },
               { "name": "invalid_id", "value": "999999", "enabled": true },
@@ -74,9 +68,8 @@ jobs:
           EOF
 
       - name: Run Bruno safe suite
-        working-directory: BrunoTesting/BugBoard
         run: |
-          bru run \
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm bruno run \
             00_Setup/GetCSRF.yml \
             00_Setup/Login.yml \
             API/01_Auth/Me/Me_auth.yml \
@@ -89,21 +82,21 @@ jobs:
             API/04_Issues/Suggestions/Suggestions_get.yml \
             API/05_Notifications/00_Setup/Set_notification_context.yml \
             API/05_Notifications/List/List_auth.yml \
-            --env-file ../../.tmp/bruno/local_dev_ci.json \
-            --reporter-junit ../../.tmp/bruno-reports/bruno-safe.junit.xml \
-            --reporter-html ../../.tmp/bruno-reports/bruno-safe.html
+            --env-file /workspace/.tmp/bruno/local_dev_ci.json \
+            --reporter-junit /workspace/.tmp/bruno-reports/bruno-safe.junit.xml \
+            --reporter-html /workspace/.tmp/bruno-reports/bruno-safe.html
 
       - name: Upload Bruno reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bruno-safe-reports
           path: .tmp/bruno-reports
 
       - name: Dump docker logs on failure
         if: failure()
-        run: docker compose logs --no-color db backend
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --no-color db backend
 
       - name: Stop stack
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
