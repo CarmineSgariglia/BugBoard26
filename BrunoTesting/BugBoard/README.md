@@ -54,9 +54,9 @@ Per il runner CLI, usa preferibilmente `--env-file` JSON esplicito invece di aff
 Esempio minimale:
 
 ```bash
-mkdir -p .tmp/bruno
+mkdir -p ../.tmp/bruno
 
-cat > .tmp/bruno/local_dev_ci.json <<'EOF'
+cat > ../.tmp/bruno/local_dev_ci.json <<'EOF'
 {
   "name": "local_dev_ci",
   "variables": [
@@ -71,7 +71,7 @@ cat > .tmp/bruno/local_dev_ci.json <<'EOF'
 EOF
 
 cd BrunoTesting/BugBoard
-bru run 00_Setup/GetCSRF.yml 00_Setup/Login.yml --env-file ../../.tmp/bruno/local_dev_ci.json
+bru run 00_Setup/GetCSRF.yml 00_Setup/Login.yml --env-file ../.tmp/bruno/local_dev_ci.json
 ```
 
 Nota: in questo repository il login CLI e la suite safe sono stati verificati con `--env-file`; l’uso diretto di `--env local_dev` dipende dal runtime Bruno locale e non va considerato la modalità di riferimento per CI.

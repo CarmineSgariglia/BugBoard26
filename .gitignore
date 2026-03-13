@@ -17,6 +17,7 @@ __pycache__/
 *.log
 backend_logs*.txt
 .tmp/
+BrunoTesting/.tmp/
 
 # Local-only script tweak
 scripts/dev_https_up.sh

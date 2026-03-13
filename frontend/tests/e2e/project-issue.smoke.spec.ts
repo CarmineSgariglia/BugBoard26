@@ -11,5 +11,5 @@ test("@smoke opens the seeded project and issue flow", async ({ page }) => {
 
   await page.getByText(/Bruno CI Issue/).click();
   await expect(page).toHaveURL(/\/projects\/\d+\/issues\/\d+$/);
-  await expect(page.getByText("Bruno CI Issue")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Bruno CI Issue - Activity/i })).toBeVisible();
 });

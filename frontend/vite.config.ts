@@ -16,6 +16,7 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
+    allowedHosts: ["frontend", "localhost", "127.0.0.1"],
     watch: {
       usePolling: true,
     },
@@ -31,4 +32,3 @@ export default defineConfig({
     },
   },
 });
-

@@ -142,7 +142,13 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             return `/projects/${item.projectId}/issues/${item.issueId}`;
         }
 
-        
+        try {
+            const issue = await getIssueApi(item.issueId);
+            if (issue.projectId == null) return null;
+            return `/projects/${issue.projectId}/issues/${item.issueId}`;
+        } catch {
+            return null;
+        }
     }
 
     const onNotificationClick = async (item: NotificationListItem) => {

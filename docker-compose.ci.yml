@@ -7,7 +7,7 @@ services:
     working_dir: /workspace/BrunoTesting/BugBoard
     volumes:
       - ./:/workspace:ro
-      - ./.tmp:/workspace/.tmp
+      - ./BrunoTesting/.tmp:/workspace/BrunoTesting/.tmp
     networks:
       - bugboard_net
 
