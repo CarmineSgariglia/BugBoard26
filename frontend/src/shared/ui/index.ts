@@ -1,5 +1,6 @@
 export * from "./Avatar";
 export * from "./AvatarGroup";
+export * from "./AttachmentUploadInfoPopover";
 export * from "./Button";
 export * from "./ConfirmModal";
 export * from "./DescriptionFieldWithLenght";
