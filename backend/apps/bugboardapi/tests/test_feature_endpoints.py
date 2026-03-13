@@ -15,6 +15,7 @@ from django.utils import timezone
 from rest_framework import status
 from django.test import override_settings
 from rest_framework.test import APITestCase
+from rest_framework.exceptions import ValidationError
 
 from apps.bugboardapi.models import (
     Attachment,
@@ -952,6 +953,14 @@ class IssueWorkflowEndpointTests(APITestCase):
                 issue=new_issue, event_type=EventType.CREATE
             ).exists()
         )
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_ADDED,
+                notification__issue=new_issue,
+                notification__project=self.project,
+            ).exists()
+        )
 
     def test_issue_create_auto_assigns_reporter(self):
         self.client.force_authenticate(user=self.member)
@@ -1224,6 +1233,55 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.issue.refresh_from_db()
         self.assertEqual(self.issue.status, IssueStatus.DONE)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_CLOSED,
+                notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_assign_creates_notification_with_project(self):
+        another_member = create_user_with_profile(
+            username="issues_member_two",
+            email="issues_member_two@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=another_member)
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/assign",
+            {"userIds": [another_member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=another_member,
+                notification__notify_type=NotifyType.ISSUE_ASSIGNED,
+                notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_unassign_creates_notification_with_project(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/unassign",
+            {"userIds": [self.member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.ISSUE_UNASSIGNED,
+                notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
 
     def test_status_update_rejects_message_longer_than_1000(self):
         self.client.force_authenticate(user=self.member)
@@ -1401,6 +1459,24 @@ class IssueWorkflowEndpointTests(APITestCase):
                 user=self.admin,
                 notification__notify_type=NotifyType.ISSUE_UPDATED,
                 notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_issue_comment_creates_notification_with_project(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/updates",
+            {"message": "new comment"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+                notification__project=self.project,
             ).exists()
         )
 
@@ -1723,6 +1799,57 @@ class NotificationTagMetaEndpointTests(APITestCase):
                 notification_id=single_notification.notification_id
             ).exists()
         )
+
+    def test_notify_users_sets_project_from_issue(self):
+        notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            issue=self.issue,
+        )
+        self.assertEqual(notification.issue, self.issue)
+        self.assertEqual(notification.project, self.project)
+
+    def test_notify_users_accepts_matching_issue_and_project(self):
+        notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            issue=self.issue,
+            project=self.project,
+        )
+        self.assertEqual(notification.issue, self.issue)
+        self.assertEqual(notification.project, self.project)
+
+    def test_notify_users_rejects_mismatched_issue_and_project(self):
+        other_project = create_project_with_members(
+            created_by=self.admin,
+            name="Other Project",
+            admin_members=[self.admin],
+        )
+        with self.assertRaises(ValidationError):
+            notify_users(
+                notify_type=NotifyType.ISSUE_UPDATED,
+                users=[self.member],
+                issue=self.issue,
+                project=other_project,
+            )
+
+    def test_notify_users_allows_project_only_notification(self):
+        notification = notify_users(
+            notify_type=NotifyType.PROJECT_ADDED,
+            users=[self.member],
+            project=self.project,
+        )
+        self.assertIsNone(notification.issue)
+        self.assertEqual(notification.project, self.project)
+
+    def test_issue_notification_payload_includes_project_id(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get("/api/notifications")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        issue_notification = next(
+            item for item in response.data if item["issueId"] == self.issue.issue_id
+        )
+        self.assertEqual(issue_notification["projectId"], self.project.project_id)
 
     def test_tags_create_and_delete_require_admin(self):
         self.client.force_authenticate(user=self.member)

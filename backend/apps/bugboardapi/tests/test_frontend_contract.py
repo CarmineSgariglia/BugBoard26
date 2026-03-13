@@ -92,6 +92,8 @@ class FrontendContractTests(APITestCase):
         self.assertGreaterEqual(len(response.data), 1)
         expected_keys = {"notifyUserId", "notificationId", "type", "createdAt", "issueId", "projectId", "isRead", "readAt"}
         self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
+        self.assertEqual(response.data[0]["issueId"], self.issue.issue_id)
+        self.assertEqual(response.data[0]["projectId"], self.project.project_id)
 
     def test_read_notification_contract(self):
         self.client.force_authenticate(user=self.member)
