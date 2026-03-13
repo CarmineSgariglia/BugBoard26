@@ -1349,7 +1349,11 @@ class IssueWorkflowEndpointTests(APITestCase):
             message="visible update",
         )
         Attachment.objects.create(
-            update=event, path="uploads/file.txt", mime_type="text/plain", size=12
+            update=event,
+            original_name="visible-file.txt",
+            path="uploads/file.txt",
+            mime_type="text/plain",
+            size=12,
         )
 
         self.client.force_authenticate(user=self.member)
@@ -1358,6 +1362,9 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertGreaterEqual(len(response.data), 1)
         self.assertIn("actorUsername", response.data[0])
         self.assertIn("attachments", response.data[0])
+        self.assertEqual(
+            response.data[0]["attachments"][0]["originalName"], "visible-file.txt"
+        )
 
     def test_issue_updates_list_forbidden_for_outsider(self):
         self.client.force_authenticate(user=self.outsider)
@@ -1422,6 +1429,8 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         attachment = Attachment.objects.get(update=event)
         self.assertTrue(attachment.path.startswith(f"issue-attachments/{self.issue.issue_id}/"))
+        self.assertEqual(attachment.original_name, "notes.txt")
+        self.assertEqual(response.data["originalName"], "notes.txt")
 
     def test_attachment_upload_rejects_json_path_payload(self):
         event = IssueEvent.objects.create(
@@ -1517,6 +1526,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
         attachment_id = create_response.data["attachmentId"]
+        self.assertEqual(create_response.data["originalName"], "manual.txt")
 
         list_response = self.client.get(
             f"/api/attachments?issueId={self.issue.issue_id}"
@@ -1524,6 +1534,13 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertTrue(
             any(item["attachmentId"] == attachment_id for item in list_response.data)
+        )
+        self.assertTrue(
+            any(
+                item["attachmentId"] == attachment_id
+                and item["originalName"] == "manual.txt"
+                for item in list_response.data
+            )
         )
 
         delete_response = self.client.delete(f"/api/attachments/{attachment_id}")
@@ -1560,6 +1577,8 @@ class IssueWorkflowEndpointTests(APITestCase):
                 )
                 self.assertTrue((Path(tmp_dir) / attachment.path).exists())
                 self.assertEqual(response.data["mimeType"], "text/plain")
+                self.assertEqual(response.data["originalName"], "notes.txt")
+                self.assertEqual(attachment.original_name, "notes.txt")
                 self.assertGreater(response.data["size"], 0)
                 self.assertTrue(response.data["url"].startswith("/media/"))
 
@@ -1604,6 +1623,8 @@ class IssueWorkflowEndpointTests(APITestCase):
                     attachment_id=response.data["attachmentId"]
                 )
                 self.assertEqual(response.data["mimeType"], "video/mp4")
+                self.assertEqual(response.data["originalName"], "demo.mp4")
+                self.assertEqual(attachment.original_name, "demo.mp4")
                 self.assertTrue(attachment.path.endswith(".mp4"))
                 self.assertTrue((Path(tmp_dir) / attachment.path).exists())
                 self.assertGreater(response.data["size"], 0)

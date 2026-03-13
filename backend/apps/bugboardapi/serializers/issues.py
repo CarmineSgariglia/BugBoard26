@@ -158,13 +158,14 @@ class IssueEventSerializer(serializers.ModelSerializer):
 class AttachmentSerializer(serializers.ModelSerializer):
     attachmentId = serializers.IntegerField(source="attachment_id", read_only=True)
     updateId = serializers.IntegerField(source="update.update_id", read_only=True)
+    originalName = serializers.CharField(source="original_name", read_only=True)
     mimeType = serializers.CharField(source="mime_type")
     uploadedAt = serializers.DateTimeField(source="uploaded_at", read_only=True)
     url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Attachment
-        fields = ["attachmentId", "updateId", "path", "url", "mimeType", "size", "uploadedAt"]
+        fields = ["attachmentId", "updateId", "originalName", "path", "url", "mimeType", "size", "uploadedAt"]
 
     def get_url(self, obj):
         return build_media_url(self, obj.path)

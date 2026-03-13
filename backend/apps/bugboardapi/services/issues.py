@@ -1,5 +1,5 @@
 import logging
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -82,6 +82,17 @@ def apply_issue_filters(queryset, request):
     return queryset.distinct()
 
 
+def build_attachment_display_name(raw_name: str, final_suffix: str) -> str:
+    normalized_name = PurePosixPath((raw_name or "").replace("\\", "/")).name
+    base_name = Path(normalized_name).stem.strip() if normalized_name else ""
+    safe_suffix = final_suffix if final_suffix.startswith(".") else f".{final_suffix}" if final_suffix else ""
+
+    if not base_name:
+        base_name = "attachment"
+
+    return f"{base_name}{safe_suffix}"
+
+
 def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
     content_type, size = validate_issue_attachment(
         uploaded_file,
@@ -94,7 +105,11 @@ def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
             uploaded_file=uploaded_file,
             storage_dir=f"{base_dir}/{issue_id}",
         )
-        return result.path, result.mime_type, result.size
+        original_name = build_attachment_display_name(
+            getattr(uploaded_file, "name", ""),
+            Path(result.path).suffix.lower() or ".mp4",
+        )
+        return result.path, result.mime_type, result.size, original_name
 
     suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
     saved = store_upload(
@@ -102,7 +117,11 @@ def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
         storage_dir=f"{base_dir}/{issue_id}",
         filename_suffix=suffix,
     )
-    return saved.path, content_type, size
+    original_name = build_attachment_display_name(
+        getattr(uploaded_file, "name", ""),
+        suffix or Path(saved.path).suffix.lower(),
+    )
+    return saved.path, content_type, size, original_name
 
 
 def create_attachment_for_event(event: IssueEvent, payload: dict):
@@ -120,12 +139,18 @@ def create_attachment_for_event(event: IssueEvent, payload: dict):
 
     attachments = []
     for uploaded_file in uploaded_files:
-        saved_path, mime_type, size = save_issue_uploaded_file(
+        saved_path, mime_type, size, original_name = save_issue_uploaded_file(
             uploaded_file=uploaded_file,
             issue_id=event.issue_id,
             base_dir="issue-attachments",
         )
-        att = Attachment.objects.create(update=event, path=saved_path, mime_type=mime_type, size=size)
+        att = Attachment.objects.create(
+            update=event,
+            original_name=original_name,
+            path=saved_path,
+            mime_type=mime_type,
+            size=size,
+        )
         attachments.append(att)
         
     return attachments

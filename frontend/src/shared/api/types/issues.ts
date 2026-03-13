@@ -46,6 +46,7 @@ export type Issue = {
 export type IssueAttachment = {
   attachmentId: number;
   updateId: number;
+  originalName?: string;
   path: string;
   url: string;
   mimeType: string;

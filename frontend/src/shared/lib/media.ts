@@ -22,6 +22,13 @@ export const ATTACHMENT_FILE_INPUT_ACCEPT = [
 
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const VIDEO_MIME_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+const TEXT_ATTACHMENT_MIME_TYPES = new Set([
+  "application/json",
+  "text/csv",
+  "text/markdown",
+  "text/plain",
+]);
+const TEXT_ATTACHMENT_EXTENSIONS = new Set([".csv", ".json", ".log", ".md", ".txt"]);
 const FILE_EXTENSION_TO_MIME: Record<string, string> = {
   ".csv": "text/csv",
   ".jpeg": "image/jpeg",
@@ -47,6 +54,16 @@ const NON_MEDIA_MIME_TYPES = new Set([
   "text/plain",
 ]);
 
+export type AttachmentPreviewKind = "image" | "video" | "pdf" | "text" | "file" | "unsupported";
+
+type AttachmentDescriptor = {
+  attachmentId?: number;
+  mimeType?: string | null;
+  originalName?: string | null;
+  path?: string | null;
+  url?: string | null;
+};
+
 let webpSupportPromise: Promise<boolean> | null = null;
 
 function getFileExtension(name: string): string {
@@ -54,12 +71,16 @@ function getFileExtension(name: string): string {
   return idx >= 0 ? name.slice(idx).toLowerCase() : "";
 }
 
-function getEffectiveMimeType(file: File): string {
-  const explicitType = file.type.trim().toLowerCase();
-  if (explicitType) {
-    return explicitType;
+function getEffectiveMimeTypeFromParts(mimeType?: string | null, nameOrPath?: string | null): string {
+  const normalizedMimeType = mimeType?.trim().toLowerCase();
+  if (normalizedMimeType) {
+    return normalizedMimeType;
   }
-  return FILE_EXTENSION_TO_MIME[getFileExtension(file.name)] ?? "";
+  return FILE_EXTENSION_TO_MIME[getFileExtension(nameOrPath ?? "")] ?? "";
+}
+
+function getEffectiveMimeType(file: File): string {
+  return getEffectiveMimeTypeFromParts(file.type, file.name);
 }
 
 function replaceExtension(name: string, extension: string): string {
@@ -283,6 +304,52 @@ export function formatBytes(bytes: number): string {
     return `${Math.round(bytes / KILOBYTE)} KB`;
   }
   return `${bytes} B`;
+}
+
+export function getAttachmentDisplayName(attachment: AttachmentDescriptor): string {
+  const preferredName = attachment.originalName?.trim();
+  if (preferredName) {
+    return preferredName;
+  }
+  const rawValue = attachment.path || attachment.url || "";
+  const normalized = rawValue.split("?")[0].replace(/\\/g, "/");
+  const lastSegment = normalized.split("/").filter(Boolean).pop();
+  return lastSegment || `File #${attachment.attachmentId ?? "unknown"}`;
+}
+
+export function getAttachmentPreviewKind(attachment: AttachmentDescriptor): AttachmentPreviewKind {
+  const effectiveMimeType = getEffectiveMimeTypeFromParts(
+    attachment.mimeType,
+    attachment.path || attachment.url || "",
+  );
+  const extension = getFileExtension(attachment.path || attachment.url || "");
+
+  if (IMAGE_MIME_TYPES.has(effectiveMimeType)) {
+    return "image";
+  }
+
+  if (VIDEO_MIME_TYPES.has(effectiveMimeType)) {
+    return "video";
+  }
+
+  if (effectiveMimeType === "application/pdf" || extension === ".pdf") {
+    return "pdf";
+  }
+
+  if (TEXT_ATTACHMENT_MIME_TYPES.has(effectiveMimeType) || TEXT_ATTACHMENT_EXTENSIONS.has(extension)) {
+    return "text";
+  }
+
+  if (effectiveMimeType || extension) {
+    return "file";
+  }
+
+  return "unsupported";
+}
+
+export function isAttachmentPreviewable(attachment: AttachmentDescriptor): boolean {
+  const previewKind = getAttachmentPreviewKind(attachment);
+  return previewKind === "image" || previewKind === "video" || previewKind === "pdf" || previewKind === "text";
 }
 
 export function getAttachmentKind(file: File): "image" | "video" | "file" | "unsupported" {
