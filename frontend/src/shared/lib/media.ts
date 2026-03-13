@@ -4,6 +4,7 @@ const MEGABYTE = 1024 * KILOBYTE;
 export const PROFILE_IMAGE_MAX_BYTES = 2 * MEGABYTE;
 export const ATTACHMENT_MAX_FILE_BYTES = 10 * MEGABYTE;
 export const ATTACHMENT_MAX_VIDEO_BYTES = 50 * MEGABYTE;
+export const ATTACHMENT_MAX_FILES = 10;
 export const ATTACHMENT_FILE_INPUT_ACCEPT = [
   "image/jpeg",
   "image/png",
@@ -19,6 +20,20 @@ export const ATTACHMENT_FILE_INPUT_ACCEPT = [
   ".pdf",
   ".zip",
 ].join(",");
+export const ATTACHMENT_INFO_SECTIONS = [
+  {
+    title: "Images",
+    items: ["JPG", "PNG", "WEBP"],
+  },
+  {
+    title: "Videos",
+    items: ["MP4", "WEBM", "MOV"],
+  },
+  {
+    title: "Files",
+    items: ["TXT", "LOG", "MD", "CSV", "JSON", "PDF", "ZIP"],
+  },
+] as const;
 
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const VIDEO_MIME_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);

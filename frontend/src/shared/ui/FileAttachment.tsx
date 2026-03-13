@@ -1,6 +1,7 @@
 import { FiUploadCloud, FiX, FiFile } from "react-icons/fi";
 import { useFileValidation } from "../hooks/useFileValidation";
 import { ATTACHMENT_FILE_INPUT_ACCEPT, formatBytes } from "../lib/media";
+import { AttachmentUploadInfoPopover } from "./AttachmentUploadInfoPopover";
 
 interface FileAttachmentProps {
     onFilesChange: (files: File[]) => void;
@@ -14,7 +15,10 @@ export function FileAttachment({ onFilesChange }: FileAttachmentProps) {
 
     return (
         <div className="flex flex-col gap-3">
-            <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">File Attachment (Max 10 files)</label>
+            <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-neutral-400 capitalize tracking-wide">File Attachment (Max 10 files)</label>
+                <AttachmentUploadInfoPopover />
+            </div>
 
             <div
                 onDragOver={(e) => e.preventDefault()}

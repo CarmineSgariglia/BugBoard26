@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { FiPaperclip, FiSend, FiX, FiAlertCircle } from "react-icons/fi";
 import { useFileValidation } from "@shared/hooks/useFileValidation";
-import { ATTACHMENT_FILE_INPUT_ACCEPT, formatBytes } from "@shared/lib/media";
+import { ATTACHMENT_FILE_INPUT_ACCEPT, ATTACHMENT_MAX_FILES, formatBytes } from "@shared/lib/media";
+import { AttachmentUploadInfoPopover } from "@shared/ui/AttachmentUploadInfoPopover";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLenght } from "@shared/ui/DescriptionFieldWithLenght";
 
@@ -26,7 +27,7 @@ export function IssueActivityComposer({
     const [showAllFiles, setShowAllFiles] = useState(false);
 
     const { error: fileError, isPreparingFiles, handleFiles, removeFile } = useFileValidation({
-        maxFiles: 10,
+        maxFiles: ATTACHMENT_MAX_FILES,
         initialFiles: files,
         onFilesChange: onFilesChange,
     });
@@ -66,14 +67,17 @@ export function IssueActivityComposer({
             )}
 
             <div className="mt-2 flex items-center gap-3">
-                <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-xs text-neutral-300 hover:text-white inline-flex items-center gap-1"
-                >
-                    <FiPaperclip size={14} />
-                    Add media/file (max 10)
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs text-neutral-300 hover:text-white inline-flex items-center gap-1"
+                    >
+                        <FiPaperclip size={14} />
+                        {`Add media/file (max ${ATTACHMENT_MAX_FILES})`}
+                    </button>
+                    <AttachmentUploadInfoPopover />
+                </div>
 
                 <input
                     ref={fileInputRef}
