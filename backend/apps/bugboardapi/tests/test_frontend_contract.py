@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.bugboardapi.models import Issue, IssueStatus, NotifyType, ProjectMembership, Tag
+from apps.bugboardapi.models import Attachment, EventType, Issue, IssueEvent, IssueStatus, NotifyType, ProjectMembership, Tag
 from apps.bugboardapi.services.notifications import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
@@ -102,6 +102,41 @@ class FrontendContractTests(APITestCase):
         read_response = self.client.post(f"/api/notifications/{notify_user_id}/read", {}, format="json")
         self.assertEqual(read_response.status_code, status.HTTP_200_OK)
         self.assertTrue(read_response.data["isRead"])
+
+    def test_issue_updates_attachment_payload_matches_frontend_contract(self):
+        event = IssueEvent.objects.create(
+            issue=self.issue,
+            actor=self.member,
+            event_type=EventType.COMMENT,
+            message="Attachment contract",
+        )
+        Attachment.objects.create(
+            update=event,
+            original_name="contract-file.txt",
+            path="uploads/abc123.txt",
+            mime_type="text/plain",
+            size=42,
+        )
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+        self.assertIn("attachments", response.data[0])
+        self.assertGreaterEqual(len(response.data[0]["attachments"]), 1)
+
+        expected_attachment_keys = {
+            "attachmentId",
+            "updateId",
+            "originalName",
+            "path",
+            "url",
+            "mimeType",
+            "size",
+            "uploadedAt",
+        }
+        self.assertTrue(expected_attachment_keys.issubset(set(response.data[0]["attachments"][0].keys())))
+        self.assertEqual(response.data[0]["attachments"][0]["originalName"], "contract-file.txt")
 
     def test_settings_update_and_change_password_contract(self):
         self.client.force_authenticate(user=self.member)

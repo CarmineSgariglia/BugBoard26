@@ -101,6 +101,7 @@ class IssueEvent(models.Model):
 class Attachment(models.Model):
     attachment_id = models.AutoField(primary_key=True, db_column="attachmentId")
     update = models.ForeignKey(IssueEvent, on_delete=models.CASCADE, db_column="updateId", related_name="attachments")
+    original_name = models.CharField(max_length=256, default="", db_column="originalName")
     path = models.CharField(max_length=256)
     mime_type = models.CharField(max_length=50, db_column="mimeType")
     size = models.IntegerField()
