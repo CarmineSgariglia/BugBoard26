@@ -152,9 +152,11 @@ export function UserSelectorTable({
                             if (!meta) return null;
                             return (
                                 <Tag
-                                    text={`Open issues: ${meta.openAssignments}`}
-                                    textColor="text-amber-300"
-                                    borderColor="border-amber-300/30"
+                                    text={`Issues active: ${meta.openAssignments}`}
+                                    className={`!text-[11px] !px-2 !py-0.5 ${meta.openAssignments <= 3 ? "text-emerald-400 border-emerald-400/30" :
+                                        meta.openAssignments <= 6 ? "text-amber-300 border-amber-300/30" :
+                                            "text-red-400 border-red-400/30"
+                                        }`}
                                 />
                             );
                         } : undefined}
