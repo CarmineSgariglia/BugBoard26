@@ -1,5 +1,6 @@
 import { FormField } from "./FormField";
 import { Textarea } from "./Textarea";
+import { useRef, useEffect } from "react";
 
 interface DescriptionFieldWithLenghtProps {
     description: string;
@@ -26,6 +27,19 @@ export function DescriptionFieldWithLenght({
 }: DescriptionFieldWithLenghtProps) {
     const max = maxLength || 256;
     const place = placeholder || "Insert your text...";
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustHeight = () => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = "auto";
+            textarea.style.height = `${textarea.scrollHeight + 2}px`;
+        }
+    };
+
+    useEffect(() => {
+        adjustHeight();
+    }, [description]);
 
     const helperNode = (
         <div className="flex justify-end w-full">
@@ -38,12 +52,14 @@ export function DescriptionFieldWithLenght({
     return (
         <FormField label={hideLabel ? undefined : label} className={containerClassName}>
             <Textarea
+                ref={textareaRef}
                 value={description}
                 onChange={(e) => onChangeDescription(e.target.value)}
                 maxLength={max}
                 placeholder={place}
                 aria-label={label}
-                className={`min-h-[120px] ${textareaClassName ?? ""}`.trim()}
+                rows={1}
+                className={`max-h-[120px] overflow-y-auto ${textareaClassName ?? ""}`.trim()}
             />
             {helperNode}
         </FormField>
