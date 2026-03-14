@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
@@ -22,6 +22,7 @@ vi.mock("react-router-dom", async () => {
 describe("NotificationDropdown", () => {
   afterEach(() => {
     navigateMock.mockReset();
+    vi.useRealTimers();
   });
 
   it("renders notifications and marks them as read on click", async () => {
@@ -54,9 +55,9 @@ describe("NotificationDropdown", () => {
 
     renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
-    expect(await screen.findByText("ISSUE UPDATED")).toBeInTheDocument();
+    expect(await screen.findByText("Issue updated")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("ISSUE UPDATED"));
+    await userEvent.click(screen.getByText("Issue updated"));
 
     await waitFor(() => {
       expect(readCalled).toBe(true);
@@ -90,7 +91,7 @@ describe("NotificationDropdown", () => {
 
     renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
-    expect(await screen.findByText("PROJECT ADDED")).toBeInTheDocument();
+    expect(await screen.findByText("Project added")).toBeInTheDocument();
 
     await userEvent.click(screen.getByTitle("Delete notification"));
 
@@ -151,7 +152,7 @@ describe("NotificationDropdown", () => {
 
     renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
-    await userEvent.click(await screen.findByText("ISSUE UPDATED"));
+    await userEvent.click(await screen.findByText("Issue updated"));
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith("/projects/9/issues/77");
@@ -187,11 +188,52 @@ describe("NotificationDropdown", () => {
 
     renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
-    await userEvent.click(await screen.findByText("ISSUE UPDATED"));
+    await userEvent.click(await screen.findByText("Issue updated"));
 
     await waitFor(() => {
       expect(screen.getByText("Target non disponibile.")).toBeInTheDocument();
       expect(navigateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it("updates the open dropdown when the shared notifications cache changes", async () => {
+    const initialNotifications: NotificationApiItem[] = [
+      {
+        notifyUserId: 105,
+        notificationId: 14,
+        type: "PROJECT_ADDED",
+        createdAt: "2026-03-13T14:00:00Z",
+        issueId: null,
+        projectId: 2,
+        isRead: true,
+        readAt: "2026-03-13T14:01:00Z",
+      },
+    ];
+
+    server.use(http.get("/api/notifications", () => HttpResponse.json(initialNotifications)));
+
+    const { queryClient } = renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
+
+    expect(await screen.findByText("Project added")).toBeInTheDocument();
+
+    act(() => {
+      queryClient.setQueryData<NotificationApiItem[]>(["notifications"], [
+        {
+          notifyUserId: 106,
+          notificationId: 15,
+          type: "ISSUE_UPDATED",
+          createdAt: "2026-03-13T14:05:00Z",
+          issueId: 44,
+          projectId: 2,
+          isRead: false,
+          readAt: null,
+        },
+        ...initialNotifications,
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Issue updated")).toBeInTheDocument();
     });
   });
 });

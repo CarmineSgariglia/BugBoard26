@@ -3,6 +3,8 @@ import { render, type RenderOptions } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 
+import { ToastProvider } from "@shared/providers";
+
 type Options = {
   route?: string;
 } & Omit<RenderOptions, "wrapper">;
@@ -24,7 +26,9 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <MemoryRouter initialEntries={[route]}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>{children}</ToastProvider>
+        </QueryClientProvider>
       </MemoryRouter>
     );
   }

@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-const apiBaseURL = import.meta.env.VITE_API_BASE_URL ?? "/api";
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
@@ -17,13 +17,13 @@ export function getAccessToken(): string | null {
 }
 
 const apiClient = axios.create({
-  baseURL: apiBaseURL,
+  baseURL: apiBaseUrl,
   timeout: 10000,
   withCredentials: true,
 });
 
 const refreshClient = axios.create({
-  baseURL: apiBaseURL,
+  baseURL: apiBaseUrl,
   timeout: 10000,
   withCredentials: true,
 });

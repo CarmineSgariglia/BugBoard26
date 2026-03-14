@@ -1,7 +1,6 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { HiOutlineCheckCircle } from "react-icons/hi";
 import { FiX } from "react-icons/fi";
-import { Button } from "../../shared/ui/Button";
 
 interface NotificationItemProps {
     title: string;
@@ -16,11 +15,21 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ title, description, time, imageUrl, icon, unread = false, onClick, onMarkRead, onDelete }: NotificationItemProps) {
+    const buttonLikeStyles = "flex items-center justify-center gap-2 font-medium transition-all duration-200 outline-none text-neutral-400 hover:text-white hover:bg-white/5 h-11 px-4 text-[14px] rounded-xl";
+    const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (!onClick) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onClick();
+    };
+
     return (
-        <Button
-            variant="glass"
-            className={`!px-3 !py-2 !items-start gap-3 w-full border ${unread ? "border-cyan-300/40 bg-cyan-500/5" : "border-transparent"} !h-auto !rounded-2xl group`}
+        <div
+            className={`${buttonLikeStyles} ${onClick ? "cursor-pointer" : ""} !px-3 !py-2 !items-start gap-3 w-full border ${unread ? "border-cyan-300/40 bg-cyan-500/5" : "border-transparent"} !h-auto !rounded-2xl group`}
             onClick={onClick}
+            onKeyDown={handleKeyDown}
+            role={onClick ? "button" : undefined}
+            tabIndex={onClick ? 0 : undefined}
         >
             {/* Avatar / Icon Placeholder */}
             <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden ${!imageUrl && icon ? "bg-white/5" : "bg-neutral-800"}`}>
@@ -71,6 +80,6 @@ export function NotificationItem({ title, description, time, imageUrl, icon, unr
                     )}
                 </div>
             </div>
-        </Button>
+        </div>
     );
 }

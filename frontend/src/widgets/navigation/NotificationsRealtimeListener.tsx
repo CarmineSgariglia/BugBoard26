@@ -1,0 +1,199 @@
+import { useEffect, useEffectEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { getAccessToken } from "@shared/api/core/client";
+import { refreshApi } from "@shared/api/modules/auth";
+import {
+  getNotificationsStreamUrl,
+  listNotificationsApi,
+} from "@shared/api/modules/notifications";
+import type { NotificationItem } from "@shared/api/types/notifications";
+import { getNotificationDescription, getNotificationTitle } from "@shared/lib/notifications";
+import {
+  createSseParser,
+  getLatestNotificationId,
+  upsertNotifications,
+} from "@shared/lib/notificationsRealtime";
+import { useAuth, useToast } from "@shared/providers";
+
+const STREAM_RETRY_DELAYS_MS = [1000, 2000, 5000, 10000, 20000];
+
+export function NotificationsRealtimeListener() {
+  const queryClient = useQueryClient();
+  const { user, refreshUser } = useAuth();
+  const { pushToast } = useToast();
+
+  useQuery({
+    queryKey: ["notifications"],
+    queryFn: listNotificationsApi,
+    enabled: Boolean(user),
+    staleTime: 30000,
+  });
+
+  const handleNotificationCreated = useEffectEvent((notification: NotificationItem) => {
+    queryClient.setQueryData<NotificationItem[]>(["notifications"], (current = []) =>
+      upsertNotifications(current, notification),
+    );
+
+    pushToast({
+      title: getNotificationTitle(notification.type),
+      description: getNotificationDescription(notification),
+    });
+  });
+
+  useEffect(() => {
+    if (!user) {
+      queryClient.removeQueries({ queryKey: ["notifications"] });
+      return;
+    }
+
+    let stopped = false;
+    let retryIndex = 0;
+    let reconnectTimer: number | null = null;
+    let abortController: AbortController | null = null;
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+    };
+
+    const resolveStreamToken = async (): Promise<string | null> => {
+      const currentToken = getAccessToken();
+      if (currentToken) {
+        return currentToken;
+      }
+
+      try {
+        return await refreshApi();
+      } catch {
+        await refreshUser();
+        return null;
+      }
+    };
+
+    const scheduleReconnect = (connect: () => Promise<void>) => {
+      if (stopped) {
+        return;
+      }
+
+      const delayIndex = Math.min(retryIndex, STREAM_RETRY_DELAYS_MS.length - 1);
+      const baseDelay = STREAM_RETRY_DELAYS_MS[delayIndex];
+      retryIndex = Math.min(retryIndex + 1, STREAM_RETRY_DELAYS_MS.length - 1);
+      const jitter = Math.floor(Math.random() * 250);
+      reconnectTimer = window.setTimeout(() => {
+        void connect();
+      }, baseDelay + jitter);
+    };
+
+    const connect = async (allowAuthRetry = true) => {
+      if (stopped) {
+        return;
+      }
+
+      clearReconnectTimer();
+
+      const token = await resolveStreamToken();
+      if (!token || stopped) {
+        return;
+      }
+
+      const latestNotificationId = getLatestNotificationId(
+        queryClient.getQueryData<NotificationItem[]>(["notifications"]) ?? [],
+      );
+
+      const headers = new Headers({
+        Authorization: `Bearer ${token}`,
+      });
+
+      if (latestNotificationId > 0) {
+        headers.set("Last-Event-ID", String(latestNotificationId));
+      }
+
+      abortController?.abort();
+      abortController = new AbortController();
+
+      let response: Response;
+
+      try {
+        response = await fetch(getNotificationsStreamUrl(), {
+          method: "GET",
+          headers,
+          cache: "no-store",
+          credentials: "include",
+          signal: abortController.signal,
+        });
+      } catch {
+        if (!stopped && !abortController.signal.aborted) {
+          scheduleReconnect(() => connect());
+        }
+        return;
+      }
+
+      if (response.status === 401 && allowAuthRetry) {
+        try {
+          await refreshApi();
+        } catch {
+          await refreshUser();
+          return;
+        }
+        await connect(false);
+        return;
+      }
+
+      if (!response.ok || !response.body) {
+        scheduleReconnect(() => connect());
+        return;
+      }
+
+      retryIndex = 0;
+
+      const parser = createSseParser((message) => {
+        if (message.event !== "notification.created") {
+          return;
+        }
+
+        try {
+          handleNotificationCreated(JSON.parse(message.data) as NotificationItem);
+        } catch (error) {
+          console.error("Failed to parse notification stream message", error);
+        }
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      try {
+        while (!stopped) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          if (value) {
+            parser(decoder.decode(value, { stream: true }));
+          }
+        }
+        parser(decoder.decode());
+      } catch {
+        if (stopped || abortController.signal.aborted) {
+          return;
+        }
+      }
+
+      if (!stopped && !abortController.signal.aborted) {
+        scheduleReconnect(() => connect());
+      }
+    };
+
+    void connect();
+
+    return () => {
+      stopped = true;
+      clearReconnectTimer();
+      abortController?.abort();
+    };
+  }, [queryClient, refreshUser, user]);
+
+  return null;
+}

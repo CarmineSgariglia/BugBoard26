@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -86,10 +87,50 @@ TIME_ZONE = "Europe/Rome"
 USE_I18N = True
 USE_TZ = True
 
+IS_TESTING = any(arg in {"test", "pytest"} for arg in sys.argv)
+
 STATIC_URL = "static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
+CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", REDIS_URL)
+NOTIFICATIONS_REDIS_URL = os.getenv("NOTIFICATIONS_REDIS_URL", REDIS_URL)
+
+cache_backend = os.getenv("CACHE_BACKEND", "locmem" if IS_TESTING else "redis").lower()
+if cache_backend not in {"locmem", "redis"}:
+    raise ImproperlyConfigured("CACHE_BACKEND must be one of: locmem, redis")
+
+if cache_backend == "redis":
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": CACHE_REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "bugboard-cache",
+        }
+    }
+
+NOTIFICATIONS_TRANSPORT_BACKEND = os.getenv(
+    "NOTIFICATIONS_TRANSPORT_BACKEND",
+    "memory" if IS_TESTING else "redis",
+).lower()
+if NOTIFICATIONS_TRANSPORT_BACKEND not in {"memory", "redis"}:
+    raise ImproperlyConfigured("NOTIFICATIONS_TRANSPORT_BACKEND must be one of: memory, redis")
+
+NOTIFICATIONS_CACHE_TIMEOUT_SECONDS = int(os.getenv("NOTIFICATIONS_CACHE_TIMEOUT_SECONDS", "3600"))
+NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS = float(
+    os.getenv("NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", "20")
+)
 
 def _csv_env(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]

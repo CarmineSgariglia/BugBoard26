@@ -1,4 +1,4 @@
-﻿import apiClient from "../core/client";
+﻿import apiClient, { apiBaseUrl } from "../core/client";
 import type { NotificationItem } from "../types/notifications";
 
 export async function listNotificationsApi(): Promise<NotificationItem[]> {
@@ -18,4 +18,8 @@ export async function readAllNotificationsApi(): Promise<{ updated: number }> {
 
 export async function deleteNotificationApi(notificationId: number): Promise<void> {
   await apiClient.delete(`/notifications/${notificationId}`);
+}
+
+export function getNotificationsStreamUrl(): string {
+  return `${apiBaseUrl}/notifications/stream`;
 }
