@@ -41,4 +41,5 @@ class NotifyUser(models.Model):
     class Meta:
         db_table = "NotifyUser"
         constraints = [models.UniqueConstraint(fields=["notification", "user"], name="unique_notification_user")]
+        indexes = [models.Index(fields=["user", "notify_user_id"], name="notifyuser_user_id_idx")]
         ordering = ["-notification__created_at"]

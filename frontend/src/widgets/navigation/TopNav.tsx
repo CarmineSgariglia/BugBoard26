@@ -1,5 +1,5 @@
-import { useEffect, useReducer, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useEffect, useReducer, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { IoIosNotificationsOutline } from "react-icons/io";
 
@@ -9,6 +9,8 @@ import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
 import { logoutApi } from "../../shared/api/modules/auth";
+import { listNotificationsApi } from "../../shared/api/modules/notifications";
+import type { NotificationItem } from "../../shared/api/types/notifications";
 import { useAuth } from "@shared/providers/AuthContext";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
 
@@ -62,11 +64,21 @@ export function TopNav() {
   const navigate = useNavigate();
   const { user: currentUser, refreshUser } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [hasNewNotifications, setHasNewNotifications] = useState(false);
+  const knownNotificationIdsRef = useRef<Set<number>>(new Set());
+  const notificationsInitializedRef = useRef(false);
 
   const [state, dispatch] = useReducer(navReducer, {
     isProfileOpen: false,
     isNotificationOpen: false,
     isLogoutModalOpen: false,
+  });
+
+  const { data: notifications = [] } = useQuery<NotificationItem[]>({
+    queryKey: ["notifications"],
+    queryFn: listNotificationsApi,
+    enabled: Boolean(currentUser),
+    staleTime: 30000,
   });
 
   const logoutMutation = useMutation({
@@ -91,8 +103,48 @@ export function TopNav() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (!currentUser) {
+      knownNotificationIdsRef.current = new Set();
+      notificationsInitializedRef.current = false;
+      setHasNewNotifications(false);
+      return;
+    }
+
+    const currentIds = notifications.map((notification) => notification.notifyUserId);
+
+    if (!notificationsInitializedRef.current) {
+      knownNotificationIdsRef.current = new Set(currentIds);
+      notificationsInitializedRef.current = true;
+      return;
+    }
+
+    const hasNewIds = currentIds.some((id) => !knownNotificationIdsRef.current.has(id));
+    knownNotificationIdsRef.current = new Set([...knownNotificationIdsRef.current, ...currentIds]);
+
+    if (state.isNotificationOpen) {
+      setHasNewNotifications(false);
+      return;
+    }
+
+    if (hasNewIds) {
+      setHasNewNotifications(true);
+    }
+  }, [currentUser, notifications, state.isNotificationOpen]);
+
   const confirmLogout = () => {
     logoutMutation.mutate();
+  };
+
+  const toggleNotifications = () => {
+    if (!state.isNotificationOpen) {
+      setHasNewNotifications(false);
+      knownNotificationIdsRef.current = new Set(
+        notifications.map((notification) => notification.notifyUserId),
+      );
+    }
+
+    dispatch({ type: "TOGGLE_NOTIFICATIONS" });
   };
 
   return (
@@ -109,8 +161,10 @@ export function TopNav() {
       <div className="flex items-center gap-6 relative">
         <div className="relative">
           <NavIconButton
+            aria-label="Notifications"
             icon={<IoIosNotificationsOutline size={24} />}
-            onClick={() => dispatch({ type: "TOGGLE_NOTIFICATIONS" })}
+            hasBadge={hasNewNotifications}
+            onClick={toggleNotifications}
           />
           <NotificationDropdown
             isOpen={state.isNotificationOpen}

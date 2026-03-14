@@ -10,7 +10,11 @@ import {
 } from "../../shared/api/modules/notifications";
 import { getIssueApi } from "../../shared/api/modules/issues";
 import type { NotificationItem as NotificationApiItem } from "../../shared/api/types/notifications";
-import { getNotificationIcon } from "../../shared/lib/notifications";
+import {
+    getNotificationDescription,
+    getNotificationIcon,
+    getNotificationTitle,
+} from "../../shared/lib/notifications";
 
 interface NotificationDropdownProps {
     isOpen: boolean;
@@ -35,7 +39,7 @@ type NotificationTargetKind = "issue" | "project" | "none";
 function getNotificationTargetKind(type: string): NotificationTargetKind {
     if (type.startsWith("ISSUE_")) return "issue";
     if (type === "PROJECT_ADDED") return "project";
-    if (type === "UNASSIGNED_PROJECT" || type === "PROJECT_REMOVED") return "none";
+    if (type === "PROJECT_UNASSIGNED" || type === "PROJECT_REMOVED") return "none";
     return "none";
 }
 
@@ -48,15 +52,12 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
     const {
         data: notifications = [],
         isLoading,
-        isFetching,
     } = useQuery({
         queryKey: ["notifications"],
         queryFn: listNotificationsApi,
         enabled: isOpen,
         staleTime: 0,
     });
-
-    const isRefreshing = isFetching && !isLoading;
 
     const readMutation = useMutation({
         mutationFn: (notifyUserId: number) => readNotificationApi(notifyUserId),
@@ -107,13 +108,8 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             issueId: notification.issueId ?? null,
             projectId: notification.projectId ?? null,
             targetKind: getNotificationTargetKind(notification.type),
-            title: notification.type.replaceAll("_", " "),
-            description:
-                notification.issueId != null
-                    ? `Issue #${notification.issueId}`
-                    : notification.projectId != null
-                        ? `Project #${notification.projectId}`
-                        : "System notification",
+            title: getNotificationTitle(notification.type),
+            description: getNotificationDescription(notification),
             time: new Date(notification.createdAt).toLocaleString(),
             isRead: notification.isRead,
         }));
@@ -200,7 +196,6 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                         }}
                     >
                         {isLoading ? <p className="px-2 py-2 text-xs text-neutral-400">Loading...</p> : null}
-                        {isRefreshing ? <p className="px-2 py-2 text-xs text-neutral-500">Refreshing...</p> : null}
                         {!isLoading && items.length === 0 ? (
                             <p className="px-2 py-2 text-xs text-neutral-400">No notifications</p>
                         ) : null}
