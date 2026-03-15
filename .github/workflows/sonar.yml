@@ -88,11 +88,27 @@ jobs:
 
       - name: Normalize backend coverage for SonarCloud
         run: |
-          cp backend/coverage/coverage.xml /tmp/coverage-sonar.xml
-          sed -i 's#<source>apps</source>#<source>backend/apps</source>#g' /tmp/coverage-sonar.xml
-          sed -i 's#<source>config</source>#<source>backend/config</source>#g' /tmp/coverage-sonar.xml
-          sed -i 's#<source>/app/apps</source>#<source>backend/apps</source>#g' /tmp/coverage-sonar.xml
-          sed -i 's#<source>/app/config</source>#<source>backend/config</source>#g' /tmp/coverage-sonar.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          tree = ET.parse("backend/coverage/coverage.xml")
+          root = tree.getroot()
+
+          sources = root.find("sources")
+          if sources is not None:
+              sources.clear()
+              source = ET.SubElement(sources, "source")
+              source.text = "."
+
+          for cls in root.findall(".//class"):
+              filename = cls.get("filename", "")
+              if filename.startswith("bugboardapi/"):
+                  cls.set("filename", f"backend/apps/{filename}")
+              elif filename:
+                  cls.set("filename", f"backend/config/{filename}")
+
+          tree.write("/tmp/coverage-sonar.xml", encoding="utf-8", xml_declaration=True)
+          PY
 
       - name: Normalize frontend coverage for SonarCloud
         run: |
