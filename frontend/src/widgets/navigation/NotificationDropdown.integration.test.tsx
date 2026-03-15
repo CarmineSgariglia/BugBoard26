@@ -236,4 +236,24 @@ describe("NotificationDropdown", () => {
       expect(screen.getByText("Issue updated")).toBeInTheDocument();
     });
   });
+
+  it("renders notifications inside a dedicated scroll container", async () => {
+    const notifications: NotificationApiItem[] = Array.from({ length: 8 }, (_, index) => ({
+      notifyUserId: 200 + index,
+      notificationId: 300 + index,
+      type: "ISSUE_UPDATED",
+      createdAt: `2026-03-13T14:${String(index).padStart(2, "0")}:00Z`,
+      issueId: 50 + index,
+      projectId: 2,
+      isRead: index % 2 === 0,
+      readAt: index % 2 === 0 ? "2026-03-13T14:30:00Z" : null,
+    }));
+
+    server.use(http.get("/api/notifications", () => HttpResponse.json(notifications)));
+
+    renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
+
+    expect(await screen.findByText("Issue updated")).toBeInTheDocument();
+    expect(screen.getByTestId("notification-scroll-container")).toBeInTheDocument();
+  });
 });
