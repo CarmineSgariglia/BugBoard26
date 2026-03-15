@@ -68,6 +68,7 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
     const [message, setMessage] = useState("");
     const [files, setFiles] = useState<File[]>([]);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [scrollToItemId, setScrollToItemId] = useState<number | null>(null);
 
     const { data: updates = [], isLoading } = useQuery({
         queryKey: ["issue", issueId, "updates"],
@@ -90,6 +91,7 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
         onSuccess: (newUpdate) => {
             setMessage("");
             setFiles([]);
+            setScrollToItemId(newUpdate.updateId);
 
             qc.setQueryData<IssueUpdate[]>(["issue", issueId, "updates"], (oldData = []) =>
                 upsertIssueUpdates(oldData, newUpdate)
@@ -134,7 +136,13 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
                 {isLoading ? (
                     <div className="h-full flex items-center justify-center text-neutral-500">Loading activity...</div>
                 ) : (
-                    <IssueActivityTimeline items={items} />
+                    <IssueActivityTimeline
+                        items={items}
+                        scrollToItemId={scrollToItemId}
+                        onScrollToItemDone={(itemId) => {
+                            setScrollToItemId((current) => (current === itemId ? null : current));
+                        }}
+                    />
                 )}
             </div>
 
