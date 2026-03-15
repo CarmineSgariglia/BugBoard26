@@ -34,6 +34,32 @@ Notes:
 - The CI workflows generate `.env` from `BrunoTesting/env/bruno-safe.ci.env`.
 - `BrunoTesting/env/bruno-safe.ci.env` is intentionally minimal and uses only fake/local-safe values.
 - Do not use the CI env file for local development or production.
+- Backend changes are gated by `.github/workflows/backend-safe.yml`, which runs the Django suite with coverage.
+
+## Backend Testing
+
+- Run the backend suite in the running backend container:
+  - `docker compose exec -T backend python manage.py test apps.bugboardapi.tests -v 2`
+  - `make backend-test`
+- Run backend coverage and generate terminal, XML, and HTML reports:
+  - `docker compose exec -T backend sh -lc 'mkdir -p coverage && coverage erase && coverage run manage.py test apps.bugboardapi.tests -v 2 && coverage report -m && coverage xml -o coverage/coverage.xml && coverage html -d coverage/htmlcov'`
+  - `make backend-coverage`
+- Coverage artifacts are written under `backend/coverage/`.
+- Native fallback for low-level inspection without extra tooling:
+  - `docker compose exec -T backend sh -lc 'python -m trace --count --missing --summary --coverdir=/tmp/backend-trace manage.py test apps.bugboardapi.tests'`
+  - Prefer `coverage.py` for CI and release gating; use `trace` only as a diagnostic fallback.
+
+## Frontend Testing
+
+- Run the frontend unit/integration suite in the CI test container:
+  - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test`
+  - `make frontend-test`
+- Run frontend coverage:
+  - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage`
+  - `make frontend-coverage`
+- Run frontend smoke E2E:
+  - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm playwright npm run test:e2e:smoke`
+- Frontend artifacts are written under `frontend/coverage/`, `frontend/playwright-report/`, and `frontend/test-results/`.
 
 ## Production
 

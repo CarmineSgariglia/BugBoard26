@@ -3,7 +3,7 @@ SHELL := /bin/sh
 COMPOSE := docker compose
 COMPOSE_PROXY := docker compose --profile proxy
 
-.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend otp-cleaner prod-up prod-down
+.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend otp-cleaner prod-up prod-down backend-test backend-coverage frontend-test frontend-coverage
 
 # Start just the backend service (also brings up database dependency)
 backend:
@@ -40,6 +40,22 @@ shell-backend:
 # Open a shell in the frontend container
 shell-frontend:
 	$(COMPOSE) exec frontend sh
+
+# Run backend Django tests inside the backend container
+backend-test:
+	$(COMPOSE) exec -T backend python manage.py test apps.bugboardapi.tests -v 2
+
+# Run backend Django tests with coverage reports (terminal, XML, HTML)
+backend-coverage:
+	$(COMPOSE) exec -T backend sh -lc 'mkdir -p coverage && coverage erase && coverage run manage.py test apps.bugboardapi.tests -v 2 && coverage report -m && coverage xml -o coverage/coverage.xml && coverage html -d coverage/htmlcov'
+
+# Run frontend Vitest suite inside the frontend test container
+frontend-test:
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test
+
+# Run frontend Vitest suite with coverage
+frontend-coverage:
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage
 
 # Run OTP cleanup every 10 minutes (or set OTP_CLEANUP_INTERVAL_SECONDS)
 otp-cleaner:

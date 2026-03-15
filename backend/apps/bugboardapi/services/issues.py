@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.db import transaction
+from django.db.models import Q
 from rest_framework.exceptions import ValidationError
 
 from ..issue_rules import validate_project_assignee_ids
@@ -220,6 +221,17 @@ def delete_media_path(path: str) -> None:
             default_storage.delete(path)
     except Exception:
         logger.warning("Failed to delete media file at path: %s", path)
+
+
+def issue_notification_recipients(*, issue, actor) -> list[User]:
+    return list(
+        User.objects.filter(
+            Q(issue_assignments__issue=issue) | Q(id=issue.reporter_id)
+        )
+        .filter(is_active=True)
+        .exclude(id=getattr(actor, "id", None))
+        .distinct()
+    )
 
 
 def create_issue_for_project(*, request, project):

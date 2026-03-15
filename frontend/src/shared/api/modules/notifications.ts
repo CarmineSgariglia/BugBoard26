@@ -1,4 +1,4 @@
-﻿import apiClient, { apiBaseUrl } from "../core/client";
+import apiClient, { apiBaseUrl } from "../core/client";
 import type { NotificationItem } from "../types/notifications";
 
 export async function listNotificationsApi(): Promise<NotificationItem[]> {

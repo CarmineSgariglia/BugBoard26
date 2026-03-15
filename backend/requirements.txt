@@ -9,3 +9,4 @@ django-storages>=1.14,<2.0
 google-cloud-storage>=2.18,<3.0
 django-redis>=5.4,<6.0
 redis>=5.0,<6.0
+coverage[toml]>=7.6,<8.0
