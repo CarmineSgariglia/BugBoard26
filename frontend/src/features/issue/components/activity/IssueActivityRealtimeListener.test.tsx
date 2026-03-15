@@ -87,7 +87,7 @@ describe("IssueActivityRealtimeListener", () => {
       ],
     };
 
-    global.fetch = vi.fn().mockImplementation((_input, init) => {
+    global.fetch = vi.fn().mockImplementation((_input) => {
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
           const encoder = new TextEncoder();
