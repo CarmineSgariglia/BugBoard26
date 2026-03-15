@@ -9,8 +9,10 @@ from rest_framework.exceptions import ValidationError
 
 from ..issue_rules import validate_project_assignee_ids
 from ..models import Attachment, EventType, IssueAssignee, IssueEvent, NotifyType
+from ..serializers import IssueEventSerializer
 from ..roles import is_admin_user
 from ..upload_security import store_upload, validate_issue_attachment
+from .issue_realtime import publish_issue_event_created
 from .media import transcode_video_upload
 from .notifications import notify_users
 
@@ -156,6 +158,38 @@ def create_attachment_for_event(event: IssueEvent, payload: dict):
     return attachments
 
 
+def schedule_issue_event_broadcast(event: IssueEvent) -> None:
+    def broadcast_issue_event() -> None:
+        persisted_event = (
+            IssueEvent.objects.select_related("issue", "actor", "actor__profile")
+            .prefetch_related("attachments")
+            .get(update_id=event.update_id)
+        )
+        payload = IssueEventSerializer(persisted_event).data
+        publish_issue_event_created(persisted_event.issue_id, payload)
+
+    transaction.on_commit(broadcast_issue_event)
+
+
+def create_issue_event(
+    *,
+    issue,
+    actor,
+    event_type,
+    message,
+    **extra_fields,
+) -> IssueEvent:
+    event = IssueEvent.objects.create(
+        issue=issue,
+        actor=actor,
+        event_type=event_type,
+        message=message,
+        **extra_fields,
+    )
+    schedule_issue_event_broadcast(event)
+    return event
+
+
 def create_issue_event_with_attachment(
     *,
     issue,
@@ -167,7 +201,7 @@ def create_issue_event_with_attachment(
 ):
     message = validate_issue_event_message(message)
     with transaction.atomic():
-        event = IssueEvent.objects.create(
+        event = create_issue_event(
             issue=issue,
             actor=actor,
             event_type=event_type,
@@ -196,7 +230,7 @@ def create_issue_for_project(*, request, project):
 
     issue = serializer.save(project=project, reporter=request.user)
     IssueAssignee.objects.get_or_create(issue=issue, user=request.user)
-    IssueEvent.objects.create(issue=issue, actor=request.user, event_type=EventType.CREATE, message="Issue created")
+    create_issue_event(issue=issue, actor=request.user, event_type=EventType.CREATE, message="Issue created")
 
     project_members = User.objects.filter(
         project_memberships__project=project,

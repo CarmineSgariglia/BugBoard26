@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.http import StreamingHttpResponse
 from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import mixins, permissions, status, viewsets
@@ -33,12 +35,15 @@ from ..serializers import (
 from ..services import (
     apply_issue_filters,
     create_attachment_for_event,
+    create_issue_event,
     create_issue_event_with_attachment,
     delete_media_path,
     notify_users,
     request_user_ids,
+    schedule_issue_event_broadcast,
     validate_issue_event_message,
 )
+from ..services.issue_realtime import open_issue_subscription
 from ..permissions import (
     check_assignee_or_admin,
     check_admin,
@@ -46,6 +51,7 @@ from ..permissions import (
     user_project_ids,
 )
 from ..roles import is_admin_user
+from .notifications import ServerSentEventsRenderer, _format_sse_event
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +94,7 @@ class IssueViewSet(
 
         # Track direct issue edits (PATCH/PUT) and fan out update notifications.
         message = (self.request.data.get("message", "") or "").strip() or "Issue updated"
-        IssueEvent.objects.create(
+        create_issue_event(
             issue=issue,
             actor=self.request.user,
             event_type=EventType.EDIT,
@@ -128,7 +134,12 @@ class IssueViewSet(
             assignment, _ = IssueAssignee.objects.get_or_create(issue=issue, user_id=user_id)
             assigned_users.append(assignment.user)
 
-        IssueEvent.objects.create(issue=issue, actor=request.user, event_type=EventType.ASSIGN, message="Assignees updated")
+        create_issue_event(
+            issue=issue,
+            actor=request.user,
+            event_type=EventType.ASSIGN,
+            message="Assignees updated",
+        )
         notify_users(notify_type=NotifyType.ISSUE_ASSIGNED, users=assigned_users, issue=issue)
         return Response({"detail": "Issue assigned"})
 
@@ -142,7 +153,12 @@ class IssueViewSet(
             raise ValidationError({"userIds": "At least one userId is required"})
         users = list(User.objects.filter(id__in=user_ids))
         IssueAssignee.objects.filter(issue=issue, user_id__in=user_ids).delete()
-        IssueEvent.objects.create(issue=issue, actor=request.user, event_type=EventType.UNASSIGN, message="Assignees removed")
+        create_issue_event(
+            issue=issue,
+            actor=request.user,
+            event_type=EventType.UNASSIGN,
+            message="Assignees removed",
+        )
         if users:
             notify_users(notify_type=NotifyType.ISSUE_UNASSIGNED, users=users, issue=issue)
         return Response({"detail": "Issue unassigned"})
@@ -207,6 +223,88 @@ class IssueViewSet(
 
         return Response(IssueEventSerializer(event).data, status=status.HTTP_201_CREATED)
 
+    def _parse_last_event_id(self, request) -> int:
+        raw_last_event_id = request.headers.get("Last-Event-ID", "").strip()
+        if not raw_last_event_id:
+            return 0
+        try:
+            return max(int(raw_last_event_id), 0)
+        except ValueError:
+            return 0
+
+    def _load_catchup_events(self, *, issue_id: int, last_seen_id: int) -> list[IssueEvent]:
+        return list(
+            IssueEvent.objects.select_related("issue", "actor", "actor__profile")
+            .prefetch_related("attachments")
+            .filter(issue_id=issue_id, update_id__gt=last_seen_id)
+            .order_by("update_id")
+        )
+
+    def _stream_issue_updates(self, *, issue: Issue, last_seen_id: int, subscription):
+        heartbeat_interval = max(float(getattr(settings, "NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", 20.0)), 1.0)
+        current_last_seen = last_seen_id
+
+        try:
+            catchup_events = self._load_catchup_events(issue_id=issue.issue_id, last_seen_id=current_last_seen)
+            for event in catchup_events:
+                current_last_seen = event.update_id
+                payload = IssueEventSerializer(event).data
+                yield _format_sse_event(
+                    event="issue.event.created",
+                    data=payload,
+                    event_id=current_last_seen,
+                )
+
+            while True:
+                stream_event = subscription.get_message(timeout=heartbeat_interval)
+                if stream_event is None:
+                    yield _format_sse_event(event="ping", data={})
+                    continue
+
+                if stream_event.event_id <= current_last_seen:
+                    continue
+
+                current_last_seen = stream_event.event_id
+                yield _format_sse_event(
+                    event=stream_event.event,
+                    data=stream_event.data,
+                    event_id=stream_event.event_id,
+                )
+        except GeneratorExit:
+            logger.debug("issue_event_stream_client_disconnected", extra={"issue_id": issue.issue_id})
+        finally:
+            subscription.close()
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="updates/stream",
+        renderer_classes=[ServerSentEventsRenderer],
+    )
+    def updates_stream(self, request, issueId=None):
+        issue = self.get_object()
+        ensure_issue_access(request.user, issue)
+
+        try:
+            subscription = open_issue_subscription(issue.issue_id)
+        except RuntimeError:
+            return Response(
+                {"detail": "Issue activity stream unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        response = StreamingHttpResponse(
+            self._stream_issue_updates(
+                issue=issue,
+                last_seen_id=self._parse_last_event_id(request),
+                subscription=subscription,
+            ),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
     @action(detail=True, methods=["get"], url_path="suggestions")
     def suggestions(self, request, issueId=None):
         issue = self.get_object()
@@ -269,6 +367,7 @@ class AttachmentUploadView(APIView):
         attachment = create_attachment_for_event(event, request.data)
         if not attachment:
             raise ValidationError({"file": "Attachment file is required"})
+        schedule_issue_event_broadcast(event)
         created_attachment = attachment[0] if isinstance(attachment, list) else attachment
         return Response(AttachmentSerializer(created_attachment).data, status=status.HTTP_201_CREATED)
 
@@ -314,6 +413,7 @@ class AttachmentViewSet(
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(event.issue)
             attachment = create_attachment_for_event(event, request.data)
+            schedule_issue_event_broadcast(event)
         else:
             issue = Issue.objects.filter(issue_id=issue_id).select_related("project").first()
             if not issue:

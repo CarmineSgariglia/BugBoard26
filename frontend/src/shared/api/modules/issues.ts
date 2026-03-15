@@ -1,4 +1,4 @@
-import apiClient from "../core/client";
+import apiClient, { apiBaseUrl } from "../core/client";
 import type { Issue, IssueSuggestion, IssueUpdate, UpdateIssuePayload } from "../types/issues";
 
 export async function updateIssueDetailsApi(
@@ -22,6 +22,10 @@ export async function updateIssueApi(issueId: number | string, payload: UpdateIs
 export async function listIssueUpdatesApi(issueId: string | number): Promise<IssueUpdate[]> {
   const { data } = await apiClient.get<IssueUpdate[]>(`/issues/${issueId}/updates`);
   return data;
+}
+
+export function getIssueUpdatesStreamUrl(issueId: string | number): string {
+  return `${apiBaseUrl}/issues/${issueId}/updates/stream`;
 }
 
 export async function createIssueUpdateApi(
