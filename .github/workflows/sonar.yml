@@ -35,6 +35,7 @@ jobs:
         run: |
           mkdir -p backend/coverage frontend/coverage
           chmod 0777 backend/coverage frontend/coverage
+          rm -f backend/coverage/coverage-sonar.xml frontend/coverage/lcov-sonar.info
 
       - name: Start database and redis
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db redis
@@ -95,7 +96,8 @@ jobs:
       - name: Normalize frontend coverage for SonarCloud
         run: |
           sed 's#^SF:src/#SF:frontend/src/#; s#^SF:/workspace/frontend/src/#SF:frontend/src/#' \
-            frontend/coverage/lcov.info > frontend/coverage/lcov-sonar.info
+            frontend/coverage/lcov.info > /tmp/lcov-sonar.info
+          cp /tmp/lcov-sonar.info frontend/coverage/lcov-sonar.info
 
       - name: Run SonarCloud scan
         uses: SonarSource/sonarqube-scan-action@v7
