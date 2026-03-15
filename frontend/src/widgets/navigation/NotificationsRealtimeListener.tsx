@@ -1,14 +1,22 @@
-import { useEffect, useEffectEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useEffectEvent, useMemo, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { matchPath, useLocation } from "react-router-dom";
 
 import { getAccessToken } from "@shared/api/core/client";
 import { refreshApi } from "@shared/api/modules/auth";
 import {
   getNotificationsStreamUrl,
   listNotificationsApi,
+  notificationsPollingIntervalMs,
+  notificationsQueryKey,
+  readNotificationApi,
 } from "@shared/api/modules/notifications";
 import type { NotificationItem } from "@shared/api/types/notifications";
-import { getNotificationDescription, getNotificationTitle } from "@shared/lib/notifications";
+import {
+  getNotificationDescription,
+  getNotificationTargetKind,
+  getNotificationTitle,
+} from "@shared/lib/notifications";
 import {
   createSseParser,
   getLatestNotificationId,
@@ -18,22 +26,121 @@ import { useAuth, useToast } from "@shared/providers";
 
 const STREAM_RETRY_DELAYS_MS = [1000, 2000, 5000, 10000, 20000];
 
+type RouteTarget =
+  | { kind: "issue"; issueId: number }
+  | { kind: "project"; projectId: number }
+  | { kind: "none" };
+
+function parsePositiveInt(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getRouteTarget(pathname: string): RouteTarget {
+  const issueMatch = matchPath("/projects/:projectId/issues/:issueId", pathname);
+  if (issueMatch) {
+    const issueId = parsePositiveInt(issueMatch.params.issueId);
+    if (issueId != null) {
+      return { kind: "issue", issueId };
+    }
+  }
+
+  const projectMatch = matchPath("/projects/:projectId/issues", pathname);
+  if (projectMatch) {
+    const projectId = parsePositiveInt(projectMatch.params.projectId);
+    if (projectId != null) {
+      return { kind: "project", projectId };
+    }
+  }
+
+  return { kind: "none" };
+}
+
+function matchesRouteTarget(notification: NotificationItem, routeTarget: RouteTarget): boolean {
+  if (routeTarget.kind === "issue") {
+    return notification.issueId === routeTarget.issueId;
+  }
+
+  if (routeTarget.kind === "project") {
+    return (
+      getNotificationTargetKind(notification.type) === "project" &&
+      notification.projectId === routeTarget.projectId
+    );
+  }
+
+  return false;
+}
+
 export function NotificationsRealtimeListener() {
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { user, refreshUser } = useAuth();
   const { pushToast } = useToast();
+  const pendingReadIdsRef = useRef(new Set<number>());
 
-  useQuery({
-    queryKey: ["notifications"],
+  const routeTarget = useMemo(() => getRouteTarget(location.pathname), [location.pathname]);
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: notificationsQueryKey,
     queryFn: listNotificationsApi,
     enabled: Boolean(user),
     staleTime: 30000,
+    refetchInterval: user ? notificationsPollingIntervalMs : false,
+  });
+
+  const readMutation = useMutation({
+    mutationFn: (notifyUserId: number) => readNotificationApi(notifyUserId),
+    onMutate: async (notifyUserId) => {
+      pendingReadIdsRef.current.add(notifyUserId);
+      await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
+      queryClient.setQueryData<NotificationItem[]>(notificationsQueryKey, (current = []) =>
+        current.map((item) =>
+          item.notifyUserId === notifyUserId
+            ? {
+                ...item,
+                isRead: true,
+                readAt: item.readAt ?? new Date().toISOString(),
+              }
+            : item,
+        ),
+      );
+    },
+    onError: (_error, notifyUserId) => {
+      queryClient.setQueryData<NotificationItem[]>(notificationsQueryKey, (current = []) =>
+        current.map((item) =>
+          item.notifyUserId === notifyUserId ? { ...item, isRead: false, readAt: null } : item,
+        ),
+      );
+    },
+    onSettled: (_data, _error, notifyUserId) => {
+      pendingReadIdsRef.current.delete(notifyUserId);
+      void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+    },
+  });
+
+  const markNotificationAsRead = useEffectEvent((notification: NotificationItem) => {
+    if (
+      routeTarget.kind === "none" ||
+      notification.isRead ||
+      !matchesRouteTarget(notification, routeTarget) ||
+      pendingReadIdsRef.current.has(notification.notifyUserId)
+    ) {
+      return;
+    }
+
+    readMutation.mutate(notification.notifyUserId);
   });
 
   const handleNotificationCreated = useEffectEvent((notification: NotificationItem) => {
-    queryClient.setQueryData<NotificationItem[]>(["notifications"], (current = []) =>
+    queryClient.setQueryData<NotificationItem[]>(notificationsQueryKey, (current = []) =>
       upsertNotifications(current, notification),
     );
+
+    if (matchesRouteTarget(notification, routeTarget)) {
+      markNotificationAsRead(notification);
+      return;
+    }
 
     pushToast({
       title: getNotificationTitle(notification.type),
@@ -42,8 +149,14 @@ export function NotificationsRealtimeListener() {
   });
 
   useEffect(() => {
+    notifications.forEach((notification) => {
+      markNotificationAsRead(notification);
+    });
+  }, [notifications, routeTarget]);
+
+  useEffect(() => {
     if (!user) {
-      queryClient.removeQueries({ queryKey: ["notifications"] });
+      queryClient.removeQueries({ queryKey: notificationsQueryKey });
       return;
     }
 
@@ -100,7 +213,7 @@ export function NotificationsRealtimeListener() {
       }
 
       const latestNotificationId = getLatestNotificationId(
-        queryClient.getQueryData<NotificationItem[]>(["notifications"]) ?? [],
+        queryClient.getQueryData<NotificationItem[]>(notificationsQueryKey) ?? [],
       );
 
       const headers = new Headers({

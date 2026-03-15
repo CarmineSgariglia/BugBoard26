@@ -5,15 +5,19 @@ import { GlassCard } from "../../shared/ui/GlassCard";
 import { NotificationItem } from "./NotificationItem";
 import {
     listNotificationsApi,
+    notificationsQueryKey,
     readNotificationApi,
     deleteNotificationApi,
 } from "../../shared/api/modules/notifications";
 import { getIssueApi } from "../../shared/api/modules/issues";
-import type { NotificationItem as NotificationApiItem } from "../../shared/api/types/notifications";
+import type {
+    NotificationItem as NotificationApiItem,
+    NotificationType,
+} from "../../shared/api/types/notifications";
 import {
     getNotificationDescription,
     getNotificationIcon,
-    getNotificationTitle,
+    getNotificationTargetKind,
 } from "../../shared/lib/notifications";
 
 interface NotificationDropdownProps {
@@ -23,7 +27,7 @@ interface NotificationDropdownProps {
 
 type NotificationListItem = {
     id: number;
-    type: string;
+    type: NotificationType;
     issueId: number | null;
     projectId: number | null;
     targetKind: "issue" | "project" | "none";
@@ -32,16 +36,6 @@ type NotificationListItem = {
     time: string;
     isRead: boolean;
 };
-
-// Notification target kind
-type NotificationTargetKind = "issue" | "project" | "none";
-
-function getNotificationTargetKind(type: string): NotificationTargetKind {
-    if (type.startsWith("ISSUE_")) return "issue";
-    if (type === "PROJECT_ADDED") return "project";
-    if (type === "PROJECT_UNASSIGNED" || type === "PROJECT_REMOVED") return "none";
-    return "none";
-}
 
 export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
     const navigate = useNavigate();
@@ -53,7 +47,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         data: notifications = [],
         isLoading,
     } = useQuery({
-        queryKey: ["notifications"],
+        queryKey: notificationsQueryKey,
         queryFn: listNotificationsApi,
         enabled: isOpen,
         staleTime: 0,
@@ -62,9 +56,9 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
     const readMutation = useMutation({
         mutationFn: (notifyUserId: number) => readNotificationApi(notifyUserId),
         onMutate: async (notifyUserId) => {
-            await queryClient.cancelQueries({ queryKey: ["notifications"] });
-            const previous = queryClient.getQueryData<NotificationApiItem[]>(["notifications"]);
-            queryClient.setQueryData<NotificationApiItem[]>(["notifications"], (old = []) =>
+            await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
+            const previous = queryClient.getQueryData<NotificationApiItem[]>(notificationsQueryKey);
+            queryClient.setQueryData<NotificationApiItem[]>(notificationsQueryKey, (old = []) =>
                 old.map((item) =>
                     item.notifyUserId === notifyUserId ? { ...item, isRead: true } : item
                 )
@@ -73,31 +67,31 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         },
         onError: (_err, _id, context) => {
             if (context?.previous) {
-                queryClient.setQueryData(["notifications"], context.previous);
+                queryClient.setQueryData(notificationsQueryKey, context.previous);
             }
         },
         onSettled: () => {
-            void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
         },
     });
 
     const deleteMutation = useMutation({
         mutationFn: (notifyUserId: number) => deleteNotificationApi(notifyUserId),
         onMutate: async (notifyUserId) => {
-            await queryClient.cancelQueries({ queryKey: ["notifications"] });
-            const previous = queryClient.getQueryData<NotificationApiItem[]>(["notifications"]);
-            queryClient.setQueryData<NotificationApiItem[]>(["notifications"], (old = []) =>
+            await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
+            const previous = queryClient.getQueryData<NotificationApiItem[]>(notificationsQueryKey);
+            queryClient.setQueryData<NotificationApiItem[]>(notificationsQueryKey, (old = []) =>
                 old.filter((item) => item.notifyUserId !== notifyUserId)
             );
             return { previous };
         },
         onError: (_err, _id, context) => {
             if (context?.previous) {
-                queryClient.setQueryData(["notifications"], context.previous);
+                queryClient.setQueryData(notificationsQueryKey, context.previous);
             }
         },
         onSettled: () => {
-            void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
         },
     });
 
@@ -108,7 +102,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             issueId: notification.issueId ?? null,
             projectId: notification.projectId ?? null,
             targetKind: getNotificationTargetKind(notification.type),
-            title: getNotificationTitle(notification.type),
+            title: notification.type.replaceAll("_", " "),
             description: getNotificationDescription(notification),
             time: new Date(notification.createdAt).toLocaleString(),
             isRead: notification.isRead,
@@ -206,7 +200,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                                 title={n.title}
                                 description={n.description}
                                 time={n.time}
-                                icon={getNotificationIcon(n.type as any)}
+                                icon={getNotificationIcon(n.type)}
                                 onClick={() => {
                                     if (pendingNotificationId === n.id) return;
                                     void onNotificationClick(n);

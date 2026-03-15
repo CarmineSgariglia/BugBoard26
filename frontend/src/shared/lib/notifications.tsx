@@ -10,6 +10,17 @@ import {
 } from "react-icons/fi";
 import type { NotificationItem, NotificationType } from "../../shared/api/types/notifications";
 
+export type NotificationTargetKind = "issue" | "project" | "none";
+
+export function getNotificationTargetKind(type: NotificationType): NotificationTargetKind {
+    if (type.startsWith("ISSUE_")) return "issue";
+    if (type === "PROJECT_ADDED") return "project";
+    if (type === "PROJECT_UNASSIGNED" || type === "UNASSIGNED_PROJECT" || type === "PROJECT_REMOVED") {
+        return "none";
+    }
+    return "none";
+}
+
 export function getNotificationIcon(type: NotificationType) {
     switch (type) {
         case "PROJECT_ADDED":

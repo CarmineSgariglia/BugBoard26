@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { FiX } from "react-icons/fi";
 
 type Toast = {
   id: number;
@@ -67,8 +68,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className="pointer-events-auto overflow-hidden rounded-2xl border border-cyan-400/20 bg-[#0E141D]/95 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl"
             role="status"
           >
-            <p className="text-sm font-semibold text-white">{toast.title}</p>
-            <p className="mt-1 text-xs text-slate-300">{toast.description}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white">{toast.title}</p>
+                <p className="mt-1 text-xs text-slate-300">{toast.description}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => dismissToast(toast.id)}
+                className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/5 hover:text-white"
+                aria-label={`Dismiss ${toast.title}`}
+                title="Dismiss notification"
+              >
+                <FiX size={16} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -76,6 +90,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
   const context = useContext(ToastContext);
   if (context === undefined) {
