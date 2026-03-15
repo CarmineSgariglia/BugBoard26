@@ -7,10 +7,13 @@ source =
 omit =
     */migrations/*
     apps/bugboardapi/tests/*
-    manage.py
+    apps/bugboardapi/management/commands/*
+    wsgi.py
 
 [report]
 omit =
     */migrations/*
     apps/bugboardapi/tests/*
-    manage.py
+    apps/bugboardapi/management/commands/*
+    wsgi.py
+

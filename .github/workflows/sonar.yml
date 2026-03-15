@@ -89,8 +89,10 @@ jobs:
       - name: Normalize backend coverage for SonarCloud
         run: |
           cp backend/coverage/coverage.xml /tmp/coverage-sonar.xml
-          sed -i 's#<source>/app</source>#<source>backend</source>#g' /tmp/coverage-sonar.xml
-          sed -i 's#<source>.</source>#<source>backend</source>#g' /tmp/coverage-sonar.xml
+          sed -i 's#<source>apps</source>#<source>backend/apps</source>#g' /tmp/coverage-sonar.xml
+          sed -i 's#<source>config</source>#<source>backend/config</source>#g' /tmp/coverage-sonar.xml
+          sed -i 's#<source>/app/apps</source>#<source>backend/apps</source>#g' /tmp/coverage-sonar.xml
+          sed -i 's#<source>/app/config</source>#<source>backend/config</source>#g' /tmp/coverage-sonar.xml
 
       - name: Normalize frontend coverage for SonarCloud
         run: |
