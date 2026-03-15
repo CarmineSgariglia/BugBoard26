@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "../../shared/ui/GlassCard";
+import { ScrollComponent } from "../../shared/ui/ScrollComponent";
 import { NotificationItem } from "./NotificationItem";
 import {
     listNotificationsApi,
@@ -181,35 +182,45 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                         </div>
                     ) : null}
 
-                    <div
-                        className="flex flex-col gap-1 p-2 max-h-[306px] overflow-y-auto no-scrollbar"
-                        style={{
-                            maskImage: "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
-                            WebkitMaskImage:
-                                "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
-                        }}
-                    >
-                        {isLoading ? <p className="px-2 py-2 text-xs text-neutral-400">Loading...</p> : null}
-                        {!isLoading && items.length === 0 ? (
-                            <p className="px-2 py-2 text-xs text-neutral-400">No notifications</p>
-                        ) : null}
-
-                        {items.map((n) => (
-                            <NotificationItem
-                                key={n.id}
-                                title={n.title}
-                                description={n.description}
-                                time={n.time}
-                                icon={getNotificationIcon(n.type)}
-                                onClick={() => {
-                                    if (pendingNotificationId === n.id) return;
-                                    void onNotificationClick(n);
+                    <div className="min-h-0">
+                        <ScrollComponent
+                            hideBorder
+                            wheelOptions={{ tailDurationMs: 760, tailIntensity: 0.2, tailMaxPx: 90, idleMs: 100 }}
+                            maxHeight="max-h-[306px]"
+                            className="min-h-0 !p-2 no-scrollbar"
+                        >
+                            <div
+                                className="flex flex-col gap-1"
+                                data-testid="notification-scroll-container"
+                                style={{
+                                    maskImage: "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
+                                    WebkitMaskImage:
+                                        "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
                                 }}
-                                onMarkRead={() => onRead(n.id)}
-                                onDelete={() => onDelete(n.id)}
-                                unread={!n.isRead}
-                            />
-                        ))}
+                            >
+                                {isLoading ? <p className="px-2 py-2 text-xs text-neutral-400">Loading...</p> : null}
+                                {!isLoading && items.length === 0 ? (
+                                    <p className="px-2 py-2 text-xs text-neutral-400">No notifications</p>
+                                ) : null}
+
+                                {items.map((n) => (
+                                    <NotificationItem
+                                        key={n.id}
+                                        title={n.title}
+                                        description={n.description}
+                                        time={n.time}
+                                        icon={getNotificationIcon(n.type)}
+                                        onClick={() => {
+                                            if (pendingNotificationId === n.id) return;
+                                            void onNotificationClick(n);
+                                        }}
+                                        onMarkRead={() => onRead(n.id)}
+                                        onDelete={() => onDelete(n.id)}
+                                        unread={!n.isRead}
+                                    />
+                                ))}
+                            </div>
+                        </ScrollComponent>
                     </div>
                 </GlassCard>
             </div>

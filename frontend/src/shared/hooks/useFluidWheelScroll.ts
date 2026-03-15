@@ -29,6 +29,39 @@ function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
 }
 
+function canElementScrollVertically(element: HTMLElement): boolean {
+    return element.scrollHeight > element.clientHeight;
+}
+
+function canElementHandleDelta(element: HTMLElement, deltaY: number): boolean {
+    const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+    if (maxScrollTop <= 0) return false;
+    if (deltaY < 0) return element.scrollTop > 0;
+    if (deltaY > 0) return element.scrollTop < maxScrollTop;
+    return false;
+}
+
+function isScrollableOverflow(overflowY: string): boolean {
+    return overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";
+}
+
+function getClosestScrollableAncestor(target: EventTarget | null, deltaY: number): HTMLElement | null {
+    if (!(target instanceof Node)) return null;
+
+    let current: HTMLElement | null =
+        target instanceof HTMLElement ? target : target.parentElement;
+
+    while (current) {
+        const { overflowY } = window.getComputedStyle(current);
+        if (isScrollableOverflow(overflowY) && canElementScrollVertically(current) && canElementHandleDelta(current, deltaY)) {
+            return current;
+        }
+        current = current.parentElement;
+    }
+
+    return null;
+}
+
 export function useFluidWheelContainer<T extends HTMLElement>(enabled = true, options: FluidWheelOptions = {}) {
     const ref = useRef<T | null>(null);
     const tailRafRef = useRef<number | null>(null);
@@ -153,6 +186,10 @@ export function useFluidWheelWindow(enabled = true) {
 
             const deltaY = normalizeDeltaY(event.deltaY, event.deltaMode, window.innerHeight);
             if (Math.abs(deltaY) < MIN_DELTA) return;
+
+            if (getClosestScrollableAncestor(event.target, deltaY)) {
+                return;
+            }
 
             const currentScrollTop = window.scrollY;
             const scrollingUpAtTop = deltaY < 0 && currentScrollTop <= 0;
