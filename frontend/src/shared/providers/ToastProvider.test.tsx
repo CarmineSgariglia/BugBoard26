@@ -48,4 +48,23 @@ describe("ToastProvider", () => {
       "Toast 4Notification arrived",
     ]);
   });
+
+  it("allows dismissing a toast manually", async () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
+
+    const user = userEvent.setup();
+    const trigger = screen.getByRole("button", { name: "Push toast" });
+
+    await user.click(trigger);
+
+    expect(screen.getByText("Toast 1")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Dismiss Toast 1" }));
+
+    expect(screen.queryByText("Toast 1")).not.toBeInTheDocument();
+  });
 });

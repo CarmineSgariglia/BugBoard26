@@ -1,6 +1,9 @@
 import apiClient, { apiBaseUrl } from "../core/client";
 import type { NotificationItem } from "../types/notifications";
 
+export const notificationsQueryKey = ["notifications"] as const;
+export const notificationsPollingIntervalMs = 15000;
+
 export async function listNotificationsApi(): Promise<NotificationItem[]> {
   const { data } = await apiClient.get<NotificationItem[]>("/notifications");
   return data;
