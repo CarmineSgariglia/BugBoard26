@@ -8,6 +8,12 @@ from apps.bugboardapi.authentication import RevocableJWTAuthentication
 from apps.bugboardapi.issue_rules import validate_project_assignee_ids
 
 
+def _detail_text(detail):
+    if isinstance(detail, (list, tuple)):
+        return str(detail[0])
+    return str(detail)
+
+
 class ValidateProjectAssigneeIdsTests(SimpleTestCase):
     def test_returns_early_when_assignee_ids_is_none(self):
         with patch("apps.bugboardapi.issue_rules.ProjectMembership") as membership_model:
@@ -33,7 +39,10 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
             with self.assertRaises(ValidationError) as ctx:
                 validate_project_assignee_ids(project=object(), assignee_ids=[10, 99])
 
-        self.assertEqual(ctx.exception.detail["assigneeIds"][0], "Users must be members of project: [99]")
+        self.assertEqual(
+            _detail_text(ctx.exception.detail["assigneeIds"]),
+            "Users must be members of project: [99]",
+        )
 
     def test_raises_when_assignee_is_admin(self):
         membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
@@ -49,7 +58,10 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
             with self.assertRaises(ValidationError) as ctx:
                 validate_project_assignee_ids(project=object(), assignee_ids=[10])
 
-        self.assertEqual(ctx.exception.detail["assigneeIds"][0], "Admin users cannot be assigned to issues: [10]")
+        self.assertEqual(
+            _detail_text(ctx.exception.detail["assigneeIds"]),
+            "Admin users cannot be assigned to issues: [10]",
+        )
 
     def test_accepts_non_admin_project_members(self):
         membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
