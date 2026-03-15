@@ -1,4 +1,10 @@
 services:
+  backend:
+    user: "0:0"
+    environment:
+      COVERAGE_FILE: /tmp/.coverage
+      MEDIA_ROOT: /tmp/bugboard-media
+
   bruno:
     build:
       context: .
