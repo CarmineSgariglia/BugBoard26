@@ -10,16 +10,8 @@ on:
       - "BrunoTesting/env/**"
       - "scripts/bootstrap_bruno_bugboard_ci.sh"
       - ".github/workflows/bruno-safe.yml"
-  pull_request:
-    paths:
-      - "BrunoTesting/**"
-      - "backend/**"
-      - "docker-compose.yml"
-      - "docker-compose.ci.yml"
-      - "BrunoTesting/env/**"
-      - "scripts/bootstrap_bruno_bugboard_ci.sh"
-      - ".github/workflows/bruno-safe.yml"
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   bruno-safe:

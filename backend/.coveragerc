@@ -1,21 +1,16 @@
 [run]
 branch = True
+relative_files = True
 source =
-    apps.bugboardapi
+    apps
+    config
 omit =
     */migrations/*
-    */tests/*
-    */__init__.py
-    */management/__init__.py
-    */management/commands/__init__.py
+    apps/bugboardapi/tests/*
+    manage.py
 
 [report]
-show_missing = True
-skip_covered = True
-exclude_lines =
-    pragma: no cover
-    if TYPE_CHECKING:
-    raise NotImplementedError
-
-[html]
-directory = coverage/htmlcov
+omit =
+    */migrations/*
+    apps/bugboardapi/tests/*
+    manage.py

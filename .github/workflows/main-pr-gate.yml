@@ -1,0 +1,44 @@
+name: Main PR Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  backend_safe:
+    name: Backend Safe Suite
+    uses: ./.github/workflows/backend-safe.yml
+    secrets: inherit
+
+  frontend_safe:
+    name: Frontend Safe Suite
+    uses: ./.github/workflows/frontend-safe.yml
+    secrets: inherit
+
+  bruno_safe:
+    name: Bruno Safe Suite
+    uses: ./.github/workflows/bruno-safe.yml
+    secrets: inherit
+
+  gate:
+    name: Main PR Gate
+    runs-on: ubuntu-latest
+    needs:
+      - backend_safe
+      - frontend_safe
+      - bruno_safe
+    if: always()
+
+    steps:
+      - name: Fail if any safe suite failed
+        run: |
+          if [ "${{ needs.backend_safe.result }}" != "success" ] || \
+             [ "${{ needs.frontend_safe.result }}" != "success" ] || \
+             [ "${{ needs.bruno_safe.result }}" != "success" ]; then
+            echo "One or more safe suites failed."
+            exit 1
+          fi
+
+          echo "All safe suites passed."

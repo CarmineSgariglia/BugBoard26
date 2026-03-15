@@ -1,24 +1,32 @@
-name: Backend Safe Suite
+name: SonarCloud Analysis
 
 on:
   push:
-    paths:
-      - "backend/**"
-      - "docker-compose.yml"
-      - "docker-compose.ci.yml"
-      - "Makefile"
-      - ".github/workflows/backend-safe.yml"
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
-  workflow_call:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: sonar-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  backend-safe:
+  sonar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Create CI env file
         run: cp BrunoTesting/env/bruno-safe.ci.env .env
@@ -61,17 +69,43 @@ jobs:
             test_exit=$?
             coverage report -m || true
             coverage xml -o coverage/coverage.xml || true
-            coverage html -d coverage/htmlcov || true
             exit $test_exit
           '
 
-      - name: Upload backend coverage artifacts
+      - name: Build frontend test image
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build frontend-test
+
+      - name: Run frontend build
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run build
+
+      - name: Run frontend unit and integration tests with coverage
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage
+
+      - name: Normalize backend coverage for SonarCloud
+        run: |
+          cp backend/coverage/coverage.xml backend/coverage/coverage-sonar.xml
+          sed -i 's#<source>/app</source>#<source>backend</source>#g' backend/coverage/coverage-sonar.xml
+          sed -i 's#<source>.</source>#<source>backend</source>#g' backend/coverage/coverage-sonar.xml
+
+      - name: Normalize frontend coverage for SonarCloud
+        run: |
+          sed 's#^SF:src/#SF:frontend/src/#; s#^SF:/workspace/frontend/src/#SF:frontend/src/#' \
+            frontend/coverage/lcov.info > frontend/coverage/lcov-sonar.info
+
+      - name: Run SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload Sonar coverage artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: backend-safe-artifacts
+          name: sonar-artifacts
           path: |
             backend/coverage
+            frontend/coverage
 
       - name: Dump docker logs on failure
         if: failure()
