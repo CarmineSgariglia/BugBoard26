@@ -151,6 +151,26 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         self.assertEqual(payload["eventType"], EventType.STATUS_CHANGE)
         response.close()
 
+    def test_issue_update_stream_ignores_invalid_last_event_id(self):
+        issue_event = create_issue_event(
+            issue=self.issue,
+            actor=self.member,
+            event_type=EventType.COMMENT,
+            message="Visible comment",
+        )
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(
+            f"/api/issues/{self.issue.issue_id}/updates/stream",
+            HTTP_ACCEPT="text/event-stream",
+            HTTP_LAST_EVENT_ID="not-a-number",
+        )
+
+        chunk = next(iter(response.streaming_content))
+        parsed = _parse_sse_chunk(chunk)
+        self.assertEqual(parsed["id"], str(issue_event.update_id))
+        response.close()
+
     @patch("apps.bugboardapi.views.issues.open_issue_subscription")
     def test_issue_update_stream_sends_heartbeat_and_headers(self, open_subscription_mock):
         class StubSubscription:
@@ -177,6 +197,15 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         parsed = _parse_sse_chunk(chunk)
         self.assertEqual(parsed["event"], "ping")
         response.close()
+
+    @patch("apps.bugboardapi.views.issues.open_issue_subscription", side_effect=RuntimeError)
+    def test_issue_update_stream_returns_service_unavailable_when_backend_fails(self, _mock_subscription):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(
+            f"/api/issues/{self.issue.issue_id}/updates/stream",
+            HTTP_ACCEPT="text/event-stream",
+        )
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
     def test_issue_event_publish_happens_after_commit(self):
         subscription = open_issue_subscription(self.issue.issue_id)

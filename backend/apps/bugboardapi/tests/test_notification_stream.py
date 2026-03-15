@@ -107,6 +107,26 @@ class NotificationStreamTests(APITransactionTestCase):
         self.assertEqual(payload["type"], NotifyType.ISSUE_CLOSED)
         response.close()
 
+    def test_stream_ignores_invalid_last_event_id(self):
+        notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            issue=self.issue,
+        )
+        notify_user = NotifyUser.objects.get(notification=notification, user=self.member)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(
+            "/api/notifications/stream",
+            HTTP_ACCEPT="text/event-stream",
+            HTTP_LAST_EVENT_ID="not-a-number",
+        )
+
+        chunk = next(iter(response.streaming_content))
+        parsed = _parse_sse_chunk(chunk)
+        self.assertEqual(parsed["id"], str(notify_user.notify_user_id))
+        response.close()
+
     @patch("apps.bugboardapi.views.notifications.open_notification_subscription")
     def test_stream_sends_heartbeat_and_headers(self, open_subscription_mock):
         class StubSubscription:
@@ -130,3 +150,9 @@ class NotificationStreamTests(APITransactionTestCase):
         parsed = _parse_sse_chunk(chunk)
         self.assertEqual(parsed["event"], "ping")
         response.close()
+
+    @patch("apps.bugboardapi.views.notifications.open_notification_subscription", side_effect=RuntimeError)
+    def test_stream_returns_service_unavailable_when_subscription_backend_fails(self, _mock_subscription):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get("/api/notifications/stream", HTTP_ACCEPT="text/event-stream")
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)

@@ -1151,7 +1151,7 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_suggestions_open_count_is_global_across_projects(self):
         other_project = create_project_with_members(
             created_by=self.admin,
-            name="Suggestions Global Count Project",
+            name="Suggestions Global Count",
             admin_members=[self.admin],
             developer_members=[self.member],
         )
@@ -1957,7 +1957,6 @@ class OtpCleanupCommandTests(APITestCase):
         self.assertFalse(RevokedTokenSession.objects.filter(sid=expired_session.sid).exists())
         self.assertTrue(RevokedTokenSession.objects.filter(sid=valid_session.sid).exists())
         self.assertIn("Deleted", output.getvalue())
-
 
 
 

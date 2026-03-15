@@ -42,6 +42,16 @@ class UserViewSet(
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     pagination_class = UserListPagination
 
+    def _parse_csv_ints_query_param(self, name: str) -> list[int]:
+        raw_value = (self.request.query_params.get(name) or "").strip()
+        if not raw_value:
+            return []
+        values = [value.strip() for value in raw_value.split(",") if value.strip()]
+        try:
+            return [int(value) for value in values]
+        except ValueError as exc:
+            raise ValidationError({name: "All values must be valid integers"}) from exc
+
     def _validate_user_update_permissions(self, request, user: User) -> None:
         if request.user != user and not is_admin(request.user):
             raise PermissionDenied("Cannot edit other users")
@@ -62,17 +72,13 @@ class UserViewSet(
         role_filter = self.request.query_params.get("role")
         status_filter = self.request.query_params.get("status")
         
-        user_ids = self.request.query_params.get("userIds")
+        user_ids = self._parse_csv_ints_query_param("userIds")
         if user_ids:
-            ids = [int(i.strip()) for i in user_ids.split(",") if i.strip()]
-            if ids:
-                queryset = queryset.filter(id__in=ids)
-                
-        exclude_user_ids = self.request.query_params.get("excludeUserIds")
+            queryset = queryset.filter(id__in=user_ids)
+
+        exclude_user_ids = self._parse_csv_ints_query_param("excludeUserIds")
         if exclude_user_ids:
-            ids = [int(i.strip()) for i in exclude_user_ids.split(",") if i.strip()]
-            if ids:
-                queryset = queryset.exclude(id__in=ids)
+            queryset = queryset.exclude(id__in=exclude_user_ids)
 
         if search_query:
             queryset = queryset.filter(

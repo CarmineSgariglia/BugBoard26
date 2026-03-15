@@ -38,6 +38,7 @@ from ..services import (
     create_issue_event,
     create_issue_event_with_attachment,
     delete_media_path,
+    issue_notification_recipients,
     notify_users,
     request_user_ids,
     schedule_issue_event_broadcast,
@@ -101,11 +102,7 @@ class IssueViewSet(
             message=message,
         )
 
-        recipients = list(
-            User.objects.filter(Q(issue_assignments__issue=issue) | Q(id=issue.reporter_id))
-            .exclude(id=self.request.user.id)
-            .distinct()
-        )
+        recipients = issue_notification_recipients(issue=issue, actor=self.request.user)
         if recipients:
             notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=recipients, issue=issue)
 
@@ -217,7 +214,7 @@ class IssueViewSet(
             payload=request.data,
         )
 
-        recipients = list(User.objects.filter(issue_assignments__issue=issue).exclude(id=request.user.id).distinct())
+        recipients = issue_notification_recipients(issue=issue, actor=request.user)
         if recipients:
             notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=recipients, issue=issue)
 

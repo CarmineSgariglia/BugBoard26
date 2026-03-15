@@ -6,6 +6,8 @@ nginx/certs/*.cnf
 __pycache__/
 *.pyc
 *.pyo
+.coverage
+backend/.coverage
 
 # Environment
 .env
@@ -29,3 +31,4 @@ scripts/dev_https_down.sh
 
 # Media (Uploads)
 backend/media/
+backend/coverage/

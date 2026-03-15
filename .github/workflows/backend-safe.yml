@@ -1,0 +1,87 @@
+name: Backend Safe Suite
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - "docker-compose.ci.yml"
+      - "Makefile"
+      - ".github/workflows/backend-safe.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - "docker-compose.ci.yml"
+      - "Makefile"
+      - ".github/workflows/backend-safe.yml"
+  workflow_dispatch:
+
+jobs:
+  backend-safe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Create CI env file
+        run: cp BrunoTesting/env/bruno-safe.ci.env .env
+
+      - name: Start database and redis
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db redis
+
+      - name: Wait for database health
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose -f docker-compose.yml -f docker-compose.ci.yml exec -T db pg_isready -U bugboard -d bugboard >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml logs db
+          exit 1
+
+      - name: Wait for redis health
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose -f docker-compose.yml -f docker-compose.ci.yml exec -T redis redis-cli ping | grep -q PONG; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml logs redis
+          exit 1
+
+      - name: Build backend test image
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build backend
+
+      - name: Run backend tests with coverage
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm backend sh -lc '
+            mkdir -p coverage
+            coverage erase
+            coverage run manage.py test apps.bugboardapi.tests -v 2
+            test_exit=$?
+            coverage report -m || true
+            coverage xml -o coverage/coverage.xml || true
+            coverage html -d coverage/htmlcov || true
+            exit $test_exit
+          '
+
+      - name: Upload backend coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-safe-artifacts
+          path: |
+            backend/coverage
+
+      - name: Dump docker logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --no-color db redis
+
+      - name: Stop stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v

@@ -43,6 +43,9 @@ jobs:
       - name: Bootstrap frontend data
         run: ./scripts/bootstrap_bruno_bugboard_ci.sh
 
+      - name: Build frontend test images
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build frontend-test playwright
+
       - name: Run full frontend E2E suite
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm playwright npm run test:e2e
 
