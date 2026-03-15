@@ -1,30 +1,25 @@
-import { useMemo, useState, type UIEvent } from "react";
-import type { InfiniteData } from "@tanstack/react-query";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { GlassCard } from "../../shared/ui/GlassCard";
+import { ScrollComponent } from "../../shared/ui/ScrollComponent";
 import { NotificationItem } from "./NotificationItem";
 import {
-  deleteNotificationApi,
-  listNotificationsApi,
-  notificationsPageSize,
-  notificationsQueryKey,
-  readNotificationApi,
-} from "@features/notification/api";
-import { getIssueApi } from "@features/issue/api";
+    listNotificationsApi,
+    notificationsQueryKey,
+    readNotificationApi,
+    deleteNotificationApi,
+} from "../../shared/api/modules/notifications";
+import { getIssueApi } from "../../shared/api/modules/issues";
 import type {
-  NotificationType,
-  NotificationsPage,
-} from "@shared/api/types/notifications";
+    NotificationItem as NotificationApiItem,
+    NotificationType,
+} from "../../shared/api/types/notifications";
 import {
-  flattenNotificationsPages,
-  getNotificationDescription,
-  getNotificationIcon,
-  getNotificationTargetKind,
-  getNotificationTitle,
-  updateNotificationsInfiniteData,
-} from "@features/notification/lib/notifications";
-import { GlassCard } from "@shared/ui/GlassCard";
-import { ScrollComponent } from "@shared/ui/ScrollComponent";
+    getNotificationDescription,
+    getNotificationIcon,
+    getNotificationTargetKind,
+} from "../../shared/lib/notifications";
 
 interface NotificationDropdownProps {
     isOpen: boolean;
@@ -50,34 +45,24 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
     const [navError, setNavError] = useState<string | null>(null);
 
     const {
-        data,
+        data: notifications = [],
         isLoading,
-        isFetchingNextPage,
-        hasNextPage,
-        fetchNextPage,
-    } = useInfiniteQuery({
+    } = useQuery({
         queryKey: notificationsQueryKey,
-        queryFn: ({ pageParam, signal }) =>
-            listNotificationsApi({ limit: notificationsPageSize, before: pageParam }, { signal }),
-        initialPageParam: null as number | null,
-        getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
+        queryFn: listNotificationsApi,
         enabled: isOpen,
         staleTime: 0,
     });
-
-    const notifications = useMemo(() => flattenNotificationsPages(data), [data]);
 
     const readMutation = useMutation({
         mutationFn: (notifyUserId: number) => readNotificationApi(notifyUserId),
         onMutate: async (notifyUserId) => {
             await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
-            const previous = queryClient.getQueryData<InfiniteData<NotificationsPage>>(notificationsQueryKey);
-            queryClient.setQueryData(
-                notificationsQueryKey,
-                (old: InfiniteData<NotificationsPage> | undefined) =>
-                    updateNotificationsInfiniteData(old, (item) =>
-                        item.notifyUserId === notifyUserId ? { ...item, isRead: true } : item
-                    )
+            const previous = queryClient.getQueryData<NotificationApiItem[]>(notificationsQueryKey);
+            queryClient.setQueryData<NotificationApiItem[]>(notificationsQueryKey, (old = []) =>
+                old.map((item) =>
+                    item.notifyUserId === notifyUserId ? { ...item, isRead: true } : item
+                )
             );
             return { previous };
         },
@@ -95,13 +80,9 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         mutationFn: (notifyUserId: number) => deleteNotificationApi(notifyUserId),
         onMutate: async (notifyUserId) => {
             await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
-            const previous = queryClient.getQueryData<InfiniteData<NotificationsPage>>(notificationsQueryKey);
-            queryClient.setQueryData(
-                notificationsQueryKey,
-                (old: InfiniteData<NotificationsPage> | undefined) =>
-                    updateNotificationsInfiniteData(old, (item) =>
-                        item.notifyUserId === notifyUserId ? null : item
-                    )
+            const previous = queryClient.getQueryData<NotificationApiItem[]>(notificationsQueryKey);
+            queryClient.setQueryData<NotificationApiItem[]>(notificationsQueryKey, (old = []) =>
+                old.filter((item) => item.notifyUserId !== notifyUserId)
             );
             return { previous };
         },
@@ -122,23 +103,12 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             issueId: notification.issueId ?? null,
             projectId: notification.projectId ?? null,
             targetKind: getNotificationTargetKind(notification.type),
-            title: getNotificationTitle(notification.type),
+            title: notification.type.replaceAll("_", " "),
             description: getNotificationDescription(notification),
             time: new Date(notification.createdAt).toLocaleString(),
             isRead: notification.isRead,
         }));
     }, [notifications]);
-
-    const handleScroll = (event: UIEvent<HTMLDivElement>) => {
-        if (!hasNextPage || isFetchingNextPage) {
-            return;
-        }
-
-        const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-        if (scrollHeight - scrollTop - clientHeight <= 48) {
-            void fetchNextPage();
-        }
-    };
 
 
     const onRead = (notifyUserId: number) => {
@@ -212,25 +182,21 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                         </div>
                     ) : null}
 
-                    <div
-                        className="min-h-0"
-                        style={{
-                            maskImage: "linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent)",
-                            WebkitMaskImage:
-                                "linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent)",
-                        }}
-                    >
+                    <div className="min-h-0">
                         <ScrollComponent
                             hideBorder
                             wheelOptions={{ tailDurationMs: 760, tailIntensity: 0.2, tailMaxPx: 90, idleMs: 100 }}
                             maxHeight="max-h-[306px]"
                             className="min-h-0 !p-2 no-scrollbar"
-                            onScroll={handleScroll}
-                            testId="notification-scroll-panel"
                         >
                             <div
-                                className="flex flex-col gap-1 pt-2 pb-2"
+                                className="flex flex-col gap-1"
                                 data-testid="notification-scroll-container"
+                                style={{
+                                    maskImage: "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
+                                    WebkitMaskImage:
+                                        "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
+                                }}
                             >
                                 {isLoading ? <p className="px-2 py-2 text-xs text-neutral-400">Loading...</p> : null}
                                 {!isLoading && items.length === 0 ? (
@@ -253,9 +219,6 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                                         unread={!n.isRead}
                                     />
                                 ))}
-                                {isFetchingNextPage ? (
-                                    <p className="px-2 py-2 text-xs text-neutral-500">Loading more...</p>
-                                ) : null}
                             </div>
                         </ScrollComponent>
                     </div>
