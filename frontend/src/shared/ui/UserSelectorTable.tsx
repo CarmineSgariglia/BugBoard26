@@ -115,7 +115,7 @@ export function UserSelectorTable({
                     <SearchBar
                         value={search}
                         onChange={onSearchChange || (() => { })}
-                        placeholder="Search developers by name or username..."
+                        placeholder="Search developers..."
                         bgColor="bg-[#0D0D12]/50"
                         textColor="text-white"
                         iconColor="text-neutral-500"

@@ -8,6 +8,7 @@
 };
 
 export type UpdateUserPayload = {
+  username?: string;
   firstName?: string;
   lastName?: string;
   email?: string;

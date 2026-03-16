@@ -17,7 +17,7 @@ import {
   updateUserApi,
 } from "../../shared/api/modules/users";
 import { useAuth } from "@shared/providers/AuthContext";
-import { getErrorMessage } from "../../shared/lib/error";
+import { getErrorMessage, getFieldError } from "../../shared/lib/error";
 import { handleGetHelp } from "../../shared/lib/help";
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
@@ -25,14 +25,17 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
   const { user, refreshUser } = useAuth();
   const queryClient = useQueryClient();
 
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
-  const [initialData, setInitialData] = useState({ name: "", surname: "", email: "" });
+  const [initialData, setInitialData] = useState({ username: "", name: "", surname: "", email: "" });
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [identityError, setIdentityError] = useState("");
+  const [usernameError, setUsernameError] = useState("");
 
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
@@ -41,10 +44,12 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
   useEffect(() => {
     if (!user) return;
 
+    setUsername((user.username || "").toLowerCase());
     setName(user.firstName || "");
     setSurname(user.lastName || "");
     setEmail(user.email || "");
     setInitialData({
+      username: (user.username || "").toLowerCase(),
       name: user.firstName || "",
       surname: user.lastName || "",
       email: user.email || "",
@@ -56,7 +61,10 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
   }, [user]);
 
   const hasIdentityChanged =
-    name !== initialData.name || surname !== initialData.surname || email !== initialData.email;
+    username !== initialData.username ||
+    name !== initialData.name ||
+    surname !== initialData.surname ||
+    email !== initialData.email;
   const hasPasswordInput = currentPassword.length > 0 || newPassword.length > 0;
   const hasImageChanged = selectedImageFile !== null;
 
@@ -85,6 +93,8 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       if (!user) return;
 
       setPasswordError("");
+      setIdentityError("");
+      setUsernameError("");
 
       if (selectedImageFile) {
         setIsUploading(true);
@@ -101,15 +111,18 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
 
       if (hasIdentityChanged) {
         const updated = await updateUserApi(user.userId, {
+          username: username.trim().toLowerCase(),
           firstName: name.trim(),
           lastName: surname.trim(),
           email: email.trim(),
         });
 
+        setUsername((updated.username || "").toLowerCase());
         setName(updated.firstName || "");
         setSurname(updated.lastName || "");
         setEmail(updated.email || "");
         setInitialData({
+          username: (updated.username || "").toLowerCase(),
           name: updated.firstName || "",
           surname: updated.lastName || "",
           email: updated.email || "",
@@ -130,7 +143,11 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
     },
     onError: (err) => {
       console.error("Failed to save settings", err);
-      setPasswordError(getErrorMessage(err, "An error occurred while saving the profile."));
+      const nextUsernameError = getFieldError(err, "username") || "";
+      setUsernameError(nextUsernameError);
+      setIdentityError(
+        nextUsernameError ? "" : getErrorMessage(err, "An error occurred while saving the profile.")
+      );
     },
     onSettled: async () => {
       await refreshUser();
@@ -140,6 +157,9 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
 
   const handleSave = useCallback(() => {
     if (!user || saveMutation.isPending || !isSaveEnabled) return;
+    setIdentityError("");
+    setUsernameError("");
+    setPasswordError("");
     saveMutation.mutate();
   }, [user, saveMutation, isSaveEnabled]);
 
@@ -155,13 +175,26 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       />
 
       <IdentityFields
+        username={username}
+        onChangeUsername={(val) => {
+          setUsername(val.toLowerCase());
+          if (usernameError) setUsernameError("");
+          if (identityError) setIdentityError("");
+        }}
         name={name}
         onChangeName={setName}
         surname={surname}
         onChangeSurname={setSurname}
         email={email}
         onChangeEmail={setEmail}
+        errorUsername={usernameError || undefined}
       />
+
+      {identityError ? (
+        <div className="px-8 pb-4">
+          <p className="text-sm font-medium text-red-400">{identityError}</p>
+        </div>
+      ) : null}
 
       <ChangePasswordSection
         requireCurrentPassword={true}

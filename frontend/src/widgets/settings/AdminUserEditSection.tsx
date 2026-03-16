@@ -8,7 +8,7 @@ import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { FooterActions } from "../../shared/ui/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "../../shared/lib/validation";
-import { getErrorMessage } from "../../shared/lib/error";
+import { getErrorMessage, getFieldError } from "../../shared/lib/error";
 import { resolveMediaUrl } from "../../shared/api/core/media";
 import {
   updateUserApi,
@@ -24,11 +24,13 @@ interface AdminUserEditSectionProps {
 }
 
 export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUserEditSectionProps) {
+  const [username, setUsername] = useState((user.username || "").toLowerCase());
   const [name, setName] = useState(user.firstName || "");
   const [surname, setSurname] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
 
   const [initialData, setInitialData] = useState({
+    username: (user.username || "").toLowerCase(),
     name: user.firstName || "",
     surname: user.lastName || "",
     email: user.email || "",
@@ -36,6 +38,7 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
 
   const [newPassword, setNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [globalError, setGlobalError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -46,7 +49,10 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
   const [isUploading, setIsUploading] = useState(false);
 
   const hasIdentityChanged =
-    name !== initialData.name || surname !== initialData.surname || email !== initialData.email;
+    username !== initialData.username ||
+    name !== initialData.name ||
+    surname !== initialData.surname ||
+    email !== initialData.email;
   const hasPasswordInput = newPassword.length > 0;
   const hasImageChanged = selectedImageFile !== null;
   const isIdentityValid = isValidName(name) && isValidName(surname) && isValidEmail(email);
@@ -79,14 +85,17 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
 
       if (hasIdentityChanged) {
         updatedUserObj = await updateUserApi(user.userId, {
+          username: username.trim().toLowerCase(),
           firstName: name.trim(),
           lastName: surname.trim(),
           email: email.trim(),
         });
+        setUsername((updatedUserObj.username || "").toLowerCase());
         setName(updatedUserObj.firstName || "");
         setSurname(updatedUserObj.lastName || "");
         setEmail(updatedUserObj.email || "");
         setInitialData({
+          username: (updatedUserObj.username || "").toLowerCase(),
           name: updatedUserObj.firstName || "",
           surname: updatedUserObj.lastName || "",
           email: updatedUserObj.email || "",
@@ -110,13 +119,18 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
     },
     onError: (err) => {
       console.error("Failed to update user", err);
-      setGlobalError(getErrorMessage(err, "An error occurred while saving the profile."));
+      const nextUsernameError = getFieldError(err, "username") || "";
+      setUsernameError(nextUsernameError);
+      setGlobalError(
+        nextUsernameError ? "" : getErrorMessage(err, "An error occurred while saving the profile.")
+      );
     },
   });
 
   const handleSave = () => {
     if (saveMutation.isPending || !isSaveEnabled) return;
     setPasswordError("");
+    setUsernameError("");
     setGlobalError("");
     setSuccessMsg("");
     saveMutation.mutate();
@@ -133,12 +147,19 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
       />
 
       <IdentityFields
+        username={username}
+        onChangeUsername={(val) => {
+          setUsername(val.toLowerCase());
+          if (usernameError) setUsernameError("");
+          if (globalError) setGlobalError("");
+        }}
         name={name}
         onChangeName={setName}
         surname={surname}
         onChangeSurname={setSurname}
         email={email}
         onChangeEmail={setEmail}
+        errorUsername={usernameError || undefined}
       />
 
       {globalError || successMsg ? (

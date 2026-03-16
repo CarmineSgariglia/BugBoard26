@@ -7,12 +7,15 @@ import { FormField } from "../../shared/ui/FormField";
 import { Input } from "../../shared/ui/Input";
 
 interface IdentityFieldsProps {
+    username?: string;
+    onChangeUsername?: (val: string) => void;
     name: string;
     onChangeName: (val: string) => void;
     surname: string;
     onChangeSurname: (val: string) => void;
     email: string;
     onChangeEmail: (val: string) => void;
+    errorUsername?: string;
     errorName?: string;
     errorSurname?: string;
     errorEmail?: string;
@@ -20,9 +23,11 @@ interface IdentityFieldsProps {
 }
 
 export function IdentityFields({
+    username, onChangeUsername,
     name, onChangeName,
     surname, onChangeSurname,
     email, onChangeEmail,
+    errorUsername,
     errorName,
     errorSurname,
     errorEmail,
@@ -53,6 +58,20 @@ export function IdentityFields({
                     />
                 </FormField>
             </div>
+            {typeof username === "string" && onChangeUsername ? (
+                <FormField label="Username" error={errorUsername}>
+                    <Input
+                        type="text"
+                        value={username}
+                        onChange={e => onChangeUsername(e.target.value.toLowerCase())}
+                        placeholder="Username"
+                        spellCheck={false}
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        hasError={!!errorUsername}
+                    />
+                </FormField>
+            ) : null}
             <FormField label="Email Address" error={errorEmail}>
                 <Input
                     type="email"
