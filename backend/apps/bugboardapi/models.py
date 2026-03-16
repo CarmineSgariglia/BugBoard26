@@ -4,8 +4,6 @@ from .modules.projects.models import Project, ProjectMembership
 from .modules.tags.models import Tag
 from .modules.users.models import PasswordResetOTP, RevokedTokenSession, UserProfileImage
 
-# This file is used to import all the models from the different modules and make them available for the rest of the application.
-
 __all__ = [
     "Attachment",
     "Issue",
