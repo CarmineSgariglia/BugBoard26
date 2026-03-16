@@ -5,6 +5,6 @@ export type AuthUser = {
   firstName?: string;
   lastName?: string;
   isAdmin?: boolean;
-  profileImg?: string;
+  profileImg?: string | null;
   active?: boolean;
 };
