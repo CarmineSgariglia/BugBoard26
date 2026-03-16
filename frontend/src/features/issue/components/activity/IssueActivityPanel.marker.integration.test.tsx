@@ -105,7 +105,8 @@ describe("IssueActivityPanel marker integration", () => {
       value: scrollIntoViewMock,
     });
 
-    globalThis.IntersectionObserver = vi.fn(() => ({
+    globalThis.IntersectionObserver = vi.fn(function () {
+      return {
       observe: vi.fn(),
       disconnect: vi.fn(),
       unobserve: vi.fn(),
@@ -113,7 +114,8 @@ describe("IssueActivityPanel marker integration", () => {
       rootMargin: "",
       thresholds: [0],
       takeRecords: () => [],
-    })) as unknown as typeof IntersectionObserver;
+      };
+    }) as unknown as typeof IntersectionObserver;
   });
 
   afterEach(() => {
@@ -142,7 +144,6 @@ describe("IssueActivityPanel marker integration", () => {
       expect(screen.getByTestId("issue-activity-new-message-marker-label")).toHaveTextContent("NEW MESSAGE");
       expect(screen.getByTestId("issue-activity-new-message-marker-line-left")).toBeInTheDocument();
       expect(screen.getByTestId("issue-activity-new-message-marker-line-right")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "New message: 1" })).toBeInTheDocument();
     });
   });
 

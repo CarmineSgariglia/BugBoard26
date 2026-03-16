@@ -16,7 +16,11 @@ export type FluidWheelOptions = {
 };
 
 function prefersReducedMotion(): boolean {
-    return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return (
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
 }
 
 function normalizeDeltaY(deltaY: number, deltaMode: number, viewportHeight: number): number {

@@ -279,7 +279,7 @@ describe("NotificationDropdown", () => {
 
     renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
-    expect(await screen.findByText("Issue updated")).toBeInTheDocument();
+    expect(await screen.findAllByText("Issue updated")).toHaveLength(8);
     expect(screen.getByTestId("notification-scroll-container")).toBeInTheDocument();
   });
 
