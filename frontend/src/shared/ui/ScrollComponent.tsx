@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref, UIEventHandler } from "react";
 
 import { useFluidWheelContainer, type FluidWheelOptions } from "@shared/hooks";
 
@@ -9,6 +9,22 @@ interface ScrollComponentProps {
     hideBorder?: boolean;
     smooth?: boolean;
     wheelOptions?: FluidWheelOptions;
+    onScroll?: UIEventHandler<HTMLDivElement>;
+    testId?: string;
+    containerRef?: Ref<HTMLDivElement>;
+}
+
+function setRef<T>(ref: Ref<T> | undefined, value: T | null) {
+    if (!ref) {
+        return;
+    }
+
+    if (typeof ref === "function") {
+        ref(value);
+        return;
+    }
+
+    (ref as { current: T | null }).current = value;
 }
 
 export function ScrollComponent({
@@ -18,12 +34,20 @@ export function ScrollComponent({
     hideBorder = false,
     smooth = false,
     wheelOptions,
+    onScroll,
+    testId,
+    containerRef,
 }: ScrollComponentProps) {
     const scrollRef = useFluidWheelContainer<HTMLDivElement>(smooth, wheelOptions);
 
     return (
         <div
-            ref={scrollRef}
+            ref={(node) => {
+                scrollRef.current = node;
+                setRef(containerRef, node);
+            }}
+            onScroll={onScroll}
+            data-testid={testId}
             className={`
                 ${!hideBorder ? "border border-white/5 bg-[#121620]/50 rounded-xl" : ""} 
                 p-4 ${maxHeight} overflow-y-auto custom-scrollbar ${className}

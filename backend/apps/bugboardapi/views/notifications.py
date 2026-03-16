@@ -10,6 +10,7 @@ from django.http import StreamingHttpResponse
 from django.utils import timezone
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
@@ -17,14 +18,15 @@ from ..models import Notification, NotifyUser
 from ..serializers import NotifyUserSerializer
 from ..services.notification_realtime import (
     invalidate_cached_notification_list,
-    load_cached_notification_list,
     open_notification_subscription,
     remove_cached_notification,
     replace_cached_notification,
-    store_cached_notification_list,
 )
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_NOTIFICATIONS_PAGE_SIZE = 20
+MAX_NOTIFICATIONS_PAGE_SIZE = 50
 
 
 class ServerSentEventsRenderer(BaseRenderer):
@@ -69,18 +71,51 @@ class NotificationViewSet(
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user).order_by("-notify_user_id")
 
-    def _load_notifications_from_db(self) -> list[dict[str, object]]:
-        queryset = list(self.get_queryset())
-        return NotifyUserSerializer(queryset, many=True).data
+    def _parse_positive_int(self, raw_value: str | None, *, field_name: str, default: int | None = None) -> int | None:
+        if raw_value in (None, ""):
+            return default
+
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({field_name: "Must be a positive integer."}) from exc
+
+        if value <= 0:
+            raise ValidationError({field_name: "Must be a positive integer."})
+
+        return value
+
+    def _load_notifications_from_db(self, *, limit: int, before: int | None = None) -> list[NotifyUser]:
+        queryset = self.get_queryset()
+        if before is not None:
+            queryset = queryset.filter(notify_user_id__lt=before)
+        return list(queryset[: limit + 1])
+
+    def _serialize_notifications_page(self, notifications: list[NotifyUser], *, limit: int) -> dict[str, object]:
+        page_items = notifications[:limit]
+        has_more = len(notifications) > limit
+        next_cursor = page_items[-1].notify_user_id if has_more and page_items else None
+        has_unread = NotifyUser.objects.filter(user=self.request.user, is_read=False).exists()
+
+        return {
+            "results": NotifyUserSerializer(page_items, many=True).data,
+            "nextCursor": next_cursor if has_more else None,
+            "hasMore": has_more,
+            "hasUnread": has_unread,
+        }
 
     def list(self, request, *args, **kwargs):
-        cached_notifications = load_cached_notification_list(request.user.id)
-        if cached_notifications is not None:
-            return Response(cached_notifications)
+        limit = self._parse_positive_int(
+            request.query_params.get("limit"),
+            field_name="limit",
+            default=DEFAULT_NOTIFICATIONS_PAGE_SIZE,
+        )
+        assert limit is not None
+        limit = min(limit, MAX_NOTIFICATIONS_PAGE_SIZE)
+        before = self._parse_positive_int(request.query_params.get("before"), field_name="before")
 
-        notifications = self._load_notifications_from_db()
-        store_cached_notification_list(request.user.id, notifications)
-        return Response(notifications)
+        notifications = self._load_notifications_from_db(limit=limit, before=before)
+        return Response(self._serialize_notifications_page(notifications, limit=limit))
 
     def _mark_as_read(self, notify_user: NotifyUser) -> NotifyUser:
         if notify_user.is_read:

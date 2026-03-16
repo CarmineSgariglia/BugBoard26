@@ -1,10 +1,11 @@
+import type { InfiniteData } from "@tanstack/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider } from "@shared/providers";
-import type { NotificationItem } from "../../shared/api/types/notifications";
+import type { NotificationItem, NotificationsPage } from "../../shared/api/types/notifications";
 import { NotificationsRealtimeListener } from "./NotificationsRealtimeListener";
 
 const {
@@ -44,6 +45,7 @@ vi.mock("@shared/api/modules/notifications", () => ({
   getNotificationsStreamUrl: () => "/api/notifications/stream",
   notificationsQueryKey: ["notifications"],
   notificationsPollingIntervalMs: 15000,
+  notificationsPageSize: 20,
 }));
 
 vi.mock("@shared/api/core/client", () => ({
@@ -56,6 +58,23 @@ vi.mock("@shared/api/modules/auth", () => ({
 
 describe("NotificationsRealtimeListener", () => {
   const originalFetch = global.fetch;
+
+  function toInfiniteData(
+    notifications: NotificationItem[],
+    hasUnread = notifications.some((notification) => !notification.isRead),
+  ): InfiniteData<NotificationsPage> {
+    return {
+      pageParams: [null],
+      pages: [
+        {
+          results: notifications,
+          nextCursor: null,
+          hasMore: false,
+          hasUnread,
+        },
+      ],
+    };
+  }
 
   function createStreamResponse(chunks: string[] = []) {
     const body = new ReadableStream<Uint8Array>({
@@ -90,7 +109,12 @@ describe("NotificationsRealtimeListener", () => {
 
   beforeEach(() => {
     refreshUserMock.mockReset();
-    listNotificationsApiMock.mockReset().mockResolvedValue([]);
+    listNotificationsApiMock.mockReset().mockResolvedValue({
+      results: [],
+      nextCursor: null,
+      hasMore: false,
+      hasUnread: false,
+    } satisfies NotificationsPage);
     readNotificationApiMock.mockReset().mockResolvedValue({ notifyUserId: 0, isRead: true });
     getAccessTokenMock.mockReset().mockReturnValue("test-token");
     refreshApiMock.mockReset().mockResolvedValue("test-token");
@@ -154,8 +178,96 @@ describe("NotificationsRealtimeListener", () => {
     expect(screen.getByText("Issue #42")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(queryClient.getQueryData<NotificationItem[]>(["notifications"])).toEqual([notification]);
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData([notification], true),
+      );
     });
+  });
+
+  it("does not show a toast for already loaded read notifications during stream bootstrap", async () => {
+    const existingNotification: NotificationItem = {
+      notifyUserId: 120,
+      notificationId: 21,
+      type: "ISSUE_UPDATED",
+      createdAt: "2026-03-14T11:15:00Z",
+      issueId: 42,
+      projectId: 9,
+      isRead: true,
+      readAt: "2026-03-14T11:16:00Z",
+    };
+
+    listNotificationsApiMock.mockResolvedValue({
+      results: [existingNotification],
+      nextCursor: null,
+      hasMore: false,
+      hasUnread: false,
+    } satisfies NotificationsPage);
+
+    global.fetch = vi.fn().mockImplementation((_input, init) => {
+      const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+      expect(headers.get("Last-Event-ID")).toBe(String(existingNotification.notifyUserId));
+      return Promise.resolve(createStreamResponse());
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    renderListener(queryClient, "/projects");
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData([existingNotification], false),
+      );
+    });
+
+    expect(screen.queryByText("Issue updated")).not.toBeInTheDocument();
+  });
+
+  it("does not show a toast for already loaded unread notifications during stream bootstrap", async () => {
+    const existingNotification: NotificationItem = {
+      notifyUserId: 121,
+      notificationId: 22,
+      type: "ISSUE_UPDATED",
+      createdAt: "2026-03-14T11:15:00Z",
+      issueId: 43,
+      projectId: 9,
+      isRead: false,
+      readAt: null,
+    };
+
+    listNotificationsApiMock.mockResolvedValue({
+      results: [existingNotification],
+      nextCursor: null,
+      hasMore: false,
+      hasUnread: true,
+    } satisfies NotificationsPage);
+
+    global.fetch = vi.fn().mockImplementation((_input, init) => {
+      const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+      expect(headers.get("Last-Event-ID")).toBe(String(existingNotification.notifyUserId));
+      return Promise.resolve(createStreamResponse());
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    renderListener(queryClient, "/projects");
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData([existingNotification], true),
+      );
+    });
+
+    expect(screen.queryByText("Issue updated")).not.toBeInTheDocument();
   });
 
   it("marks matching issue notifications as read from the initial cache load", async () => {
@@ -172,7 +284,15 @@ describe("NotificationsRealtimeListener", () => {
       },
     ];
 
-    listNotificationsApiMock.mockImplementation(async () => notifications);
+    listNotificationsApiMock.mockImplementation(
+      async () =>
+        ({
+          results: notifications,
+          nextCursor: null,
+          hasMore: false,
+          hasUnread: true,
+        }) satisfies NotificationsPage,
+    );
     readNotificationApiMock.mockImplementation(async (notifyUserId: number) => {
       notifications = notifications.map((notification) =>
         notification.notifyUserId === notifyUserId
@@ -192,12 +312,14 @@ describe("NotificationsRealtimeListener", () => {
 
     await waitFor(() => {
       expect(readNotificationApiMock).toHaveBeenCalledWith(91);
-      expect(queryClient.getQueryData<NotificationItem[]>(["notifications"])).toEqual([
-        expect.objectContaining({
-          notifyUserId: 91,
-          isRead: true,
-        }),
-      ]);
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData([
+          expect.objectContaining({
+            notifyUserId: 91,
+            isRead: true,
+          }) as unknown as NotificationItem,
+        ]),
+      );
     });
   });
 
@@ -215,7 +337,15 @@ describe("NotificationsRealtimeListener", () => {
       },
     ];
 
-    listNotificationsApiMock.mockImplementation(async () => notifications);
+    listNotificationsApiMock.mockImplementation(
+      async () =>
+        ({
+          results: notifications,
+          nextCursor: null,
+          hasMore: false,
+          hasUnread: true,
+        }) satisfies NotificationsPage,
+    );
     readNotificationApiMock.mockImplementation(async (notifyUserId: number) => {
       notifications = notifications.map((notification) =>
         notification.notifyUserId === notifyUserId
@@ -235,12 +365,14 @@ describe("NotificationsRealtimeListener", () => {
 
     await waitFor(() => {
       expect(readNotificationApiMock).toHaveBeenCalledWith(95);
-      expect(queryClient.getQueryData<NotificationItem[]>(["notifications"])).toEqual([
-        expect.objectContaining({
-          notifyUserId: 95,
-          isRead: true,
-        }),
-      ]);
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData([
+          expect.objectContaining({
+            notifyUserId: 95,
+            isRead: true,
+          }) as unknown as NotificationItem,
+        ]),
+      );
     });
   });
 
@@ -258,7 +390,12 @@ describe("NotificationsRealtimeListener", () => {
       },
     ] satisfies NotificationItem[];
 
-    listNotificationsApiMock.mockResolvedValue(notifications);
+    listNotificationsApiMock.mockResolvedValue({
+      results: notifications,
+      nextCursor: null,
+      hasMore: false,
+      hasUnread: true,
+    } satisfies NotificationsPage);
 
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -269,7 +406,9 @@ describe("NotificationsRealtimeListener", () => {
     renderListener(queryClient, "/projects/9/issues");
 
     await waitFor(() => {
-      expect(queryClient.getQueryData<NotificationItem[]>(["notifications"])).toEqual(notifications);
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData(notifications),
+      );
       expect(readNotificationApiMock).not.toHaveBeenCalled();
     });
   });
@@ -288,7 +427,12 @@ describe("NotificationsRealtimeListener", () => {
       },
     ] satisfies NotificationItem[];
 
-    listNotificationsApiMock.mockResolvedValue(notifications);
+    listNotificationsApiMock.mockResolvedValue({
+      results: notifications,
+      nextCursor: null,
+      hasMore: false,
+      hasUnread: false,
+    } satisfies NotificationsPage);
 
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -299,7 +443,9 @@ describe("NotificationsRealtimeListener", () => {
     renderListener(queryClient, "/projects/9/issues");
 
     await waitFor(() => {
-      expect(queryClient.getQueryData<NotificationItem[]>(["notifications"])).toEqual(notifications);
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData(notifications),
+      );
       expect(readNotificationApiMock).not.toHaveBeenCalled();
     });
   });
@@ -318,7 +464,15 @@ describe("NotificationsRealtimeListener", () => {
 
     let notifications: NotificationItem[] = [];
 
-    listNotificationsApiMock.mockImplementation(async () => notifications);
+    listNotificationsApiMock.mockImplementation(
+      async () =>
+        ({
+          results: notifications,
+          nextCursor: null,
+          hasMore: false,
+          hasUnread: false,
+        }) satisfies NotificationsPage,
+    );
     readNotificationApiMock.mockImplementation(async (notifyUserId: number) => {
       notifications = notifications.map((currentNotification) =>
         currentNotification.notifyUserId === notifyUserId
@@ -344,12 +498,14 @@ describe("NotificationsRealtimeListener", () => {
 
     await waitFor(() => {
       expect(readNotificationApiMock).toHaveBeenCalledWith(94);
-      expect(queryClient.getQueryData<NotificationItem[]>(["notifications"])).toEqual([
-        expect.objectContaining({
-          notifyUserId: 94,
-          isRead: true,
-        }),
-      ]);
+      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+        toInfiniteData([
+          expect.objectContaining({
+            notifyUserId: 94,
+            isRead: true,
+          }) as unknown as NotificationItem,
+        ]),
+      );
     });
 
     expect(screen.queryByText("Issue updated")).not.toBeInTheDocument();

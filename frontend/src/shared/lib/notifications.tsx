@@ -8,7 +8,8 @@ import {
     FiRefreshCw,
     FiBell
 } from "react-icons/fi";
-import type { NotificationItem, NotificationType } from "../../shared/api/types/notifications";
+import type { InfiniteData } from "@tanstack/react-query";
+import type { NotificationItem, NotificationType, NotificationsPage } from "../../shared/api/types/notifications";
 
 export type NotificationTargetKind = "issue" | "project" | "none";
 
@@ -74,4 +75,84 @@ export function getNotificationDescription(notification: Pick<NotificationItem, 
         return `Project #${notification.projectId}`;
     }
     return "System notification";
+}
+
+export function flattenNotificationsPages(data?: InfiniteData<NotificationsPage> | null): NotificationItem[] {
+    return data?.pages.flatMap((page) => page.results) ?? [];
+}
+
+export function getNotificationsHasUnread(data?: InfiniteData<NotificationsPage> | null): boolean {
+    return data?.pages[0]?.hasUnread ?? false;
+}
+
+export function updateNotificationsInfiniteData(
+    data: InfiniteData<NotificationsPage> | undefined,
+    updater: (notification: NotificationItem) => NotificationItem | null,
+): InfiniteData<NotificationsPage> | undefined {
+    if (!data) return data;
+
+    const pages = data.pages.map((page) => ({
+        ...page,
+        results: page.results.flatMap((notification) => {
+            const nextNotification = updater(notification);
+            return nextNotification ? [nextNotification] : [];
+        }),
+    }));
+    const hasLoadedUnread = pages.some((page) =>
+        page.results.some((notification) => !notification.isRead),
+    );
+    const isFullyLoaded = pages.length > 0 && pages[pages.length - 1]?.hasMore === false;
+    const hasUnread = hasLoadedUnread || (!isFullyLoaded && (data.pages[0]?.hasUnread ?? false));
+
+    return {
+        ...data,
+        pages: pages.map((page) => ({
+            ...page,
+            hasUnread,
+        })),
+    };
+}
+
+export function prependNotificationToInfiniteData(
+    data: InfiniteData<NotificationsPage> | undefined,
+    notification: NotificationItem,
+): InfiniteData<NotificationsPage> {
+    if (!data || data.pages.length === 0) {
+        return {
+            pageParams: [null],
+            pages: [
+                {
+                    results: [notification],
+                    nextCursor: null,
+                    hasMore: false,
+                    hasUnread: !notification.isRead,
+                },
+            ],
+        };
+    }
+
+    const hasUnread = data.pages.some((page) => page.hasUnread) || !notification.isRead;
+
+    return {
+        ...data,
+        pages: data.pages.map((page, index) => {
+            const filteredResults = page.results.filter(
+                (item) => item.notifyUserId !== notification.notifyUserId,
+            );
+
+            if (index === 0) {
+                return {
+                    ...page,
+                    results: [notification, ...filteredResults],
+                    hasUnread,
+                };
+            }
+
+            return {
+                ...page,
+                results: filteredResults,
+                hasUnread,
+            };
+        }),
+    };
 }

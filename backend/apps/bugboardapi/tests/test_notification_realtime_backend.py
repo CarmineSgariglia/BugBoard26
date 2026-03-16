@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -64,7 +62,7 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertEqual(event.data["type"], NotifyType.ISSUE_UPDATED)
         self.assertEqual(event.data["issueId"], self.issue.issue_id)
 
-    def test_notifications_list_uses_cache_after_hydration(self):
+    def test_notifications_list_returns_paginated_payload(self):
         notify_users(
             notify_type=NotifyType.ISSUE_UPDATED,
             users=[self.member],
@@ -73,48 +71,54 @@ class NotificationRealtimeBackendTests(APITestCase):
 
         first_response = self.client.get("/api/notifications")
         self.assertEqual(first_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(first_response.data), 1)
+        self.assertEqual(len(first_response.data["results"]), 1)
+        self.assertEqual(first_response.data["results"][0]["type"], NotifyType.ISSUE_UPDATED)
+        self.assertIsNone(first_response.data["nextCursor"])
+        self.assertFalse(first_response.data["hasMore"])
+        self.assertTrue(first_response.data["hasUnread"])
 
-        with patch(
-            "apps.bugboardapi.views.notifications.NotificationViewSet._load_notifications_from_db",
-            side_effect=AssertionError("DB should not be hit when cache is warm"),
-        ):
-            second_response = self.client.get("/api/notifications")
-
-        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(second_response.data, first_response.data)
-
-    def test_notify_users_prepends_new_notification_into_cached_list(self):
+    def test_notifications_list_supports_cursor_pagination(self):
         first_notification = notify_users(
             notify_type=NotifyType.ISSUE_UPDATED,
             users=[self.member],
             issue=self.issue,
         )
+        second_notification = notify_users(
+            notify_type=NotifyType.ISSUE_CLOSED,
+            users=[self.member],
+            issue=self.issue,
+        )
+        third_notification = notify_users(
+            notify_type=NotifyType.ISSUE_ASSIGNED,
+            users=[self.member],
+            issue=self.issue,
+        )
+
         first_notify_user = NotifyUser.objects.get(notification=first_notification, user=self.member)
-
-        first_response = self.client.get("/api/notifications")
-        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(first_response.data[0]["notifyUserId"], first_notify_user.notify_user_id)
-
-        with self.captureOnCommitCallbacks(execute=True):
-            second_notification = notify_users(
-                notify_type=NotifyType.ISSUE_CLOSED,
-                users=[self.member],
-                issue=self.issue,
-            )
         second_notify_user = NotifyUser.objects.get(notification=second_notification, user=self.member)
+        third_notify_user = NotifyUser.objects.get(notification=third_notification, user=self.member)
 
-        with patch(
-            "apps.bugboardapi.views.notifications.NotificationViewSet._load_notifications_from_db",
-            side_effect=AssertionError("DB should not be hit when cache is updated on create"),
-        ):
-            second_response = self.client.get("/api/notifications")
+        first_page = self.client.get("/api/notifications?limit=2")
+        self.assertEqual(first_page.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["notifyUserId"] for item in first_page.data["results"]],
+            [third_notify_user.notify_user_id, second_notify_user.notify_user_id],
+        )
+        self.assertTrue(first_page.data["hasMore"])
+        self.assertEqual(first_page.data["nextCursor"], second_notify_user.notify_user_id)
+        self.assertTrue(first_page.data["hasUnread"])
 
-        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(second_response.data[0]["notifyUserId"], second_notify_user.notify_user_id)
-        self.assertEqual(second_response.data[1]["notifyUserId"], first_notify_user.notify_user_id)
+        second_page = self.client.get(f"/api/notifications?limit=2&before={first_page.data['nextCursor']}")
+        self.assertEqual(second_page.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["notifyUserId"] for item in second_page.data["results"]],
+            [first_notify_user.notify_user_id],
+        )
+        self.assertFalse(second_page.data["hasMore"])
+        self.assertIsNone(second_page.data["nextCursor"])
+        self.assertTrue(second_page.data["hasUnread"])
 
-    def test_read_updates_cached_notification(self):
+    def test_read_updates_notification_in_paginated_list(self):
         notification = notify_users(
             notify_type=NotifyType.ISSUE_UPDATED,
             users=[self.member],
@@ -125,18 +129,14 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.client.get("/api/notifications")
         read_response = self.client.post(f"/api/notifications/{notify_user.notify_user_id}/read", {}, format="json")
         self.assertEqual(read_response.status_code, status.HTTP_200_OK)
-
-        with patch(
-            "apps.bugboardapi.views.notifications.NotificationViewSet._load_notifications_from_db",
-            side_effect=AssertionError("DB should not be hit when cache is updated on read"),
-        ):
-            list_response = self.client.get("/api/notifications")
+        list_response = self.client.get("/api/notifications")
 
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(list_response.data[0]["isRead"])
-        self.assertIsNotNone(list_response.data[0]["readAt"])
+        self.assertTrue(list_response.data["results"][0]["isRead"])
+        self.assertIsNotNone(list_response.data["results"][0]["readAt"])
+        self.assertFalse(list_response.data["hasUnread"])
 
-    def test_delete_updates_cached_notification_list(self):
+    def test_delete_updates_paginated_notification_list(self):
         first_notification = notify_users(
             notify_type=NotifyType.ISSUE_UPDATED,
             users=[self.member],
@@ -153,12 +153,11 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.client.get("/api/notifications")
         delete_response = self.client.delete(f"/api/notifications/{second_notify_user.notify_user_id}")
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
-
-        with patch(
-            "apps.bugboardapi.views.notifications.NotificationViewSet._load_notifications_from_db",
-            side_effect=AssertionError("DB should not be hit when cache is updated on delete"),
-        ):
-            list_response = self.client.get("/api/notifications")
+        list_response = self.client.get("/api/notifications")
 
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual([item["notifyUserId"] for item in list_response.data], [first_notify_user.notify_user_id])
+        self.assertEqual(
+            [item["notifyUserId"] for item in list_response.data["results"]],
+            [first_notify_user.notify_user_id],
+        )
+        self.assertTrue(list_response.data["hasUnread"])

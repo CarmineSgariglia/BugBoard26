@@ -1,11 +1,9 @@
 import { useEffect, useEffectEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { getAccessToken } from "@shared/api/core/client";
 import { refreshApi } from "@shared/api/modules/auth";
 import { getIssueUpdatesStreamUrl } from "@shared/api/modules/issues";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { getLatestIssueUpdateId, upsertIssueUpdates } from "@shared/lib/issueUpdatesRealtime";
 import { createSseParser } from "@shared/lib/notificationsRealtime";
 import { useAuth } from "@shared/providers";
 
@@ -13,17 +11,17 @@ const STREAM_RETRY_DELAYS_MS = [1000, 2000, 5000, 10000, 20000];
 
 type Props = {
   issueId: number;
+  latestUpdateId?: number;
+  onUpdate: (update: IssueUpdate) => void;
 };
 
-export function IssueActivityRealtimeListener({ issueId }: Props) {
-  const queryClient = useQueryClient();
+export function IssueActivityRealtimeListener({ issueId, latestUpdateId = 0, onUpdate }: Props) {
   const { user, refreshUser } = useAuth();
 
   const handleIssueEventCreated = useEffectEvent((update: IssueUpdate) => {
-    queryClient.setQueryData<IssueUpdate[]>(["issue", issueId, "updates"], (current = []) =>
-      upsertIssueUpdates(current, update),
-    );
+    onUpdate(update);
   });
+  const getLatestUpdateId = useEffectEvent(() => latestUpdateId);
 
   useEffect(() => {
     if (!user || !issueId) {
@@ -82,16 +80,13 @@ export function IssueActivityRealtimeListener({ issueId }: Props) {
         return;
       }
 
-      const latestUpdateId = getLatestIssueUpdateId(
-        queryClient.getQueryData<IssueUpdate[]>(["issue", issueId, "updates"]) ?? [],
-      );
-
       const headers = new Headers({
         Authorization: `Bearer ${token}`,
       });
 
-      if (latestUpdateId > 0) {
-        headers.set("Last-Event-ID", String(latestUpdateId));
+      const lastKnownUpdateId = getLatestUpdateId();
+      if (lastKnownUpdateId > 0) {
+        headers.set("Last-Event-ID", String(lastKnownUpdateId));
       }
 
       abortController?.abort();
@@ -176,7 +171,7 @@ export function IssueActivityRealtimeListener({ issueId }: Props) {
       clearReconnectTimer();
       abortController?.abort();
     };
-  }, [issueId, queryClient, refreshUser, user]);
+  }, [issueId, refreshUser, user]);
 
   return null;
 }

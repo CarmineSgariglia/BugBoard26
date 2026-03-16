@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchPath, useLocation } from "react-router-dom";
 
 import { getAccessToken } from "@shared/api/core/client";
@@ -8,19 +9,22 @@ import {
   getNotificationsStreamUrl,
   listNotificationsApi,
   notificationsPollingIntervalMs,
+  notificationsPageSize,
   notificationsQueryKey,
   readNotificationApi,
 } from "@shared/api/modules/notifications";
-import type { NotificationItem } from "@shared/api/types/notifications";
+import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
 import {
+  flattenNotificationsPages,
   getNotificationDescription,
   getNotificationTargetKind,
   getNotificationTitle,
+  prependNotificationToInfiniteData,
+  updateNotificationsInfiniteData,
 } from "@shared/lib/notifications";
 import {
   createSseParser,
   getLatestNotificationId,
-  upsertNotifications,
 } from "@shared/lib/notificationsRealtime";
 import { useAuth, useToast } from "@shared/providers";
 
@@ -81,36 +85,44 @@ export function NotificationsRealtimeListener() {
 
   const routeTarget = useMemo(() => getRouteTarget(location.pathname), [location.pathname]);
 
-  const { data: notifications = [] } = useQuery({
+  const { data, isSuccess } = useInfiniteQuery({
     queryKey: notificationsQueryKey,
-    queryFn: listNotificationsApi,
+    queryFn: ({ pageParam }) =>
+      listNotificationsApi({ limit: notificationsPageSize, before: pageParam }),
+    initialPageParam: null as number | null,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
     enabled: Boolean(user),
     staleTime: 30000,
     refetchInterval: user ? notificationsPollingIntervalMs : false,
   });
+  const notifications = useMemo(() => flattenNotificationsPages(data), [data]);
 
   const readMutation = useMutation({
     mutationFn: (notifyUserId: number) => readNotificationApi(notifyUserId),
     onMutate: async (notifyUserId) => {
       pendingReadIdsRef.current.add(notifyUserId);
       await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
-      queryClient.setQueryData<NotificationItem[]>(notificationsQueryKey, (current = []) =>
-        current.map((item) =>
-          item.notifyUserId === notifyUserId
-            ? {
-                ...item,
-                isRead: true,
-                readAt: item.readAt ?? new Date().toISOString(),
-              }
-            : item,
-        ),
+      queryClient.setQueryData(
+        notificationsQueryKey,
+        (current: InfiniteData<NotificationsPage> | undefined) =>
+          updateNotificationsInfiniteData(current, (item) =>
+            item.notifyUserId === notifyUserId
+              ? {
+                  ...item,
+                  isRead: true,
+                  readAt: item.readAt ?? new Date().toISOString(),
+                }
+              : item,
+          ),
       );
     },
     onError: (_error, notifyUserId) => {
-      queryClient.setQueryData<NotificationItem[]>(notificationsQueryKey, (current = []) =>
-        current.map((item) =>
-          item.notifyUserId === notifyUserId ? { ...item, isRead: false, readAt: null } : item,
-        ),
+      queryClient.setQueryData(
+        notificationsQueryKey,
+        (current: InfiniteData<NotificationsPage> | undefined) =>
+          updateNotificationsInfiniteData(current, (item) =>
+            item.notifyUserId === notifyUserId ? { ...item, isRead: false, readAt: null } : item,
+          ),
       );
     },
     onSettled: (_data, _error, notifyUserId) => {
@@ -133,8 +145,10 @@ export function NotificationsRealtimeListener() {
   });
 
   const handleNotificationCreated = useEffectEvent((notification: NotificationItem) => {
-    queryClient.setQueryData<NotificationItem[]>(notificationsQueryKey, (current = []) =>
-      upsertNotifications(current, notification),
+    queryClient.setQueryData(
+      notificationsQueryKey,
+      (current: InfiniteData<NotificationsPage> | undefined) =>
+        prependNotificationToInfiniteData(current, notification),
     );
 
     if (matchesRouteTarget(notification, routeTarget)) {
@@ -157,6 +171,10 @@ export function NotificationsRealtimeListener() {
   useEffect(() => {
     if (!user) {
       queryClient.removeQueries({ queryKey: notificationsQueryKey });
+      return;
+    }
+
+    if (!isSuccess) {
       return;
     }
 
@@ -213,7 +231,9 @@ export function NotificationsRealtimeListener() {
       }
 
       const latestNotificationId = getLatestNotificationId(
-        queryClient.getQueryData<NotificationItem[]>(notificationsQueryKey) ?? [],
+        flattenNotificationsPages(
+          queryClient.getQueryData<InfiniteData<NotificationsPage>>(notificationsQueryKey),
+        ),
       );
 
       const headers = new Headers({
@@ -306,7 +326,7 @@ export function NotificationsRealtimeListener() {
       clearReconnectTimer();
       abortController?.abort();
     };
-  }, [queryClient, refreshUser, user]);
+  }, [isSuccess, queryClient, refreshUser, user]);
 
   return null;
 }

@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -58,20 +57,15 @@ describe("IssueActivityRealtimeListener", () => {
     vi.clearAllMocks();
   });
 
-  it("upserts issue updates from SSE without duplicating existing optimistic entries", async () => {
+  it("forwards realtime issue updates and sends the last known event id", async () => {
     const issueId = 42;
-    const existingUpdate: IssueUpdate = {
+    const streamedUpdate: IssueUpdate = {
       updateId: 8,
       issueId,
       actorId: 1,
       actorUsername: "alice",
       eventType: "COMMENT",
       at: "2026-03-15T10:00:00Z",
-      message: "Local optimistic comment",
-      attachments: [],
-    };
-    const streamedUpdate: IssueUpdate = {
-      ...existingUpdate,
       message: "Local optimistic comment",
       attachments: [
         {
@@ -110,23 +104,26 @@ describe("IssueActivityRealtimeListener", () => {
       );
     });
 
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
-    queryClient.setQueryData<IssueUpdate[]>(["issue", issueId, "updates"], [existingUpdate]);
+    const onUpdate = vi.fn();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <IssueActivityRealtimeListener issueId={issueId} />
-      </QueryClientProvider>,
-    );
+    render(<IssueActivityRealtimeListener issueId={issueId} latestUpdateId={7} onUpdate={onUpdate} />);
 
     await waitFor(() => {
-      expect(queryClient.getQueryData<IssueUpdate[]>(["issue", issueId, "updates"])).toEqual([
-        streamedUpdate,
-      ]);
+      expect(onUpdate).toHaveBeenCalledWith(streamedUpdate);
     });
+
+    expect(global.fetch).toHaveBeenCalledWith("/api/issues/42/updates/stream", expect.objectContaining({
+      method: "GET",
+      credentials: "include",
+      headers: expect.any(Headers),
+    }));
+
+    const fetchMock = global.fetch as unknown as {
+      mock: { calls: Array<[string, { headers: Headers }]> };
+    };
+    const fetchOptions = fetchMock.mock.calls[0]?.[1] as {
+      headers: Headers;
+    };
+    expect(fetchOptions.headers.get("Last-Event-ID")).toBe("7");
   });
 });
