@@ -205,7 +205,7 @@ if MEDIA_STORAGE_BACKEND == "gcs":
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "apps.bugboardapi.authentication.RevocableJWTAuthentication",
+        "apps.bugboardapi.security.authentication.RevocableJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

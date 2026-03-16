@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.exceptions import PermissionDenied
 
-from apps.bugboardapi.models import Issue, IssueAssignee
+from apps.bugboardapi.modules.issues.models import Issue, IssueAssignee
 from apps.bugboardapi.permissions import (
     check_admin as public_check_admin,
     check_assignee_or_admin as public_check_assignee_or_admin,

@@ -9,14 +9,14 @@ from django.test import SimpleTestCase, TestCase
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from apps.bugboardapi.issue_rules import validate_project_assignee_ids
-from apps.bugboardapi.passwords import (
+from apps.bugboardapi.modules.issues.rules import validate_project_assignee_ids
+from apps.bugboardapi.security.passwords import (
     build_password_validation_user,
     ensure_valid_password,
 )
 from apps.bugboardapi.roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
-from apps.bugboardapi.upload_security import (
+from apps.bugboardapi.security.uploads import (
     validate_issue_attachment,
     validate_profile_image,
 )

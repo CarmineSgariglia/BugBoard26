@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 
-from apps.bugboardapi.authentication import RevocableJWTAuthentication
-from apps.bugboardapi.issue_rules import validate_project_assignee_ids
+from apps.bugboardapi.security.authentication import RevocableJWTAuthentication
+from apps.bugboardapi.modules.issues.rules import validate_project_assignee_ids
 
 
 def _detail_text(detail):
@@ -16,12 +16,12 @@ def _detail_text(detail):
 
 class ValidateProjectAssigneeIdsTests(SimpleTestCase):
     def test_returns_early_when_assignee_ids_is_none(self):
-        with patch("apps.bugboardapi.issue_rules.ProjectMembership") as membership_model:
+        with patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model:
             validate_project_assignee_ids(project=object(), assignee_ids=None)
             membership_model.objects.filter.assert_not_called()
 
     def test_returns_early_when_assignee_ids_is_empty(self):
-        with patch("apps.bugboardapi.issue_rules.ProjectMembership") as membership_model:
+        with patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model:
             validate_project_assignee_ids(project=object(), assignee_ids=[])
             membership_model.objects.filter.assert_not_called()
 
@@ -31,8 +31,8 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
         queryset.select_related.return_value = [membership]
 
         with (
-            patch("apps.bugboardapi.issue_rules.ProjectMembership") as membership_model,
-            patch("apps.bugboardapi.issue_rules.is_admin_user", return_value=False),
+            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=False),
         ):
             membership_model.objects.filter.return_value = queryset
 
@@ -50,8 +50,8 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
         queryset.select_related.return_value = [membership]
 
         with (
-            patch("apps.bugboardapi.issue_rules.ProjectMembership") as membership_model,
-            patch("apps.bugboardapi.issue_rules.is_admin_user", return_value=True),
+            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=True),
         ):
             membership_model.objects.filter.return_value = queryset
 
@@ -69,8 +69,8 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
         queryset.select_related.return_value = [membership]
 
         with (
-            patch("apps.bugboardapi.issue_rules.ProjectMembership") as membership_model,
-            patch("apps.bugboardapi.issue_rules.is_admin_user", return_value=False),
+            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=False),
         ):
             membership_model.objects.filter.return_value = queryset
             validate_project_assignee_ids(project=object(), assignee_ids=[10])
@@ -107,7 +107,7 @@ class RevocableJWTAuthenticationTests(SimpleTestCase):
                 "rest_framework_simplejwt.authentication.JWTAuthentication.authenticate",
                 return_value=(user, token),
             ),
-            patch("apps.bugboardapi.authentication.RevokedTokenSession") as session_model,
+            patch("apps.bugboardapi.security.authentication.RevokedTokenSession") as session_model,
         ):
             session_model.objects.filter.return_value.exists.return_value = True
 
@@ -124,7 +124,7 @@ class RevocableJWTAuthenticationTests(SimpleTestCase):
                 "rest_framework_simplejwt.authentication.JWTAuthentication.authenticate",
                 return_value=(user, token),
             ),
-            patch("apps.bugboardapi.authentication.RevokedTokenSession") as session_model,
+            patch("apps.bugboardapi.security.authentication.RevokedTokenSession") as session_model,
         ):
             session_model.objects.filter.return_value.exists.return_value = False
 

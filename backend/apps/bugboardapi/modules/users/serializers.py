@@ -1,0 +1,168 @@
+from django.contrib.auth.models import User
+from django.db import IntegrityError
+from rest_framework import serializers
+
+from ...common.media import build_media_url
+from ...roles import (
+    ADMIN_GROUP_NAME,
+    DEVELOPER_GROUP_NAME,
+    GLOBAL_ROLE_CHOICES,
+    assign_global_role,
+    get_global_role,
+)
+from ...security.passwords import build_password_validation_user, ensure_valid_password
+from .models import UserProfileImage
+
+EMAIL_ALREADY_IN_USE_MESSAGE = "Email already in use"
+EMAIL_CASE_INSENSITIVE_INDEX_NAME = "auth_user_email_ci_unique_idx"
+USERNAME_ALREADY_EXISTS_MESSAGE = "A user with that username already exists."
+USERNAME_UNIQUE_CONSTRAINT_NAME = "auth_user_username_key"
+
+
+class UserSerializer(serializers.ModelSerializer):
+    userId = serializers.IntegerField(source="id", read_only=True)
+    firstName = serializers.CharField(source="first_name", required=False, allow_blank=True)
+    lastName = serializers.CharField(source="last_name", required=False, allow_blank=True)
+    isAdmin = serializers.BooleanField(required=False, write_only=True)
+    group = serializers.ChoiceField(choices=GLOBAL_ROLE_CHOICES, required=False, write_only=True)
+    profileImg = serializers.CharField(source="profile.profile_img", required=False, allow_blank=True)
+    active = serializers.BooleanField(source="is_active", required=False)
+
+    class Meta:
+        model = User
+        fields = [
+            "userId",
+            "username",
+            "email",
+            "firstName",
+            "lastName",
+            "password",
+            "group",
+            "isAdmin",
+            "profileImg",
+            "active",
+        ]
+        extra_kwargs = {"password": {"write_only": True, "required": False}}
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["profileImg"] = build_media_url(self, data.get("profileImg", ""))
+        role = get_global_role(instance) or DEVELOPER_GROUP_NAME
+        data["group"] = role
+        data["isAdmin"] = role == ADMIN_GROUP_NAME
+        return data
+
+    def validate_email(self, value: str) -> str:
+        normalized_email = value.strip()
+        if not normalized_email:
+            return normalized_email
+
+        queryset = User.objects.filter(email__iexact=normalized_email)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(EMAIL_ALREADY_IN_USE_MESSAGE)
+        return normalized_email
+
+    def validate_username(self, value: str) -> str:
+        queryset = User.objects.filter(username=value)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(USERNAME_ALREADY_EXISTS_MESSAGE)
+        return value
+
+    def _raise_known_integrity_error(self, exc: IntegrityError) -> None:
+        constraint_name = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", "")
+        if (
+            constraint_name == USERNAME_UNIQUE_CONSTRAINT_NAME
+            or USERNAME_UNIQUE_CONSTRAINT_NAME in str(exc)
+        ):
+            raise serializers.ValidationError({"username": USERNAME_ALREADY_EXISTS_MESSAGE}) from exc
+        if (
+            constraint_name == EMAIL_CASE_INSENSITIVE_INDEX_NAME
+            or EMAIL_CASE_INSENSITIVE_INDEX_NAME in str(exc)
+        ):
+            raise serializers.ValidationError({"email": EMAIL_ALREADY_IN_USE_MESSAGE}) from exc
+        raise exc
+
+    def validate(self, attrs):
+        requested_group = attrs.get("group")
+        requested_is_admin = attrs.pop("isAdmin", None)
+        password = attrs.get("password")
+
+        if requested_is_admin is not None:
+            alias_group = ADMIN_GROUP_NAME if requested_is_admin else DEVELOPER_GROUP_NAME
+            if requested_group is not None and requested_group != alias_group:
+                raise serializers.ValidationError({"group": "group and isAdmin must describe the same role"})
+            requested_group = alias_group
+
+        if requested_group is not None:
+            attrs["group"] = requested_group
+        elif self.instance is None:
+            attrs["group"] = DEVELOPER_GROUP_NAME
+
+        if self.instance is None and not password:
+            raise serializers.ValidationError({"password": "Password is required"})
+
+        if self.instance is not None and password is not None:
+            raise serializers.ValidationError({"password": "Use the dedicated password endpoint"})
+
+        if password:
+            candidate_user = build_password_validation_user(instance=self.instance, attrs=attrs)
+            ensure_valid_password(password, user=candidate_user, field_name="password")
+
+        return attrs
+
+    def create(self, validated_data):
+        role_name = validated_data.pop("group", DEVELOPER_GROUP_NAME)
+        profile_data = validated_data.pop("profile", {})
+        password = validated_data.pop("password", None)
+        try:
+            user = User.objects.create(**validated_data)
+        except IntegrityError as exc:
+            self._raise_known_integrity_error(exc)
+        if password:
+            user.set_password(password)
+        assign_global_role(user, role_name)
+        user_update_fields = ["is_staff"]
+        if password:
+            user_update_fields.append("password")
+        try:
+            user.save(update_fields=user_update_fields)
+        except IntegrityError as exc:
+            self._raise_known_integrity_error(exc)
+        profile, _ = UserProfileImage.objects.get_or_create(user=user)
+        profile.profile_img = profile_data.get("profile_img", profile.profile_img)
+        profile.save(update_fields=["profile_img"])
+        return user
+
+    def update(self, instance, validated_data):
+        role_name = validated_data.pop("group", None)
+        profile_data = validated_data.pop("profile", {})
+        password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        update_fields = list(validated_data.keys())
+        if password:
+            update_fields.append("password")
+        if update_fields:
+            try:
+                instance.save(update_fields=update_fields)
+            except IntegrityError as exc:
+                self._raise_known_integrity_error(exc)
+
+        profile, _ = UserProfileImage.objects.get_or_create(user=instance)
+        if "profile_img" in profile_data:
+            profile.profile_img = profile_data["profile_img"]
+            profile.save(update_fields=["profile_img"])
+        if role_name is not None:
+            assign_global_role(instance, role_name)
+        return instance
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    currentPassword = serializers.CharField(required=False, allow_blank=True)
+    newPassword = serializers.CharField(min_length=8)

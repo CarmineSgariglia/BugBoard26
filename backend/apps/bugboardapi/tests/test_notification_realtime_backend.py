@@ -2,9 +2,10 @@ from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.bugboardapi.models import Issue, IssueStatus, NotifyType, NotifyUser
-from apps.bugboardapi.services.notification_realtime import open_notification_subscription
-from apps.bugboardapi.services.notifications import notify_users
+from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
+from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
+from apps.bugboardapi.modules.notifications.realtime import open_notification_subscription
+from apps.bugboardapi.modules.notifications.services import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 

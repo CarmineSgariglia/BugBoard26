@@ -4,8 +4,9 @@ from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
-from apps.bugboardapi.models import Project, ProjectMembership, Tag
-from apps.bugboardapi.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
+from apps.bugboardapi.modules.projects.models import Project, ProjectMembership
+from apps.bugboardapi.modules.tags.models import Tag
+from apps.bugboardapi.modules.auth.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
 

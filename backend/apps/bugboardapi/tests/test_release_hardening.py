@@ -5,7 +5,8 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.bugboardapi.models import Issue, IssueStatus, NotifyType
+from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
+from apps.bugboardapi.modules.notifications.models import NotifyType
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -97,7 +98,7 @@ class ProjectViewRegressionTests(APITestCase):
         returned_names = {item["name"] for item in response.data}
         self.assertEqual(returned_names, {"Alpha Board"})
 
-    @patch("apps.bugboardapi.views.projects.notify_users")
+    @patch("apps.bugboardapi.modules.projects.views.notify_users")
     def test_project_delete_notifies_members_before_deletion(self, mock_notify_users):
         response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)

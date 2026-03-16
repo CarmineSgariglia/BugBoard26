@@ -5,9 +5,9 @@ from django.db import transaction
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
-from apps.bugboardapi.models import EventType, Issue, IssueStatus
-from apps.bugboardapi.services import create_issue_event
-from apps.bugboardapi.services.issue_realtime import open_issue_subscription
+from apps.bugboardapi.modules.issues.models import EventType, Issue, IssueStatus
+from apps.bugboardapi.modules.issues.services import create_issue_event
+from apps.bugboardapi.modules.issues.realtime import open_issue_subscription
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -171,7 +171,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         self.assertEqual(parsed["id"], str(issue_event.update_id))
         response.close()
 
-    @patch("apps.bugboardapi.views.issues.open_issue_subscription")
+    @patch("apps.bugboardapi.modules.issues.views.open_issue_subscription")
     def test_issue_update_stream_sends_heartbeat_and_headers(self, open_subscription_mock):
         class StubSubscription:
             def get_message(self, timeout=None):
@@ -198,7 +198,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         self.assertEqual(parsed["event"], "ping")
         response.close()
 
-    @patch("apps.bugboardapi.views.issues.open_issue_subscription", side_effect=RuntimeError)
+    @patch("apps.bugboardapi.modules.issues.views.open_issue_subscription", side_effect=RuntimeError)
     def test_issue_update_stream_returns_service_unavailable_when_backend_fails(self, _mock_subscription):
         self.client.force_authenticate(user=self.member)
         response = self.client.get(

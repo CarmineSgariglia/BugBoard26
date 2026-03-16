@@ -1,7 +1,8 @@
 from django.contrib.auth.models import User
 from rest_framework.exceptions import PermissionDenied
 
-from ..models import Issue, Project
+from ..modules.issues.models import Issue
+from ..modules.projects.models import Project
 from ..roles import is_admin_user
 from .helpers import is_issue_assignee, is_project_member
 

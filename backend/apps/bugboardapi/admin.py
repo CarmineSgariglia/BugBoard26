@@ -1,20 +1,10 @@
 from django.contrib import admin
 
-from .models import (
-    Attachment,
-    Issue,
-    IssueAssignee,
-    IssueEvent,
-    IssueTag,
-    Notification,
-    NotifyUser,
-    PasswordResetOTP,
-    Project,
-    ProjectMembership,
-    RevokedTokenSession,
-    Tag,
-    UserProfileImage,
-)
+from .modules.issues.models import Attachment, Issue, IssueAssignee, IssueEvent, IssueTag
+from .modules.notifications.models import Notification, NotifyUser
+from .modules.projects.models import Project, ProjectMembership
+from .modules.tags.models import Tag
+from .modules.users.models import PasswordResetOTP, RevokedTokenSession, UserProfileImage
 
 
 @admin.register(UserProfileImage)

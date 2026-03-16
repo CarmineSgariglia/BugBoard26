@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 
-from apps.bugboardapi.models import Project, ProjectMembership, UserProfileImage
+from apps.bugboardapi.modules.projects.models import Project, ProjectMembership
+from apps.bugboardapi.modules.users.models import UserProfileImage
 from apps.bugboardapi.roles import (
     ADMIN_GROUP_NAME,
     DEVELOPER_GROUP_NAME,

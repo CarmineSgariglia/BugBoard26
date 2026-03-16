@@ -4,8 +4,9 @@ from unittest.mock import patch
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
-from apps.bugboardapi.models import Issue, IssueStatus, NotifyType, NotifyUser
-from apps.bugboardapi.services.notifications import notify_users
+from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
+from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
+from apps.bugboardapi.modules.notifications.services import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -127,7 +128,7 @@ class NotificationStreamTests(APITransactionTestCase):
         self.assertEqual(parsed["id"], str(notify_user.notify_user_id))
         response.close()
 
-    @patch("apps.bugboardapi.views.notifications.open_notification_subscription")
+    @patch("apps.bugboardapi.modules.notifications.views.open_notification_subscription")
     def test_stream_sends_heartbeat_and_headers(self, open_subscription_mock):
         class StubSubscription:
             def get_message(self, timeout=None):
@@ -151,7 +152,7 @@ class NotificationStreamTests(APITransactionTestCase):
         self.assertEqual(parsed["event"], "ping")
         response.close()
 
-    @patch("apps.bugboardapi.views.notifications.open_notification_subscription", side_effect=RuntimeError)
+    @patch("apps.bugboardapi.modules.notifications.views.open_notification_subscription", side_effect=RuntimeError)
     def test_stream_returns_service_unavailable_when_subscription_backend_fails(self, _mock_subscription):
         self.client.force_authenticate(user=self.member)
         response = self.client.get("/api/notifications/stream", HTTP_ACCEPT="text/event-stream")

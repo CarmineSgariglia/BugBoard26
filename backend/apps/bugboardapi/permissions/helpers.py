@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 
-from ..models import Issue, IssueAssignee, Project
+from ..modules.issues.models import Issue, IssueAssignee
+from ..modules.projects.models import Project
 
 
 def is_project_member(user: User, project: Project) -> bool:
