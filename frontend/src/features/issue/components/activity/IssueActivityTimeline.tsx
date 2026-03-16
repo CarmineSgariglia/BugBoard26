@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, type UIEvent } from "react";
+import { useEffect, useRef, type UIEvent } from "react";
 import { ScrollComponent } from "@shared/ui/ScrollComponent";
 import type { UiActivityItem } from "@features/issue/lib/formatIssueActivityEvent";
 import { IssueActivityItem } from "./IssueActivityItem";
@@ -49,9 +49,11 @@ export function IssueActivityTimeline({
             return;
         }
 
+        const isMarker = targetElement.hasAttribute('data-activity-marker-id');
+
         targetElement.scrollIntoView({
             behavior: "smooth",
-            block: "start",
+            block: isMarker ? "start" : "nearest",
         });
 
         onScrollToItemDone?.(scrollToItemId);
@@ -130,25 +132,15 @@ export function IssueActivityTimeline({
         >
             <div ref={itemsRef} className="space-y-4 p-4">
                 {items.map((item) => (
-                    <Fragment key={item.id}>
-                        {item.id === newMessageMarkerId ? (
-                            <div
-                                ref={newMessageMarkerRef}
-                                data-activity-marker-id={item.id}
-                                data-testid="issue-activity-new-message-marker"
-                                className="flex items-center gap-3 pb-1"
-                            >
-                                <span className="h-px flex-1 bg-sky-400/25" />
-                                <span className="rounded-full border border-sky-400/35 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
-                                    New message
-                                </span>
-                                <span className="h-px flex-1 bg-sky-400/25" />
-                            </div>
-                        ) : null}
+                    <div key={item.id} data-activity-entry-id={item.id}>
                         <div data-activity-item-id={item.id}>
-                            <IssueActivityItem item={item} />
+                            <IssueActivityItem
+                                ref={item.id === newMessageMarkerId ? newMessageMarkerRef : undefined}
+                                item={item}
+                                showNewMessageMarker={item.id === newMessageMarkerId}
+                            />
                         </div>
-                    </Fragment>
+                    </div>
                 ))}
             </div>
         </ScrollComponent>

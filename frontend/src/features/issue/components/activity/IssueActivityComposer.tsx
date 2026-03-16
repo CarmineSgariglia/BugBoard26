@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { FiPaperclip, FiSend, FiX, FiAlertCircle } from "react-icons/fi";
 import { useFileValidation } from "@shared/hooks/useFileValidation";
 import { ATTACHMENT_FILE_INPUT_ACCEPT, ATTACHMENT_MAX_FILES, formatBytes } from "@shared/lib/media";
@@ -32,6 +32,22 @@ export function IssueActivityComposer({
         onFilesChange: onFilesChange,
     });
 
+    const isSendDisabled = !message.trim() || isSubmitting || isPreparingFiles;
+
+    function handleMessageKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+        if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (isSendDisabled) {
+            return;
+        }
+
+        onSubmit();
+    }
+
     return (
         <div className="border-t border-white/10 bg-[#0D1322] p-3">
             <div className="flex gap-2 items-start">
@@ -45,12 +61,13 @@ export function IssueActivityComposer({
                     containerClassName="flex-1"
                     textareaClassName="min-h-[38px] h-[38px] max-h-40 rounded-xl bg-[#121620] border-white/10 px-3 py-2 leading-[20px] text-sm placeholder:text-neutral-500"
                     counterClassName="text-neutral-500"
+                    onKeyDown={handleMessageKeyDown}
                 />
                 <Button
                     type="button"
                     variant="primary"
                     fullWidth={false}
-                    disabled={!message.trim() || isSubmitting || isPreparingFiles}
+                    disabled={isSendDisabled}
                     isLoading={isSubmitting}
                     onClick={onSubmit}
                     icon={<FiSend size={14} />}

@@ -19,7 +19,7 @@ type Props = {
     className?: string;
 };
 
-const NEW_MESSAGE_MARKER_VISIBLE_MS = 5000;
+const NEW_MESSAGE_MARKER_VISIBLE_MS = 3000;
 
 function getSubmitErrorMessage(error: unknown): string {
     if (
@@ -201,7 +201,7 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
         setPendingUpdateIds([]);
     }
 
-    function handleNewMessageMarkerVisibilityChange(isVisible: boolean) {
+    const handleNewMessageMarkerVisibilityChange = useCallback((isVisible: boolean) => {
         if (newMessageMarkerId == null) {
             resetMarkerVisibilityTracking();
             return;
@@ -244,7 +244,7 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
         if (markerVisibleAccumulatedMsRef.current >= NEW_MESSAGE_MARKER_VISIBLE_MS) {
             setNewMessageMarkerId((current) => (current === newMessageMarkerId ? null : current));
         }
-    }
+    }, [newMessageMarkerId, resetMarkerVisibilityTracking, clearMarkerRemovalTimer]);
 
     return (
         <div className={`rounded-2xl border border-white/5 bg-[#121620]/20 flex flex-col overflow-hidden ${className}`}>

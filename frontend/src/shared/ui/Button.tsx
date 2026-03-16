@@ -79,7 +79,7 @@ export function Button({
             {isLoading ? (
                 <div className="flex items-center gap-2">
                     <AiOutlineLoading3Quarters className="animate-spin h-4 w-4" />
-                    <span>Caricamento...</span>
+                    <span>Loading...</span>
                 </div>
             ) : (
                 <>

@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -5,7 +6,14 @@ import type { UiActivityItem } from "@features/issue/lib/formatIssueActivityEven
 import { IssueActivityTimeline } from "./IssueActivityTimeline";
 
 vi.mock("./IssueActivityItem", () => ({
-  IssueActivityItem: ({ item }: { item: UiActivityItem }) => <div>{item.title}</div>,
+  IssueActivityItem: forwardRef<HTMLDivElement, { item: UiActivityItem; showNewMessageMarker?: boolean }>(
+    ({ item, showNewMessageMarker = false }, ref) => (
+      <div>
+        {showNewMessageMarker ? <div ref={ref} data-testid="mock-inline-new-message-marker">NEW MESSAGE</div> : null}
+        <div>{item.title}</div>
+      </div>
+    ),
+  ),
 }));
 
 describe("IssueActivityTimeline", () => {
@@ -184,7 +192,9 @@ describe("IssueActivityTimeline", () => {
 
     render(<IssueActivityTimeline items={items} sort="OLDEST" newMessageMarkerId={21} />);
 
-    expect(screen.getByTestId("issue-activity-new-message-marker")).toHaveTextContent("New message");
+    expect(screen.getByTestId("issue-activity-new-message-marker-label")).toHaveTextContent("NEW MESSAGE");
+    expect(screen.getByTestId("issue-activity-new-message-marker-line-left")).toBeInTheDocument();
+    expect(screen.getByTestId("issue-activity-new-message-marker-line-right")).toBeInTheDocument();
   });
 
   it("reports visibility changes for the inline new-message marker", async () => {
