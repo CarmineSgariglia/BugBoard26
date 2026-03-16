@@ -11,9 +11,12 @@ docker compose exec -T backend python manage.py seed_roles
 docker compose exec -T backend python manage.py shell <<'PY'
 from django.contrib.auth.models import User
 
-from apps.bugboardapi.models import Issue, IssueStatus, NotifyType, Project, ProjectMembership, UserProfileImage
+from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
+from apps.bugboardapi.modules.notifications.models import NotifyType
+from apps.bugboardapi.modules.notifications.services import notify_users
+from apps.bugboardapi.modules.projects.models import Project, ProjectMembership
 from apps.bugboardapi.roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME, assign_global_role
-from apps.bugboardapi.services.notifications import notify_users
+from apps.bugboardapi.modules.users.models import UserProfileImage
 
 PASSWORD = "StrongPass123!"
 
