@@ -1,5 +1,5 @@
-import { useEffect, useReducer, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useReducer, useState } from "react";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { IoIosNotificationsOutline } from "react-icons/io";
 
@@ -9,10 +9,14 @@ import { ProfileDropdown } from "./ProfileDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
 import { logoutApi } from "../../shared/api/modules/auth";
-import { listNotificationsApi } from "../../shared/api/modules/notifications";
-import type { NotificationItem } from "../../shared/api/types/notifications";
+import {
+  listNotificationsApi,
+  notificationsPageSize,
+  notificationsQueryKey,
+} from "../../shared/api/modules/notifications";
 import { useAuth } from "@shared/providers/AuthContext";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
+import { getNotificationsHasUnread } from "@shared/lib/notifications";
 
 type NavState = {
   isProfileOpen: boolean;
@@ -64,9 +68,6 @@ export function TopNav() {
   const navigate = useNavigate();
   const { user: currentUser, refreshUser } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [hasNewNotifications, setHasNewNotifications] = useState(false);
-  const knownNotificationIdsRef = useRef<Set<number>>(new Set());
-  const notificationsInitializedRef = useRef(false);
 
   const [state, dispatch] = useReducer(navReducer, {
     isProfileOpen: false,
@@ -74,12 +75,16 @@ export function TopNav() {
     isLogoutModalOpen: false,
   });
 
-  const { data: notifications = [] } = useQuery<NotificationItem[]>({
-    queryKey: ["notifications"],
-    queryFn: listNotificationsApi,
+  const { data } = useInfiniteQuery({
+    queryKey: notificationsQueryKey,
+    queryFn: ({ pageParam }) =>
+      listNotificationsApi({ limit: notificationsPageSize, before: pageParam }),
+    initialPageParam: null as number | null,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
     enabled: Boolean(currentUser),
     staleTime: 30000,
   });
+  const hasUnreadNotifications = getNotificationsHasUnread(data);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -103,47 +108,11 @@ export function TopNav() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    if (!currentUser) {
-      knownNotificationIdsRef.current = new Set();
-      notificationsInitializedRef.current = false;
-      setHasNewNotifications(false);
-      return;
-    }
-
-    const currentIds = notifications.map((notification) => notification.notifyUserId);
-
-    if (!notificationsInitializedRef.current) {
-      knownNotificationIdsRef.current = new Set(currentIds);
-      notificationsInitializedRef.current = true;
-      return;
-    }
-
-    const hasNewIds = currentIds.some((id) => !knownNotificationIdsRef.current.has(id));
-    knownNotificationIdsRef.current = new Set([...knownNotificationIdsRef.current, ...currentIds]);
-
-    if (state.isNotificationOpen) {
-      setHasNewNotifications(false);
-      return;
-    }
-
-    if (hasNewIds) {
-      setHasNewNotifications(true);
-    }
-  }, [currentUser, notifications, state.isNotificationOpen]);
-
   const confirmLogout = () => {
     logoutMutation.mutate();
   };
 
   const toggleNotifications = () => {
-    if (!state.isNotificationOpen) {
-      setHasNewNotifications(false);
-      knownNotificationIdsRef.current = new Set(
-        notifications.map((notification) => notification.notifyUserId),
-      );
-    }
-
     dispatch({ type: "TOGGLE_NOTIFICATIONS" });
   };
 
@@ -163,7 +132,7 @@ export function TopNav() {
           <NavIconButton
             aria-label="Notifications"
             icon={<IoIosNotificationsOutline size={24} />}
-            hasBadge={hasNewNotifications}
+            hasBadge={hasUnreadNotifications}
             onClick={toggleNotifications}
           />
           <NotificationDropdown

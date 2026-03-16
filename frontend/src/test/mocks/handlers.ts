@@ -17,7 +17,14 @@ export const handlers = [
   http.post("/api/auth/refresh", () =>
     HttpResponse.json({ detail: "Unauthorized" }, { status: 401 }),
   ),
-  http.get("/api/notifications", () => HttpResponse.json([])),
+  http.get("/api/notifications", () =>
+    HttpResponse.json({
+      results: [],
+      nextCursor: null,
+      hasMore: false,
+      hasUnread: false,
+    }),
+  ),
   http.post("/api/notifications/:notifyUserId/read", async ({ params }) =>
     HttpResponse.json({
       notifyUserId: Number(params.notifyUserId),

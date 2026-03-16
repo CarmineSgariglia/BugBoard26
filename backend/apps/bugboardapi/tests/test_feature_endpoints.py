@@ -1752,8 +1752,10 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.get("/api/notifications")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(all(item["notifyUserId"] for item in response.data))
-        ids = [item["notifyUserId"] for item in response.data]
+        self.assertIn("results", response.data)
+        self.assertIn("hasUnread", response.data)
+        self.assertTrue(all(item["notifyUserId"] for item in response.data["results"]))
+        ids = [item["notifyUserId"] for item in response.data["results"]]
         for notify_user_id in ids:
             self.assertTrue(
                 NotifyUser.objects.filter(
@@ -1778,6 +1780,10 @@ class NotificationTagMetaEndpointTests(APITestCase):
         )
         self.assertEqual(all_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(all_response.data["updated"], 1)
+
+        list_response = self.client.get("/api/notifications")
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(list_response.data["hasUnread"])
 
     def test_delete_single_notification_for_current_user_only(self):
         self.client.force_authenticate(user=self.member)
@@ -1867,8 +1873,9 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.get("/api/notifications")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["hasUnread"])
         issue_notification = next(
-            item for item in response.data if item["issueId"] == self.issue.issue_id
+            item for item in response.data["results"] if item["issueId"] == self.issue.issue_id
         )
         self.assertEqual(issue_notification["projectId"], self.project.project_id)
 

@@ -89,16 +89,21 @@ class FrontendContractTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.get("/api/notifications")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 1)
+        self.assertIn("results", response.data)
+        self.assertIn("nextCursor", response.data)
+        self.assertIn("hasMore", response.data)
+        self.assertIn("hasUnread", response.data)
+        self.assertGreaterEqual(len(response.data["results"]), 1)
         expected_keys = {"notifyUserId", "notificationId", "type", "createdAt", "issueId", "projectId", "isRead", "readAt"}
-        self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
-        self.assertEqual(response.data[0]["issueId"], self.issue.issue_id)
-        self.assertEqual(response.data[0]["projectId"], self.project.project_id)
+        self.assertTrue(expected_keys.issubset(set(response.data["results"][0].keys())))
+        self.assertEqual(response.data["results"][0]["issueId"], self.issue.issue_id)
+        self.assertEqual(response.data["results"][0]["projectId"], self.project.project_id)
+        self.assertTrue(response.data["hasUnread"])
 
     def test_read_notification_contract(self):
         self.client.force_authenticate(user=self.member)
         list_response = self.client.get("/api/notifications")
-        notify_user_id = list_response.data[0]["notifyUserId"]
+        notify_user_id = list_response.data["results"][0]["notifyUserId"]
         read_response = self.client.post(f"/api/notifications/{notify_user_id}/read", {}, format="json")
         self.assertEqual(read_response.status_code, status.HTTP_200_OK)
         self.assertTrue(read_response.data["isRead"])

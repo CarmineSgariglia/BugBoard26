@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
@@ -41,7 +41,9 @@ describe("NotificationDropdown", () => {
     ];
 
     server.use(
-      http.get("/api/notifications", () => HttpResponse.json(notifications)),
+      http.get("/api/notifications", () =>
+        HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: true }),
+      ),
       http.post("/api/notifications/:notifyUserId/read", async () => {
         readCalled = true;
         notifications = notifications.map((notification) =>
@@ -80,7 +82,9 @@ describe("NotificationDropdown", () => {
     ];
 
     server.use(
-      http.get("/api/notifications", () => HttpResponse.json(notifications)),
+      http.get("/api/notifications", () =>
+        HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: false }),
+      ),
       http.delete("/api/notifications/:notifyUserId", async ({ params }) => {
         notifications = notifications.filter(
           (notification) => notification.notifyUserId !== Number(params.notifyUserId),
@@ -115,7 +119,9 @@ describe("NotificationDropdown", () => {
     ];
 
     server.use(
-      http.get("/api/notifications", () => HttpResponse.json(notifications)),
+      http.get("/api/notifications", () =>
+        HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: true }),
+      ),
       http.post("/api/notifications/:notifyUserId/read", async () => {
         notifications = notifications.map((notification) =>
           notification.notifyUserId === 103
@@ -174,7 +180,9 @@ describe("NotificationDropdown", () => {
     ];
 
     server.use(
-      http.get("/api/notifications", () => HttpResponse.json(notifications)),
+      http.get("/api/notifications", () =>
+        HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: true }),
+      ),
       http.post("/api/notifications/:notifyUserId/read", async () => {
         notifications = notifications.map((notification) =>
           notification.notifyUserId === 104
@@ -210,26 +218,40 @@ describe("NotificationDropdown", () => {
       },
     ];
 
-    server.use(http.get("/api/notifications", () => HttpResponse.json(initialNotifications)));
+    server.use(
+      http.get("/api/notifications", () =>
+        HttpResponse.json({ results: initialNotifications, nextCursor: null, hasMore: false, hasUnread: false }),
+      ),
+    );
 
     const { queryClient } = renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
     expect(await screen.findByText("Project added")).toBeInTheDocument();
 
     act(() => {
-      queryClient.setQueryData<NotificationApiItem[]>(["notifications"], [
-        {
-          notifyUserId: 106,
-          notificationId: 15,
-          type: "ISSUE_UPDATED",
-          createdAt: "2026-03-13T14:05:00Z",
-          issueId: 44,
-          projectId: 2,
-          isRead: false,
-          readAt: null,
-        },
-        ...initialNotifications,
-      ]);
+      queryClient.setQueryData(["notifications"], {
+        pageParams: [null],
+        pages: [
+          {
+            results: [
+              {
+                notifyUserId: 106,
+                notificationId: 15,
+                type: "ISSUE_UPDATED",
+                createdAt: "2026-03-13T14:05:00Z",
+                issueId: 44,
+                projectId: 2,
+                isRead: false,
+                readAt: null,
+              },
+              ...initialNotifications,
+            ],
+            nextCursor: null,
+            hasMore: false,
+            hasUnread: true,
+          },
+        ],
+      });
     });
 
     await waitFor(() => {
@@ -249,11 +271,80 @@ describe("NotificationDropdown", () => {
       readAt: index % 2 === 0 ? "2026-03-13T14:30:00Z" : null,
     }));
 
-    server.use(http.get("/api/notifications", () => HttpResponse.json(notifications)));
+    server.use(
+      http.get("/api/notifications", () =>
+        HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: true }),
+      ),
+    );
 
     renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
     expect(await screen.findByText("Issue updated")).toBeInTheDocument();
     expect(screen.getByTestId("notification-scroll-container")).toBeInTheDocument();
+  });
+
+  it("loads older notifications when scrolling near the bottom", async () => {
+    const firstPage: NotificationApiItem[] = [
+      {
+        notifyUserId: 301,
+        notificationId: 31,
+        type: "ISSUE_UPDATED",
+        createdAt: "2026-03-13T15:00:00Z",
+        issueId: 91,
+        projectId: 2,
+        isRead: false,
+        readAt: null,
+      },
+    ];
+    const secondPage: NotificationApiItem[] = [
+      {
+        notifyUserId: 300,
+        notificationId: 30,
+        type: "PROJECT_ADDED",
+        createdAt: "2026-03-13T14:59:00Z",
+        issueId: null,
+        projectId: 2,
+        isRead: true,
+        readAt: "2026-03-13T15:01:00Z",
+      },
+    ];
+
+    server.use(
+      http.get("/api/notifications", ({ request }) => {
+        const url = new URL(request.url);
+        const before = url.searchParams.get("before");
+
+        if (before === "301") {
+          return HttpResponse.json({
+            results: secondPage,
+            nextCursor: null,
+            hasMore: false,
+            hasUnread: true,
+          });
+        }
+
+        return HttpResponse.json({
+          results: firstPage,
+          nextCursor: 301,
+          hasMore: true,
+          hasUnread: true,
+        });
+      }),
+    );
+
+    renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
+
+    expect(await screen.findByText("Issue updated")).toBeInTheDocument();
+
+    const scrollPanel = screen.getByTestId("notification-scroll-panel");
+    Object.defineProperty(scrollPanel, "scrollHeight", { configurable: true, value: 500 });
+    Object.defineProperty(scrollPanel, "clientHeight", { configurable: true, value: 200 });
+    Object.defineProperty(scrollPanel, "scrollTop", { configurable: true, value: 280, writable: true });
+
+    fireEvent.scroll(scrollPanel);
+
+    await waitFor(() => {
+      expect(screen.getByText("Project added")).toBeInTheDocument();
+    });
   });
 });

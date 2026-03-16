@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { createIssueUpdateApi, listIssueUpdatesApi } from "@shared/api/modules/issues";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { upsertIssueUpdates } from "@shared/lib/issueUpdatesRealtime";
+import { getLatestIssueUpdateId, upsertIssueUpdates } from "@shared/lib/issueUpdatesRealtime";
 import { formatIssueActivityEvent } from "@features/issue/lib/formatIssueActivityEvent";
 import { IssueActivityFilters } from "./IssueActivityFilters";
 import { IssueActivityRealtimeListener } from "./IssueActivityRealtimeListener";
@@ -18,6 +18,8 @@ type Props = {
     canCompose: boolean;
     className?: string;
 };
+
+const NEW_MESSAGE_MARKER_VISIBLE_MS = 5000;
 
 function getSubmitErrorMessage(error: unknown): string {
     if (
@@ -69,6 +71,12 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
     const [files, setFiles] = useState<File[]>([]);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [scrollToItemId, setScrollToItemId] = useState<number | null>(null);
+    const [pendingUpdateIds, setPendingUpdateIds] = useState<number[]>([]);
+    const [newMessageMarkerId, setNewMessageMarkerId] = useState<number | null>(null);
+    const [isAtLatestEdge, setIsAtLatestEdge] = useState(false);
+    const markerVisibleSinceRef = useRef<number | null>(null);
+    const markerVisibleAccumulatedMsRef = useRef(0);
+    const markerRemovalTimerRef = useRef<number | null>(null);
 
     const { data: updates = [], isLoading } = useQuery({
         queryKey: ["issue", issueId, "updates"],
@@ -119,9 +127,132 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
         });
     }, [updates, scope, sort, currentUser]);
 
+    const latestUpdateId = useMemo(() => getLatestIssueUpdateId(updates), [updates]);
+
+    const clearMarkerRemovalTimer = useCallback(() => {
+        if (markerRemovalTimerRef.current != null) {
+            window.clearTimeout(markerRemovalTimerRef.current);
+            markerRemovalTimerRef.current = null;
+        }
+    }, []);
+
+    const resetMarkerVisibilityTracking = useCallback(() => {
+        clearMarkerRemovalTimer();
+        markerVisibleSinceRef.current = null;
+        markerVisibleAccumulatedMsRef.current = 0;
+    }, [clearMarkerRemovalTimer]);
+
+    useEffect(() => {
+        resetMarkerVisibilityTracking();
+
+        return () => {
+            clearMarkerRemovalTimer();
+        };
+    }, [clearMarkerRemovalTimer, newMessageMarkerId, resetMarkerVisibilityTracking]);
+
+    useEffect(() => {
+        if (scope === "ALL" && isAtLatestEdge && pendingUpdateIds.length > 0) {
+            setPendingUpdateIds([]);
+        }
+    }, [isAtLatestEdge, pendingUpdateIds.length, scope]);
+
+    function handleRealtimeUpdate(newUpdate: IssueUpdate) {
+        let alreadyPresent = false;
+
+        qc.setQueryData<IssueUpdate[]>(["issue", issueId, "updates"], (oldData = []) => {
+            alreadyPresent = oldData.some((existingUpdate) => existingUpdate.updateId === newUpdate.updateId);
+            return upsertIssueUpdates(oldData, newUpdate);
+        });
+
+        if (alreadyPresent) {
+            return;
+        }
+
+        if (currentUser?.userId === newUpdate.actorId) {
+            setScrollToItemId(newUpdate.updateId);
+            return;
+        }
+
+        setNewMessageMarkerId((current) => current ?? newUpdate.updateId);
+
+        const isVisibleInCurrentScope =
+            scope === "ALL" || (scope === "YOURS" && currentUser?.userId === newUpdate.actorId);
+
+        if (scope === "ALL" && isAtLatestEdge && isVisibleInCurrentScope) {
+            setScrollToItemId(newUpdate.updateId);
+            return;
+        }
+
+        setPendingUpdateIds((current) =>
+            current.includes(newUpdate.updateId) ? current : [...current, newUpdate.updateId],
+        );
+    }
+
+    function handleBadgeClick() {
+        if (pendingUpdateIds.length === 0) {
+            return;
+        }
+
+        const firstPendingUpdateId = pendingUpdateIds[0];
+        if (scope === "YOURS") {
+            setScope("ALL");
+        }
+        setScrollToItemId(firstPendingUpdateId);
+        setPendingUpdateIds([]);
+    }
+
+    function handleNewMessageMarkerVisibilityChange(isVisible: boolean) {
+        if (newMessageMarkerId == null) {
+            resetMarkerVisibilityTracking();
+            return;
+        }
+
+        const now = Date.now();
+
+        if (isVisible) {
+            if (markerVisibleSinceRef.current != null) {
+                return;
+            }
+
+            markerVisibleSinceRef.current = now;
+            clearMarkerRemovalTimer();
+
+            const remainingMs = Math.max(
+                0,
+                NEW_MESSAGE_MARKER_VISIBLE_MS - markerVisibleAccumulatedMsRef.current,
+            );
+
+            markerRemovalTimerRef.current = window.setTimeout(() => {
+                markerVisibleAccumulatedMsRef.current = NEW_MESSAGE_MARKER_VISIBLE_MS;
+                markerVisibleSinceRef.current = null;
+                markerRemovalTimerRef.current = null;
+                setNewMessageMarkerId((current) => (current === newMessageMarkerId ? null : current));
+            }, remainingMs);
+
+            return;
+        }
+
+        if (markerVisibleSinceRef.current == null) {
+            clearMarkerRemovalTimer();
+            return;
+        }
+
+        markerVisibleAccumulatedMsRef.current += now - markerVisibleSinceRef.current;
+        markerVisibleSinceRef.current = null;
+        clearMarkerRemovalTimer();
+
+        if (markerVisibleAccumulatedMsRef.current >= NEW_MESSAGE_MARKER_VISIBLE_MS) {
+            setNewMessageMarkerId((current) => (current === newMessageMarkerId ? null : current));
+        }
+    }
+
     return (
         <div className={`rounded-2xl border border-white/5 bg-[#121620]/20 flex flex-col overflow-hidden ${className}`}>
-            <IssueActivityRealtimeListener issueId={issueId} />
+            <IssueActivityRealtimeListener
+                issueId={issueId}
+                latestUpdateId={latestUpdateId}
+                onUpdate={handleRealtimeUpdate}
+            />
             <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
                 <h3 className="text-xl font-bold text-white">{`${issueTitle} - Activity`}</h3>
                 <IssueActivityFilters
@@ -132,18 +263,38 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
                 />
             </div>
 
-            <div className="flex-1 min-h-0">
+            <div className="relative flex-1 min-h-0">
                 {isLoading ? (
                     <div className="h-full flex items-center justify-center text-neutral-500">Loading activity...</div>
                 ) : (
                     <IssueActivityTimeline
                         items={items}
+                        sort={sort}
                         scrollToItemId={scrollToItemId}
+                        newMessageMarkerId={newMessageMarkerId}
                         onScrollToItemDone={(itemId) => {
                             setScrollToItemId((current) => (current === itemId ? null : current));
                         }}
+                        onLatestEdgeChange={setIsAtLatestEdge}
+                        onNewMessageMarkerVisibilityChange={handleNewMessageMarkerVisibilityChange}
                     />
                 )}
+
+                {!isLoading && pendingUpdateIds.length > 0 ? (
+                    <div
+                        className={`pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4 ${
+                            sort === "NEWEST" ? "top-4" : "bottom-4"
+                        }`}
+                    >
+                        <button
+                            type="button"
+                            onClick={handleBadgeClick}
+                            className="pointer-events-auto inline-flex items-center rounded-full border border-sky-400/35 bg-sky-500/20 px-4 py-2 text-sm font-semibold text-sky-100 shadow-[0_10px_35px_rgba(14,165,233,0.18)] transition hover:bg-sky-500/30"
+                        >
+                            {`New message: ${pendingUpdateIds.length}`}
+                        </button>
+                    </div>
+                ) : null}
             </div>
 
             {canCompose ? (

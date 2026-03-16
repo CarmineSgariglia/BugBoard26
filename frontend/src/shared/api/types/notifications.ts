@@ -19,3 +19,10 @@ export type NotificationItem = {
   isRead: boolean;
   readAt?: string | null;
 };
+
+export type NotificationsPage = {
+  results: NotificationItem[];
+  nextCursor: number | null;
+  hasMore: boolean;
+  hasUnread: boolean;
+};

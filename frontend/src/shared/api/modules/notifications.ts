@@ -1,11 +1,20 @@
 import apiClient, { apiBaseUrl } from "../core/client";
-import type { NotificationItem } from "../types/notifications";
+import type { NotificationItem, NotificationsPage } from "../types/notifications";
 
 export const notificationsQueryKey = ["notifications"] as const;
 export const notificationsPollingIntervalMs = 15000;
+export const notificationsPageSize = 20;
 
-export async function listNotificationsApi(): Promise<NotificationItem[]> {
-  const { data } = await apiClient.get<NotificationItem[]>("/notifications");
+export async function listNotificationsApi(params?: {
+  limit?: number;
+  before?: number | null;
+}): Promise<NotificationsPage> {
+  const { data } = await apiClient.get<NotificationsPage>("/notifications", {
+    params: {
+      ...(params?.limit != null ? { limit: params.limit } : {}),
+      ...(params?.before != null ? { before: params.before } : {}),
+    },
+  });
   return data;
 }
 
