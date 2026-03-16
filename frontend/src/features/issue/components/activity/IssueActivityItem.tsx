@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { FiDownload, FiEye, FiFile } from "react-icons/fi";
 
 import { Avatar } from "@shared/ui/Avatar";
@@ -14,11 +14,16 @@ import {
 import { useAuth } from "@shared/providers/AuthContext";
 import { IssueAttachmentPreviewModal } from "./IssueAttachmentPreviewModal";
 
+const MARKER_FADE_MS = 300;
+
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleString();
 }
 
-type Props = { item: UiActivityItem };
+type Props = {
+    item: UiActivityItem;
+    showNewMessageMarker?: boolean;
+};
 
 type AttachmentActionProps = {
     attachment: IssueAttachment;
@@ -73,10 +78,48 @@ function AttachmentActions({ attachment, onPreview }: AttachmentActionProps) {
     );
 }
 
-export function IssueActivityItem({ item }: Props) {
+export const IssueActivityItem = forwardRef<HTMLDivElement, Props>(function IssueActivityItem(
+    { item, showNewMessageMarker = false }: Props,
+    newMessageMarkerRef,
+) {
     const { user } = useAuth();
     const isMe = user?.userId === item.actorId;
     const [selectedAttachment, setSelectedAttachment] = useState<IssueAttachment | null>(null);
+
+    // --- fade in / fade out for the marker ---
+    // Must initialize markerMounted from the prop so the marker div exists in
+    // the DOM on the very first render – scroll-to and IntersectionObserver
+    // in the parent rely on data-activity-marker-id being present immediately.
+    const [markerMounted, setMarkerMounted] = useState(showNewMessageMarker);
+    const [markerVisible, setMarkerVisible] = useState(false);
+    const fadeTimerRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (showNewMessageMarker) {
+            // Mount first, then make visible on next frame for CSS transition
+            setMarkerMounted(true);
+            if (fadeTimerRef.current != null) {
+                window.clearTimeout(fadeTimerRef.current);
+                fadeTimerRef.current = null;
+            }
+            const raf = requestAnimationFrame(() => setMarkerVisible(true));
+            return () => cancelAnimationFrame(raf);
+        }
+
+        // Fade out: set invisible, then unmount after transition
+        setMarkerVisible(false);
+        fadeTimerRef.current = window.setTimeout(() => {
+            setMarkerMounted(false);
+            fadeTimerRef.current = null;
+        }, MARKER_FADE_MS);
+
+        return () => {
+            if (fadeTimerRef.current != null) {
+                window.clearTimeout(fadeTimerRef.current);
+                fadeTimerRef.current = null;
+            }
+        };
+    }, [showNewMessageMarker]);
 
     // Append (you) to the actor name if it's the current user's action
     const displayTitle = isMe && item.isComment
@@ -86,51 +129,68 @@ export function IssueActivityItem({ item }: Props) {
             : item.title;
 
     return (
-        <div className="flex gap-3">
-            <Avatar name={item.actorName} src={item.actorProfileImg} size="sm" />
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm text-white font-semibold">{displayTitle}</p>
-                    <span className="text-xs text-neutral-500">{formatDate(item.at)}</span>
+        <div className="space-y-3">
+            {markerMounted ? (
+                <div
+                    ref={newMessageMarkerRef}
+                    data-activity-marker-id={item.id}
+                    data-testid="issue-activity-new-message-marker"
+                    className="scroll-mt-8 py-1 text-center font-bold text-sky-200/80 text-[11px] whitespace-nowrap overflow-hidden"
+                    style={{
+                        opacity: markerVisible ? 1 : 0,
+                        transition: `opacity ${MARKER_FADE_MS}ms ease-in-out`,
+                    }}
+                >
+                    ______________________________ NEW MESSAGE __________________________________
                 </div>
+            ) : null}
 
-                {item.isComment ? (
-                    <div className="mt-2 rounded-xl border border-white/10 p-3 bg-[#1A2234]">
-                        <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words">
-                            <TextWithLinks text={item.message} />
-                        </p>
-
-                        {item.attachments.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                {item.attachments.map((a) => (
-                                    <AttachmentActions
-                                        key={a.attachmentId}
-                                        attachment={a}
-                                        onPreview={setSelectedAttachment}
-                                    />
-                                ))}
-                            </div>
-                        )}
+            <div className="flex gap-3">
+                <Avatar name={item.actorName} src={item.actorProfileImg} size="sm" />
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm text-white font-semibold">{displayTitle}</p>
+                        <span className="text-xs text-neutral-500">{formatDate(item.at)}</span>
                     </div>
-                ) : (
-                    <div className="mt-2">
-                        <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words">
-                            <TextWithLinks text={item.message} />
-                        </p>
 
-                        {item.attachments.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                                {item.attachments.map((a) => (
-                                    <AttachmentActions
-                                        key={a.attachmentId}
-                                        attachment={a}
-                                        onPreview={setSelectedAttachment}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                    {item.isComment ? (
+                        <div className="mt-2 rounded-xl border border-white/10 p-3 bg-[#1A2234]">
+                            <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words">
+                                <TextWithLinks text={item.message} />
+                            </p>
+
+                            {item.attachments.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {item.attachments.map((a) => (
+                                        <AttachmentActions
+                                            key={a.attachmentId}
+                                            attachment={a}
+                                            onPreview={setSelectedAttachment}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="mt-2">
+                            <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words">
+                                <TextWithLinks text={item.message} />
+                            </p>
+
+                            {item.attachments.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {item.attachments.map((a) => (
+                                        <AttachmentActions
+                                            key={a.attachmentId}
+                                            attachment={a}
+                                            onPreview={setSelectedAttachment}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <IssueAttachmentPreviewModal
@@ -139,4 +199,4 @@ export function IssueActivityItem({ item }: Props) {
             />
         </div>
     );
-}
+});
