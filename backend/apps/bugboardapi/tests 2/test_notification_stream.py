@@ -6,7 +6,11 @@ from rest_framework.test import APITransactionTestCase
 
 from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
-from apps.bugboardapi.modules.notifications.services import notify_users
+from apps.bugboardapi.modules.notifications.services import (
+    notify_issue_assigned,
+    notify_issue_closed,
+    notify_issue_updated,
+)
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -60,12 +64,8 @@ class NotificationStreamTests(APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_stream_emits_only_current_user_notifications(self):
-        notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[self.admin], issue=self.issue)
-        member_notification = notify_users(
-            notify_type=NotifyType.ISSUE_ASSIGNED,
-            users=[self.member],
-            issue=self.issue,
-        )
+        notify_issue_updated(users=[self.admin], issue=self.issue)
+        member_notification = notify_issue_assigned(users=[self.member], issue=self.issue)
         member_notify_user = NotifyUser.objects.get(notification=member_notification, user=self.member)
 
         self.client.force_authenticate(user=self.member)
@@ -87,8 +87,8 @@ class NotificationStreamTests(APITransactionTestCase):
         response.close()
 
     def test_stream_resumes_from_last_event_id(self):
-        first = notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[self.member], issue=self.issue)
-        second = notify_users(notify_type=NotifyType.ISSUE_CLOSED, users=[self.member], issue=self.issue)
+        first = notify_issue_updated(users=[self.member], issue=self.issue)
+        second = notify_issue_closed(users=[self.member], issue=self.issue)
         first_notify_user = NotifyUser.objects.get(notification=first, user=self.member)
         second_notify_user = NotifyUser.objects.get(notification=second, user=self.member)
 
@@ -109,11 +109,7 @@ class NotificationStreamTests(APITransactionTestCase):
         response.close()
 
     def test_stream_ignores_invalid_last_event_id(self):
-        notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            issue=self.issue,
-        )
+        notification = notify_issue_updated(users=[self.member], issue=self.issue)
         notify_user = NotifyUser.objects.get(notification=notification, user=self.member)
 
         self.client.force_authenticate(user=self.member)

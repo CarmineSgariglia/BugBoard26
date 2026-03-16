@@ -15,21 +15,19 @@ from django.test import override_settings
 from rest_framework.test import APITestCase
 from rest_framework.exceptions import ValidationError
 
-from apps.bugboardapi.models import (
+from apps.bugboardapi.modules.issues.models import (
     Attachment,
     EventType,
     Issue,
     IssueAssignee,
     IssueEvent,
     IssueStatus,
-    Notification,
-    NotifyType,
-    NotifyUser,
-    PasswordResetOTP,
-    ProjectMembership,
-    Tag,
 )
-from apps.bugboardapi.services.notifications import notify_users
+from apps.bugboardapi.modules.notifications.models import Notification, NotifyType, NotifyUser
+from apps.bugboardapi.modules.projects.models import ProjectMembership
+from apps.bugboardapi.modules.tags.models import Tag
+from apps.bugboardapi.modules.users.models import PasswordResetOTP
+from apps.bugboardapi.modules.notifications.services import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -202,14 +200,14 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertIn("detail", locked_response.data)
 
     @patch(
-        "apps.bugboardapi.services.users._send_otp_email",
+        "apps.bugboardapi.modules.users.services._send_otp_email",
         side_effect=RuntimeError("provider down"),
     )
     def test_otp_request_email_send_failure_returns_generic_and_logs_error(
         self, _mock_send
     ):
         with self.assertLogs(
-            "apps.bugboardapi.services.users", level="ERROR"
+            "apps.bugboardapi.modules.users.services", level="ERROR"
         ) as logs:
             response = self.client.post(
                 "/api/auth/password/otp/request",
@@ -223,7 +221,7 @@ class AuthOtpEndpointTests(APITestCase):
         )
 
     @override_settings(EMAIL_PROVIDER="console")
-    @patch("apps.bugboardapi.services.users.send_mail")
+    @patch("apps.bugboardapi.modules.users.services.send_mail")
     def test_email_provider_console_default_in_dev(self, mock_send_mail):
         response = self.client.post(
             "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
@@ -232,7 +230,7 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertTrue(mock_send_mail.called)
 
     @override_settings(EMAIL_PROVIDER="console")
-    @patch("apps.bugboardapi.services.users.send_mail")
+    @patch("apps.bugboardapi.modules.users.services.send_mail")
     def test_otp_request_email_contains_raw_six_digit_code_not_hash(self, mock_send_mail):
         response = self.client.post(
             "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
@@ -269,8 +267,8 @@ class AuthOtpEndpointTests(APITestCase):
         DEFAULT_FROM_EMAIL="noreply@example.com",
         BREVO_SENDER_NAME="BugBoard26",
     )
-    @patch("apps.bugboardapi.services.users.EmailMessage.send", return_value=1)
-    @patch("apps.bugboardapi.services.users.send_mail")
+    @patch("apps.bugboardapi.modules.users.services.EmailMessage.send", return_value=1)
+    @patch("apps.bugboardapi.modules.users.services.send_mail")
     def test_email_provider_brevo_uses_anymail_backend(
         self, mock_send_mail, _mock_email_send
     ):
@@ -1644,7 +1642,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         with TemporaryDirectory() as tmp_dir:
             with override_settings(MEDIA_ROOT=tmp_dir):
                 with patch(
-                    "apps.bugboardapi.services.media.subprocess.run",
+                    "apps.bugboardapi.modules.issues.media.subprocess.run",
                     side_effect=fake_ffmpeg_run,
                 ) as run_mock:
                     response = self.client.post(
@@ -1678,7 +1676,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
 
         with patch(
-            "apps.bugboardapi.services.media.subprocess.run",
+            "apps.bugboardapi.modules.issues.media.subprocess.run",
             side_effect=subprocess.CalledProcessError(1, ["ffmpeg"]),
         ):
             response = self.client.post(

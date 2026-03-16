@@ -1,1 +1,1 @@
-
+"""Notifications domain module."""

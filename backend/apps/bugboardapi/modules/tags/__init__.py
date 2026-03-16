@@ -1,1 +1,1 @@
-
+"""Tags domain module."""

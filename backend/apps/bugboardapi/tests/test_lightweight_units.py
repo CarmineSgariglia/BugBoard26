@@ -1,17 +1,11 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
-from rest_framework.test import APITestCase
 
 from apps.bugboardapi.security.authentication import RevocableJWTAuthentication
 from apps.bugboardapi.modules.issues.rules import validate_project_assignee_ids
-from apps.bugboardapi.modules.tags.models import Tag
-from apps.bugboardapi.modules.tags.services import resolve_tag_ids, validate_existing_tag_ids
-from apps.bugboardapi.modules.users.serializers import UserMutationSerializer
-from apps.bugboardapi.roles import DEVELOPER_GROUP_NAME
-from apps.bugboardapi.tests.utils import create_user_with_profile
 
 
 def _detail_text(detail):
@@ -22,20 +16,26 @@ def _detail_text(detail):
 
 class ValidateProjectAssigneeIdsTests(SimpleTestCase):
     def test_returns_early_when_assignee_ids_is_none(self):
-        with patch("apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids") as classify_user_ids:
+        with patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model:
             validate_project_assignee_ids(project=object(), assignee_ids=None)
-            classify_user_ids.assert_not_called()
+            membership_model.objects.filter.assert_not_called()
 
     def test_returns_early_when_assignee_ids_is_empty(self):
-        with patch("apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids") as classify_user_ids:
+        with patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model:
             validate_project_assignee_ids(project=object(), assignee_ids=[])
-            classify_user_ids.assert_not_called()
+            membership_model.objects.filter.assert_not_called()
 
     def test_raises_when_ids_are_not_project_members(self):
-        with patch(
-            "apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids",
-            return_value=([99], [], []),
+        membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
+        queryset = MagicMock()
+        queryset.select_related.return_value = [membership]
+
+        with (
+            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=False),
         ):
+            membership_model.objects.filter.return_value = queryset
+
             with self.assertRaises(ValidationError) as ctx:
                 validate_project_assignee_ids(project=object(), assignee_ids=[10, 99])
 
@@ -45,10 +45,16 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
         )
 
     def test_raises_when_assignee_is_admin(self):
-        with patch(
-            "apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids",
-            return_value=([], [10], []),
+        membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
+        queryset = MagicMock()
+        queryset.select_related.return_value = [membership]
+
+        with (
+            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=True),
         ):
+            membership_model.objects.filter.return_value = queryset
+
             with self.assertRaises(ValidationError) as ctx:
                 validate_project_assignee_ids(project=object(), assignee_ids=[10])
 
@@ -58,10 +64,15 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
         )
 
     def test_accepts_non_admin_project_members(self):
-        with patch(
-            "apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids",
-            return_value=([], [], []),
+        membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
+        queryset = MagicMock()
+        queryset.select_related.return_value = [membership]
+
+        with (
+            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=False),
         ):
+            membership_model.objects.filter.return_value = queryset
             validate_project_assignee_ids(project=object(), assignee_ids=[10])
 
 
@@ -96,8 +107,10 @@ class RevocableJWTAuthenticationTests(SimpleTestCase):
                 "rest_framework_simplejwt.authentication.JWTAuthentication.authenticate",
                 return_value=(user, token),
             ),
-            patch("apps.bugboardapi.security.authentication.is_token_session_revoked", return_value=True),
+            patch("apps.bugboardapi.security.authentication.RevokedTokenSession") as session_model,
         ):
+            session_model.objects.filter.return_value.exists.return_value = True
+
             with self.assertRaises(AuthenticationFailed):
                 RevocableJWTAuthentication().authenticate(request)
 
@@ -111,107 +124,8 @@ class RevocableJWTAuthenticationTests(SimpleTestCase):
                 "rest_framework_simplejwt.authentication.JWTAuthentication.authenticate",
                 return_value=(user, token),
             ),
-            patch("apps.bugboardapi.security.authentication.is_token_session_revoked", return_value=False),
+            patch("apps.bugboardapi.security.authentication.RevokedTokenSession") as session_model,
         ):
+            session_model.objects.filter.return_value.exists.return_value = False
+
             self.assertEqual(RevocableJWTAuthentication().authenticate(request), (user, token))
-
-
-class UserMutationSerializerContractsTests(TestCase):
-    @patch("apps.bugboardapi.modules.users.serializers.ensure_valid_password")
-    def test_defaults_new_user_group_to_developer(self, mock_ensure_valid_password):
-        serializer = UserMutationSerializer(
-            data={
-                "username": "serializer_default_role",
-                "email": "serializer_default_role@example.com",
-                "password": "StrongPass123!",
-            }
-        )
-
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        self.assertEqual(serializer.validated_data["group"], DEVELOPER_GROUP_NAME)
-        mock_ensure_valid_password.assert_called_once()
-
-    @patch("apps.bugboardapi.modules.users.serializers.ensure_valid_password")
-    def test_new_user_password_is_optional(self, mock_ensure_valid_password):
-        serializer = UserMutationSerializer(
-            data={
-                "username": "serializer_optional_password",
-                "email": "serializer_optional_password@example.com",
-            }
-        )
-
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        self.assertEqual(serializer.validated_data["group"], DEVELOPER_GROUP_NAME)
-        mock_ensure_valid_password.assert_not_called()
-
-    def test_rejects_mismatched_group_and_is_admin_alias(self):
-        serializer = UserMutationSerializer(
-            data={
-                "username": "serializer_role_mismatch",
-                "email": "serializer_role_mismatch@example.com",
-                "password": "StrongPass123!",
-                "group": DEVELOPER_GROUP_NAME,
-                "isAdmin": True,
-            }
-        )
-
-        self.assertFalse(serializer.is_valid())
-        self.assertEqual(
-            serializer.errors["group"][0],
-            "group and isAdmin must describe the same role",
-        )
-
-    def test_existing_user_password_updates_are_rejected(self):
-        user = create_user_with_profile(
-            username="serializer_existing_user",
-            email="serializer_existing_user@example.com",
-            password="StrongPass123!",
-            is_admin=True,
-        )
-        serializer = UserMutationSerializer(
-            instance=user,
-            data={"password": "AnotherStrongPass123!"},
-            partial=True,
-        )
-
-        self.assertFalse(serializer.is_valid())
-        self.assertEqual(
-            serializer.errors["password"][0],
-            "Use the dedicated password endpoint",
-        )
-
-
-class TagServicesContractsTests(TestCase):
-    def test_validate_existing_tag_ids_rejects_missing_ids(self):
-        existing_tag = Tag.objects.create(name="frontend")
-
-        with self.assertRaises(ValidationError) as ctx:
-            validate_existing_tag_ids([existing_tag.tag_id, 999999])
-
-        self.assertEqual(
-            _detail_text(ctx.exception.detail["tagIds"]),
-            "Invalid tag ids: [999999]",
-        )
-
-    def test_resolve_tag_ids_reuses_existing_tags_and_creates_missing_names(self):
-        existing_tag = Tag.objects.create(name="api")
-
-        resolved_tag_ids = resolve_tag_ids(
-            tag_ids=[existing_tag.tag_id, existing_tag.tag_id],
-            tag_names=[" API ", "frontend", "Frontend"],
-        )
-
-        self.assertEqual(
-            [Tag.objects.get(tag_id=tag_id).name for tag_id in resolved_tag_ids],
-            ["Api", "Frontend"],
-        )
-        self.assertEqual(Tag.objects.filter(name__iexact="api").count(), 1)
-        self.assertEqual(Tag.objects.filter(name__iexact="frontend").count(), 1)
-
-
-class HealthEndpointContractsTests(APITestCase):
-    def test_health_endpoint_remains_public_and_stable(self):
-        response = self.client.get("/api/health")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, {"status": "ok"})

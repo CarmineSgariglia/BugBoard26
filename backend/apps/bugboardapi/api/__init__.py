@@ -1,1 +1,1 @@
-
+"""HTTP routing for BugBoardAPI."""

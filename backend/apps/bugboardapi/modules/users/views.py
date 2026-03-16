@@ -4,40 +4,21 @@ from __future__ import annotations
 import logging
 
 from django.contrib.auth.models import User
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
+from django.db.models import Q
 from rest_framework import mixins, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
-from rest_framework import serializers
-from rest_framework.views import APIView
 
-from ...permissions import check_admin
-from ...roles import is_admin_user
-from .commands import (
-    change_user_password,
-    filter_users_queryset,
-    parse_csv_ints_query_param,
-    save_profile_image_for_user,
-)
-from .policies import ensure_can_edit_user
-from .serializers import (
-    AdminResetPasswordSerializer,
-    ChangePasswordSerializer,
-    UserMutationSerializer,
-    UserSerializer,
-)
+from ...permissions import check_admin, is_admin
+from ...roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
+from ...security.passwords import ensure_valid_password
+from .serializers import ChangePasswordSerializer, UserSerializer
+from .services import save_profile_image_for_user
 
 logger = logging.getLogger(__name__)
-
-
-profile_image_upload_request = inline_serializer(
-    name="ProfileImageUploadRequest",
-    fields={
-        "image": serializers.ImageField(required=False),
-        "profile_img": serializers.ImageField(required=False),
-    },
-)
 
 
 class UserListPagination(PageNumberPagination):
@@ -46,23 +27,6 @@ class UserListPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@extend_schema_view(
-    list=extend_schema(
-        tags=["Users"],
-        parameters=[
-            OpenApiParameter("page", int, OpenApiParameter.QUERY),
-            OpenApiParameter("search", str, OpenApiParameter.QUERY),
-            OpenApiParameter("role", str, OpenApiParameter.QUERY),
-            OpenApiParameter("status", str, OpenApiParameter.QUERY),
-            OpenApiParameter("userIds", str, OpenApiParameter.QUERY),
-            OpenApiParameter("excludeUserIds", str, OpenApiParameter.QUERY),
-        ],
-    ),
-    retrieve=extend_schema(tags=["Users"]),
-    create=extend_schema(tags=["Users"]),
-    partial_update=extend_schema(tags=["Users"]),
-    update=extend_schema(tags=["Users"]),
-)
 class UserViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -78,38 +42,63 @@ class UserViewSet(
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     pagination_class = UserListPagination
 
-    def get_serializer_class(self):
-        if self.action in {"create", "update", "partial_update"}:
-            return UserMutationSerializer
-        return UserSerializer
-
     def _parse_csv_ints_query_param(self, name: str) -> list[int]:
-        return parse_csv_ints_query_param(
-            raw_value=self.request.query_params.get(name),
-            field_name=name,
-        )
+        raw_value = (self.request.query_params.get(name) or "").strip()
+        if not raw_value:
+            return []
+        values = [value.strip() for value in raw_value.split(",") if value.strip()]
+        try:
+            return [int(value) for value in values]
+        except ValueError as exc:
+            raise ValidationError({name: "All values must be valid integers"}) from exc
 
     def _validate_user_update_permissions(self, request, user: User) -> None:
-        ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
-
-    def _profile_image_response(self, *, request, user: User) -> Response:
-        updated_user = save_profile_image_for_user(request=request, user=user)
-        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
+        if request.user != user and not is_admin(request.user):
+            raise PermissionDenied("Cannot edit other users")
+        if is_admin(request.user) and request.user == user and any(
+            field in request.data for field in {"active", "group", "isAdmin"}
+        ):
+            raise PermissionDenied("You cannot change your own active status or role")
+        if not is_admin(request.user):
+            forbidden_fields = {"isAdmin", "group", "active"}
+            if any(field in request.data for field in forbidden_fields):
+                raise PermissionDenied("You cannot modify admin or active flags")
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        if not is_admin(self.request.user):
+            queryset = queryset.filter(id=self.request.user.id)
+        search_query = self.request.query_params.get("search")
+        role_filter = self.request.query_params.get("role")
+        status_filter = self.request.query_params.get("status")
+        
         user_ids = self._parse_csv_ints_query_param("userIds")
+        if user_ids:
+            queryset = queryset.filter(id__in=user_ids)
+
         exclude_user_ids = self._parse_csv_ints_query_param("excludeUserIds")
-        return filter_users_queryset(
-            queryset=queryset,
-            actor=self.request.user,
-            search_query=self.request.query_params.get("search"),
-            role_filter=self.request.query_params.get("role"),
-            status_filter=self.request.query_params.get("status"),
-            user_ids=user_ids,
-            exclude_user_ids=exclude_user_ids,
-            is_admin_actor=is_admin_user(self.request.user),
-        )
+        if exclude_user_ids:
+            queryset = queryset.exclude(id__in=exclude_user_ids)
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(username__icontains=search_query)
+                | Q(email__icontains=search_query)
+                | Q(first_name__icontains=search_query)
+                | Q(last_name__icontains=search_query)
+            )
+
+        if role_filter == "Admin":
+            queryset = queryset.filter(groups__name=ADMIN_GROUP_NAME)
+        elif role_filter in {"User", "Developer"}:
+            queryset = queryset.filter(groups__name=DEVELOPER_GROUP_NAME)
+
+        if status_filter == "Active":
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == "Inactive":
+            queryset = queryset.filter(is_active=False)
+
+        return queryset.distinct()
 
     def perform_create(self, serializer):
         check_admin(self.request.user)
@@ -129,88 +118,73 @@ class UserViewSet(
         self._validate_user_update_permissions(request, user)
         return super().update(request, *args, **kwargs)
 
+    @action(detail=True, methods=["post"], url_path="status")
+    def set_status(self, request, userId=None):
+        check_admin(request.user)
+        user = self.get_object()
+        active = request.data.get("active", None)
+        if not isinstance(active, bool):
+            raise ValidationError({"active": "Boolean value is required"})
+        if request.user == user:
+            raise PermissionDenied("You cannot deactivate your own account")
 
-password_response_serializer = inline_serializer(
-    name="UserPasswordUpdateResponse",
-    fields={"detail": serializers.CharField()},
-)
+        user.is_active = active
+        user.save(update_fields=["is_active"])
+        refreshed_user = User.objects.get(id=user.id)
+        return Response(UserSerializer(refreshed_user, context={"request": request}).data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], url_path="admin-upload-image")
+    def admin_upload_profile_image(self, request, userId=None):
+        check_admin(request.user)
+        user = self.get_object()
+        payload = save_profile_image_for_user(request=request, user=user)
+        return Response(payload, status=status.HTTP_200_OK)
 
-class CurrentUserPasswordView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    @action(detail=False, methods=["post"], url_path="me/upload_profile_image")
+    def upload_profile_image_me(self, request):
+        payload = save_profile_image_for_user(request=request, user=request.user)
+        return Response(payload, status=status.HTTP_200_OK)
 
-    @extend_schema(
-        tags=["Users"],
-        summary="Change current user password",
-        description="Self-service password change for the authenticated user.",
-        request=ChangePasswordSerializer,
-        responses=password_response_serializer,
-    )
-    def put(self, request):
+    @action(detail=False, methods=["post"], url_path="me/upload-profile-image")
+    def upload_profile_image_me_kebab(self, request):
+        payload = save_profile_image_for_user(request=request, user=request.user)
+        return Response(payload, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="change-password")
+    def change_password(self, request, userId=None):
+        target_user_id = self.kwargs.get(self.lookup_url_kwarg)
+        user = User.objects.filter(id=target_user_id).first()
+        if user is None:
+            raise NotFound("User not found")
+
+        is_admin_reset = is_admin(request.user) and request.user != user
+        if request.user != user and not is_admin(request.user):
+            raise PermissionDenied("Cannot change password for other users")
+
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        payload = change_user_password(
-            actor=request.user,
-            target_user_id=request.user.id,
-            payload=serializer.validated_data,
-            mode="self-service",
-        )
-        return Response(payload)
+        current_password = serializer.validated_data.get("currentPassword", "")
+        new_password = serializer.validated_data["newPassword"]
 
+        if is_admin_reset:
+            if user.check_password(new_password):
+                raise ValidationError({"newPassword": "New password must be different from current password"})
+        else:
+            if not current_password:
+                raise ValidationError({"currentPassword": "Current password is required"})
+            if not user.check_password(current_password):
+                raise ValidationError({"currentPassword": "Current password is incorrect"})
 
-class UserPasswordView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+        if user.check_password(new_password):
+            raise ValidationError({"newPassword": "New password must be different from current password"})
 
-    @extend_schema(
-        tags=["Users"],
-        summary="Reset user password",
-        description="Admin-only password reset for another user.",
-        request=AdminResetPasswordSerializer,
-        responses=password_response_serializer,
-    )
-    def put(self, request, userId):
+        ensure_valid_password(new_password, user=user, field_name="newPassword")
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        return Response({"detail": "Password updated"})
+
+    @action(detail=True, methods=["post"], url_path="admin-reset-password")
+    def admin_reset_password(self, request, userId=None):
         check_admin(request.user)
-        serializer = AdminResetPasswordSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        payload = change_user_password(
-            actor=request.user,
-            target_user_id=userId,
-            payload=serializer.validated_data,
-            mode="admin-reset",
-        )
-        return Response(payload)
-
-
-class CurrentUserProfileImageView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
-
-    @extend_schema(
-        tags=["Users"],
-        summary="Upload current user profile image",
-        request={"multipart/form-data": profile_image_upload_request},
-        responses=UserSerializer,
-    )
-    def put(self, request):
-        updated_user = save_profile_image_for_user(request=request, user=request.user)
-        return Response(UserSerializer(updated_user, context={"request": request}).data)
-
-
-class UserProfileImageView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
-
-    @extend_schema(
-        tags=["Users"],
-        summary="Upload profile image for another user",
-        description="Admin-only profile image upload for another user.",
-        request={"multipart/form-data": profile_image_upload_request},
-        responses=UserSerializer,
-    )
-    def put(self, request, userId):
-        check_admin(request.user)
-        user = User.objects.filter(pk=userId).first()
-        if user is None:
-            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        updated_user = save_profile_image_for_user(request=request, user=user)
-        return Response(UserSerializer(updated_user, context={"request": request}).data)
+        return self.change_password(request, userId=userId)

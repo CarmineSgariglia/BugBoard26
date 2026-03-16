@@ -1,1 +1,1 @@
-
+"""Authentication domain module."""

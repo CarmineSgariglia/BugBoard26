@@ -2,41 +2,32 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone as dt_timezone
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from ...security.authentication import CSRFAwareSessionAuthentication
-from ...security.token_sessions import (
-    build_token_pair_for_user,
-    is_refresh_token_password_stale,
-    is_refresh_token_session_revoked,
-    revoke_session_from_access,
-    revoke_session_from_refresh,
-)
-from ..auth.password_reset import issue_otp_for_email, reset_password_with_otp, verify_otp
-from ..users.serializers import UserReadSerializer
+from ..users.models import RevokedTokenSession
+from ..users.serializers import UserSerializer
 from .serializers import (
-    CSRFTokenResponseSerializer,
-    DetailResponseSerializer,
-    LoginRequestSerializer,
-    LoginResponseSerializer,
     PasswordOTPRequestSerializer,
-    PasswordOTPVerifyResponseSerializer,
     PasswordOTPVerifySerializer,
     PasswordResetSerializer,
-    RefreshResponseSerializer,
 )
+from ..users.services import issue_otp_for_email, reset_password_with_otp, verify_otp
 
 logger = logging.getLogger(__name__)
 
@@ -70,16 +61,65 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
+def _token_pair_for_user(user: User) -> tuple[str, str]:
+    refresh = RefreshToken.for_user(user)
+    refresh["sid"] = uuid4().hex
+    return str(refresh.access_token), str(refresh)
+
+
+def _revoke_token_session(*, sid: str | None, user_id: int | None, expires_at_unix: int | None) -> None:
+    if not sid or not expires_at_unix:
+        return
+
+    expires_at = datetime.fromtimestamp(expires_at_unix, tz=dt_timezone.utc)
+    RevokedTokenSession.objects.update_or_create(
+        sid=sid,
+        defaults={
+            "user_id": user_id,
+            "expires_at": expires_at,
+        },
+    )
+
+
+def _revoke_session_from_refresh(refresh_token: str) -> None:
+    try:
+        token = RefreshToken(refresh_token)
+    except TokenError:
+        return
+
+    _revoke_token_session(
+        sid=token.get("sid"),
+        user_id=token.get("user_id"),
+        expires_at_unix=token.get("exp"),
+    )
+
+
+def _revoke_session_from_access(request) -> None:
+    authenticator = JWTAuthentication()
+    header = authenticator.get_header(request)
+    if header is None:
+        return
+
+    raw_token = authenticator.get_raw_token(header)
+    if raw_token is None:
+        return
+
+    try:
+        validated_token = authenticator.get_validated_token(raw_token)
+    except TokenError:
+        return
+
+    _revoke_token_session(
+        sid=validated_token.get("sid"),
+        user_id=validated_token.get("user_id"),
+        expires_at_unix=validated_token.get("exp"),
+    )
+
+
 class CSRFTokenView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
 
-    @extend_schema(
-        tags=["Security"],
-        summary="Get CSRF token",
-        description="Bootstraps the CSRF cookie used by cookie-backed session mutations.",
-        responses=CSRFTokenResponseSerializer,
-    )
     def get(self, request):
         return Response({"csrfToken": get_token(request)})
 
@@ -90,13 +130,6 @@ class LoginView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "login"
 
-    @extend_schema(
-        tags=["Sessions"],
-        summary="Create session",
-        description="Authenticates the user, returns an access token, and sets the refresh token in an HTTP-only cookie.",
-        request=LoginRequestSerializer,
-        responses={200: LoginResponseSerializer, 401: DetailResponseSerializer},
-    )
     def post(self, request):
         email = request.data.get("email", "").strip()
         password = request.data.get("password", "")
@@ -106,13 +139,13 @@ class LoginView(APIView):
         if auth_user is None or not auth_user.is_active:
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        access_token, refresh_token = build_token_pair_for_user(auth_user)
+        access_token, refresh_token = _token_pair_for_user(auth_user)
         get_token(request)
 
         response = Response(
             {
                 "accessToken": access_token,
-                "user": UserReadSerializer(auth_user, context={"request": request}).data,
+                "user": UserSerializer(auth_user, context={"request": request}).data,
             }
         )
         _set_refresh_cookie(response, refresh_token)
@@ -123,21 +156,10 @@ class RefreshView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = [CSRFAwareSessionAuthentication]
 
-    @extend_schema(
-        tags=["Sessions"],
-        summary="Refresh access token",
-        description="Reads the refresh token from the HTTP-only cookie and returns a new access token.",
-        request=None,
-        responses={200: RefreshResponseSerializer, 401: DetailResponseSerializer},
-    )
     def post(self, request):
         refresh_token = request.COOKIES.get(_refresh_cookie_name())
         if not refresh_token:
             return Response({"detail": "Refresh token missing"}, status=status.HTTP_401_UNAUTHORIZED)
-        if is_refresh_token_session_revoked(refresh_token) or is_refresh_token_password_stale(
-            refresh_token
-        ):
-            return Response({"detail": "Invalid refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
 
         serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
         try:
@@ -158,23 +180,16 @@ class LogoutView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = [CSRFAwareSessionAuthentication]
 
-    @extend_schema(
-        tags=["Sessions"],
-        summary="Logout",
-        description="Revokes the current server-side JWT session and clears the refresh cookie.",
-        request=None,
-        responses={204: OpenApiResponse(description="Logged out")},
-    )
-    def delete(self, request):
+    def post(self, request):
         refresh_token = request.COOKIES.get(_refresh_cookie_name())
         if refresh_token:
-            revoke_session_from_refresh(refresh_token)
+            _revoke_session_from_refresh(refresh_token)
             try:
                 RefreshToken(refresh_token).blacklist()
             except TokenError:
                 logger.info("logout_with_invalid_refresh_token")
 
-        revoke_session_from_access(request)
+        _revoke_session_from_access(request)
         response = Response(status=status.HTTP_204_NO_CONTENT)
         _clear_refresh_cookie(response)
         return response
@@ -183,15 +198,9 @@ class LogoutView(APIView):
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    @extend_schema(
-        tags=["Users"],
-        summary="Get current user",
-        description="Returns the authenticated user profile.",
-        responses=UserReadSerializer,
-    )
     def get(self, request):
         get_token(request)
-        return Response(UserReadSerializer(request.user, context={"request": request}).data)
+        return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 class PasswordOTPRequestView(APIView):
@@ -200,13 +209,6 @@ class PasswordOTPRequestView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "otp"
 
-    @extend_schema(
-        tags=["Passwords"],
-        summary="Request password reset OTP",
-        description="Starts the OTP-based password reset flow.",
-        request=PasswordOTPRequestSerializer,
-        responses=DetailResponseSerializer,
-    )
     def post(self, request):
         serializer = PasswordOTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -221,13 +223,6 @@ class PasswordOTPVerifyView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "otp"
 
-    @extend_schema(
-        tags=["Passwords"],
-        summary="Verify password reset OTP",
-        description="Validates a password reset OTP.",
-        request=PasswordOTPVerifySerializer,
-        responses=PasswordOTPVerifyResponseSerializer,
-    )
     def post(self, request):
         serializer = PasswordOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -245,13 +240,6 @@ class PasswordResetView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "otp"
 
-    @extend_schema(
-        tags=["Passwords"],
-        summary="Reset password with OTP",
-        description="Completes the OTP-based password reset flow.",
-        request=PasswordResetSerializer,
-        responses={200: DetailResponseSerializer, 400: DetailResponseSerializer},
-    )
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

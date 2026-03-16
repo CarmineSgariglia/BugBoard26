@@ -1,1 +1,1 @@
-
+"""Domain-oriented application modules."""

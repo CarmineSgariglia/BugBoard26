@@ -1,40 +1,25 @@
 """Centralized upload validation and storage helpers."""
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
-from django.conf import settings
-from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from PIL import Image, ImageOps
-from rest_framework.exceptions import APIException, ValidationError
-
-logger = logging.getLogger(__name__)
-
-IMAGE_JPEG_MIME_TYPE = "image/jpeg"
-IMAGE_PNG_MIME_TYPE = "image/png"
-IMAGE_WEBP_MIME_TYPE = "image/webp"
-JPG_EXTENSION = ".jpg"
-JPEG_EXTENSION = ".jpeg"
-PNG_EXTENSION = ".png"
-WEBP_EXTENSION = ".webp"
+from rest_framework.exceptions import ValidationError
 
 IMAGE_SIGNATURES: dict[str, bytes] = {
-    IMAGE_PNG_MIME_TYPE: b"\x89PNG\r\n\x1a\n",
-    IMAGE_WEBP_MIME_TYPE: b"RIFF",
+    "image/png": b"\x89PNG\r\n\x1a\n",
+    "image/webp": b"RIFF",
 }
 JPEG_SIGNATURE = b"\xff\xd8\xff"
 WEBM_SIGNATURE = b"\x1A\x45\xDF\xA3"
 FTYP_MARKER = b"ftyp"
 
 ALLOWED_IMAGE_TYPES: dict[str, str] = {
-    IMAGE_JPEG_MIME_TYPE: JPG_EXTENSION,
-    IMAGE_PNG_MIME_TYPE: PNG_EXTENSION,
-    IMAGE_WEBP_MIME_TYPE: WEBP_EXTENSION,
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
 }
 
 ALLOWED_VIDEO_TYPES: dict[str, set[str]] = {
@@ -49,9 +34,9 @@ ALLOWED_ATTACHMENT_TYPES: dict[str, set[str]] = {
     "application/json": {".json"},
     "application/pdf": {".pdf"},
     "application/zip": {".zip"},
-    IMAGE_JPEG_MIME_TYPE: {JPG_EXTENSION, JPEG_EXTENSION},
-    IMAGE_PNG_MIME_TYPE: {PNG_EXTENSION},
-    IMAGE_WEBP_MIME_TYPE: {WEBP_EXTENSION},
+    "image/jpeg": {".jpg", ".jpeg"},
+    "image/png": {".png"},
+    "image/webp": {".webp"},
     **ALLOWED_VIDEO_TYPES,
 }
 
@@ -61,26 +46,6 @@ class StoredUpload:
     path: str
     mime_type: str
     size: int
-
-
-@dataclass(frozen=True)
-class PreparedImageUpload:
-    file: ContentFile
-    mime_type: str
-    size: int
-    extension: str
-
-
-class MediaStorageUnavailable(APIException):
-    status_code = 503
-    default_detail = "Media storage is temporarily unavailable. Retry later."
-    default_code = "media_storage_unavailable"
-
-
-COMPRESSED_IMAGE_MIME_TYPE = IMAGE_WEBP_MIME_TYPE
-COMPRESSED_IMAGE_EXTENSION = WEBP_EXTENSION
-IMAGE_QUALITY_STEPS = (82, 74, 66, 58, 50)
-IMAGE_SCALE_STEPS = (1.0, 0.85, 0.72, 0.6)
 
 
 def _read_prefix(uploaded_file, size: int = 16) -> bytes:
@@ -93,11 +58,11 @@ def _read_prefix(uploaded_file, size: int = 16) -> bytes:
 
 def _ensure_image_signature(content_type: str, uploaded_file) -> None:
     prefix = _read_prefix(uploaded_file)
-    if content_type == IMAGE_JPEG_MIME_TYPE:
+    if content_type == "image/jpeg":
         if not prefix.startswith(JPEG_SIGNATURE):
             raise ValidationError({"image": "File content does not match JPEG format"})
         return
-    if content_type == IMAGE_WEBP_MIME_TYPE:
+    if content_type == "image/webp":
         if not (prefix.startswith(b"RIFF") and prefix[8:12] == b"WEBP"):
             raise ValidationError({"image": "File content does not match WEBP format"})
         return
@@ -131,107 +96,14 @@ def validate_profile_image(uploaded_file, *, max_size_bytes: int = 2 * 1024 * 10
 
     suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
     expected_suffix = ALLOWED_IMAGE_TYPES[content_type]
-    if suffix and suffix not in {expected_suffix, JPEG_EXTENSION if expected_suffix == JPG_EXTENSION else expected_suffix}:
+    if suffix and suffix not in {expected_suffix, ".jpeg" if expected_suffix == ".jpg" else expected_suffix}:
         raise ValidationError({"image": "File extension does not match image type"})
 
     _ensure_image_signature(content_type, uploaded_file)
     return expected_suffix.removeprefix("."), size
 
 
-def _coerce_image_mode(image: Image.Image) -> Image.Image:
-    if image.mode in {"RGB", "RGBA"}:
-        return image
-    if image.mode in {"LA", "PA"}:
-        return image.convert("RGBA")
-    if image.mode == "P":
-        if "transparency" in image.info:
-            return image.convert("RGBA")
-        return image.convert("RGB")
-    return image.convert("RGB")
-
-
-def _resized_dimensions(
-    width: int,
-    height: int,
-    *,
-    max_width: int,
-    max_height: int,
-    scale_factor: float,
-) -> tuple[int, int]:
-    ratio = min(max_width / width, max_height / height, 1.0) * scale_factor
-    safe_ratio = ratio if ratio > 0 else 1.0
-    return (
-        max(1, round(width * safe_ratio)),
-        max(1, round(height * safe_ratio)),
-    )
-
-
-def _build_prepared_image_upload(*, payload: bytes, original_name: str) -> PreparedImageUpload:
-    prepared = ContentFile(payload, name=f"{Path(original_name or 'upload').stem}{COMPRESSED_IMAGE_EXTENSION}")
-    prepared.content_type = COMPRESSED_IMAGE_MIME_TYPE
-    return PreparedImageUpload(
-        file=prepared,
-        mime_type=COMPRESSED_IMAGE_MIME_TYPE,
-        size=len(payload),
-        extension=COMPRESSED_IMAGE_EXTENSION,
-    )
-
-
-def compress_image_upload(
-    *,
-    uploaded_file,
-    max_width: int,
-    max_height: int,
-    target_max_bytes: int,
-    field_name: str,
-) -> PreparedImageUpload:
-    position = uploaded_file.tell() if hasattr(uploaded_file, "tell") else None
-    try:
-        image = Image.open(uploaded_file)
-        image = ImageOps.exif_transpose(image)
-        image.load()
-    except OSError as exc:
-        raise ValidationError({field_name: "Image file is invalid or could not be processed"}) from exc
-    finally:
-        if position is not None and hasattr(uploaded_file, "seek"):
-            uploaded_file.seek(position)
-
-    image = _coerce_image_mode(image)
-    for scale_factor in IMAGE_SCALE_STEPS:
-        target_width, target_height = _resized_dimensions(
-            image.width,
-            image.height,
-            max_width=max_width,
-            max_height=max_height,
-            scale_factor=scale_factor,
-        )
-
-        resized = image.copy()
-        if resized.size != (target_width, target_height):
-            resized = resized.resize((target_width, target_height), Image.Resampling.LANCZOS)
-
-        for quality in IMAGE_QUALITY_STEPS:
-            buffer = BytesIO()
-            resized.save(buffer, format="WEBP", quality=quality, method=6)
-            payload = buffer.getvalue()
-
-            if len(payload) <= target_max_bytes:
-                return _build_prepared_image_upload(
-                    payload=payload,
-                    original_name=getattr(uploaded_file, "name", "upload"),
-                )
-
-    raise ValidationError(
-        {field_name: f"Image could not be compressed below {target_max_bytes // (1024 * 1024)}MB"}
-    )
-
-
-def validate_issue_attachment(
-    uploaded_file,
-    *,
-    max_size_bytes: int = 10 * 1024 * 1024,
-    max_image_size_bytes: int | None = None,
-) -> tuple[str, int]:
+def validate_issue_attachment(uploaded_file, *, max_size_bytes: int = 10 * 1024 * 1024) -> tuple[str, int]:
     size = int(getattr(uploaded_file, "size", 0) or 0)
     if size <= 0:
         raise ValidationError({"file": "File is empty"})
@@ -245,8 +117,7 @@ def validate_issue_attachment(
         raise ValidationError({"file": "File extension does not match attachment type"})
 
     if content_type.startswith("image/"):
-        image_size_limit = max_image_size_bytes or max_size_bytes
-        if size > image_size_limit:
+        if size > max_size_bytes:
             raise ValidationError({"file": "Max image/file size is 10MB"})
         _ensure_image_signature(content_type, uploaded_file)
     elif content_type.startswith("video/"):
@@ -260,16 +131,5 @@ def validate_issue_attachment(
 def store_upload(*, uploaded_file, storage_dir: str, filename_suffix: str) -> StoredUpload:
     filename = f"{uuid4().hex}{filename_suffix}"
     storage_path = f"{storage_dir}/{filename}"
-    try:
-        saved_path = default_storage.save(storage_path, uploaded_file)
-    except Exception as exc:
-        logger.exception(
-            "media_storage_save_failed backend=%s bucket=%s path=%s",
-            getattr(settings, "MEDIA_STORAGE_BACKEND", "unknown"),
-            getattr(settings, "GS_BUCKET_NAME", ""),
-            storage_path,
-        )
-        raise MediaStorageUnavailable() from exc
-    mime_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower()
-    size = int(getattr(uploaded_file, "size", 0) or 0)
-    return StoredUpload(path=saved_path, mime_type=mime_type, size=size)
+    saved_path = default_storage.save(storage_path, uploaded_file)
+    return StoredUpload(path=saved_path, mime_type="", size=0)

@@ -1,17 +1,11 @@
-from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
 from ...common.media import build_media_url
 from ...roles import is_admin_user
+from ..tags.models import Tag
 from ..tags.serializers import TagSerializer
-from ..tags.services import validate_existing_tag_ids
-from ..projects.serializers import ProjectMembershipSerializer
-from ..users.serializers import UserReadSerializer
-from .mutations import (
-    create_issue_from_validated_data,
-    update_issue_from_validated_data,
-)
-from .models import Attachment, Issue, IssueEvent, IssueStatus
+from ..users.serializers import UserSerializer
+from .models import Attachment, Issue, IssueAssignee, IssueEvent, IssueStatus, IssueTag
 from .rules import validate_project_assignee_ids
 
 
@@ -19,7 +13,7 @@ class IssueSerializer(serializers.ModelSerializer):
     issueId = serializers.IntegerField(source="issue_id", read_only=True)
     projectId = serializers.IntegerField(source="project.project_id", read_only=True)
     reporterId = serializers.IntegerField(source="reporter.id", read_only=True)
-    reporter = UserReadSerializer(read_only=True)
+    reporter = UserSerializer(read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     type = serializers.CharField(source="issue_type")
     assigneeIds = serializers.ListField(child=serializers.IntegerField(min_value=1), write_only=True, required=False)
@@ -53,23 +47,12 @@ class IssueSerializer(serializers.ModelSerializer):
             "tags",
         ]
 
-    @extend_schema_field(
-        inline_serializer(
-            name="IssueAssignee",
-            fields={
-                "userId": serializers.IntegerField(),
-                "username": serializers.CharField(),
-                "profileImg": serializers.CharField(allow_blank=True, allow_null=True),
-            },
-            many=True,
-        )
-    )
     def get_assignees(self, obj):
         return [
             {
                 "userId": user.id,
                 "username": user.username,
-                "profileImg": build_media_url(getattr(getattr(user, "profile", None), "profile_img", "")),
+                "profileImg": build_media_url(self, getattr(getattr(user, "profile", None), "profile_img", "")),
             }
             for user in obj.assignees.all()
             if not is_admin_user(user)
@@ -82,15 +65,76 @@ class IssueSerializer(serializers.ModelSerializer):
             validate_project_assignee_ids(project=project, assignee_ids=assignee_ids)
 
         tag_ids = attrs.get("tagIds")
-        validate_existing_tag_ids(tag_ids)
+        if tag_ids is not None:
+            existing_tag_ids = set(Tag.objects.filter(tag_id__in=tag_ids).values_list("tag_id", flat=True))
+            missing_tag_ids = [tag_id for tag_id in tag_ids if tag_id not in existing_tag_ids]
+            if missing_tag_ids:
+                raise serializers.ValidationError({"tagIds": f"Invalid tag ids: {missing_tag_ids}"})
 
         return attrs
 
+    def _resolve_tag_ids(self, *, tag_ids: list[int], tag_names: list[str]) -> list[int]:
+        resolved: list[int] = []
+        seen: set[int] = set()
+
+        if tag_ids:
+            existing_tag_ids = set(Tag.objects.filter(tag_id__in=tag_ids).values_list("tag_id", flat=True))
+            missing_tag_ids = [tag_id for tag_id in tag_ids if tag_id not in existing_tag_ids]
+            if missing_tag_ids:
+                raise serializers.ValidationError({"tagIds": f"Invalid tag ids: {missing_tag_ids}"})
+            for tag_id in tag_ids:
+                if tag_id not in seen:
+                    seen.add(tag_id)
+                    resolved.append(tag_id)
+
+        for raw_name in tag_names:
+            name = Tag.normalize_name(raw_name)
+            if not name:
+                continue
+            tag = Tag.objects.filter(name__iexact=name).order_by("tag_id").first()
+            if not tag:
+                tag, _ = Tag.objects.get_or_create(name=name)
+            if tag.tag_id not in seen:
+                seen.add(tag.tag_id)
+                resolved.append(tag.tag_id)
+
+        return resolved
+
     def create(self, validated_data):
-        return create_issue_from_validated_data(validated_data)
+        assignee_ids = validated_data.pop("assigneeIds", [])
+        tag_ids = validated_data.pop("tagIds", [])
+        tag_names = validated_data.pop("tagNames", [])
+        resolved_tag_ids = self._resolve_tag_ids(tag_ids=tag_ids, tag_names=tag_names)
+        issue = Issue.objects.create(**validated_data)
+        for user_id in assignee_ids:
+            IssueAssignee.objects.get_or_create(issue=issue, user_id=user_id)
+        for tag_id in resolved_tag_ids:
+            IssueTag.objects.get_or_create(issue=issue, tag_id=tag_id)
+        return issue
 
     def update(self, instance, validated_data):
-        return update_issue_from_validated_data(instance, validated_data)
+        assignee_ids = validated_data.pop("assigneeIds", None)
+        tag_ids = validated_data.pop("tagIds", None)
+        tag_names = validated_data.pop("tagNames", None)
+        if "issue_type" in validated_data:
+            instance.issue_type = validated_data.pop("issue_type")
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+       
+        instance.save()
+
+        if assignee_ids is not None:
+            IssueAssignee.objects.filter(issue=instance).exclude(user_id__in=assignee_ids).delete()
+            for user_id in assignee_ids:
+                IssueAssignee.objects.get_or_create(issue=instance, user_id=user_id)
+
+        if tag_ids is not None or tag_names is not None:
+            resolved_tag_ids = self._resolve_tag_ids(tag_ids=tag_ids or [], tag_names=tag_names or [])
+            IssueTag.objects.filter(issue=instance).exclude(tag_id__in=resolved_tag_ids).delete()
+            for tag_id in resolved_tag_ids:
+                IssueTag.objects.get_or_create(issue=instance, tag_id=tag_id)
+
+        return instance
 
 
 class IssueEventSerializer(serializers.ModelSerializer):
@@ -123,10 +167,5 @@ class AttachmentSerializer(serializers.ModelSerializer):
         model = Attachment
         fields = ["attachmentId", "updateId", "originalName", "path", "url", "mimeType", "size", "uploadedAt"]
 
-    @extend_schema_field(serializers.CharField())
-    def get_url(self, obj) -> str:
-        return build_media_url(obj.path)
-
-
-class IssueSuggestionSerializer(ProjectMembershipSerializer):
-    openCount = serializers.IntegerField()
+    def get_url(self, obj):
+        return build_media_url(self, obj.path)

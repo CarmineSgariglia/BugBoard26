@@ -6,16 +6,17 @@ from .modules.projects.models import Project, ProjectMembership
 from .modules.tags.models import Tag
 from .modules.users.models import PasswordResetOTP, RevokedTokenSession, UserProfileImage
 
-# User related admin classes
+
 @admin.register(UserProfileImage)
 class UserProfileImageAdmin(admin.ModelAdmin):
     list_display = ("user", "profile_img")
     search_fields = ("user__username", "user__email")
 
-# Project related admin classes
+
 class ProjectMembershipInline(admin.TabularInline):
     model = ProjectMembership
     extra = 0
+
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
@@ -24,7 +25,6 @@ class ProjectAdmin(admin.ModelAdmin):
     inlines = [ProjectMembershipInline]
 
 
-# Issue related admin classes
 class IssueAssigneeInline(admin.TabularInline):
     model = IssueAssignee
     extra = 0
@@ -34,12 +34,14 @@ class IssueTagInline(admin.TabularInline):
     model = IssueTag
     extra = 0
 
+
 @admin.register(Issue)
 class IssueAdmin(admin.ModelAdmin):
     list_display = ("issue_id", "title", "project", "status", "priority", "reporter", "created_at")
     list_filter = ("status", "priority", "issue_type")
     search_fields = ("title", "description", "project__name")
     inlines = [IssueAssigneeInline, IssueTagInline]
+
 
 @admin.register(IssueEvent)
 class IssueEventAdmin(admin.ModelAdmin):
@@ -48,24 +50,24 @@ class IssueEventAdmin(admin.ModelAdmin):
     search_fields = ("issue__title", "actor__username", "message")
 
 
-# Attachment related admin classes
 @admin.register(Attachment)
 class AttachmentAdmin(admin.ModelAdmin):
     list_display = ("attachment_id", "update", "mime_type", "size", "uploaded_at")
     search_fields = ("path", "mime_type")
 
 
-# Tag related admin classes
+
+
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     list_display = ("tag_id", "name")
     search_fields = ("name",)
 
 
-# Notification related admin classes
 class NotifyUserInline(admin.TabularInline):
     model = NotifyUser
     extra = 0
+
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -74,12 +76,14 @@ class NotificationAdmin(admin.ModelAdmin):
     inlines = [NotifyUserInline]
 
 
-# Auth related admin classes
+
+
 @admin.register(PasswordResetOTP)
 class PasswordResetOTPAdmin(admin.ModelAdmin):
     list_display = ("otp_id", "user", "code", "created_at", "expires_at", "is_used")
     list_filter = ("is_used",)
     search_fields = ("user__username", "user__email", "code")
+
 
 @admin.register(RevokedTokenSession)
 class RevokedTokenSessionAdmin(admin.ModelAdmin):

@@ -1,1 +1,1 @@
-
+"""Issues domain module."""

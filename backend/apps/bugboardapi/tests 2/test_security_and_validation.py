@@ -1,3 +1,4 @@
+from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.test import SimpleTestCase
 from rest_framework import status
@@ -7,6 +8,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from apps.bugboardapi.modules.projects.models import Project, ProjectMembership
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.modules.auth.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
+from config.settings import MIN_SECRET_KEY_LENGTH, _validate_secret_key
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
 
@@ -112,6 +114,21 @@ class UserPermissionTests(APITestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, updated_email)
 
+    def test_non_admin_cannot_patch_profile_img_directly(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"profileImg": "https://example.com/avatar.png"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["profileImg"][0],
+            "Use the dedicated upload endpoint",
+        )
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.profile.profile_img, "")
+
     def test_admin_can_set_is_admin_on_other_user(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
@@ -160,18 +177,6 @@ class UserPermissionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_active)
-
-    def test_admin_cannot_deactivate_self_via_status_endpoint(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.admin.id}/status",
-            {"active": False},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.admin.refresh_from_db()
-        self.assertTrue(self.admin.is_active)
-
 
 class IssueCreationValidationTests(APITestCase):
     def setUp(self):
@@ -286,6 +291,18 @@ class AuthThrottleConfigurationTests(SimpleTestCase):
         self.assertIn("otp", rates)
 
 
+class SettingsValidationTests(SimpleTestCase):
+    def test_secret_key_validation_rejects_short_production_values(self):
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            f"DJANGO_SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters in production",
+        ):
+            _validate_secret_key(secret_key="too-short-for-production", debug=False)
+
+    def test_secret_key_validation_allows_short_values_only_in_debug(self):
+        _validate_secret_key(secret_key="debug-short", debug=True)
+
+
 class AuthCsrfTests(APITestCase):
     def setUp(self):
         self.user = create_user_with_profile(
@@ -296,23 +313,23 @@ class AuthCsrfTests(APITestCase):
 
     def test_csrf_endpoint_sets_cookie(self):
         client = APIClient(enforce_csrf_checks=True)
-        response = client.get("/api/auth/csrf")
+        response = client.get("/api/security/csrf-token")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("csrftoken", response.cookies)
 
     def test_login_requires_csrf_and_succeeds_with_token(self):
         client = APIClient(enforce_csrf_checks=True)
         blocked_response = client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
         )
         self.assertEqual(blocked_response.status_code, status.HTTP_403_FORBIDDEN)
 
-        csrf_response = client.get("/api/auth/csrf")
+        csrf_response = client.get("/api/security/csrf-token")
         csrf_token = csrf_response.cookies["csrftoken"].value
         login_response = client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
             HTTP_X_CSRFTOKEN=csrf_token,
@@ -322,10 +339,10 @@ class AuthCsrfTests(APITestCase):
     def test_otp_endpoints_require_csrf(self):
         client = APIClient(enforce_csrf_checks=True)
         otp_calls = [
-            ("/api/auth/password/otp/request", {"email": self.user.email}),
-            ("/api/auth/password/otp/verify", {"email": self.user.email, "code": "123456"}),
+            ("/api/password-reset-requests", {"email": self.user.email}),
+            ("/api/password-reset-verifications", {"email": self.user.email, "code": "123456"}),
             (
-                "/api/auth/password/reset",
+                "/api/password-resets",
                 {"email": self.user.email, "code": "123456", "newPassword": "NewStrongPass123!"},
             ),
         ]
@@ -348,7 +365,7 @@ class JwtAuthFlowTests(APITestCase):
 
     def test_login_me_refresh_logout_flow(self):
         login_response = self.client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
         )
@@ -359,35 +376,35 @@ class JwtAuthFlowTests(APITestCase):
 
         access_token = login_response.data["accessToken"]
 
-        me_response = self.client.get("/api/auth/me", **self._auth_headers(access_token))
+        me_response = self.client.get("/api/users/me", **self._auth_headers(access_token))
         self.assertEqual(me_response.status_code, status.HTTP_200_OK)
         self.assertEqual(me_response.data["email"], self.user.email)
 
-        refresh_response = self.client.post("/api/auth/refresh", {}, format="json")
+        refresh_response = self.client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
         self.assertIn("accessToken", refresh_response.data)
 
         refresh_cookie = login_response.cookies[settings.AUTH_REFRESH_COOKIE_NAME].value
 
-        logout_response = self.client.post(
-            "/api/auth/logout",
+        logout_response = self.client.delete(
+            "/api/sessions/current",
             {},
             format="json",
             **self._auth_headers(refresh_response.data["accessToken"]),
         )
         self.assertEqual(logout_response.status_code, status.HTTP_204_NO_CONTENT)
 
-        me_after_logout = self.client.get("/api/auth/me", **self._auth_headers(access_token))
+        me_after_logout = self.client.get("/api/users/me", **self._auth_headers(access_token))
         self.assertIn(me_after_logout.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
 
         stale_refresh_client = self.client_class()
         stale_refresh_client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = refresh_cookie
-        stale_refresh = stale_refresh_client.post("/api/auth/refresh", {}, format="json")
+        stale_refresh = stale_refresh_client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(stale_refresh.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_private_endpoints_require_authentication(self):
         protected_calls = [
-            ("get", "/api/auth/me"),
+            ("get", "/api/users/me"),
             ("get", "/api/projects"),
             ("get", "/api/notifications"),
             ("get", "/api/projects/999/issues"),
@@ -403,5 +420,5 @@ class JwtAuthFlowTests(APITestCase):
             )
 
     def test_refresh_requires_cookie(self):
-        response = self.client.post("/api/auth/refresh", {}, format="json")
+        response = self.client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

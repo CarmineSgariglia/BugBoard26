@@ -1,20 +1,24 @@
-"""Password reset OTP workflow."""
+"""Password reset OTP service logic."""
 from __future__ import annotations
 
 import hashlib
 import logging
-import secrets
+import random
 from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.files.storage import default_storage
 from django.core.mail import EmailMessage, send_mail
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
+from ...permissions import is_admin
 from ...security.passwords import ensure_valid_password
-from ...security.token_sessions import set_password_and_invalidate_sessions
-from ..users.password_reset_models import PasswordResetOTP
+from ...security.uploads import store_upload, validate_profile_image
+from .models import PasswordResetOTP, UserProfileImage
+from .serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -79,20 +83,19 @@ def issue_otp_for_email(email: str) -> None:
         return
 
     now = timezone.now()
-    raw_code = f"{secrets.randbelow(1_000_000):06d}"
     with transaction.atomic():
-        pending_otp = PasswordResetOTP.objects.create(
+        PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
+        raw_code = f"{random.randint(0, 999999):06d}"
+        PasswordResetOTP.objects.create(
             user=user,
             code=raw_code,
             expires_at=now + timedelta(minutes=OTP_EXPIRY_MINUTES),
-            is_used=True,
             attempt_count=0,
             last_attempt_at=None,
         )
 
     try:
         _send_otp_email(email=user.email, code=raw_code)
-        _mark_pending_otp_delivered(user=user, pending_otp=pending_otp)
         logger.info("otp_request_sent user_id=%s email_hash=%s", user.id, _email_hash(user.email))
     except Exception:
         logger.exception("otp_request_send_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))
@@ -146,7 +149,8 @@ def reset_password_with_otp(email: str, code: str, new_password: str) -> bool:
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
     with transaction.atomic():
-        set_password_and_invalidate_sessions(user=user, new_password=new_password)
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
@@ -154,8 +158,34 @@ def reset_password_with_otp(email: str, code: str, new_password: str) -> bool:
     return True
 
 
-def _mark_pending_otp_delivered(*, user: User, pending_otp: PasswordResetOTP) -> None:
-    with transaction.atomic():
-        PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
-        pending_otp.is_used = False
-        pending_otp.save(update_fields=["is_used"])
+def save_profile_image_for_user(*, request, user: User):
+    if request.user != user and not is_admin(request.user):
+        raise PermissionDenied("Cannot edit other users")
+
+    image = request.FILES.get("image") or request.FILES.get("profile_img")
+    if image is None:
+        raise ValidationError({"image": "Image file is required"})
+    extension, _size = validate_profile_image(
+        image,
+        max_size_bytes=getattr(settings, "BUGBOARD_MAX_PROFILE_IMAGE_BYTES", 2 * 1024 * 1024),
+    )
+    saved = store_upload(
+        uploaded_file=image,
+        storage_dir=f"profile-images/{user.id}",
+        filename_suffix=f".{extension}",
+    )
+    saved_path = saved.path
+
+    profile, _ = UserProfileImage.objects.get_or_create(user=user)
+    old_path = profile.profile_img
+    profile.profile_img = saved_path
+    profile.save(update_fields=["profile_img"])
+
+    if old_path and old_path != saved_path and old_path.startswith("profile-images/"):
+        try:
+            default_storage.delete(old_path)
+        except Exception:
+            logger.warning("Failed to delete old profile image: %s", old_path)
+
+    refreshed_user = User.objects.get(id=user.id)
+    return UserSerializer(refreshed_user, context={"request": request}).data

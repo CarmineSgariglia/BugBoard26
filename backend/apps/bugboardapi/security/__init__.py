@@ -1,1 +1,1 @@
-
+"""Cross-cutting security helpers."""
