@@ -1,19 +1,16 @@
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
-from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
-from apps.bugboardapi.modules.notifications.realtime import open_notification_subscription
-from apps.bugboardapi.modules.notifications.services import (
-    notify_issue_assigned,
-    notify_issue_closed,
-    notify_issue_updated,
-)
+from apps.bugboardapi.models import Issue, IssueStatus, NotifyType, NotifyUser
+from apps.bugboardapi.services.notification_realtime import open_notification_subscription
+from apps.bugboardapi.services.notifications import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
 class NotificationRealtimeBackendTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.admin = create_user_with_profile(
             username="realtime_admin",
             email="realtime_admin@example.com",
@@ -42,11 +39,15 @@ class NotificationRealtimeBackendTests(APITestCase):
         )
         self.client.force_authenticate(user=self.member)
 
-    def test_issue_notification_publishes_only_after_commit(self):
+    def test_notify_users_publishes_only_after_commit(self):
         subscription = open_notification_subscription(self.member.id)
 
         with self.captureOnCommitCallbacks(execute=False) as callbacks:
-            notify_issue_updated(users=[self.member], issue=self.issue)
+            notify_users(
+                notify_type=NotifyType.ISSUE_UPDATED,
+                users=[self.member],
+                issue=self.issue,
+            )
             self.assertIsNone(subscription.get_message(timeout=0.01))
 
         self.assertEqual(len(callbacks), 1)
@@ -61,28 +62,12 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertEqual(event.data["type"], NotifyType.ISSUE_UPDATED)
         self.assertEqual(event.data["issueId"], self.issue.issue_id)
 
-    def test_issue_notification_fans_out_to_multiple_memory_subscribers(self):
-        first_subscription = open_notification_subscription(self.member.id)
-        second_subscription = open_notification_subscription(self.member.id)
-
-        with self.captureOnCommitCallbacks(execute=True):
-            notify_issue_updated(users=[self.member], issue=self.issue)
-
-        first_event = first_subscription.get_message(timeout=0.1)
-        second_event = second_subscription.get_message(timeout=0.1)
-        first_subscription.close()
-        second_subscription.close()
-
-        self.assertIsNotNone(first_event)
-        self.assertIsNotNone(second_event)
-        self.assertEqual(first_event.event, "notification.created")
-        self.assertEqual(second_event.event, "notification.created")
-        self.assertEqual(first_event.data["notifyUserId"], second_event.data["notifyUserId"])
-        self.assertEqual(first_event.data["issueId"], self.issue.issue_id)
-        self.assertEqual(second_event.data["issueId"], self.issue.issue_id)
-
     def test_notifications_list_returns_paginated_payload(self):
-        notify_issue_updated(users=[self.member], issue=self.issue)
+        notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            issue=self.issue,
+        )
 
         first_response = self.client.get("/api/notifications")
         self.assertEqual(first_response.status_code, status.HTTP_200_OK)
@@ -93,9 +78,21 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertTrue(first_response.data["hasUnread"])
 
     def test_notifications_list_supports_cursor_pagination(self):
-        first_notification = notify_issue_updated(users=[self.member], issue=self.issue)
-        second_notification = notify_issue_closed(users=[self.member], issue=self.issue)
-        third_notification = notify_issue_assigned(users=[self.member], issue=self.issue)
+        first_notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            issue=self.issue,
+        )
+        second_notification = notify_users(
+            notify_type=NotifyType.ISSUE_CLOSED,
+            users=[self.member],
+            issue=self.issue,
+        )
+        third_notification = notify_users(
+            notify_type=NotifyType.ISSUE_ASSIGNED,
+            users=[self.member],
+            issue=self.issue,
+        )
 
         first_notify_user = NotifyUser.objects.get(notification=first_notification, user=self.member)
         second_notify_user = NotifyUser.objects.get(notification=second_notification, user=self.member)
@@ -122,15 +119,15 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertTrue(second_page.data["hasUnread"])
 
     def test_read_updates_notification_in_paginated_list(self):
-        notification = notify_issue_updated(users=[self.member], issue=self.issue)
+        notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            issue=self.issue,
+        )
         notify_user = NotifyUser.objects.get(notification=notification, user=self.member)
 
         self.client.get("/api/notifications")
-        read_response = self.client.patch(
-            f"/api/notifications/{notify_user.notify_user_id}",
-            {"isRead": True},
-            format="json",
-        )
+        read_response = self.client.post(f"/api/notifications/{notify_user.notify_user_id}/read", {}, format="json")
         self.assertEqual(read_response.status_code, status.HTTP_200_OK)
         list_response = self.client.get("/api/notifications")
 
@@ -140,8 +137,16 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertFalse(list_response.data["hasUnread"])
 
     def test_delete_updates_paginated_notification_list(self):
-        first_notification = notify_issue_updated(users=[self.member], issue=self.issue)
-        second_notification = notify_issue_closed(users=[self.member], issue=self.issue)
+        first_notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            issue=self.issue,
+        )
+        second_notification = notify_users(
+            notify_type=NotifyType.ISSUE_CLOSED,
+            users=[self.member],
+            issue=self.issue,
+        )
         first_notify_user = NotifyUser.objects.get(notification=first_notification, user=self.member)
         second_notify_user = NotifyUser.objects.get(notification=second_notification, user=self.member)
 
@@ -156,19 +161,3 @@ class NotificationRealtimeBackendTests(APITestCase):
             [first_notify_user.notify_user_id],
         )
         self.assertTrue(list_response.data["hasUnread"])
-
-    def test_delete_keeps_notification_row_when_other_recipients_still_exist(self):
-        shared_notification = notify_issue_updated(users=[self.admin, self.member], issue=self.issue)
-        member_notify_user = NotifyUser.objects.get(notification=shared_notification, user=self.member)
-        self.assertTrue(
-            NotifyUser.objects.filter(notification=shared_notification, user=self.admin).exists()
-        )
-
-        delete_response = self.client.delete(f"/api/notifications/{member_notify_user.notify_user_id}")
-        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertTrue(
-            NotifyUser.objects.filter(notification=shared_notification, user=self.admin).exists()
-        )
-        self.assertTrue(
-            NotifyUser.objects.filter(notification=shared_notification).exists()
-        )

@@ -6,17 +6,17 @@ import { IoIosNotificationsOutline } from "react-icons/io";
 import { DynamicBreadcrumbs } from "./DynamicBreadcrumbs";
 import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
+import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
-import { logoutApi } from "@features/auth/api";
+import { logoutApi } from "../../shared/api/modules/auth";
 import {
   listNotificationsApi,
   notificationsPageSize,
   notificationsQueryKey,
-} from "@features/notification/api";
-import { useAuth } from "@features/auth";
+} from "../../shared/api/modules/notifications";
+import { useAuth } from "@shared/providers/AuthContext";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
-import { getNotificationsHasUnread } from "@features/notification/lib/notifications";
-import { NotificationDropdown } from "@features/notification/ui/NotificationDropdown";
+import { getNotificationsHasUnread } from "@shared/lib/notifications";
 
 type NavState = {
   isProfileOpen: boolean;
@@ -77,8 +77,8 @@ export function TopNav() {
 
   const { data } = useInfiniteQuery({
     queryKey: notificationsQueryKey,
-    queryFn: ({ pageParam, signal }) =>
-      listNotificationsApi({ limit: notificationsPageSize, before: pageParam }, { signal }),
+    queryFn: ({ pageParam }) =>
+      listNotificationsApi({ limit: notificationsPageSize, before: pageParam }),
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
     enabled: Boolean(currentUser),

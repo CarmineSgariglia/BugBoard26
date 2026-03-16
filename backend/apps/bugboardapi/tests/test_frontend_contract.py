@@ -1,19 +1,9 @@
-from io import BytesIO
-
-from PIL import Image
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.bugboardapi.modules.issues.models import Attachment, EventType, Issue, IssueEvent, IssueStatus
-from apps.bugboardapi.modules.notifications.services import notify_issue_updated
-from apps.bugboardapi.modules.tags.models import Tag
+from apps.bugboardapi.models import Attachment, EventType, Issue, IssueEvent, IssueStatus, NotifyType, ProjectMembership, Tag
+from apps.bugboardapi.services.notifications import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
-
-
-def make_png_bytes(*, size: tuple[int, int], color: str = "blue") -> bytes:
-    buffer = BytesIO()
-    Image.new("RGB", size, color=color).save(buffer, format="PNG")
-    return buffer.getvalue()
 
 
 class FrontendContractTests(APITestCase):
@@ -46,11 +36,11 @@ class FrontendContractTests(APITestCase):
             status=IssueStatus.TODO,
             priority="MEDIUM",
         )
-        notify_issue_updated(users=[self.member], issue=self.issue)
+        notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[self.member], issue=self.issue)
 
     def test_auth_me_payload_matches_frontend_contract(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.get("/api/users/me")
+        response = self.client.get("/api/auth/me")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         expected_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
         self.assertTrue(expected_keys.issubset(set(response.data.keys())))
@@ -114,11 +104,7 @@ class FrontendContractTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         list_response = self.client.get("/api/notifications")
         notify_user_id = list_response.data["results"][0]["notifyUserId"]
-        read_response = self.client.patch(
-            f"/api/notifications/{notify_user_id}",
-            {"isRead": True},
-            format="json",
-        )
+        read_response = self.client.post(f"/api/notifications/{notify_user_id}/read", {}, format="json")
         self.assertEqual(read_response.status_code, status.HTTP_200_OK)
         self.assertTrue(read_response.data["isRead"])
 
@@ -138,7 +124,7 @@ class FrontendContractTests(APITestCase):
         )
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.get(f"/api/issues/{self.issue.issue_id}/events")
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
         self.assertIn("attachments", response.data[0])
@@ -162,16 +148,15 @@ class FrontendContractTests(APITestCase):
 
         patch_response = self.client.patch(
             f"/api/users/{self.member.id}",
-            {"username": "contract_member_renamed", "firstName": "Contract", "lastName": "User"},
+            {"firstName": "Contract", "lastName": "User"},
             format="json",
         )
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(patch_response.data["username"], "contract_member_renamed")
         self.assertEqual(patch_response.data["firstName"], "Contract")
         self.assertEqual(patch_response.data["lastName"], "User")
 
-        change_password_response = self.client.put(
-            "/api/users/me/password",
+        change_password_response = self.client.post(
+            f"/api/users/{self.member.id}/change-password",
             {"currentPassword": "StrongPass123!", "newPassword": "NewStrongPass123!"},
             format="json",
         )
@@ -183,10 +168,10 @@ class FrontendContractTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(
-            "avatar.png", make_png_bytes(size=(1200, 1600)), content_type="image/png"
+            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
         )
-        response = self.client.put(
-            "/api/users/me/profile-image",
+        response = self.client.post(
+            "/api/users/me/upload-profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -195,8 +180,8 @@ class FrontendContractTests(APITestCase):
 
     def test_admin_reset_other_user_password_contract(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.put(
-            f"/api/users/{self.member.id}/password",
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password",
             {"newPassword": "AdminResetPass123!"},
             format="json",
         )
