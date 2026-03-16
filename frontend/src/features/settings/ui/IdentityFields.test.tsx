@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders } from "../../test/render";
@@ -37,22 +38,32 @@ describe("IdentityFields", () => {
     const user = userEvent.setup();
     const onChangeUsername = vi.fn();
 
-    renderWithProviders(
-      <IdentityFields
-        username="dev-user"
-        onChangeUsername={onChangeUsername}
-        name="Dev"
-        onChangeName={() => {}}
-        surname="User"
-        onChangeSurname={() => {}}
-        email="dev@example.com"
-        onChangeEmail={() => {}}
-      />
-    );
+    function ControlledIdentityFields() {
+      const [username, setUsername] = useState("dev-user");
+
+      return (
+        <IdentityFields
+          username={username}
+          onChangeUsername={(nextUsername) => {
+            onChangeUsername(nextUsername);
+            setUsername(nextUsername);
+          }}
+          name="Dev"
+          onChangeName={() => {}}
+          surname="User"
+          onChangeSurname={() => {}}
+          email="dev@example.com"
+          onChangeEmail={() => {}}
+        />
+      );
+    }
+
+    renderWithProviders(<ControlledIdentityFields />);
 
     await user.type(screen.getByPlaceholderText("Username"), "ABC");
 
     expect(onChangeUsername).toHaveBeenLastCalledWith("dev-userabc");
+    expect(screen.getByPlaceholderText("Username")).toHaveValue("dev-userabc");
   });
 
   it("keeps the add-user form layout unchanged when username props are omitted", () => {
