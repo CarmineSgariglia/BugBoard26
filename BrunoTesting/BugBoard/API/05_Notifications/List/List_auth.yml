@@ -16,18 +16,25 @@ runtime:
           expect(res.getStatus()).to.equal(200);
         });
 
-        test("Notifications list is array", function () {
-          expect(res.getBody()).to.be.an("array");
+        test("Notifications list is paginated", function () {
+          const body = res.getBody();
+          expect(body).to.be.an("object");
+          expect(body).to.have.property("results");
+          expect(body.results).to.be.an("array");
+          expect(body).to.have.property("nextCursor");
+          expect(body).to.have.property("hasMore");
+          expect(body).to.have.property("hasUnread");
         });
 
         test("Notification payload has expected shape when present", function () {
           const body = res.getBody();
+          const items = Array.isArray(body?.results) ? body.results : [];
 
-          if (body.length === 0) {
+          if (items.length === 0) {
             return;
           }
 
-          const item = body[0];
+          const item = items[0];
           expect(item).to.have.property("notifyUserId");
           expect(item).to.have.property("notificationId");
           expect(item).to.have.property("type");

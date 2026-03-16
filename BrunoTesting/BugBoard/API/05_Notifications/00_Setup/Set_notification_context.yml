@@ -13,9 +13,10 @@ runtime:
     - type: after-response
       code: |-
         const body = res.getBody();
+        const items = Array.isArray(body?.results) ? body.results : [];
 
-        if (Array.isArray(body) && body.length > 0 && body[0].notifyUserId) {
-          const notifyUserId = String(body[0].notifyUserId);
+        if (items.length > 0 && items[0].notifyUserId) {
+          const notifyUserId = String(items[0].notifyUserId);
           bru.setVar("notify_user_id", notifyUserId);
           bru.setEnvVar("notify_user_id", notifyUserId);
         }
@@ -25,8 +26,14 @@ runtime:
           expect(res.getStatus()).to.equal(200);
         });
 
-        test("Notification setup response is array", function () {
-          expect(res.getBody()).to.be.an("array");
+        test("Notification setup response is paginated", function () {
+          const body = res.getBody();
+          expect(body).to.be.an("object");
+          expect(body).to.have.property("results");
+          expect(body.results).to.be.an("array");
+          expect(body).to.have.property("nextCursor");
+          expect(body).to.have.property("hasMore");
+          expect(body).to.have.property("hasUnread");
         });
 
         test("Notification setup resolved a valid notify_user_id", function () {

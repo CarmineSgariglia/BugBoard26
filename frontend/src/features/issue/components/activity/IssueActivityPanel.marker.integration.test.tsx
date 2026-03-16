@@ -72,7 +72,7 @@ const currentUser: AuthUser = {
   firstName: "Alice",
   lastName: "Doe",
   isAdmin: false,
-  profileImg: null,
+  profileImg: "",
   active: true,
 };
 
