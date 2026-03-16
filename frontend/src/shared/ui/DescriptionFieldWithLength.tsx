@@ -2,7 +2,7 @@ import { useRef, useEffect, type KeyboardEventHandler } from "react";
 import { FormField } from "./FormField";
 import { Textarea } from "./Textarea";
 
-interface DescriptionFieldWithLengthProps {
+interface DescriptionFieldWithLenghtProps {
     description: string;
     onChangeDescription: (val: string) => void;
     maxLength?: number;
@@ -15,7 +15,7 @@ interface DescriptionFieldWithLengthProps {
     onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
 }
 
-export function DescriptionFieldWithLength({
+export function DescriptionFieldWithLenght({
     description,
     onChangeDescription,
     maxLength,
@@ -26,7 +26,7 @@ export function DescriptionFieldWithLength({
     counterClassName,
     hideLabel = false,
     onKeyDown,
-}: DescriptionFieldWithLengthProps) {
+}: DescriptionFieldWithLenghtProps) {
     const max = maxLength || 256;
     const place = placeholder || "Insert your text...";
     const textareaRef = useRef<HTMLTextAreaElement>(null);
