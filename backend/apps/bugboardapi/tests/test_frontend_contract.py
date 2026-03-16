@@ -143,10 +143,11 @@ class FrontendContractTests(APITestCase):
 
         patch_response = self.client.patch(
             f"/api/users/{self.member.id}",
-            {"firstName": "Contract", "lastName": "User"},
+            {"username": "contract_member_renamed", "firstName": "Contract", "lastName": "User"},
             format="json",
         )
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(patch_response.data["username"], "contract_member_renamed")
         self.assertEqual(patch_response.data["firstName"], "Contract")
         self.assertEqual(patch_response.data["lastName"], "User")
 

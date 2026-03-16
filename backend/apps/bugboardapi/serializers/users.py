@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from rest_framework import serializers
 
 from ..models import UserProfileImage
@@ -11,6 +12,11 @@ from ..roles import (
     get_global_role,
 )
 from ..utils import build_media_url
+
+EMAIL_ALREADY_IN_USE_MESSAGE = "Email already in use"
+EMAIL_CASE_INSENSITIVE_INDEX_NAME = "auth_user_email_ci_unique_idx"
+USERNAME_ALREADY_EXISTS_MESSAGE = "A user with that username already exists."
+USERNAME_UNIQUE_CONSTRAINT_NAME = "auth_user_username_key"
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -46,6 +52,40 @@ class UserSerializer(serializers.ModelSerializer):
         data["isAdmin"] = role == ADMIN_GROUP_NAME
         return data
 
+    def validate_email(self, value: str) -> str:
+        normalized_email = value.strip()
+        if not normalized_email:
+            return normalized_email
+
+        queryset = User.objects.filter(email__iexact=normalized_email)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(EMAIL_ALREADY_IN_USE_MESSAGE)
+        return normalized_email
+
+    def validate_username(self, value: str) -> str:
+        queryset = User.objects.filter(username=value)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(USERNAME_ALREADY_EXISTS_MESSAGE)
+        return value
+
+    def _raise_known_integrity_error(self, exc: IntegrityError) -> None:
+        constraint_name = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", "")
+        if (
+            constraint_name == USERNAME_UNIQUE_CONSTRAINT_NAME
+            or USERNAME_UNIQUE_CONSTRAINT_NAME in str(exc)
+        ):
+            raise serializers.ValidationError({"username": USERNAME_ALREADY_EXISTS_MESSAGE}) from exc
+        if (
+            constraint_name == EMAIL_CASE_INSENSITIVE_INDEX_NAME
+            or EMAIL_CASE_INSENSITIVE_INDEX_NAME in str(exc)
+        ):
+            raise serializers.ValidationError({"email": EMAIL_ALREADY_IN_USE_MESSAGE}) from exc
+        raise exc
+
     def validate(self, attrs):
         requested_group = attrs.get("group")
         requested_is_admin = attrs.pop("isAdmin", None)
@@ -78,14 +118,20 @@ class UserSerializer(serializers.ModelSerializer):
         role_name = validated_data.pop("group", DEVELOPER_GROUP_NAME)
         profile_data = validated_data.pop("profile", {})
         password = validated_data.pop("password", None)
-        user = User.objects.create(**validated_data)
+        try:
+            user = User.objects.create(**validated_data)
+        except IntegrityError as exc:
+            self._raise_known_integrity_error(exc)
         if password:
             user.set_password(password)
         assign_global_role(user, role_name)
         user_update_fields = ["is_staff"]
         if password:
             user_update_fields.append("password")
-        user.save(update_fields=user_update_fields)
+        try:
+            user.save(update_fields=user_update_fields)
+        except IntegrityError as exc:
+            self._raise_known_integrity_error(exc)
         profile, _ = UserProfileImage.objects.get_or_create(user=user)
         profile.profile_img = profile_data.get("profile_img", profile.profile_img)
         profile.save(update_fields=["profile_img"])
@@ -103,7 +149,10 @@ class UserSerializer(serializers.ModelSerializer):
         if password:
             update_fields.append("password")
         if update_fields:
-            instance.save(update_fields=update_fields)
+            try:
+                instance.save(update_fields=update_fields)
+            except IntegrityError as exc:
+                self._raise_known_integrity_error(exc)
 
         profile, _ = UserProfileImage.objects.get_or_create(user=instance)
         if "profile_img" in profile_data:

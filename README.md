@@ -35,16 +35,16 @@ Notes:
 - `BrunoTesting/env/bruno-safe.ci.env` is intentionally minimal and uses only fake/local-safe values.
 - Do not use the CI env file for local development or production.
 - Backend changes are validated on push by `.github/workflows/backend-safe.yml`, which runs the Django suite with coverage.
-- SonarCloud analysis runs from `.github/workflows/sonar.yml` on every push and on pull requests targeting `main`.
+- SonarCloud analysis runs from `.github/workflows/sonar.yml` only for backend-related changes and analyzes the backend codebase only.
 - Pull requests targeting `main` are gated by `.github/workflows/main-pr-gate.yml`, which aggregates the safe backend, frontend, and Bruno suites into a single required check.
 - SonarCloud is intentionally informational: keep `Main PR Gate` as the only required status check on `main`.
 - GitHub secret required for SonarCloud: `SONAR_TOKEN`.
 
 ## Code Quality
 
-- SonarCloud publishes coverage, code smells, bugs, vulnerabilities, security hotspots, and duplications for the full monorepo.
-- The repository is configured as a single SonarCloud project via `sonar-project.properties`.
-- SonarCloud should remain non-blocking in branch protection; use it for visibility and review, not as a required merge gate.
+- SonarCloud publishes coverage, code smells, bugs, vulnerabilities, and security hotspots for the backend only.
+- The repository is configured so the SonarCloud scan reads only backend Python sources and the backend coverage XML.
+- SonarCloud should remain non-blocking in branch protection; use it for backend visibility and review, not as a required merge gate.
 - Recommended branch protection for `main`: require only the `Main PR Gate` status check.
 
 ## Backend Testing

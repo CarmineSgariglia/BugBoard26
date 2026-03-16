@@ -57,6 +57,60 @@ class UserPermissionTests(APITestCase):
         self.assertEqual(self.user.first_name, "Mario")
         self.assertEqual(self.user.last_name, "Rossi")
 
+    def test_non_admin_can_update_own_username(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"username": "member_user_renamed"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["username"], "member_user_renamed")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "member_user_renamed")
+
+    def test_non_admin_cannot_update_email_to_existing_value(self):
+        other_user = create_user_with_profile(
+            username="member_other_user",
+            email="member-other@example.com",
+            password="StrongPass123!",
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"email": other_user.email},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["email"][0], "Email already in use")
+
+    def test_non_admin_cannot_update_username_to_existing_value(self):
+        other_user = create_user_with_profile(
+            username="member_other_username",
+            email="member-other-username@example.com",
+            password="StrongPass123!",
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"username": other_user.username},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["username"][0], "A user with that username already exists.")
+
+    def test_non_admin_can_update_own_email_casing(self):
+        updated_email = self.user.email.upper()
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"email": updated_email},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, updated_email)
+
     def test_admin_can_set_is_admin_on_other_user(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
@@ -67,6 +121,33 @@ class UserPermissionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_staff)
+
+    def test_admin_can_update_other_user_username(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"username": "member_user_admin_renamed"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["username"], "member_user_admin_renamed")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "member_user_admin_renamed")
+
+    def test_admin_cannot_update_other_user_email_to_existing_value_with_different_casing(self):
+        other_user = create_user_with_profile(
+            username="member_other_admin_edit",
+            email="member-other-admin@example.com",
+            password="StrongPass123!",
+        )
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"email": other_user.email.upper()},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["email"][0], "Email already in use")
 
     def test_admin_cannot_deactivate_self_via_patch(self):
         self.client.force_authenticate(user=self.admin)

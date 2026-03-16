@@ -412,6 +412,48 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("password", response.data)
 
+    def test_admin_user_create_rejects_duplicate_email(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/users",
+            {
+                "username": "duplicate_email_user",
+                "email": self.member.email,
+                "password": "StrongPass123!",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["email"][0], "Email already in use")
+
+    def test_admin_user_create_rejects_duplicate_email_with_different_casing(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/users",
+            {
+                "username": "duplicate_email_case_user",
+                "email": self.member.email.upper(),
+                "password": "StrongPass123!",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["email"][0], "Email already in use")
+
+    def test_admin_user_create_rejects_duplicate_username(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/users",
+            {
+                "username": self.member.username,
+                "email": "duplicate-username@example.com",
+                "password": "StrongPass123!",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["username"][0], "A user with that username already exists.")
+
     def test_user_delete_endpoint_is_disabled(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.delete(f"/api/users/{self.member.id}")
@@ -1957,7 +1999,5 @@ class OtpCleanupCommandTests(APITestCase):
         self.assertFalse(RevokedTokenSession.objects.filter(sid=expired_session.sid).exists())
         self.assertTrue(RevokedTokenSession.objects.filter(sid=valid_session.sid).exists())
         self.assertIn("Deleted", output.getvalue())
-
-
 
 
