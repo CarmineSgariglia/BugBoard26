@@ -1,23 +1,21 @@
-import { useState } from "react";
+﻿import { useCallback, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { RiArrowGoBackLine } from "react-icons/ri";
 
-import { GlassCard } from "@shared/ui/GlassCard";
-import { FooterActions } from "@shared/ui/FooterActions";
-import { isValidName, isValidEmail, isValidPassword } from "@shared/lib/validation";
-import { getErrorMessage, getFieldError } from "@shared/lib/error";
-import { resolveMediaUrl } from "@shared/api/core/media";
-import type { AuthUser } from "@shared/api/types/auth";
-import {
-  adminChangeSettingsPasswordApi,
-  adminUploadSettingsProfileImageApi,
-  updateSettingsUserApi,
-} from "@features/settings/api";
-import { AvatarCropModal } from "./AvatarCropModal";
+import { GlassCard } from "../../shared/ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { useAvatarCropFlow } from "./useAvatarCropFlow";
+import { FooterActions } from "../../shared/ui/FooterActions";
+import { isValidName, isValidEmail, isValidPassword } from "../../shared/lib/validation";
+import { getErrorMessage, getFieldError } from "../../shared/lib/error";
+import { resolveMediaUrl } from "../../shared/api/core/media";
+import {
+  updateUserApi,
+  adminChangePasswordApi,
+  adminUploadProfileImageApi,
+} from "../../shared/api/modules/users";
+import type { AuthUser } from "../../shared/api/types/auth";
 
 interface AdminUserEditSectionProps {
   user: AuthUser;
@@ -44,18 +42,11 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
   const [globalError, setGlobalError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    user.profileImg ? resolveMediaUrl(user.profileImg) : undefined
+  );
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const {
-    avatarUrl,
-    selectedImageFile,
-    cropSourceFile,
-    cropSourceUrl,
-    isCropModalOpen,
-    handleImageSelect,
-    handleCropConfirm,
-    handleCropCancel,
-    completeUpload,
-  } = useAvatarCropFlow(user.profileImg ? resolveMediaUrl(user.profileImg) : undefined);
 
   const hasIdentityChanged =
     username !== initialData.username ||
@@ -70,6 +61,11 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
   const isSaveEnabled =
     (hasIdentityChanged || hasPasswordInput || hasImageChanged) && isIdentityValid && isPasswordValid;
 
+  const handleImageSelect = useCallback((file: File) => {
+    setSelectedImageFile(file);
+    setAvatarUrl(URL.createObjectURL(file));
+  }, []);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       let updatedUserObj = { ...user };
@@ -77,15 +73,18 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
       if (selectedImageFile) {
         setIsUploading(true);
         try {
-          updatedUserObj = await adminUploadSettingsProfileImageApi(user.userId, selectedImageFile);
-          completeUpload(updatedUserObj.profileImg ? resolveMediaUrl(updatedUserObj.profileImg) : undefined);
+          updatedUserObj = await adminUploadProfileImageApi(user.userId, selectedImageFile);
+          if (updatedUserObj.profileImg) {
+            setAvatarUrl(resolveMediaUrl(updatedUserObj.profileImg));
+          }
+          setSelectedImageFile(null);
         } finally {
           setIsUploading(false);
         }
       }
 
       if (hasIdentityChanged) {
-        updatedUserObj = await updateSettingsUserApi(user.userId, {
+        updatedUserObj = await updateUserApi(user.userId, {
           username: username.trim().toLowerCase(),
           firstName: name.trim(),
           lastName: surname.trim(),
@@ -105,7 +104,7 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
 
       if (hasPasswordInput) {
         try {
-          await adminChangeSettingsPasswordApi(user.userId, newPassword);
+          await adminChangePasswordApi(user.userId, newPassword);
           setNewPassword("");
         } catch (pwdErr) {
           setPasswordError(getErrorMessage(pwdErr, "Failed to change password."));
@@ -145,14 +144,6 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
         subtitle={`Managing user ID: ${user.userId}`}
         onImageSelect={handleImageSelect}
         isUploading={isUploading}
-      />
-
-      <AvatarCropModal
-        isOpen={isCropModalOpen}
-        imageFile={cropSourceFile}
-        imageSrc={cropSourceUrl}
-        onConfirm={handleCropConfirm}
-        onCancel={handleCropCancel}
       />
 
       <IdentityFields

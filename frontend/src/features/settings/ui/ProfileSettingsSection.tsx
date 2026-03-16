@@ -4,23 +4,21 @@ import { useNavigate } from "react-router-dom";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";
 
-import { GlassCard } from "@shared/ui/GlassCard";
-import { FooterActions } from "@shared/ui/FooterActions";
-import { isValidName, isValidEmail, isValidPassword } from "@shared/lib/validation";
-import { resolveMediaUrl } from "@shared/api/core/media";
-import { useAuth } from "@features/auth";
-import { getErrorMessage, getFieldError } from "@shared/lib/error";
-import { handleGetHelp } from "@shared/lib/help";
-import {
-  changeSettingsPasswordApi,
-  updateSettingsUserApi,
-  uploadSettingsProfileImageApi,
-} from "@features/settings/api";
-import { AvatarCropModal } from "./AvatarCropModal";
+import { GlassCard } from "../../shared/ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { useAvatarCropFlow } from "./useAvatarCropFlow";
+import { FooterActions } from "../../shared/ui/FooterActions";
+import { isValidName, isValidEmail, isValidPassword } from "../../shared/lib/validation";
+import { resolveMediaUrl } from "../../shared/api/core/media";
+import {
+  uploadProfileImageApi,
+  changePasswordApi,
+  updateUserApi,
+} from "../../shared/api/modules/users";
+import { useAuth } from "@shared/providers/AuthContext";
+import { getErrorMessage, getFieldError } from "../../shared/lib/error";
+import { handleGetHelp } from "../../shared/lib/help";
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const navigate = useNavigate();
@@ -39,18 +37,9 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
   const [identityError, setIdentityError] = useState("");
   const [usernameError, setUsernameError] = useState("");
 
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const {
-    avatarUrl,
-    selectedImageFile,
-    cropSourceFile,
-    cropSourceUrl,
-    isCropModalOpen,
-    handleImageSelect,
-    handleCropConfirm,
-    handleCropCancel,
-    completeUpload,
-  } = useAvatarCropFlow(user?.profileImg ? resolveMediaUrl(user.profileImg) : undefined);
 
   useEffect(() => {
     if (!user) return;
@@ -66,8 +55,10 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       email: user.email || "",
     });
 
-    completeUpload(user.profileImg ? resolveMediaUrl(user.profileImg) : undefined);
-  }, [completeUpload, user]);
+    if (user.profileImg) {
+      setAvatarUrl(resolveMediaUrl(user.profileImg));
+    }
+  }, [user]);
 
   const hasIdentityChanged =
     username !== initialData.username ||
@@ -92,6 +83,11 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
     navigate(-1);
   }, [navigate]);
 
+  const handleImageSelect = useCallback((file: File) => {
+    setSelectedImageFile(file);
+    setAvatarUrl(URL.createObjectURL(file));
+  }, []);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!user) return;
@@ -103,15 +99,18 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       if (selectedImageFile) {
         setIsUploading(true);
         try {
-          const updatedUser = await uploadSettingsProfileImageApi(selectedImageFile);
-          completeUpload(updatedUser.profileImg ? resolveMediaUrl(updatedUser.profileImg) : undefined);
+          const updatedUser = await uploadProfileImageApi(selectedImageFile);
+          if (updatedUser.profileImg) {
+            setAvatarUrl(resolveMediaUrl(updatedUser.profileImg));
+          }
+          setSelectedImageFile(null);
         } finally {
           setIsUploading(false);
         }
       }
 
       if (hasIdentityChanged) {
-        const updated = await updateSettingsUserApi(user.userId, {
+        const updated = await updateUserApi(user.userId, {
           username: username.trim().toLowerCase(),
           firstName: name.trim(),
           lastName: surname.trim(),
@@ -132,7 +131,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
 
       if (hasPasswordInput) {
         try {
-          await changeSettingsPasswordApi(user.userId, currentPassword, newPassword);
+          await changePasswordApi(user.userId, currentPassword, newPassword);
           setCurrentPassword("");
           setNewPassword("");
         } catch (pwdErr) {
@@ -173,14 +172,6 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
         onImageSelect={handleImageSelect}
         isUploading={isUploading}
         className="text-sm text-neutral-400 text-center max-w-sm mx-auto"
-      />
-
-      <AvatarCropModal
-        isOpen={isCropModalOpen}
-        imageFile={cropSourceFile}
-        imageSrc={cropSourceUrl}
-        onConfirm={handleCropConfirm}
-        onCancel={handleCropCancel}
       />
 
       <IdentityFields
