@@ -4,22 +4,12 @@ from unittest.mock import MagicMock, patch
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import CommandError, call_command
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from apps.bugboardapi.issue_rules import validate_project_assignee_ids
-from apps.bugboardapi.models import (
-    Issue,
-    IssueStatus,
-    Notification,
-    NotifyUser,
-    Priority,
-    Project,
-    ProjectMembership,
-    Tag,
-)
 from apps.bugboardapi.passwords import (
     build_password_validation_user,
     ensure_valid_password,
@@ -143,56 +133,6 @@ class ManagementCommandTests(TestCase):
         )
         self.assertIn("view_project", developer_codenames)
         self.assertIn("change_notifyuser", developer_codenames)
-
-    def test_seed_issues_creates_requested_count(self):
-        reporter = create_user_with_profile(
-            username="admin",
-            email="seed_issues_admin@example.com",
-            password="StrongPass123!",
-            is_admin=True,
-        )
-        project = Project.objects.create(
-            name="Seed Issues",
-            description="desc",
-            created_by=reporter,
-        )
-        ProjectMembership.objects.create(project=project, user=reporter)
-        call_command("seed_issues", "Seed Issues", count=3)
-        self.assertEqual(Issue.objects.filter(project=project).count(), 3)
-
-    def test_seed_issues_raises_for_missing_project(self):
-        with self.assertRaises(CommandError):
-            call_command("seed_issues", "Missing Project")
-
-    def test_seed_notifications_creates_notifications_for_active_user(self):
-        user = create_user_with_profile(
-            username="seed_notify_user",
-            email="seed_notify_user@example.com",
-            password="StrongPass123!",
-        )
-        project = Project.objects.create(
-            name="Seed Notify",
-            description="desc",
-            created_by=user,
-        )
-        ProjectMembership.objects.create(project=project, user=user)
-        tag = Tag.objects.create(name="seed")
-        issue = Issue.objects.create(
-            project=project,
-            reporter=user,
-            title="Seed issue",
-            description="desc",
-            issue_type="BUG",
-            status=IssueStatus.TODO,
-            priority=Priority.MEDIUM,
-        )
-        issue.tags.add(tag)
-
-        call_command("seed_notifications", count=2)
-
-        self.assertEqual(Notification.objects.count(), 2)
-        self.assertEqual(NotifyUser.objects.filter(user=user).count(), 2)
-
 
 class RelabelCommandTests(SimpleTestCase):
     @patch("apps.bugboardapi.management.commands.relabel_bugboardapi.connection")

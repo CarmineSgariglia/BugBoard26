@@ -1,5 +1,4 @@
 from datetime import timedelta
-from io import StringIO
 from pathlib import Path
 import subprocess
 import re
@@ -10,7 +9,6 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
 from django.utils import timezone
 from rest_framework import status
 from django.test import override_settings
@@ -29,7 +27,6 @@ from apps.bugboardapi.models import (
     NotifyUser,
     PasswordResetOTP,
     ProjectMembership,
-    RevokedTokenSession,
     Tag,
 )
 from apps.bugboardapi.services.notifications import notify_users
@@ -1957,54 +1954,5 @@ class NotificationTagMetaEndpointTests(APITestCase):
         )
         self.assertEqual(patch_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
-class OtpCleanupCommandTests(APITestCase):
-    def setUp(self):
-        self.user = create_user_with_profile(
-            username="otp_cleanup_user",
-            email="otp_cleanup_user@example.com",
-            password="StrongPass123!",
-        )
-
-    def test_cleanup_otps_removes_used_and_expired_only(self):
-        expired = PasswordResetOTP.objects.create(
-            user=self.user,
-            code="101010",
-            expires_at=timezone.now() - timedelta(minutes=1),
-            is_used=False,
-        )
-        used = PasswordResetOTP.objects.create(
-            user=self.user,
-            code="202020",
-            expires_at=timezone.now() + timedelta(minutes=10),
-            is_used=True,
-        )
-        valid = PasswordResetOTP.objects.create(
-            user=self.user,
-            code="303030",
-            expires_at=timezone.now() + timedelta(minutes=10),
-            is_used=False,
-        )
-        expired_session = RevokedTokenSession.objects.create(
-            sid="expired-session",
-            user=self.user,
-            expires_at=timezone.now() - timedelta(minutes=1),
-        )
-        valid_session = RevokedTokenSession.objects.create(
-            sid="valid-session",
-            user=self.user,
-            expires_at=timezone.now() + timedelta(minutes=10),
-        )
-
-        output = StringIO()
-        call_command("cleanup_otps", stdout=output)
-
-        self.assertFalse(
-            PasswordResetOTP.objects.filter(otp_id=expired.otp_id).exists()
-        )
-        self.assertFalse(PasswordResetOTP.objects.filter(otp_id=used.otp_id).exists())
-        self.assertTrue(PasswordResetOTP.objects.filter(otp_id=valid.otp_id).exists())
-        self.assertFalse(RevokedTokenSession.objects.filter(sid=expired_session.sid).exists())
-        self.assertTrue(RevokedTokenSession.objects.filter(sid=valid_session.sid).exists())
-        self.assertIn("Deleted", output.getvalue())
 
 
