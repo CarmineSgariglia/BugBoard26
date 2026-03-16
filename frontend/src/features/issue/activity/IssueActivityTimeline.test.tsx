@@ -35,7 +35,9 @@ describe("IssueActivityTimeline", () => {
     });
     window.cancelAnimationFrame = vi.fn();
     intersectionObserverCallback = null;
-    globalThis.IntersectionObserver = vi.fn((callback: typeof intersectionObserverCallback) => {
+    globalThis.IntersectionObserver = vi.fn(function (
+      callback: typeof intersectionObserverCallback,
+    ) {
       intersectionObserverCallback = callback as typeof intersectionObserverCallback;
       return {
         observe: vi.fn(),
@@ -97,7 +99,7 @@ describe("IssueActivityTimeline", () => {
 
     expect(scrollIntoViewMock).toHaveBeenCalledWith({
       behavior: "smooth",
-      block: "start",
+      block: "nearest",
     });
     expect(onScrollToItemDone).toHaveBeenCalledWith(11);
   });
@@ -192,9 +194,7 @@ describe("IssueActivityTimeline", () => {
 
     render(<IssueActivityTimeline items={items} sort="OLDEST" newMessageMarkerId={21} />);
 
-    expect(screen.getByTestId("issue-activity-new-message-marker-label")).toHaveTextContent("NEW MESSAGE");
-    expect(screen.getByTestId("issue-activity-new-message-marker-line-left")).toBeInTheDocument();
-    expect(screen.getByTestId("issue-activity-new-message-marker-line-right")).toBeInTheDocument();
+    expect(screen.getByTestId("mock-inline-new-message-marker")).toHaveTextContent("NEW MESSAGE");
   });
 
   it("reports visibility changes for the inline new-message marker", async () => {

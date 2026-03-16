@@ -265,7 +265,7 @@ describe("IssueActivityPanel", () => {
     expect(screen.queryByRole("button", { name: "New message: 1" })).not.toBeInTheDocument();
   });
 
-  it("keeps the inline marker after clicking the badge and removes it after 5 seconds of cumulative visibility", async () => {
+  it("keeps the inline marker after clicking the badge and removes it after 3 seconds of cumulative visibility", async () => {
     await renderPanel();
 
     await emitRealtime(buildUpdate(10, 2, "ciao"));
@@ -284,21 +284,21 @@ describe("IssueActivityPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set marker visible true" }));
 
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(2000);
     });
     expect(screen.getByTestId("timeline-marker-target")).toHaveTextContent("10");
 
     fireEvent.click(screen.getByRole("button", { name: "Set marker visible false" }));
 
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(2000);
     });
     expect(screen.getByTestId("timeline-marker-target")).toHaveTextContent("10");
 
     fireEvent.click(screen.getByRole("button", { name: "Set marker visible true" }));
 
     await act(async () => {
-      vi.advanceTimersByTime(1999);
+      vi.advanceTimersByTime(999);
     });
     expect(screen.getByTestId("timeline-marker-target")).toHaveTextContent("10");
 

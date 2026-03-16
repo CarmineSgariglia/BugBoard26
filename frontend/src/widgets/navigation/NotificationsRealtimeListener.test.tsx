@@ -118,7 +118,7 @@ describe("NotificationsRealtimeListener", () => {
     readNotificationApiMock.mockReset().mockResolvedValue({ notifyUserId: 0, isRead: true });
     getAccessTokenMock.mockReset().mockReturnValue("test-token");
     refreshApiMock.mockReset().mockResolvedValue("test-token");
-    global.fetch = vi.fn().mockResolvedValue(createStreamResponse());
+    global.fetch = vi.fn().mockImplementation(() => Promise.resolve(createStreamResponse()));
   });
 
   afterEach(() => {
@@ -483,10 +483,23 @@ describe("NotificationsRealtimeListener", () => {
     });
 
     global.fetch = vi.fn().mockResolvedValue(
-      createStreamResponse([
-        `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
-      ]),
+      createStreamResponse(),
     );
+    global.fetch = vi.fn().mockImplementation((_input, init) => {
+      const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
+      const lastEventId = headers.get("Last-Event-ID");
+
+      if (lastEventId !== String(notification.notifyUserId)) {
+        notifications = [notification];
+        return Promise.resolve(
+          createStreamResponse([
+            `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+          ]),
+        );
+      }
+
+      return Promise.resolve(createStreamResponse());
+    });
 
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -504,7 +517,7 @@ describe("NotificationsRealtimeListener", () => {
             notifyUserId: 94,
             isRead: true,
           }) as unknown as NotificationItem,
-        ]),
+        ], false),
       );
     });
 

@@ -1,7 +1,7 @@
+import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 
-import "./customMatchers";
 import { server } from "./mocks/server";
 
 if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
@@ -20,20 +20,6 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
   });
 }
 
-if (typeof URL.createObjectURL !== "function") {
-  Object.defineProperty(URL, "createObjectURL", {
-    writable: true,
-    value: () => "blob:mock-url",
-  });
-}
-
-if (typeof URL.revokeObjectURL !== "function") {
-  Object.defineProperty(URL, "revokeObjectURL", {
-    writable: true,
-    value: () => {},
-  });
-}
-
 if (typeof globalThis.IntersectionObserver !== "function") {
   class MockIntersectionObserver implements IntersectionObserver {
     readonly root = null;
@@ -41,12 +27,9 @@ if (typeof globalThis.IntersectionObserver !== "function") {
     readonly thresholds = [0];
 
     constructor(
-      callback: IntersectionObserverCallback,
-      options?: IntersectionObserverInit,
-    ) {
-      void callback;
-      void options;
-    }
+      _callback: IntersectionObserverCallback,
+      _options?: IntersectionObserverInit,
+    ) {}
 
     disconnect() {}
     observe() {}

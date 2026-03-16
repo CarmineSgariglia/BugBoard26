@@ -122,12 +122,7 @@ describe("TopNav", () => {
 
   it("keeps the red badge visible when the menu opens and unread notifications remain", async () => {
     const { queryClient } = renderWithProviders(<TopNav />);
-
-    await waitFor(() => {
-      expect(listNotificationsApiMock).toHaveBeenCalled();
-    });
-
-    queryClient.setQueryData(["notifications"], toInfiniteData([
+    const unreadNotifications: NotificationItem[] = [
       {
         notifyUserId: 301,
         notificationId: 61,
@@ -138,7 +133,19 @@ describe("TopNav", () => {
         isRead: false,
         readAt: null,
       },
-    ], true));
+    ];
+
+    await waitFor(() => {
+      expect(listNotificationsApiMock).toHaveBeenCalled();
+    });
+
+    queryClient.setQueryData(["notifications"], toInfiniteData(unreadNotifications, true));
+    listNotificationsApiMock.mockResolvedValue({
+      results: unreadNotifications,
+      nextCursor: null,
+      hasMore: false,
+      hasUnread: true,
+    } satisfies NotificationsPage);
 
     expect(await screen.findByLabelText("New notifications")).toBeInTheDocument();
 
