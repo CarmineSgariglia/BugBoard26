@@ -5,8 +5,8 @@ from django.db import transaction
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
+from apps.bugboardapi.modules.issues.activity import create_issue_event
 from apps.bugboardapi.modules.issues.models import EventType, Issue, IssueStatus
-from apps.bugboardapi.modules.issues.services import create_issue_event
 from apps.bugboardapi.modules.issues.realtime import open_issue_subscription
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 

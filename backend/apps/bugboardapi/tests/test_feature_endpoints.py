@@ -200,14 +200,14 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertIn("detail", locked_response.data)
 
     @patch(
-        "apps.bugboardapi.modules.users.services._send_otp_email",
+        "apps.bugboardapi.modules.auth.password_reset._send_otp_email",
         side_effect=RuntimeError("provider down"),
     )
     def test_otp_request_email_send_failure_returns_generic_and_logs_error(
         self, _mock_send
     ):
         with self.assertLogs(
-            "apps.bugboardapi.modules.users.services", level="ERROR"
+            "apps.bugboardapi.modules.auth.password_reset", level="ERROR"
         ) as logs:
             response = self.client.post(
                 "/api/auth/password/otp/request",
@@ -221,7 +221,7 @@ class AuthOtpEndpointTests(APITestCase):
         )
 
     @override_settings(EMAIL_PROVIDER="console")
-    @patch("apps.bugboardapi.modules.users.services.send_mail")
+    @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
     def test_email_provider_console_default_in_dev(self, mock_send_mail):
         response = self.client.post(
             "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
@@ -230,7 +230,7 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertTrue(mock_send_mail.called)
 
     @override_settings(EMAIL_PROVIDER="console")
-    @patch("apps.bugboardapi.modules.users.services.send_mail")
+    @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
     def test_otp_request_email_contains_raw_six_digit_code_not_hash(self, mock_send_mail):
         response = self.client.post(
             "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
@@ -267,8 +267,8 @@ class AuthOtpEndpointTests(APITestCase):
         DEFAULT_FROM_EMAIL="noreply@example.com",
         BREVO_SENDER_NAME="BugBoard26",
     )
-    @patch("apps.bugboardapi.modules.users.services.EmailMessage.send", return_value=1)
-    @patch("apps.bugboardapi.modules.users.services.send_mail")
+    @patch("apps.bugboardapi.modules.auth.password_reset.EmailMessage.send", return_value=1)
+    @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
     def test_email_provider_brevo_uses_anymail_backend(
         self, mock_send_mail, _mock_email_send
     ):

@@ -3,31 +3,32 @@ import logging
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
-from django.db import transaction
 from django.db.models import Q, QuerySet
 from rest_framework.exceptions import NotFound, ValidationError
 
-from ...common.parsing import parse_csv_ints_query_param
 from ...roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from ...security.passwords import ensure_valid_password
-from ...security.token_sessions import set_password_and_invalidate_sessions
-from ...security.uploads import compress_image_upload, store_upload, validate_profile_image
+from ...security.uploads import store_upload, validate_profile_image
 from .policies import (
-    validate_admin_password_reset_request,
-    validate_self_password_change_request,
     ensure_can_upload_profile_image,
+    validate_password_change_request,
     validate_status_change_request,
 )
-from .profile_models import UserProfileImage
+from .models import UserProfileImage
+from .serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
 
 
-def _delete_stored_file(path: str) -> None:
+def parse_csv_ints_query_param(*, raw_value: str | None, field_name: str) -> list[int]:
+    normalized = (raw_value or "").strip()
+    if not normalized:
+        return []
+    values = [value.strip() for value in normalized.split(",") if value.strip()]
     try:
-        default_storage.delete(path)
-    except Exception:
-        logger.warning("Failed to delete stored file: %s", path)
+        return [int(value) for value in values]
+    except ValueError as exc:
+        raise ValidationError({field_name: "All values must be valid integers"}) from exc
 
 
 def filter_users_queryset(
@@ -71,38 +72,31 @@ def filter_users_queryset(
     return queryset.distinct()
 
 
-def set_user_status(*, actor: User, target_user: User, active):
+def set_user_status(*, actor: User, target_user: User, active, request):
     validate_status_change_request(actor=actor, target_user=target_user, active=active)
     target_user.is_active = active
     target_user.save(update_fields=["is_active"])
-    return User.objects.get(id=target_user.id)
+    refreshed_user = User.objects.get(id=target_user.id)
+    return UserSerializer(refreshed_user, context={"request": request}).data
 
 
-def change_user_password(*, actor: User, target_user_id, payload: dict, mode: str):
+def change_user_password(*, actor: User, target_user_id, payload: dict):
     user = User.objects.filter(id=target_user_id).first()
     if user is None:
         raise NotFound("User not found")
 
+    current_password = payload.get("currentPassword", "") or ""
     new_password = payload["newPassword"]
-    if mode == "self-service":
-        validate_self_password_change_request(
-            actor=actor,
-            target_user=user,
-            current_password=payload.get("currentPassword", "") or "",
-            new_password=new_password,
-        )
-    elif mode == "admin-reset":
-        validate_admin_password_reset_request(
-            actor=actor,
-            target_user=user,
-            new_password=new_password,
-        )
-    else:
-        raise ValueError(f"Unsupported password change mode: {mode}")
+    validate_password_change_request(
+        actor=actor,
+        target_user=user,
+        current_password=current_password,
+        new_password=new_password,
+    )
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
-    with transaction.atomic():
-        set_password_and_invalidate_sessions(user=user, new_password=new_password)
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
     return {"detail": "Password updated"}
 
 
@@ -116,32 +110,23 @@ def save_profile_image_for_user(*, request, user: User):
         image,
         max_size_bytes=getattr(settings, "BUGBOARD_MAX_PROFILE_IMAGE_BYTES", 2 * 1024 * 1024),
     )
-    prepared_image = compress_image_upload(
-        uploaded_file=image,
-        max_width=1024,
-        max_height=1024,
-        target_max_bytes=getattr(settings, "BUGBOARD_MAX_PROFILE_IMAGE_BYTES", 2 * 1024 * 1024),
-        field_name="image",
-    )
     saved = store_upload(
-        uploaded_file=prepared_image.file,
+        uploaded_file=image,
         storage_dir=f"profile-images/{user.id}",
-        filename_suffix=prepared_image.extension or f".{extension}",
+        filename_suffix=f".{extension}",
     )
     saved_path = saved.path
 
-    try:
-        with transaction.atomic():
-            profile, _ = UserProfileImage.objects.get_or_create(user=user)
-            old_path = profile.profile_img
-            profile.profile_img = saved_path
-            profile.save(update_fields=["profile_img"])
+    profile, _ = UserProfileImage.objects.get_or_create(user=user)
+    old_path = profile.profile_img
+    profile.profile_img = saved_path
+    profile.save(update_fields=["profile_img"])
 
-            if old_path and old_path != saved_path and old_path.startswith("profile-images/"):
-                transaction.on_commit(lambda path=old_path: _delete_stored_file(path))
-    except Exception:
-        if saved_path and saved_path.startswith("profile-images/"):
-            _delete_stored_file(saved_path)
-        raise
+    if old_path and old_path != saved_path and old_path.startswith("profile-images/"):
+        try:
+            default_storage.delete(old_path)
+        except Exception:
+            logger.warning("Failed to delete old profile image: %s", old_path)
 
-    return User.objects.get(id=user.id)
+    refreshed_user = User.objects.get(id=user.id)
+    return UserSerializer(refreshed_user, context={"request": request}).data

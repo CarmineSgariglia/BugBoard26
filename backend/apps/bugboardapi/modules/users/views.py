@@ -4,19 +4,23 @@ from __future__ import annotations
 import logging
 
 from django.contrib.auth.models import User
-from django.db.models import Q
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from ...permissions import check_admin, is_admin
-from ...roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
-from ...security.passwords import ensure_valid_password
+from ...permissions import check_admin
+from ...roles import is_admin_user
+from .commands import (
+    change_user_password,
+    filter_users_queryset,
+    parse_csv_ints_query_param,
+    save_profile_image_for_user,
+    set_user_status,
+)
+from .policies import ensure_can_edit_user
 from .serializers import ChangePasswordSerializer, UserSerializer
-from .services import save_profile_image_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -43,62 +47,28 @@ class UserViewSet(
     pagination_class = UserListPagination
 
     def _parse_csv_ints_query_param(self, name: str) -> list[int]:
-        raw_value = (self.request.query_params.get(name) or "").strip()
-        if not raw_value:
-            return []
-        values = [value.strip() for value in raw_value.split(",") if value.strip()]
-        try:
-            return [int(value) for value in values]
-        except ValueError as exc:
-            raise ValidationError({name: "All values must be valid integers"}) from exc
+        return parse_csv_ints_query_param(
+            raw_value=self.request.query_params.get(name),
+            field_name=name,
+        )
 
     def _validate_user_update_permissions(self, request, user: User) -> None:
-        if request.user != user and not is_admin(request.user):
-            raise PermissionDenied("Cannot edit other users")
-        if is_admin(request.user) and request.user == user and any(
-            field in request.data for field in {"active", "group", "isAdmin"}
-        ):
-            raise PermissionDenied("You cannot change your own active status or role")
-        if not is_admin(request.user):
-            forbidden_fields = {"isAdmin", "group", "active"}
-            if any(field in request.data for field in forbidden_fields):
-                raise PermissionDenied("You cannot modify admin or active flags")
+        ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        if not is_admin(self.request.user):
-            queryset = queryset.filter(id=self.request.user.id)
-        search_query = self.request.query_params.get("search")
-        role_filter = self.request.query_params.get("role")
-        status_filter = self.request.query_params.get("status")
-        
         user_ids = self._parse_csv_ints_query_param("userIds")
-        if user_ids:
-            queryset = queryset.filter(id__in=user_ids)
-
         exclude_user_ids = self._parse_csv_ints_query_param("excludeUserIds")
-        if exclude_user_ids:
-            queryset = queryset.exclude(id__in=exclude_user_ids)
-
-        if search_query:
-            queryset = queryset.filter(
-                Q(username__icontains=search_query)
-                | Q(email__icontains=search_query)
-                | Q(first_name__icontains=search_query)
-                | Q(last_name__icontains=search_query)
-            )
-
-        if role_filter == "Admin":
-            queryset = queryset.filter(groups__name=ADMIN_GROUP_NAME)
-        elif role_filter in {"User", "Developer"}:
-            queryset = queryset.filter(groups__name=DEVELOPER_GROUP_NAME)
-
-        if status_filter == "Active":
-            queryset = queryset.filter(is_active=True)
-        elif status_filter == "Inactive":
-            queryset = queryset.filter(is_active=False)
-
-        return queryset.distinct()
+        return filter_users_queryset(
+            queryset=queryset,
+            actor=self.request.user,
+            search_query=self.request.query_params.get("search"),
+            role_filter=self.request.query_params.get("role"),
+            status_filter=self.request.query_params.get("status"),
+            user_ids=user_ids,
+            exclude_user_ids=exclude_user_ids,
+            is_admin_actor=is_admin_user(self.request.user),
+        )
 
     def perform_create(self, serializer):
         check_admin(self.request.user)
@@ -122,16 +92,13 @@ class UserViewSet(
     def set_status(self, request, userId=None):
         check_admin(request.user)
         user = self.get_object()
-        active = request.data.get("active", None)
-        if not isinstance(active, bool):
-            raise ValidationError({"active": "Boolean value is required"})
-        if request.user == user:
-            raise PermissionDenied("You cannot deactivate your own account")
-
-        user.is_active = active
-        user.save(update_fields=["is_active"])
-        refreshed_user = User.objects.get(id=user.id)
-        return Response(UserSerializer(refreshed_user, context={"request": request}).data, status=status.HTTP_200_OK)
+        payload = set_user_status(
+            actor=request.user,
+            target_user=user,
+            active=request.data.get("active", None),
+            request=request,
+        )
+        return Response(payload, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="admin-upload-image")
     def admin_upload_profile_image(self, request, userId=None):
@@ -152,37 +119,14 @@ class UserViewSet(
 
     @action(detail=True, methods=["post"], url_path="change-password")
     def change_password(self, request, userId=None):
-        target_user_id = self.kwargs.get(self.lookup_url_kwarg)
-        user = User.objects.filter(id=target_user_id).first()
-        if user is None:
-            raise NotFound("User not found")
-
-        is_admin_reset = is_admin(request.user) and request.user != user
-        if request.user != user and not is_admin(request.user):
-            raise PermissionDenied("Cannot change password for other users")
-
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        current_password = serializer.validated_data.get("currentPassword", "")
-        new_password = serializer.validated_data["newPassword"]
-
-        if is_admin_reset:
-            if user.check_password(new_password):
-                raise ValidationError({"newPassword": "New password must be different from current password"})
-        else:
-            if not current_password:
-                raise ValidationError({"currentPassword": "Current password is required"})
-            if not user.check_password(current_password):
-                raise ValidationError({"currentPassword": "Current password is incorrect"})
-
-        if user.check_password(new_password):
-            raise ValidationError({"newPassword": "New password must be different from current password"})
-
-        ensure_valid_password(new_password, user=user, field_name="newPassword")
-
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
-        return Response({"detail": "Password updated"})
+        payload = change_user_password(
+            actor=request.user,
+            target_user_id=self.kwargs.get(self.lookup_url_kwarg),
+            payload=serializer.validated_data,
+        )
+        return Response(payload)
 
     @action(detail=True, methods=["post"], url_path="admin-reset-password")
     def admin_reset_password(self, request, userId=None):

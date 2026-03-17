@@ -17,33 +17,30 @@ def ensure_can_edit_user(*, actor: User, target_user: User, payload) -> None:
             raise PermissionDenied("You cannot modify admin or active flags")
 
 
-def validate_self_password_change_request(
+def ensure_can_change_password(*, actor: User, target_user: User) -> bool:
+    is_admin_reset = is_admin_user(actor) and actor != target_user
+    if actor != target_user and not is_admin_user(actor):
+        raise PermissionDenied("Cannot change password for other users")
+    return is_admin_reset
+
+
+def validate_password_change_request(
     *,
     actor: User,
     target_user: User,
     current_password: str,
     new_password: str,
 ) -> None:
-    if actor != target_user:
-        raise PermissionDenied("Cannot change password for other users")
-    if not current_password:
-        raise ValidationError({"currentPassword": "Current password is required"})
-    if not target_user.check_password(current_password):
-        raise ValidationError({"currentPassword": "Current password is incorrect"})
-    if target_user.check_password(new_password):
-        raise ValidationError({"newPassword": "New password must be different from current password"})
+    is_admin_reset = ensure_can_change_password(actor=actor, target_user=target_user)
+    if is_admin_reset:
+        if target_user.check_password(new_password):
+            raise ValidationError({"newPassword": "New password must be different from current password"})
+    else:
+        if not current_password:
+            raise ValidationError({"currentPassword": "Current password is required"})
+        if not target_user.check_password(current_password):
+            raise ValidationError({"currentPassword": "Current password is incorrect"})
 
-
-def validate_admin_password_reset_request(
-    *,
-    actor: User,
-    target_user: User,
-    new_password: str,
-) -> None:
-    if not is_admin_user(actor):
-        raise PermissionDenied("Admin role required")
-    if actor == target_user:
-        raise PermissionDenied("Use the self-service password endpoint for your own account")
     if target_user.check_password(new_password):
         raise ValidationError({"newPassword": "New password must be different from current password"})
 
