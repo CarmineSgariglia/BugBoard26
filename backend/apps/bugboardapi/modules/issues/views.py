@@ -17,14 +17,14 @@ from ...permissions import (
     check_assignee_or_admin,
     check_admin,
     ensure_issue_access,
-    is_admin,
-    user_project_ids,
+    filter_by_project_access,
 )
 from .models import (
     Attachment,
     Issue,
     IssueEvent,
 )
+from ..projects.serializers import ProjectMembershipSerializer
 from .serializers import (
     AttachmentSerializer,
     IssueEventSerializer,
@@ -33,7 +33,6 @@ from .serializers import (
 from .activity import delete_media_path
 from .commands import (
     assign_issue_users,
-    build_issue_suggestions_payload,
     create_issue_attachment,
     create_issue_comment,
     delete_issue,
@@ -42,7 +41,7 @@ from .commands import (
     update_issue_status,
     upload_attachment_for_event,
 )
-from .queries import apply_issue_filters
+from .queries import apply_issue_filters, list_issue_suggestion_memberships
 from .realtime import open_issue_subscription
 
 logger = logging.getLogger(__name__)
@@ -62,7 +61,7 @@ class IssueViewSet(
 
     def get_queryset(self):
         queryset = Issue.objects.select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
-        queryset = queryset.filter(project_id__in=user_project_ids(self.request.user))
+        queryset = filter_by_project_access(queryset=queryset, user=self.request.user)
         project_id = self.request.query_params.get("projectId")
         if project_id:
             queryset = queryset.filter(project_id=project_id)
@@ -101,14 +100,14 @@ class IssueViewSet(
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
         check_assignee_or_admin(request.user, issue)
-        payload = update_issue_status(
+        updated_issue = update_issue_status(
             issue=issue,
             actor=request.user,
             new_status=request.data.get("status"),
             raw_message=request.data.get("message", ""),
             payload=request.data,
         )
-        return Response(payload)
+        return Response(IssueSerializer(updated_issue, context={"request": request}).data)
 
     @action(detail=True, methods=["get", "post"], url_path="updates")
     def updates(self, request, issueId=None):
@@ -120,13 +119,13 @@ class IssueViewSet(
             return Response(IssueEventSerializer(events, many=True).data)
 
         check_assignee_or_admin(request.user, issue)
-        payload = create_issue_comment(
+        event = create_issue_comment(
             issue=issue,
             actor=request.user,
             raw_message=request.data.get("message", ""),
             payload=request.data,
         )
-        return Response(payload, status=status.HTTP_201_CREATED)
+        return Response(IssueEventSerializer(event, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     def _parse_last_event_id(self, request) -> int:
         raw_last_event_id = request.headers.get("Last-Event-ID", "").strip()
@@ -214,7 +213,12 @@ class IssueViewSet(
     def suggestions(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        return Response(build_issue_suggestions_payload(issue=issue))
+        memberships = list_issue_suggestion_memberships(issue=issue)
+        payload = ProjectMembershipSerializer(memberships, many=True).data
+        open_count_by_user_id = {membership.user_id: membership.open_count for membership in memberships}
+        for item in payload:
+            item["openCount"] = open_count_by_user_id.get(item["userId"], 0)
+        return Response(payload)
 
     @action(detail=True, methods=["patch"], url_path="details")
     def details(self, request, issueId=None):
@@ -244,8 +248,8 @@ class AttachmentUploadView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_issue_access(request.user, event.issue)
         check_assignee_or_admin(request.user, event.issue)
-        payload = upload_attachment_for_event(event=event, payload=request.data)
-        return Response(payload, status=status.HTTP_201_CREATED)
+        attachment = upload_attachment_for_event(event=event, payload=request.data)
+        return Response(AttachmentSerializer(attachment, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
 class AttachmentViewSet(
@@ -262,7 +266,11 @@ class AttachmentViewSet(
     lookup_url_kwarg = "attachmentId"
 
     def get_queryset(self):
-        queryset = super().get_queryset().filter(update__issue__project_id__in=user_project_ids(self.request.user))
+        queryset = filter_by_project_access(
+            queryset=super().get_queryset(),
+            user=self.request.user,
+            project_lookup="update__issue__project_id",
+        )
         issue_id = self.request.query_params.get("issueId")
         update_id = self.request.query_params.get("updateId")
         if issue_id:
@@ -288,15 +296,15 @@ class AttachmentViewSet(
             if not event:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(event.issue)
-            payload = upload_attachment_for_event(event=event, payload=request.data)
+            attachment = upload_attachment_for_event(event=event, payload=request.data)
         else:
             issue = Issue.objects.filter(issue_id=issue_id).select_related("project").first()
             if not issue:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(issue)
-            payload = create_issue_attachment(issue=issue, actor=request.user, payload=request.data)
+            attachment = create_issue_attachment(issue=issue, actor=request.user, payload=request.data)
 
-        return Response(payload, status=status.HTTP_201_CREATED)
+        return Response(AttachmentSerializer(attachment, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         attachment = self.get_object()

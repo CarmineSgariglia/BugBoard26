@@ -13,7 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from ...security.passwords import ensure_valid_password
-from ..users.models import PasswordResetOTP
+from ..users.password_reset_models import PasswordResetOTP
 
 logger = logging.getLogger(__name__)
 
@@ -78,19 +78,23 @@ def issue_otp_for_email(email: str) -> None:
         return
 
     now = timezone.now()
+    raw_code = f"{random.randint(0, 999999):06d}"
     with transaction.atomic():
-        PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
-        raw_code = f"{random.randint(0, 999999):06d}"
-        PasswordResetOTP.objects.create(
+        pending_otp = PasswordResetOTP.objects.create(
             user=user,
             code=raw_code,
             expires_at=now + timedelta(minutes=OTP_EXPIRY_MINUTES),
+            is_used=True,
             attempt_count=0,
             last_attempt_at=None,
         )
 
     try:
         _send_otp_email(email=user.email, code=raw_code)
+        with transaction.atomic():
+            PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
+            pending_otp.is_used = False
+            pending_otp.save(update_fields=["is_used"])
         logger.info("otp_request_sent user_id=%s email_hash=%s", user.id, _email_hash(user.email))
     except Exception:
         logger.exception("otp_request_send_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))

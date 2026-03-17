@@ -8,18 +8,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ...permissions import check_admin, ensure_project_access, is_admin, user_project_ids
+from ...permissions import check_admin, ensure_project_access, filter_by_project_access
 from ..issues.commands import create_issue_for_project
 from ..issues.serializers import IssueSerializer
 from .commands import (
-    build_project_members_payload,
     create_project_with_team,
     delete_project_and_notify,
-    list_project_issues_payload,
     update_project_with_team,
 )
 from .models import Project
-from .serializers import ProjectSerializer
+from .queries import list_project_issues_queryset, list_project_memberships
+from .serializers import ProjectMembershipSerializer, ProjectSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +39,7 @@ class ProjectViewSet(
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        if not is_admin(self.request.user):
-            queryset = queryset.filter(project_id__in=user_project_ids(self.request.user))
+        queryset = filter_by_project_access(queryset=queryset, user=self.request.user)
         q = self.request.query_params.get("q")
         if q:
             queryset = queryset.filter(name__icontains=q)
@@ -71,6 +69,7 @@ class ProjectViewSet(
             project=instance,
             raw_user_ids=raw_user_ids,
             has_team_payload=has_team_payload,
+            actor=request.user,
         )
 
         return Response(serializer.data)
@@ -86,7 +85,8 @@ class ProjectViewSet(
         project = self.get_object()
         ensure_project_access(request.user, project)
         include_admins = str(request.query_params.get("includeAdmins", "")).lower() in {"1", "true", "yes"}
-        return Response(build_project_members_payload(project=project, include_admins=include_admins))
+        memberships = list_project_memberships(project=project, include_admins=include_admins)
+        return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
 
 class ProjectIssueListCreateView(APIView):
@@ -97,12 +97,15 @@ class ProjectIssueListCreateView(APIView):
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
-        return Response(list_project_issues_payload(project=project, request=request))
+        queryset = list_project_issues_queryset(project=project, request=request)
+        return Response(IssueSerializer(queryset, many=True, context={"request": request}).data)
 
     def post(self, request, projectId):
         project = Project.objects.filter(project_id=projectId).first()
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
-        issue = create_issue_for_project(request=request, project=project)
-        return Response(IssueSerializer(issue).data, status=status.HTTP_201_CREATED)
+        serializer = IssueSerializer(data=request.data, context={"request": request, "project": project})
+        serializer.is_valid(raise_exception=True)
+        issue = create_issue_for_project(serializer=serializer, reporter=request.user, project=project)
+        return Response(IssueSerializer(issue, context={"request": request}).data, status=status.HTTP_201_CREATED)

@@ -20,7 +20,7 @@ from .commands import (
     set_user_status,
 )
 from .policies import ensure_can_edit_user
-from .serializers import ChangePasswordSerializer, UserSerializer
+from .serializers import ChangePasswordSerializer, UserMutationSerializer, UserSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,11 @@ class UserViewSet(
     lookup_url_kwarg = "userId"
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     pagination_class = UserListPagination
+
+    def get_serializer_class(self):
+        if self.action in {"create", "update", "partial_update"}:
+            return UserMutationSerializer
+        return UserSerializer
 
     def _parse_csv_ints_query_param(self, name: str) -> list[int]:
         return parse_csv_ints_query_param(
@@ -92,30 +97,29 @@ class UserViewSet(
     def set_status(self, request, userId=None):
         check_admin(request.user)
         user = self.get_object()
-        payload = set_user_status(
+        updated_user = set_user_status(
             actor=request.user,
             target_user=user,
             active=request.data.get("active", None),
-            request=request,
         )
-        return Response(payload, status=status.HTTP_200_OK)
+        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="admin-upload-image")
     def admin_upload_profile_image(self, request, userId=None):
         check_admin(request.user)
         user = self.get_object()
-        payload = save_profile_image_for_user(request=request, user=user)
-        return Response(payload, status=status.HTTP_200_OK)
+        updated_user = save_profile_image_for_user(request=request, user=user)
+        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="me/upload_profile_image")
     def upload_profile_image_me(self, request):
-        payload = save_profile_image_for_user(request=request, user=request.user)
-        return Response(payload, status=status.HTTP_200_OK)
+        updated_user = save_profile_image_for_user(request=request, user=request.user)
+        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="me/upload-profile-image")
     def upload_profile_image_me_kebab(self, request):
-        payload = save_profile_image_for_user(request=request, user=request.user)
-        return Response(payload, status=status.HTTP_200_OK)
+        updated_user = save_profile_image_for_user(request=request, user=request.user)
+        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="change-password")
     def change_password(self, request, userId=None):

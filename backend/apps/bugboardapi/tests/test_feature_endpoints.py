@@ -13,7 +13,6 @@ from django.utils import timezone
 from rest_framework import status
 from django.test import override_settings
 from rest_framework.test import APITestCase
-from rest_framework.exceptions import ValidationError
 
 from apps.bugboardapi.modules.issues.models import (
     Attachment,
@@ -24,10 +23,13 @@ from apps.bugboardapi.modules.issues.models import (
     IssueStatus,
 )
 from apps.bugboardapi.modules.notifications.models import Notification, NotifyType, NotifyUser
+from apps.bugboardapi.modules.notifications.services import (
+    notify_issue_updated,
+    notify_project_added,
+)
 from apps.bugboardapi.modules.projects.models import ProjectMembership
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.modules.users.models import PasswordResetOTP
-from apps.bugboardapi.modules.notifications.services import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -1848,11 +1850,7 @@ class NotificationTagMetaEndpointTests(APITestCase):
             status=IssueStatus.TODO,
             priority="LOW",
         )
-        notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.admin, self.member],
-            issue=self.issue,
-        )
+        notify_issue_updated(users=[self.admin, self.member], issue=self.issue)
 
     def test_notifications_are_scoped_to_current_user(self):
         self.client.force_authenticate(user=self.member)
@@ -1915,9 +1913,7 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_notification_removes_orphan_notification_row(self):
-        single_notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED, users=[self.member], issue=self.issue
-        )
+        single_notification = notify_issue_updated(users=[self.member], issue=self.issue)
         single_notify_user = NotifyUser.objects.get(
             notification=single_notification, user=self.member
         )
@@ -1933,62 +1929,31 @@ class NotificationTagMetaEndpointTests(APITestCase):
             ).exists()
         )
 
-    def test_notify_users_sets_project_from_issue(self):
-        notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            issue=self.issue,
-        )
+    def test_issue_notifications_set_project_from_issue(self):
+        notification = notify_issue_updated(users=[self.member], issue=self.issue)
         self.assertEqual(notification.issue, self.issue)
         self.assertEqual(notification.project, self.project)
 
-    def test_notify_users_accepts_matching_issue_and_project(self):
-        notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            issue=self.issue,
-            project=self.project,
-        )
-        self.assertEqual(notification.issue, self.issue)
-        self.assertEqual(notification.project, self.project)
-
-    def test_notify_users_rejects_mismatched_issue_and_project(self):
-        other_project = create_project_with_members(
-            created_by=self.admin,
-            name="Other Project",
-            admin_members=[self.admin],
-        )
-        with self.assertRaises(ValidationError):
-            notify_users(
-                notify_type=NotifyType.ISSUE_UPDATED,
-                users=[self.member],
-                issue=self.issue,
-                project=other_project,
-            )
-
-    def test_notify_users_allows_project_only_notification(self):
-        notification = notify_users(
-            notify_type=NotifyType.PROJECT_ADDED,
-            users=[self.member],
-            project=self.project,
-        )
+    def test_project_notifications_keep_project_context(self):
+        notification = notify_project_added(users=[self.member], project=self.project)
         self.assertIsNone(notification.issue)
         self.assertEqual(notification.project, self.project)
 
-    def test_notify_users_skips_actor_and_avoids_empty_notifications(self):
-        notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            actor=self.member,
-            issue=self.issue,
-        )
+    def test_issue_notifications_skip_actor_and_avoid_empty_notifications(self):
+        notifications_before = NotifyUser.objects.filter(
+            user=self.member,
+            notification__notify_type=NotifyType.ISSUE_UPDATED,
+            notification__issue=self.issue,
+        ).count()
+        notification = notify_issue_updated(users=[self.member], actor=self.member, issue=self.issue)
         self.assertIsNone(notification)
-        self.assertFalse(
+        self.assertEqual(
             NotifyUser.objects.filter(
                 user=self.member,
                 notification__notify_type=NotifyType.ISSUE_UPDATED,
                 notification__issue=self.issue,
-            ).exists()
+            ).count(),
+            notifications_before,
         )
 
     def test_issue_notification_payload_includes_project_id(self):
@@ -2036,6 +2001,3 @@ class NotificationTagMetaEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(patch_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-
-

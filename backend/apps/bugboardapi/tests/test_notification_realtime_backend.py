@@ -5,7 +5,11 @@ from rest_framework.test import APITestCase
 from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
 from apps.bugboardapi.modules.notifications.realtime import open_notification_subscription
-from apps.bugboardapi.modules.notifications.services import notify_users
+from apps.bugboardapi.modules.notifications.services import (
+    notify_issue_assigned,
+    notify_issue_closed,
+    notify_issue_updated,
+)
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -40,15 +44,11 @@ class NotificationRealtimeBackendTests(APITestCase):
         )
         self.client.force_authenticate(user=self.member)
 
-    def test_notify_users_publishes_only_after_commit(self):
+    def test_issue_notification_publishes_only_after_commit(self):
         subscription = open_notification_subscription(self.member.id)
 
         with self.captureOnCommitCallbacks(execute=False) as callbacks:
-            notify_users(
-                notify_type=NotifyType.ISSUE_UPDATED,
-                users=[self.member],
-                issue=self.issue,
-            )
+            notify_issue_updated(users=[self.member], issue=self.issue)
             self.assertIsNone(subscription.get_message(timeout=0.01))
 
         self.assertEqual(len(callbacks), 1)
@@ -64,11 +64,7 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertEqual(event.data["issueId"], self.issue.issue_id)
 
     def test_notifications_list_returns_paginated_payload(self):
-        notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            issue=self.issue,
-        )
+        notify_issue_updated(users=[self.member], issue=self.issue)
 
         first_response = self.client.get("/api/notifications")
         self.assertEqual(first_response.status_code, status.HTTP_200_OK)
@@ -79,21 +75,9 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertTrue(first_response.data["hasUnread"])
 
     def test_notifications_list_supports_cursor_pagination(self):
-        first_notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            issue=self.issue,
-        )
-        second_notification = notify_users(
-            notify_type=NotifyType.ISSUE_CLOSED,
-            users=[self.member],
-            issue=self.issue,
-        )
-        third_notification = notify_users(
-            notify_type=NotifyType.ISSUE_ASSIGNED,
-            users=[self.member],
-            issue=self.issue,
-        )
+        first_notification = notify_issue_updated(users=[self.member], issue=self.issue)
+        second_notification = notify_issue_closed(users=[self.member], issue=self.issue)
+        third_notification = notify_issue_assigned(users=[self.member], issue=self.issue)
 
         first_notify_user = NotifyUser.objects.get(notification=first_notification, user=self.member)
         second_notify_user = NotifyUser.objects.get(notification=second_notification, user=self.member)
@@ -120,11 +104,7 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertTrue(second_page.data["hasUnread"])
 
     def test_read_updates_notification_in_paginated_list(self):
-        notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            issue=self.issue,
-        )
+        notification = notify_issue_updated(users=[self.member], issue=self.issue)
         notify_user = NotifyUser.objects.get(notification=notification, user=self.member)
 
         self.client.get("/api/notifications")
@@ -138,16 +118,8 @@ class NotificationRealtimeBackendTests(APITestCase):
         self.assertFalse(list_response.data["hasUnread"])
 
     def test_delete_updates_paginated_notification_list(self):
-        first_notification = notify_users(
-            notify_type=NotifyType.ISSUE_UPDATED,
-            users=[self.member],
-            issue=self.issue,
-        )
-        second_notification = notify_users(
-            notify_type=NotifyType.ISSUE_CLOSED,
-            users=[self.member],
-            issue=self.issue,
-        )
+        first_notification = notify_issue_updated(users=[self.member], issue=self.issue)
+        second_notification = notify_issue_closed(users=[self.member], issue=self.issue)
         first_notify_user = NotifyUser.objects.get(notification=first_notification, user=self.member)
         second_notify_user = NotifyUser.objects.get(notification=second_notification, user=self.member)
 

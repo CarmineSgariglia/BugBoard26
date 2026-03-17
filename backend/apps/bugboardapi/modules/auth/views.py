@@ -18,11 +18,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from ...security.authentication import CSRFAwareSessionAuthentication
 from ...security.token_sessions import (
     build_token_pair_for_user,
+    is_refresh_token_password_stale,
+    is_refresh_token_session_revoked,
     revoke_session_from_access,
     revoke_session_from_refresh,
 )
 from ..auth.password_reset import issue_otp_for_email, reset_password_with_otp, verify_otp
-from ..users.serializers import UserSerializer
+from ..users.serializers import UserReadSerializer
 from .serializers import (
     PasswordOTPRequestSerializer,
     PasswordOTPVerifySerializer,
@@ -90,7 +92,7 @@ class LoginView(APIView):
         response = Response(
             {
                 "accessToken": access_token,
-                "user": UserSerializer(auth_user, context={"request": request}).data,
+                "user": UserReadSerializer(auth_user, context={"request": request}).data,
             }
         )
         _set_refresh_cookie(response, refresh_token)
@@ -105,6 +107,10 @@ class RefreshView(APIView):
         refresh_token = request.COOKIES.get(_refresh_cookie_name())
         if not refresh_token:
             return Response({"detail": "Refresh token missing"}, status=status.HTTP_401_UNAUTHORIZED)
+        if is_refresh_token_session_revoked(refresh_token) or is_refresh_token_password_stale(
+            refresh_token
+        ):
+            return Response({"detail": "Invalid refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
 
         serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
         try:
@@ -145,7 +151,7 @@ class MeView(APIView):
 
     def get(self, request):
         get_token(request)
-        return Response(UserSerializer(request.user, context={"request": request}).data)
+        return Response(UserReadSerializer(request.user, context={"request": request}).data)
 
 
 class PasswordOTPRequestView(APIView):

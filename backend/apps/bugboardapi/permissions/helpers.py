@@ -1,7 +1,14 @@
-from django.contrib.auth.models import User
+from __future__ import annotations
 
-from ..modules.issues.models import Issue, IssueAssignee
-from ..modules.projects.models import Project
+from typing import TYPE_CHECKING
+
+from ..modules.issues.models import IssueAssignee
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import User
+
+    from ..modules.issues.models import Issue
+    from ..modules.projects.models import Project
 
 
 def is_project_member(user: User, project: Project) -> bool:

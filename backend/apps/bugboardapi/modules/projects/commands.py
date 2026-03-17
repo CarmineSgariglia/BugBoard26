@@ -2,14 +2,12 @@ from django.contrib.auth.models import User
 from django.db import transaction
 
 from ...common.parsing import request_user_ids
-from ...roles import is_admin_user
-from ..issues.models import Issue
-from ..issues.queries import apply_issue_filters
-from ..issues.serializers import IssueSerializer
-from ..notifications.models import NotifyType
-from ..notifications.services import notify_users
+from ..notifications.services import (
+    notify_project_added,
+    notify_project_removed,
+    notify_project_unassigned,
+)
 from .models import Project, ProjectMembership
-from .serializers import ProjectMembershipSerializer
 
 
 def create_project_memberships(*, project: Project, owner: User, raw_user_ids):
@@ -27,10 +25,14 @@ def create_project_memberships(*, project: Project, owner: User, raw_user_ids):
         )
         members.append(member.user)
     if members:
-        notify_users(notify_type=NotifyType.PROJECT_ADDED, users=members, project=project)
+        notify_project_added(
+            users=members,
+            actor=owner,
+            project=project,
+        )
 
 
-def sync_project_team_members(*, project: Project, raw_user_ids):
+def sync_project_team_members(*, project: Project, raw_user_ids, actor: User | None = None):
     user_ids = request_user_ids(raw_user_ids)
     target_users = list(User.objects.filter(id__in=user_ids, is_active=True).exclude(id=project.created_by_id))
     target_user_ids = {user.id for user in target_users}
@@ -54,9 +56,13 @@ def sync_project_team_members(*, project: Project, raw_user_ids):
         mutable_memberships.filter(user_id__in=to_remove_ids).delete()
 
     if added_users:
-        notify_users(notify_type=NotifyType.PROJECT_ADDED, users=added_users, project=project)
+        notify_project_added(
+            users=added_users,
+            actor=actor,
+            project=project,
+        )
     if removed_users:
-        notify_users(notify_type=NotifyType.PROJECT_UNASSIGNED, users=removed_users, project=project)
+        notify_project_unassigned(users=removed_users, project=project)
 
 
 def create_project_with_team(*, serializer, owner, raw_user_ids):
@@ -66,29 +72,16 @@ def create_project_with_team(*, serializer, owner, raw_user_ids):
     return project
 
 
-def update_project_with_team(*, serializer, project: Project, raw_user_ids, has_team_payload: bool):
+def update_project_with_team(*, serializer, project: Project, raw_user_ids, has_team_payload: bool, actor: User | None = None):
     with transaction.atomic():
         updated_project = serializer.save()
         if has_team_payload:
-            sync_project_team_members(project=project, raw_user_ids=raw_user_ids)
+            sync_project_team_members(project=project, raw_user_ids=raw_user_ids, actor=actor)
     return updated_project
 
 
 def delete_project_and_notify(*, project: Project):
     recipient_users = list(User.objects.filter(project_memberships__project=project).distinct())
     if recipient_users:
-        notify_users(notify_type=NotifyType.PROJECT_REMOVED, users=recipient_users, project=project)
+        notify_project_removed(users=recipient_users, project=project)
     project.delete()
-
-
-def build_project_members_payload(*, project: Project, include_admins: bool):
-    memberships = ProjectMembership.objects.filter(project=project).select_related("user")
-    if not include_admins:
-        memberships = [membership for membership in memberships if not is_admin_user(membership.user)]
-    return ProjectMembershipSerializer(memberships, many=True).data
-
-
-def list_project_issues_payload(*, project: Project, request):
-    queryset = Issue.objects.filter(project=project).select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
-    queryset = apply_issue_filters(queryset, request)
-    return IssueSerializer(queryset, many=True).data

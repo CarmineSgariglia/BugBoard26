@@ -3,9 +3,11 @@ import logging
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
+from django.db import transaction
 from django.db.models import Q, QuerySet
 from rest_framework.exceptions import NotFound, ValidationError
 
+from ...common.parsing import parse_csv_ints_query_param
 from ...roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from ...security.passwords import ensure_valid_password
 from ...security.uploads import store_upload, validate_profile_image
@@ -14,21 +16,16 @@ from .policies import (
     validate_password_change_request,
     validate_status_change_request,
 )
-from .models import UserProfileImage
-from .serializers import UserSerializer
+from .profile_models import UserProfileImage
 
 logger = logging.getLogger(__name__)
 
 
-def parse_csv_ints_query_param(*, raw_value: str | None, field_name: str) -> list[int]:
-    normalized = (raw_value or "").strip()
-    if not normalized:
-        return []
-    values = [value.strip() for value in normalized.split(",") if value.strip()]
+def _delete_stored_file(path: str) -> None:
     try:
-        return [int(value) for value in values]
-    except ValueError as exc:
-        raise ValidationError({field_name: "All values must be valid integers"}) from exc
+        default_storage.delete(path)
+    except Exception:
+        logger.warning("Failed to delete stored file: %s", path)
 
 
 def filter_users_queryset(
@@ -72,12 +69,11 @@ def filter_users_queryset(
     return queryset.distinct()
 
 
-def set_user_status(*, actor: User, target_user: User, active, request):
+def set_user_status(*, actor: User, target_user: User, active):
     validate_status_change_request(actor=actor, target_user=target_user, active=active)
     target_user.is_active = active
     target_user.save(update_fields=["is_active"])
-    refreshed_user = User.objects.get(id=target_user.id)
-    return UserSerializer(refreshed_user, context={"request": request}).data
+    return User.objects.get(id=target_user.id)
 
 
 def change_user_password(*, actor: User, target_user_id, payload: dict):
@@ -95,8 +91,9 @@ def change_user_password(*, actor: User, target_user_id, payload: dict):
     )
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
-    user.set_password(new_password)
-    user.save(update_fields=["password"])
+    with transaction.atomic():
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
     return {"detail": "Password updated"}
 
 
@@ -117,16 +114,18 @@ def save_profile_image_for_user(*, request, user: User):
     )
     saved_path = saved.path
 
-    profile, _ = UserProfileImage.objects.get_or_create(user=user)
-    old_path = profile.profile_img
-    profile.profile_img = saved_path
-    profile.save(update_fields=["profile_img"])
+    try:
+        with transaction.atomic():
+            profile, _ = UserProfileImage.objects.get_or_create(user=user)
+            old_path = profile.profile_img
+            profile.profile_img = saved_path
+            profile.save(update_fields=["profile_img"])
 
-    if old_path and old_path != saved_path and old_path.startswith("profile-images/"):
-        try:
-            default_storage.delete(old_path)
-        except Exception:
-            logger.warning("Failed to delete old profile image: %s", old_path)
+            if old_path and old_path != saved_path and old_path.startswith("profile-images/"):
+                transaction.on_commit(lambda path=old_path: _delete_stored_file(path))
+    except Exception:
+        if saved_path and saved_path.startswith("profile-images/"):
+            _delete_stored_file(saved_path)
+        raise
 
-    refreshed_user = User.objects.get(id=user.id)
-    return UserSerializer(refreshed_user, context={"request": request}).data
+    return User.objects.get(id=user.id)

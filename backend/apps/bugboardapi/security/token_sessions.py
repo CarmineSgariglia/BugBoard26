@@ -3,12 +3,15 @@ from __future__ import annotations
 from datetime import datetime, timezone as dt_timezone
 from uuid import uuid4
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.utils import get_md5_hash_password
 
-from ..modules.users.models import RevokedTokenSession
+from ..modules.users.token_session_models import RevokedTokenSession
 
 
 def build_token_pair_for_user(user) -> tuple[str, str]:
@@ -42,6 +45,37 @@ def revoke_session_from_refresh(refresh_token: str) -> None:
         user_id=token.get("user_id"),
         expires_at_unix=token.get("exp"),
     )
+
+
+def is_refresh_token_session_revoked(refresh_token: str) -> bool:
+    try:
+        token = RefreshToken(refresh_token)
+    except TokenError:
+        return False
+
+    return is_token_session_revoked(token.get("sid"))
+
+
+def is_refresh_token_password_stale(refresh_token: str) -> bool:
+    if not api_settings.CHECK_REVOKE_TOKEN:
+        return False
+
+    try:
+        token = RefreshToken(refresh_token)
+    except TokenError:
+        return False
+
+    user_id = token.get(api_settings.USER_ID_CLAIM)
+    if user_id is None:
+        return False
+
+    user_model = get_user_model()
+    try:
+        user = user_model.objects.get(**{api_settings.USER_ID_FIELD: user_id})
+    except user_model.DoesNotExist:
+        return False
+
+    return token.get(api_settings.REVOKE_TOKEN_CLAIM) != get_md5_hash_password(user.password)
 
 
 def revoke_session_from_access(request) -> None:

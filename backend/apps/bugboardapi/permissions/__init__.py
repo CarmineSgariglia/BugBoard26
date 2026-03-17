@@ -4,8 +4,8 @@ from .checks import (
     ensure_issue_access,
     ensure_project_access,
     is_admin,
-    user_project_ids,
 )
+from .scopes import filter_by_project_access, user_project_ids
 
 
 __all__ = [
@@ -13,6 +13,7 @@ __all__ = [
     "check_admin",
     "ensure_issue_access",
     "ensure_project_access",
+    "filter_by_project_access",
     "is_admin",
     "user_project_ids",
 ]
