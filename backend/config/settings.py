@@ -6,25 +6,12 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-MIN_SECRET_KEY_LENGTH = 32
-DEFAULT_DEV_SECRET_KEY = "dev-secret-key-change-me-please-rotate"
 
 def _env_flag(name: str, default: bool) -> bool:
     return os.getenv(name, str(default)).lower() == "true"
 
 
-def _validate_secret_key(*, secret_key: str, debug: bool) -> None:
-    if debug:
-        return
-    if secret_key == DEFAULT_DEV_SECRET_KEY:
-        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production")
-    if len(secret_key) < MIN_SECRET_KEY_LENGTH:
-        raise ImproperlyConfigured(
-            f"DJANGO_SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters in production"
-        )
-
-
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", DEFAULT_DEV_SECRET_KEY)
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
 
 DEBUG = _env_flag("DEBUG", True)
 
@@ -34,7 +21,8 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
-_validate_secret_key(secret_key=SECRET_KEY, debug=DEBUG)
+if not DEBUG and SECRET_KEY == "dev-secret-key-change-me":
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -46,7 +34,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
-    "drf_spectacular",
     "apps.bugboardapi",
 ]
 
@@ -86,7 +73,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("DB_NAME", "bugboard"),
         "USER": os.getenv("DB_USER", "bugboard"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "PASSWORD": os.getenv("DB_PASSWORD", "bugboard"),
         "HOST": os.getenv("DB_HOST", "db"),
         "PORT": os.getenv("DB_PORT", "5432"),
     }
@@ -105,20 +92,50 @@ USE_I18N = True
 USE_TZ = True
 
 IS_TESTING = any(arg in {"test", "pytest"} for arg in sys.argv)
+SINGLE_NODE_RUNTIME = _env_flag("SINGLE_NODE_RUNTIME", not DEBUG)
 
-STATIC_URL = "/static/"
-STATIC_ROOT = Path(os.getenv("STATIC_ROOT", str(BASE_DIR / "staticfiles")))
+STATIC_URL = "static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "bugboard-cache",
-    }
-}
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
+CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", REDIS_URL)
+NOTIFICATIONS_REDIS_URL = os.getenv("NOTIFICATIONS_REDIS_URL", REDIS_URL)
 
+cache_backend = os.getenv(
+    "CACHE_BACKEND",
+    "locmem" if IS_TESTING or SINGLE_NODE_RUNTIME else "redis",
+).lower()
+if cache_backend not in {"locmem", "redis"}:
+    raise ImproperlyConfigured("CACHE_BACKEND must be one of: locmem, redis")
+
+if cache_backend == "redis":
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": CACHE_REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "bugboard-cache",
+        }
+    }
+
+NOTIFICATIONS_TRANSPORT_BACKEND = os.getenv(
+    "NOTIFICATIONS_TRANSPORT_BACKEND",
+    "memory" if IS_TESTING or SINGLE_NODE_RUNTIME else "redis",
+).lower()
+if NOTIFICATIONS_TRANSPORT_BACKEND not in {"memory", "redis"}:
+    raise ImproperlyConfigured("NOTIFICATIONS_TRANSPORT_BACKEND must be one of: memory, redis")
+
+NOTIFICATIONS_CACHE_TIMEOUT_SECONDS = int(os.getenv("NOTIFICATIONS_CACHE_TIMEOUT_SECONDS", "3600"))
 NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS = float(
     os.getenv("NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", "20")
 )
@@ -127,26 +144,12 @@ def _csv_env(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
-def _origins(scheme: str, hosts: list[str], *, port: str | None = None) -> set[str]:
-    return {
-        f"{scheme}://{host}{f':{port}' if port else ''}"
-        for host in hosts
-    }
-
-
-def _origins_csv(scheme: str, hosts: list[str], *, port: str | None = None) -> str:
-    return ",".join(sorted(_origins(scheme, hosts, port=port)))
-
-
 CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False").lower() == "true"
 CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "True").lower() == "true"
-default_cors_origins = _origins_csv("http", ["localhost", "127.0.0.1"], port="5173") if DEBUG else ""
-CORS_ALLOWED_ORIGINS = _csv_env("CORS_ALLOWED_ORIGINS", default_cors_origins)
+CORS_ALLOWED_ORIGINS = _csv_env("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 
 if not DEBUG and CORS_ALLOW_ALL_ORIGINS:
     raise ImproperlyConfigured("CORS_ALLOW_ALL_ORIGINS=True is not allowed in production")
-if not DEBUG and not CORS_ALLOWED_ORIGINS:
-    raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set in production")
 
 csrf_origins = set(_csv_env("CSRF_TRUSTED_ORIGINS", ""))
 csrf_origins.update(CORS_ALLOWED_ORIGINS)
@@ -156,12 +159,15 @@ csrf_origins.update(_csv_env("CSRF_TRUSTED_ORIGINS_EXTRA", ""))
 # Keep this block debug-only to avoid weakening production posture.
 if DEBUG:
     csrf_origins.update(
-        _origins("http", ["localhost", "127.0.0.1", "frontend"], port="5173")
+        {
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://frontend:5173",
+            "http://172.21.160.1:5173",
+            "https://localhost",
+            "https://127.0.0.1",
+        }
     )
-    csrf_origins.update(
-        _origins("https", ["localhost", "127.0.0.1"])
-    )
-    csrf_origins.update(_csv_env("DEV_EXTRA_CSRF_ORIGINS", ""))
 
 CSRF_TRUSTED_ORIGINS = sorted(csrf_origins)
 
@@ -174,7 +180,7 @@ SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE_SECONDS", "28800"))
 SESSION_SAVE_EVERY_REQUEST = os.getenv("SESSION_SAVE_EVERY_REQUEST", "True").lower() == "true"
 SESSION_EXPIRE_AT_BROWSER_CLOSE = os.getenv("SESSION_EXPIRE_AT_BROWSER_CLOSE", "False").lower() == "true"
 
-SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", str(not DEBUG and not IS_TESTING)).lower() == "true"
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", str(not DEBUG)).lower() == "true"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = os.getenv("USE_X_FORWARDED_HOST", "True").lower() == "true"
 
@@ -190,22 +196,13 @@ MEDIA_STORAGE_BACKEND = os.getenv("MEDIA_STORAGE_BACKEND", "local").lower()
 if MEDIA_STORAGE_BACKEND not in {"local", "gcs"}:
     raise ImproperlyConfigured("MEDIA_STORAGE_BACKEND must be one of: local, gcs")
 
-if not DEBUG and not IS_TESTING and MEDIA_STORAGE_BACKEND != "gcs":
-    raise ImproperlyConfigured("Production media storage must use Google Cloud Storage")
-
 if MEDIA_STORAGE_BACKEND == "gcs":
-    gcs_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
     GS_BUCKET_NAME = os.getenv("GS_BUCKET_NAME", "").strip()
     if not GS_BUCKET_NAME:
         raise ImproperlyConfigured("GS_BUCKET_NAME must be set when MEDIA_STORAGE_BACKEND=gcs")
 
     GS_DEFAULT_ACL = None
-    GS_PROJECT_ID = os.getenv("GS_PROJECT_ID", "").strip()
     GS_QUERYSTRING_AUTH = os.getenv("GS_QUERYSTRING_AUTH", "False").lower() == "true"
-    if gcs_credentials_path:
-        from google.oauth2 import service_account
-
-        GS_CREDENTIALS = service_account.Credentials.from_service_account_file(gcs_credentials_path)
     MEDIA_URL = os.getenv("GCS_MEDIA_URL", f"https://storage.googleapis.com/{GS_BUCKET_NAME}/")
     if not MEDIA_URL.endswith("/"):
         MEDIA_URL = f"{MEDIA_URL}/"
@@ -218,7 +215,6 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.bugboardapi.security.authentication.RevocableJWTAuthentication",
     ],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -235,21 +231,8 @@ REST_FRAMEWORK = {
     },
 }
 
-SPECTACULAR_SETTINGS = {
-    "TITLE": "BugBoard26 API",
-    "DESCRIPTION": (
-        "Canonical Phase 1 API surface for BugBoard26. "
-        "JWT session revocation remains enabled as an intentional security exception."
-    ),
-    "VERSION": "1.0.0-phase1",
-    "OAS_VERSION": "3.0.3",
-    "SERVE_INCLUDE_SCHEMA": False,
-    "SCHEMA_PATH_PREFIX": r"/api",
-    "COMPONENT_SPLIT_REQUEST": True,
-}
-
 AUTH_REFRESH_COOKIE_NAME = os.getenv("AUTH_REFRESH_COOKIE_NAME", "bugboard_refresh")
-AUTH_REFRESH_COOKIE_PATH = os.getenv("AUTH_REFRESH_COOKIE_PATH", "/api/sessions/current")
+AUTH_REFRESH_COOKIE_PATH = os.getenv("AUTH_REFRESH_COOKIE_PATH", "/api/auth")
 AUTH_REFRESH_COOKIE_SECURE = os.getenv("AUTH_REFRESH_COOKIE_SECURE", str(not DEBUG)).lower() == "true"
 AUTH_REFRESH_COOKIE_SAMESITE = os.getenv("AUTH_REFRESH_COOKIE_SAMESITE", "Lax")
 
@@ -258,14 +241,12 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "7"))),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    "CHECK_REVOKE_TOKEN": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "console").lower()
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 BREVO_OTP_TEMPLATE_ID = os.getenv("BREVO_OTP_TEMPLATE_ID", "")
-BREVO_NEW_USER_TEMPLATE_ID = os.getenv("BREVO_NEW_USER_TEMPLATE_ID", "")
 BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "")
 
 if EMAIL_PROVIDER == "brevo":

@@ -1,50 +1,24 @@
 services:
   db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    mem_limit: 1g
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - bugboard_net
+    ports: !override []
+
+  redis:
+    profiles:
+      - scale-ready
 
   backend:
-    image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be set}
-    restart: unless-stopped
-    init: true
-    security_opt:
-      - no-new-privileges:true
-    env_file: .env
-    environment:
-      DB_NAME: ${POSTGRES_DB}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_HOST: db
-      DB_PORT: 5432
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      DEBUG: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
-      CORS_ALLOW_ALL_ORIGINS: "False"
-      MEDIA_STORAGE_BACKEND: ${MEDIA_STORAGE_BACKEND:-gcs}
-      STATIC_ROOT: ${STATIC_ROOT:-/app/staticfiles}
-      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-1}
-      GUNICORN_THREADS: ${GUNICORN_THREADS:-8}
-    volumes:
-      - staticfiles:/app/staticfiles
-    mem_limit: 2g
-    depends_on:
+    ports: !override []
+    volumes: !override []
+    depends_on: !override
       db:
         condition: service_healthy
+    environment:
+      DEBUG: "False"
+      SINGLE_NODE_RUNTIME: "True"
+      CACHE_BACKEND: locmem
+      NOTIFICATIONS_TRANSPORT_BACKEND: memory
+      GUNICORN_WORKERS: "1"
+      GUNICORN_THREADS: "12"
     healthcheck:
       test:
         [
@@ -55,27 +29,27 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-    networks:
-      - bugboard_net
+
+  frontend:
+    profiles:
+      - dev-only
 
   web:
-    image: ${WEB_IMAGE:?WEB_IMAGE must be set}
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
     restart: unless-stopped
     init: true
     security_opt:
       - no-new-privileges:true
-    environment:
-      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-your-domain.com www.your-domain.com}
-      NGINX_SSL_CERT_PATH: ${NGINX_SSL_CERT_PATH:-/etc/nginx/certs/live/your-domain.com/fullchain.pem}
-      NGINX_SSL_KEY_PATH: ${NGINX_SSL_KEY_PATH:-/etc/nginx/certs/live/your-domain.com/privkey.pem}
     volumes:
-      - ./nginx/default.conf/production.conf:/etc/nginx/templates/default.conf.template:ro
-      - ${SSL_CERTS_HOST_PATH:-/opt/bugboard26/certs}:/etc/nginx/certs:ro
-      - staticfiles:/usr/share/nginx/django-static:ro
+      - ./nginx/default.conf/production.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
     ports:
       - "80:80"
       - "443:443"
-    mem_limit: 256m
     healthcheck:
       test: ["CMD-SHELL", "wget -q --no-check-certificate -O - https://127.0.0.1 >/dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -87,11 +61,3 @@ services:
         condition: service_healthy
     networks:
       - bugboard_net
-
-volumes:
-  postgres_data:
-  staticfiles:
-
-networks:
-  bugboard_net:
-    driver: bridge

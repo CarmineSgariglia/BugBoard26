@@ -15,8 +15,9 @@ backend/.coverage
 venv/
 backend/.venv/
 backend/venv/
-.vscode/
-.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # macOS
 .DS_Store
@@ -27,7 +28,10 @@ backend_logs*.txt
 .tmp/
 BrunoTesting/.tmp/
 
+# Local-only script tweak
+scripts/dev_https_up.sh
+scripts/dev_https_down.sh
+
 # Media (Uploads)
 backend/media/
 backend/coverage/
-.vscode/settings.json

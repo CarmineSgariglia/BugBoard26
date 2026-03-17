@@ -10,7 +10,8 @@ Containerized three-tier architecture:
 - `frontend/`: React + TypeScript + Tailwind app
 - `backend/`: Django REST API app
 - `docker-compose.yml`: Orchestrates all tiers
-- `docker-compose.prod.yml`: Immutable-image production definition for VM deploys
+- `docker-compose.prod.yml`: Single-node production overrides
+- `docker-compose.scale.yml`: Optional Redis-backed scale-ready overrides
 - `env/dev.example`: Local development environment template
 - `BrunoTesting/env/bruno-safe.ci.env`: Safe CI environment for Bruno and CI workflows
 - `env/production.example`: Production environment template
@@ -37,7 +38,6 @@ Notes:
 - Backend changes are validated on push by `.github/workflows/backend-safe.yml`, which runs the Django suite with coverage.
 - SonarCloud analysis runs from `.github/workflows/sonar.yml` only for backend-related changes and analyzes the backend codebase only.
 - Pull requests targeting `main` are gated by `.github/workflows/main-pr-gate.yml`, which aggregates the safe backend, frontend, and Bruno suites into a single required check.
-- Production releases run from `.github/workflows/deploy-prod.yml`: the workflow rebuilds `backend` and `web`, pushes immutable images to Artifact Registry, and deploys to the VM only after GitHub Environment approval.
 - SonarCloud is intentionally informational: keep `Main PR Gate` as the only required status check on `main`.
 - GitHub secret required for SonarCloud: `SONAR_TOKEN`.
 
@@ -72,77 +72,64 @@ Notes:
 - Run frontend coverage:
   - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage`
   - `make frontend-coverage`
-- Frontend artifacts are written under `frontend/coverage/`.
+- Run frontend smoke E2E:
+  - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm playwright npm run test:e2e:smoke`
+- Frontend artifacts are written under `frontend/coverage/`, `frontend/playwright-report/`, and `frontend/test-results/`.
 
 ## Production
 
 - Use `env/production.example` as template for production secrets and security flags.
-- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs`, `GS_BUCKET_NAME`, and VM IAM / ADC credentials.
-- Production deployment model:
-  - CI validates the repo
-  - release workflow builds immutable `backend` and `web` images
-  - the VM deploys by pulling validated images from Artifact Registry
-  - production must never rely on `git pull` or local `docker compose build`
-- Start a production-like stack locally with:
-  - `make prod-up`
-- Validate the production compose with sample production values:
-  - `make prod-config`
+- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs` and `GS_BUCKET_NAME`.
+- Start the standard single-node production stack with:
+  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
+- Start the Redis-backed scale-ready variant with:
+  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.scale.yml up -d --build`
 - Exposed ports in production:
   - `80` and `443` on the `web` service only
-- TLS certificates are managed on the VM host with Let's Encrypt / `certbot` and mounted into `web` from `${SSL_CERTS_HOST_PATH}`.
-- Internal-only services in the production stack:
+- Internal-only services in the standard production stack:
   - `backend` and `db` are reachable only on the Docker network
+- Internal-only services in the scale-ready variant:
+  - `backend`, `db`, and `redis` are reachable only on the Docker network
 - Frontend delivery in production:
   - nginx serves the compiled files from `dist/`
   - sourcemaps are disabled
-  - API requests go through the same origin (`/api`)
-  - media files are served directly by GCS using the absolute URLs returned by the backend
-- Recommended production VM baseline on Google Cloud:
-  - `e2-standard-2`
-  - `pd-balanced` disk `50-100 GB`
-  - region `europe-west8`
+  - API and media requests go through the same origin (`/api`, `/media`)
 - Realtime runtime mode:
-  - production uses in-memory cache/transport and a single Gunicorn worker for single-VM SSE reliability
+  - standard production uses in-memory cache/transport and a single Gunicorn worker for single-VM SSE reliability
+  - use `docker-compose.scale.yml` to re-enable Redis-backed realtime before moving to multi-worker or multi-VM deployments
 
 ## API Endpoints
 
 - `GET /api/health`: health check
-- `GET /api/schema`: OpenAPI 3.0.3 schema
-- `GET /api/docs`: Swagger UI
-- `GET /api/redoc`: Redoc
 - `GET /api/projects`: list visible projects
-- `GET /api/projects/{projectId}`: retrieve a project
-- `GET /api/projects/{projectId}/issues`: list issues for a project
-- `POST /api/projects/{projectId}/issues`: create an issue inside a project
-- `GET /api/issues/{issueId}`: retrieve issue
-- `PUT/PATCH /api/issues/{issueId}`: update issue
-- `DELETE /api/issues/{issueId}`: delete issue
+- `GET /api/projects/{id}`: retrieve a project
+- `GET /api/projects/{id}/issues`: list issues for a project
+- `POST /api/projects/{id}/issues`: create an issue inside a project
+- `GET /api/issues/{id}`: retrieve issue
+- `PUT/PATCH /api/issues/{id}`: update issue
+- `DELETE /api/issues/{id}`: delete issue
 
 ## Backend API Conventions
 
 - Router-backed resource roots use `GenericViewSet + mixins`, not `ModelViewSet`.
-- Router registration uses `SimpleRouter(trailing_slash=False)` so the API does not expose an API root or format suffix routes such as `.json`.
 - `APIView` is reserved for flow-oriented or custom endpoints that are not a resource root.
 - Resource roots registered in the router should expose only the HTTP methods the product actually supports.
 - Current resource roots follow this rule:
   - `users`: `list`, `retrieve`, `create`, `update`
   - `projects`: `list`, `retrieve`, `create`, `update`, `destroy`
   - `issues`: router-backed resource with explicit mixins plus custom actions
+  - `attachments`: router-backed resource with explicit mixins
   - `notifications`: router-backed resource with explicit mixins
   - `tags`: `list`, `create`, `destroy`
 - Current flow/custom endpoints stay on `APIView`:
-  - session/auth flows under `/api/security/csrf-token`, `/api/sessions`, `/api/sessions/current`, `/api/sessions/current/access-token`, `/api/users/me`, and `/api/password-reset-*`
-  - user password/profile image flows under `/api/users/me/password`, `/api/users/{userId}/password`, `/api/users/me/profile-image`, and `/api/users/{userId}/profile-image`
-  - nested project issue flow `/api/projects/{projectId}/issues`
-  - nested issue attachment/event resources under `/api/issues/{issueId}/attachments` and `/api/issues/{issueId}/events/{eventId}/attachments`
-- Public path params use camelCase names such as `userId`, `projectId`, `issueId`, `eventId`, `attachmentId`, `notificationId`, and `tagId`.
-- Multiword custom action paths use kebab-case. Phase 1 removes legacy aliases such as `/users/{userId}/status`, `/issues/{issueId}/details`, `/users/me/upload_profile_image`, and router-generated `.json` paths.
-- `DELETE /api/issues/{issueId}` is bodyless; any UI confirmation stays in the frontend only.
-- Server-side JWT revocation remains enabled intentionally as a documented security exception to pure statelessness.
+  - auth endpoints under `/api/auth/*`
+  - nested project issue flow `/api/projects/{id}/issues`
+  - upload flow `/api/issue-events/{id}/attachments`
+- Multiword custom action paths should use kebab-case. Legacy aliases may exist temporarily for compatibility.
 
 ## Notes
 
 - PostgreSQL data persistence is provided by Docker volume `postgres_data`.
 - Docker internal communication uses service names over `bugboard_net`.
 - In development, frontend requests use the Vite proxy for `/api`.
-- In production, nginx serves the frontend and proxies `/api` and `/admin` to Django; media URLs are served directly from GCS.
+- In production, nginx serves the frontend and proxies `/api`, `/media`, and `/admin` to Django.

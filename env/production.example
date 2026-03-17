@@ -13,6 +13,13 @@ ALLOWED_HOSTS=35.240.52.33,your-domain.com,www.your-domain.com,backend
 GUNICORN_WORKERS=1
 GUNICORN_THREADS=8
 
+# Single-node runtime defaults
+SINGLE_NODE_RUNTIME=True
+CACHE_BACKEND=locmem
+NOTIFICATIONS_TRANSPORT_BACKEND=memory
+GUNICORN_WORKERS=1
+GUNICORN_THREADS=12
+
 # CORS / CSRF
 CORS_ALLOW_ALL_ORIGINS=False
 CORS_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com,http://35.240.52.33
