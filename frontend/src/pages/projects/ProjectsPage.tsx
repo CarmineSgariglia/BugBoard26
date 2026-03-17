@@ -2,16 +2,16 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { CreateProjectFlow } from "@features/projects/CreateProjectFlow";
+import { CreateProjectFlow } from "@features/project/flows/CreateProjectFlow";
 import { listProjectsApi } from "@shared/api/modules/projects";
 import type { Project } from "@shared/api/types/projects";
 import { resolveMediaUrl } from "@shared/api/core/media";
-import { getProjectIcon } from "@shared/constants/projectIcons";
+import { getProjectIcon } from "@features/project/ui/projectIcons";
 import { useFluidWheelWindow } from "@shared/hooks";
-import { useAuth } from "@shared/providers/AuthContext";
+import { useAuth } from "@features/auth";
 import { SearchBar } from "@shared/ui/SearchBar";
-import { CreateProjectCard } from "@widgets/projects/CreateProjectCard";
-import { ProjectFolderCard } from "@widgets/projects/ProjectFolderCard";
+import { CreateProjectCard } from "@features/project/ui/CreateProjectCard";
+import { ProjectFolderCard } from "@features/project/ui/ProjectFolderCard";
 
 function projectIcon(iconId?: string) {
   return getProjectIcon(iconId || "folder", 30);

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { loginApi } from "@shared/api/modules/auth";
 import { isValidEmail, isValidPassword } from "@shared/lib/validation";
-import { useAuth } from "@shared/providers/AuthContext";
+import { useAuth } from "@features/auth";
 import { Button } from "@shared/ui/Button";
 import { FormField } from "@shared/ui/FormField";
 import { Input } from "@shared/ui/Input";

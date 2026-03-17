@@ -1,9 +1,9 @@
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import brandLogo from "../../shared/assets/images/LogoBugBoard26.webp";
-import { listProjectsApi } from "../../shared/api/modules/projects";
-import { getIssueApi } from "../../shared/api/modules/issues";
+import brandLogo from "@shared/assets/images/LogoBugBoard26.webp";
+import { listProjectsApi } from "@shared/api/modules/projects";
+import { getIssueApi } from "@shared/api/modules/issues";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 
 export function DynamicBreadcrumbs() {

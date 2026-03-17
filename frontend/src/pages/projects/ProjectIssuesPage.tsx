@@ -10,9 +10,9 @@ import {
 } from "react-icons/hi";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { EditProjectFlow } from "@features/projects/EditProjectFlow";
-import { EditTeamFlow } from "@features/projects/EditTeamFlow";
-import { IssueModal } from "@features/issue/components/IssueModal";
+import { EditProjectFlow } from "@features/project/flows/EditProjectFlow";
+import { EditTeamFlow } from "@features/project/flows/EditTeamFlow";
+import { IssueModal } from "@features/issue/ui/IssueModal";
 import {
   getProjectApi,
   listProjectIssuesApi,
@@ -20,17 +20,17 @@ import {
 } from "@shared/api/modules/projects";
 import type { Issue } from "@shared/api/types/issues";
 import type { ProjectMembership } from "@shared/api/types/projects";
-import { CATEGORIES, PRIORITIES, STATUSES } from "@shared/constants/issueConstants";
-import { useAuth } from "@shared/providers/AuthContext";
+import { CATEGORIES, PRIORITIES, STATUSES } from "@features/issue/model/constants";
+import { useAuth } from "@features/auth";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 import { isAdminLike } from "@shared/lib";
 import { useFluidWheelContainer } from "@shared/hooks";
 import { Button } from "@shared/ui/Button";
 import { SearchBar } from "@shared/ui/SearchBar";
 import { Select } from "@shared/ui/Select";
-import { IssueCard } from "@widgets/issues/IssueCard";
+import { IssueCard } from "@features/issue/ui/IssueCard";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
-import { ProjectSidebar } from "@widgets/projects/ProjectSidebar";
+import { ProjectSidebar } from "@features/project/ui/ProjectSidebar";
 
 export function ProjectIssuesPage() {
   const navigate = useNavigate();

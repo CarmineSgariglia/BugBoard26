@@ -1,6 +1,6 @@
-import { GlassCard } from "../../shared/ui/GlassCard";
+import { GlassCard } from "@shared/ui/GlassCard";
 import { useNavigate } from "react-router-dom";
-import { handleGetHelp } from "../../shared/lib/help";
+import { handleGetHelp } from "@shared/lib/help";
 
 // Icons
 import { FaUser, FaUserFriends } from "react-icons/fa";
@@ -18,7 +18,7 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
     const navigate = useNavigate();
 
     const getTabClass = (tabId: string) => {
-        // Se è la tab attiva, il cursore diventa "default" anziché "pointer" (manina)
+        // Se Ã¨ la tab attiva, il cursore diventa "default" anzichÃ© "pointer" (manina)
         const baseClass = "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer";
         return activeTab === tabId
             ? `${baseClass} bg-[#2D3343] text-white rounded-lg mx-2 mt-2 cursor-default`

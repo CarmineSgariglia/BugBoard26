@@ -1,5 +1,5 @@
-import { resolveMediaUrl } from "../../shared/api/core/media";
-import type { AuthUser } from "../../shared/api/types/auth";
+import { resolveMediaUrl } from "@shared/api/core/media";
+import type { AuthUser } from "@shared/api/types/auth";
 
 interface AvatarTriggerProps {
     user: AuthUser | null;

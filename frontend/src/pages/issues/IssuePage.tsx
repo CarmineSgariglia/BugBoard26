@@ -7,12 +7,12 @@ import {
   IssueAssigneesModal,
   IssueDetailsSidebar,
   IssueModal,
-} from "@features/issue/components";
+} from "@features/issue";
 import { getIssueApi } from "@shared/api/modules/issues";
 import { listProjectMembersApi } from "@shared/api/modules/projects";
 import type { ProjectMembership } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
-import { useAuth } from "@shared/providers/AuthContext";
+import { useAuth } from "@features/auth";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
 

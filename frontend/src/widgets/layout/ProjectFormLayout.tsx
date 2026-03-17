@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { GlassCard } from "../../shared/ui/GlassCard";
+import { GlassCard } from "@shared/ui/GlassCard";
 
 interface ProjectFormLayoutProps {
     title: string;

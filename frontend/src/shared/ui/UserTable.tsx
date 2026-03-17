@@ -2,7 +2,6 @@ import { resolveMediaUrl } from "../api/core/media";
 import type { AuthUser } from "../api/types/auth";
 import { Tag } from "./Tag";
 import { GlassCard } from "./GlassCard";
-import { StatusBadge } from "./StatusBadge";
 import { ScrollableCell } from "./ScrollableCell";
 import type { ReactNode } from "react";
 
@@ -114,11 +113,13 @@ export function UserTable({
 
                                 {showStatus && (
                                     <div className="col-span-2">
-                                        <StatusBadge
-                                            text={user.active ? "Active" : "Inactive"}
-                                            color={user.active ? "emerald-400" : "neutral-500"}
-                                            glow={user.active}
-                                        />
+                                        <div className={`flex items-center gap-2 ${user.active ? "text-emerald-400" : "text-neutral-500"}`}>
+                                            <div
+                                                className="w-1.5 h-1.5 rounded-full bg-current"
+                                                style={user.active ? { boxShadow: "0 0 8px currentColor" } : undefined}
+                                            />
+                                            <span>{user.active ? "Active" : "Inactive"}</span>
+                                        </div>
                                     </div>
                                 )}
 

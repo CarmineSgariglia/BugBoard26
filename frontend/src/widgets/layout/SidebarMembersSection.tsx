@@ -1,5 +1,5 @@
 import { FiEdit2, FiEye } from "react-icons/fi";
-import { AvatarGroup } from "../../shared/ui/AvatarGroup";
+import { AvatarGroup } from "@shared/ui/AvatarGroup";
 import { SidebarCard } from "./SidebarCard";
 
 interface SidebarMembersSectionProps {

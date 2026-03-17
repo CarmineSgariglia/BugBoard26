@@ -7,8 +7,8 @@
 
 import { Outlet } from "react-router-dom";
 import { AppBackground } from "./AppBackground";
-import { TopNav } from "../../widgets/navigation/TopNav";
-import { NotificationsRealtimeListener } from "../../widgets/navigation/NotificationsRealtimeListener";
+import { TopNav } from "@widgets/navigation/TopNav";
+import { NotificationsRealtimeListener } from "@features/notification/ui/NotificationsRealtimeListener";
 
 export function MainLayout() {
     return (

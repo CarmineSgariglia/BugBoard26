@@ -3,8 +3,8 @@
 */}
 
 import { Outlet, useLocation } from "react-router-dom";
-import { GlassCard } from "../../shared/ui/GlassCard";
-import logoUrl from "../../shared/assets/images/LogoBugBoard26.webp";
+import { GlassCard } from "@shared/ui/GlassCard";
+import logoUrl from "@shared/assets/images/LogoBugBoard26.webp";
 import { Link } from "react-router-dom";
 
 

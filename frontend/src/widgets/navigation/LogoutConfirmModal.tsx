@@ -1,4 +1,4 @@
-import { ConfirmModal } from "../../shared/ui/ConfirmModal";
+import { ConfirmModal } from "@shared/ui/ConfirmModal";
 import { IoIosLogOut } from "react-icons/io";
 import { useQueryClient } from "@tanstack/react-query";
 

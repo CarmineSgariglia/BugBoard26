@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { useAuth } from "@shared/providers/AuthContext";
-import { AddUsersSection } from "@widgets/settings/AddUsersSection";
-import { ManageUsersSection } from "@widgets/settings/ManageUsersSection";
-import { ProfileSettingsSection } from "@widgets/settings/ProfileSettingsSection";
+import { useAuth } from "@features/auth";
+import { AddUsersSection } from "@features/user/ui/AddUsersSection";
+import { ManageUsersSection } from "@features/user/ui/ManageUsersSection";
+import { ProfileSettingsSection } from "@features/user/ui/ProfileSettingsSection";
 import { SettingsSidebar } from "@widgets/settings/SettingsSidebar";
 
 export function ManageAccountSettingsPage() {
