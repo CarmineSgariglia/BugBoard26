@@ -1,5 +1,5 @@
 import { FiUploadCloud, FiX, FiFile } from "react-icons/fi";
-import { useFileValidation } from "../hooks/useFileValidation";
+import { useFileValidation } from "@features/issue/activity/useFileValidation";
 import { ATTACHMENT_FILE_INPUT_ACCEPT, formatBytes } from "../lib/media";
 import { AttachmentUploadInfoPopover } from "./AttachmentUploadInfoPopover";
 
@@ -45,7 +45,7 @@ export function FileAttachment({ onFilesChange }: FileAttachmentProps) {
 
             {files.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                    {files.map((file, i) => (
+                    {files.map((file: File, i: number) => (
                         <div key={i} className="flex items-center gap-2 bg-[#1A1D24] border border-white/5 rounded-lg px-3 py-2 animate-in fade-in slide-in-from-bottom-2">
                             <FiFile size={14} className="text-neutral-500" />
                             <span className="text-xs text-white/90 truncate max-w-[150px]">{file.name}</span>
