@@ -7,15 +7,15 @@ import { DynamicBreadcrumbs } from "./DynamicBreadcrumbs";
 import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
-import { logoutApi } from "@shared/api/modules/auth";
+import { logoutApi } from "@features/auth/api";
 import {
   listNotificationsApi,
   notificationsPageSize,
   notificationsQueryKey,
-} from "@shared/api/modules/notifications";
+} from "@features/notification/api";
 import { useAuth } from "@features/auth";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
-import { getNotificationsHasUnread } from "@shared/lib/notifications";
+import { getNotificationsHasUnread } from "@features/notification/lib/notifications";
 import { NotificationDropdown } from "@features/notification/ui/NotificationDropdown";
 
 type NavState = {

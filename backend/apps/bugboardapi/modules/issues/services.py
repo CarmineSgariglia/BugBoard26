@@ -224,5 +224,10 @@ def create_issue_for_project(*, request, project):
         is_active=True,
     ).distinct()
     admins = [user for user in project_members if is_admin_user(user)]
-    notify_users(notify_type=NotifyType.ISSUE_ADDED, users=list(admins), issue=issue)
+    notify_users(
+        notify_type=NotifyType.ISSUE_ADDED,
+        users=list(admins),
+        actor=request.user,
+        issue=issue,
+    )
     return issue

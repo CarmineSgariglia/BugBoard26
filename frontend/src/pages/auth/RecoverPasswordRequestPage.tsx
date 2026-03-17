@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { requestOtpApi } from "@shared/api/modules/auth";
+import { requestOtpApi } from "@features/auth/api";
 import { isValidEmail } from "@shared/lib/validation";
 import { Button } from "@shared/ui/Button";
 import { FormField } from "@shared/ui/FormField";

@@ -71,7 +71,11 @@ class ProjectViewSet(
         with transaction.atomic():
             self.perform_update(serializer)
             if has_team_payload:
-                sync_project_team_members(project=instance, raw_user_ids=raw_user_ids)
+                sync_project_team_members(
+                    project=instance,
+                    raw_user_ids=raw_user_ids,
+                    actor=request.user,
+                )
 
         return Response(serializer.data)
 
@@ -81,7 +85,12 @@ class ProjectViewSet(
 
         recipient_users = list(User.objects.filter(project_memberships__project=project).distinct())
         if recipient_users:
-            notify_users(notify_type=NotifyType.PROJECT_REMOVED, users=recipient_users, project=project)
+            notify_users(
+                notify_type=NotifyType.PROJECT_REMOVED,
+                users=recipient_users,
+                actor=request.user,
+                project=project,
+            )
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["get"], url_path="members")

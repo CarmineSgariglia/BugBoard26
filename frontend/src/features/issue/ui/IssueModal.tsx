@@ -4,8 +4,8 @@ import { FiX } from "react-icons/fi";
 
 import { buildIssueEditActivityMessage } from "@features/issue/lib/buildIssueEditActivityMessage";
 
-import { createIssueUpdateApi, updateIssueDetailsApi } from "@shared/api/modules/issues";
-import { createProjectIssueApi } from "@shared/api/modules/projects";
+import { createIssueUpdateApi, updateIssueDetailsApi } from "@features/issue/api";
+import { createProjectIssueApi } from "@features/project/api";
 import type { Issue } from "@shared/api/types/issues";
 import { CATEGORIES, STATUSES } from "@features/issue/model/constants";
 import { Button } from "@shared/ui/Button";

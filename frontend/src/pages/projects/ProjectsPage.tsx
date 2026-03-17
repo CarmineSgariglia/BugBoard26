@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { CreateProjectFlow } from "@features/project/flows/CreateProjectFlow";
-import { listProjectsApi } from "@shared/api/modules/projects";
+import { listProjectsApi } from "@features/project/api";
 import type { Project } from "@shared/api/types/projects";
 import { resolveMediaUrl } from "@shared/api/core/media";
 import { getProjectIcon } from "@features/project/ui/projectIcons";

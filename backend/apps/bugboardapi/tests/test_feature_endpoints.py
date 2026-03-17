@@ -910,6 +910,35 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             ).exists()
         )
 
+    def test_project_patch_does_not_notify_actor_about_their_own_membership_change(self):
+        other_admin = create_user_with_profile(
+            username="projects_admin_two",
+            email="projects_admin_two@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+
+        self.client.force_authenticate(user=other_admin)
+        response = self.client.patch(
+            f"/api/projects/{self.project.project_id}",
+            {"team": [self.member.id, other_admin.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=other_admin,
+            ).exists()
+        )
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=other_admin,
+                notification__notify_type=NotifyType.PROJECT_ADDED,
+                notification__project=self.project,
+            ).exists()
+        )
+
     def test_project_delete_allows_plain_delete_for_current_frontend_flow(self):
         issue = Issue.objects.create(
             project=self.project,
@@ -990,12 +1019,35 @@ class IssueWorkflowEndpointTests(APITestCase):
                 issue=new_issue, event_type=EventType.CREATE
             ).exists()
         )
-        self.assertTrue(
+        self.assertFalse(
             NotifyUser.objects.filter(
                 user=self.admin,
                 notification__notify_type=NotifyType.ISSUE_ADDED,
                 notification__issue=new_issue,
                 notification__project=self.project,
+            ).exists()
+        )
+
+    def test_issue_create_does_not_notify_creator_when_they_are_the_only_admin(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues",
+            {
+                "title": "Self notification check",
+                "description": "Created from test",
+                "type": "BUG",
+                "status": "TODO",
+                "priority": "LOW",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_issue = Issue.objects.get(issue_id=response.data["issueId"])
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_ADDED,
+                notification__issue=new_issue,
             ).exists()
         )
 
@@ -1271,6 +1323,23 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.issue.refresh_from_db()
         self.assertEqual(self.issue.status, IssueStatus.DONE)
         self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_CLOSED,
+                notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_status_update_does_not_notify_actor_when_actor_is_reporter(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status",
+            {"status": "DONE", "message": "done by reporter"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
             NotifyUser.objects.filter(
                 user=self.admin,
                 notification__notify_type=NotifyType.ISSUE_CLOSED,
@@ -1905,6 +1974,22 @@ class NotificationTagMetaEndpointTests(APITestCase):
         )
         self.assertIsNone(notification.issue)
         self.assertEqual(notification.project, self.project)
+
+    def test_notify_users_skips_actor_and_avoids_empty_notifications(self):
+        notification = notify_users(
+            notify_type=NotifyType.ISSUE_UPDATED,
+            users=[self.member],
+            actor=self.member,
+            issue=self.issue,
+        )
+        self.assertIsNone(notification)
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).exists()
+        )
 
     def test_issue_notification_payload_includes_project_id(self):
         self.client.force_authenticate(user=self.member)

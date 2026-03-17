@@ -1,7 +1,7 @@
 import { useCallback, createContext, useContext, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { meApi } from "@shared/api/modules/auth";
+import { meApi } from "@features/auth/api";
 import type { AuthUser } from "@shared/api/types/auth";
 
 interface AuthContextType {

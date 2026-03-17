@@ -87,7 +87,12 @@ class IssueViewSet(
             raise ValidationError({"title": "Issue title confirmation mismatch"})
         recipients = list(User.objects.filter(issue_assignments__issue=instance).distinct())
         if recipients:
-            notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=recipients, issue=instance)
+            notify_users(
+                notify_type=NotifyType.ISSUE_UPDATED,
+                users=recipients,
+                actor=self.request.user,
+                issue=instance,
+            )
         instance.delete()
 
     def perform_update(self, serializer):
@@ -104,7 +109,12 @@ class IssueViewSet(
 
         recipients = issue_notification_recipients(issue=issue, actor=self.request.user)
         if recipients:
-            notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=recipients, issue=issue)
+            notify_users(
+                notify_type=NotifyType.ISSUE_UPDATED,
+                users=recipients,
+                actor=self.request.user,
+                issue=issue,
+            )
 
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, issueId=None):
@@ -137,7 +147,12 @@ class IssueViewSet(
             event_type=EventType.ASSIGN,
             message="Assignees updated",
         )
-        notify_users(notify_type=NotifyType.ISSUE_ASSIGNED, users=assigned_users, issue=issue)
+        notify_users(
+            notify_type=NotifyType.ISSUE_ASSIGNED,
+            users=assigned_users,
+            actor=request.user,
+            issue=issue,
+        )
         return Response({"detail": "Issue assigned"})
 
     @action(detail=True, methods=["post"], url_path="unassign")
@@ -157,7 +172,12 @@ class IssueViewSet(
             message="Assignees removed",
         )
         if users:
-            notify_users(notify_type=NotifyType.ISSUE_UNASSIGNED, users=users, issue=issue)
+            notify_users(
+                notify_type=NotifyType.ISSUE_UNASSIGNED,
+                users=users,
+                actor=request.user,
+                issue=issue,
+            )
         return Response({"detail": "Issue unassigned"})
 
     @action(detail=True, methods=["post"], url_path="status")
@@ -186,7 +206,12 @@ class IssueViewSet(
         )
 
         if new_status == IssueStatus.DONE:
-            notify_users(notify_type=NotifyType.ISSUE_CLOSED, users=[issue.reporter], issue=issue)
+            notify_users(
+                notify_type=NotifyType.ISSUE_CLOSED,
+                users=[issue.reporter],
+                actor=request.user,
+                issue=issue,
+            )
         return Response(IssueSerializer(issue).data)
 
     @action(detail=True, methods=["get", "post"], url_path="updates")
@@ -216,7 +241,12 @@ class IssueViewSet(
 
         recipients = issue_notification_recipients(issue=issue, actor=request.user)
         if recipients:
-            notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=recipients, issue=issue)
+            notify_users(
+                notify_type=NotifyType.ISSUE_UPDATED,
+                users=recipients,
+                actor=request.user,
+                issue=issue,
+            )
 
         return Response(IssueEventSerializer(event).data, status=status.HTTP_201_CREATED)
 

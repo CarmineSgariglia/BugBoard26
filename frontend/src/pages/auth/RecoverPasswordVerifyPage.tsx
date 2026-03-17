@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { resetPasswordApi, verifyOtpApi } from "@shared/api/modules/auth";
+import { resetPasswordApi, verifyOtpApi } from "@features/auth/api";
 import { isValidCode, isValidPassword } from "@shared/lib/validation";
 import { Button } from "@shared/ui/Button";
 import { FormField } from "@shared/ui/FormField";

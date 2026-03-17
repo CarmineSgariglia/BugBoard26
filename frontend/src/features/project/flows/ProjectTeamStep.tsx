@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ProjectFormLayout } from "@widgets/layout/ProjectFormLayout";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { UserSelectorTable } from "@shared/ui/UserSelectorTable";
-import { usePaginatedUsers } from "@shared/hooks/usePaginatedUsers";
+import { usePaginatedUsers } from "@features/user/hooks/usePaginatedUsers";
 import { RiArrowLeftLine } from "react-icons/ri";
 
 interface ProjectTeamStepProps {

@@ -17,7 +17,7 @@ const {
   realtimeListenerState: { props: null as null | Record<string, unknown> },
 }));
 
-vi.mock("@shared/api/modules/issues", () => ({
+vi.mock("@features/issue/api", () => ({
   createIssueUpdateApi: createIssueUpdateApiMock,
   listIssueUpdatesApi: listIssueUpdatesApiMock,
 }));

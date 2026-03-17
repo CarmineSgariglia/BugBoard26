@@ -21,10 +21,15 @@ def create_project_memberships(*, project: Project, owner: User, raw_user_ids):
         )
         members.append(member.user)
     if members:
-        notify_users(notify_type=NotifyType.PROJECT_ADDED, users=members, project=project)
+        notify_users(
+            notify_type=NotifyType.PROJECT_ADDED,
+            users=members,
+            actor=owner,
+            project=project,
+        )
 
 
-def sync_project_team_members(*, project: Project, raw_user_ids):
+def sync_project_team_members(*, project: Project, raw_user_ids, actor: User | None = None):
     user_ids = request_user_ids(raw_user_ids)
     target_users = list(User.objects.filter(id__in=user_ids, is_active=True).exclude(id=project.created_by_id))
     target_user_ids = {user.id for user in target_users}
@@ -48,6 +53,16 @@ def sync_project_team_members(*, project: Project, raw_user_ids):
         mutable_memberships.filter(user_id__in=to_remove_ids).delete()
 
     if added_users:
-        notify_users(notify_type=NotifyType.PROJECT_ADDED, users=added_users, project=project)
+        notify_users(
+            notify_type=NotifyType.PROJECT_ADDED,
+            users=added_users,
+            actor=actor,
+            project=project,
+        )
     if removed_users:
-        notify_users(notify_type=NotifyType.PROJECT_UNASSIGNED, users=removed_users, project=project)
+        notify_users(
+            notify_type=NotifyType.PROJECT_UNASSIGNED,
+            users=removed_users,
+            actor=actor,
+            project=project,
+        )

@@ -4,11 +4,11 @@ import { RiCloseLine } from "react-icons/ri";
 
 import {
   assignIssueUsersApi,
-  getIssueApi,
   listIssueSuggestionsApi,
   unassignIssueUsersApi,
-} from "@shared/api/modules/issues";
-import { listProjectMembersApi } from "@shared/api/modules/projects";
+} from "@features/issue/api";
+import { getIssueApi } from "@features/issue/api";
+import { listProjectMembersApi } from "@features/project/api";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { Issue, IssueSuggestion } from "@shared/api/types/issues";
 import { isAdminLike } from "@shared/lib";

@@ -16,8 +16,8 @@ import { IssueModal } from "@features/issue/ui/IssueModal";
 import {
   getProjectApi,
   listProjectIssuesApi,
-  listProjectMembersApi,
-} from "@shared/api/modules/projects";
+} from "@features/project/api";
+import { listProjectMembersApi } from "@features/project/api";
 import type { Issue } from "@shared/api/types/issues";
 import type { ProjectMembership } from "@shared/api/types/projects";
 import { CATEGORIES, PRIORITIES, STATUSES } from "@features/issue/model/constants";

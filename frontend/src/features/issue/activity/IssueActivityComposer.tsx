@@ -1,10 +1,10 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { FiPaperclip, FiSend, FiX, FiAlertCircle } from "react-icons/fi";
-import { useFileValidation } from "@shared/hooks/useFileValidation";
 import { ATTACHMENT_FILE_INPUT_ACCEPT, ATTACHMENT_MAX_FILES, formatBytes } from "@shared/lib/media";
 import { AttachmentUploadInfoPopover } from "@shared/ui/AttachmentUploadInfoPopover";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLength } from "@shared/ui/DescriptionFieldWithLength";
+import { useFileValidation } from "./useFileValidation";
 
 type Props = {
     message: string;

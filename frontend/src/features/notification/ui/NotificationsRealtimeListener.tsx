@@ -4,7 +4,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { matchPath, useLocation } from "react-router-dom";
 
 import { getAccessToken } from "@shared/api/core/client";
-import { refreshApi } from "@shared/api/modules/auth";
+import { refreshApi } from "@features/auth/api";
 import {
   getNotificationsStreamUrl,
   listNotificationsApi,
@@ -12,8 +12,7 @@ import {
   notificationsPageSize,
   notificationsQueryKey,
   readNotificationApi,
-} from "@shared/api/modules/notifications";
-import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
+} from "@features/notification/api";
 import {
   flattenNotificationsPages,
   getNotificationDescription,
@@ -21,11 +20,10 @@ import {
   getNotificationTitle,
   prependNotificationToInfiniteData,
   updateNotificationsInfiniteData,
-} from "@shared/lib/notifications";
-import {
-  createSseParser,
-  getLatestNotificationId,
-} from "@shared/lib/notificationsRealtime";
+} from "@features/notification/lib/notifications";
+import { getLatestNotificationId } from "@features/notification/lib/notificationsRealtime";
+import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
+import { createSseParser } from "@shared/lib/sse";
 import { useAuth } from "@features/auth";
 import { useToast } from "@shared/providers";
 

@@ -1,2 +1,2 @@
-export * from "./modules";
+export * from "./core/media";
 export * from "./types";

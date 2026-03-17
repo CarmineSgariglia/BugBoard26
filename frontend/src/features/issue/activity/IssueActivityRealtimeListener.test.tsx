@@ -35,11 +35,11 @@ vi.mock("@shared/api/core/client", () => ({
   getAccessToken: getAccessTokenMock,
 }));
 
-vi.mock("@shared/api/modules/auth", () => ({
+vi.mock("@features/auth/api", () => ({
   refreshApi: refreshApiMock,
 }));
 
-vi.mock("@shared/api/modules/issues", () => ({
+vi.mock("@features/issue/api", () => ({
   getIssueUpdatesStreamUrl: (issueId: number) => `/api/issues/${issueId}/updates/stream`,
 }));
 

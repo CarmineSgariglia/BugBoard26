@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../../../test/render";
 import { IssueActivityComposer } from "./IssueActivityComposer";
 
-vi.mock("@shared/hooks/useFileValidation", () => ({
+vi.mock("./useFileValidation", () => ({
   useFileValidation: () => ({
     error: null,
     isPreparingFiles: false,

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import projectLogo from "@shared/assets/images/LogoBugBoard26-Project.webp";
 import { BaseFolderCard } from "./BaseFolderCard";
-import { getContrastColor } from "@shared/lib/color";
+import { getContrastColor } from "@features/project/lib/color";
 import { useMemo } from "react";
 
 export interface ProjectFolderCardProps {

@@ -16,6 +16,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@adobe/css-tools": "^4.4.4",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
     "react": "^19.2.0",

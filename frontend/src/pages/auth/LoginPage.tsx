@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { loginApi } from "@shared/api/modules/auth";
+import { loginApi } from "@features/auth/api";
 import { isValidEmail, isValidPassword } from "@shared/lib/validation";
 import { useAuth } from "@features/auth";
 import { Button } from "@shared/ui/Button";
