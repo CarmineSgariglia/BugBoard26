@@ -1,10 +1,17 @@
-from django.contrib.auth.models import User
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from rest_framework.exceptions import PermissionDenied
 
-from ..modules.issues.models import Issue
-from ..modules.projects.models import Project
 from ..roles import is_admin_user
 from .helpers import is_issue_assignee, is_project_member
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import User
+
+    from ..modules.issues.models import Issue
+    from ..modules.projects.models import Project
 
 
 def is_admin(user: User | None) -> bool:
@@ -14,12 +21,6 @@ def is_admin(user: User | None) -> bool:
 def check_admin(user: User) -> None:
     if not is_admin(user):
         raise PermissionDenied("Admin privileges required")
-
-
-def user_project_ids(user: User):
-    if is_admin(user):
-        return Project.objects.values_list("project_id", flat=True)
-    return user.projects.values_list("project_id", flat=True)
 
 
 def ensure_project_access(user: User, project: Project) -> None:

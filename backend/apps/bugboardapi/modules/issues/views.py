@@ -4,55 +4,45 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.http import StreamingHttpResponse
-from django.db.models import Count, Q
-from django.utils import timezone
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ...common.parsing import request_user_ids
 from ...common.sse import ServerSentEventsRenderer, format_sse_event
 from ...permissions import (
     check_assignee_or_admin,
     check_admin,
     ensure_issue_access,
-    is_admin,
-    user_project_ids,
+    filter_by_project_access,
 )
-from ...roles import is_admin_user
-from ..notifications.models import NotifyType
-from ..notifications.services import notify_users
-from ..projects.models import ProjectMembership
-from ..projects.serializers import ProjectMembershipSerializer
 from .models import (
     Attachment,
-    EventType,
     Issue,
-    IssueAssignee,
     IssueEvent,
-    IssueStatus,
 )
+from ..projects.serializers import ProjectMembershipSerializer
 from .serializers import (
     AttachmentSerializer,
     IssueEventSerializer,
     IssueSerializer,
 )
-from .realtime import open_issue_subscription
-from .services import (
-    apply_issue_filters,
-    create_attachment_for_event,
-    create_issue_event,
-    create_issue_event_with_attachment,
-    delete_media_path,
-    issue_notification_recipients,
-    schedule_issue_event_broadcast,
-    validate_issue_event_message,
+from .activity import delete_media_path
+from .commands import (
+    assign_issue_users,
+    create_issue_attachment,
+    create_issue_comment,
+    delete_issue,
+    unassign_issue_users,
+    update_issue_from_serializer,
+    update_issue_status,
+    upload_attachment_for_event,
 )
+from .queries import apply_issue_filters, list_issue_suggestion_memberships
+from .realtime import open_issue_subscription
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +61,7 @@ class IssueViewSet(
 
     def get_queryset(self):
         queryset = Issue.objects.select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
-        queryset = queryset.filter(project_id__in=user_project_ids(self.request.user))
+        queryset = filter_by_project_access(queryset=queryset, user=self.request.user)
         project_id = self.request.query_params.get("projectId")
         if project_id:
             queryset = queryset.filter(project_id=project_id)
@@ -80,79 +70,21 @@ class IssueViewSet(
     def perform_destroy(self, instance):
         check_admin(self.request.user)
         ensure_issue_access(self.request.user, instance)
-        title = self.request.data.get("title")
-        if not title:
-            raise ValidationError({"title": "Issue title confirmation is required"})
-        if title != instance.title:
-            raise ValidationError({"title": "Issue title confirmation mismatch"})
-        recipients = list(User.objects.filter(issue_assignments__issue=instance).distinct())
-        if recipients:
-            notify_users(
-                notify_type=NotifyType.ISSUE_UPDATED,
-                users=recipients,
-                actor=self.request.user,
-                issue=instance,
-            )
-        instance.delete()
+        delete_issue(instance=instance, title_confirmation=self.request.data.get("title"))
 
     def perform_update(self, serializer):
-        issue = serializer.save()
-
-        # Track direct issue edits (PATCH/PUT) and fan out update notifications.
-        message = (self.request.data.get("message", "") or "").strip() or "Issue updated"
-        create_issue_event(
-            issue=issue,
+        update_issue_from_serializer(
+            serializer=serializer,
             actor=self.request.user,
-            event_type=EventType.EDIT,
-            message=message,
+            raw_message=self.request.data.get("message", ""),
         )
-
-        recipients = issue_notification_recipients(issue=issue, actor=self.request.user)
-        if recipients:
-            notify_users(
-                notify_type=NotifyType.ISSUE_UPDATED,
-                users=recipients,
-                actor=self.request.user,
-                issue=issue,
-            )
 
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, issueId=None):
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        user_ids = request_user_ids(request.data.get("userIds", []))
-        if not user_ids:
-            raise ValidationError({"userIds": "At least one userId is required"})
-
-        memberships = list(
-            ProjectMembership.objects.filter(project=issue.project, user_id__in=user_ids).select_related("user")
-        )
-        allowed_ids = {membership.user_id for membership in memberships}
-        disallowed_ids = [uid for uid in user_ids if uid not in allowed_ids]
-        if disallowed_ids:
-            raise ValidationError({"userIds": f"Users must be members of project: {disallowed_ids}"})
-        admin_ids = [membership.user_id for membership in memberships if is_admin_user(membership.user)]
-        if admin_ids:
-            raise ValidationError({"userIds": f"Admin users cannot be assigned to issues: {admin_ids}"})
-
-        assigned_users = []
-        for user_id in user_ids:
-            assignment, _ = IssueAssignee.objects.get_or_create(issue=issue, user_id=user_id)
-            assigned_users.append(assignment.user)
-
-        create_issue_event(
-            issue=issue,
-            actor=request.user,
-            event_type=EventType.ASSIGN,
-            message="Assignees updated",
-        )
-        notify_users(
-            notify_type=NotifyType.ISSUE_ASSIGNED,
-            users=assigned_users,
-            actor=request.user,
-            issue=issue,
-        )
+        assign_issue_users(issue=issue, actor=request.user, raw_user_ids=request.data.get("userIds", []))
         return Response({"detail": "Issue assigned"})
 
     @action(detail=True, methods=["post"], url_path="unassign")
@@ -160,24 +92,7 @@ class IssueViewSet(
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        user_ids = request_user_ids(request.data.get("userIds", []))
-        if not user_ids:
-            raise ValidationError({"userIds": "At least one userId is required"})
-        users = list(User.objects.filter(id__in=user_ids))
-        IssueAssignee.objects.filter(issue=issue, user_id__in=user_ids).delete()
-        create_issue_event(
-            issue=issue,
-            actor=request.user,
-            event_type=EventType.UNASSIGN,
-            message="Assignees removed",
-        )
-        if users:
-            notify_users(
-                notify_type=NotifyType.ISSUE_UNASSIGNED,
-                users=users,
-                actor=request.user,
-                issue=issue,
-            )
+        unassign_issue_users(issue=issue, actor=request.user, raw_user_ids=request.data.get("userIds", []))
         return Response({"detail": "Issue unassigned"})
 
     @action(detail=True, methods=["post"], url_path="status")
@@ -185,34 +100,14 @@ class IssueViewSet(
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
         check_assignee_or_admin(request.user, issue)
-
-        new_status = request.data.get("status")
-        if new_status not in dict(IssueStatus.choices):
-            raise ValidationError({"status": "Invalid status"})
-
-        old_status = issue.status
-        issue.status = new_status
-        issue.save(update_fields=["status"])
-
-        message = request.data.get("message", "")
-        event = create_issue_event_with_attachment(
+        updated_issue = update_issue_status(
             issue=issue,
             actor=request.user,
-            event_type=EventType.STATUS_CHANGE,
-            message=message,
+            new_status=request.data.get("status"),
+            raw_message=request.data.get("message", ""),
             payload=request.data,
-            old_status=old_status,
-            new_status=new_status,
         )
-
-        if new_status == IssueStatus.DONE:
-            notify_users(
-                notify_type=NotifyType.ISSUE_CLOSED,
-                users=[issue.reporter],
-                actor=request.user,
-                issue=issue,
-            )
-        return Response(IssueSerializer(issue).data)
+        return Response(IssueSerializer(updated_issue, context={"request": request}).data)
 
     @action(detail=True, methods=["get", "post"], url_path="updates")
     def updates(self, request, issueId=None):
@@ -224,31 +119,13 @@ class IssueViewSet(
             return Response(IssueEventSerializer(events, many=True).data)
 
         check_assignee_or_admin(request.user, issue)
-
-        message = validate_issue_event_message(
-            request.data.get("message", ""),
-            required=True,
-            strip=True,
-        )
-
-        event = create_issue_event_with_attachment(
+        event = create_issue_comment(
             issue=issue,
             actor=request.user,
-            event_type=EventType.COMMENT,
-            message=message,
+            raw_message=request.data.get("message", ""),
             payload=request.data,
         )
-
-        recipients = issue_notification_recipients(issue=issue, actor=request.user)
-        if recipients:
-            notify_users(
-                notify_type=NotifyType.ISSUE_UPDATED,
-                users=recipients,
-                actor=request.user,
-                issue=issue,
-            )
-
-        return Response(IssueEventSerializer(event).data, status=status.HTTP_201_CREATED)
+        return Response(IssueEventSerializer(event, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     def _parse_last_event_id(self, request) -> int:
         raw_last_event_id = request.headers.get("Last-Event-ID", "").strip()
@@ -336,26 +213,7 @@ class IssueViewSet(
     def suggestions(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
-        memberships_qs = (
-            ProjectMembership.objects.filter(project=issue.project, user__is_active=True)
-            .select_related("user", "user__profile")
-            .annotate(
-                open_count=Count(
-                    "user__issue_assignments",
-                    filter=Q(
-                        user__issue_assignments__issue__status__in=[
-                            IssueStatus.TODO,
-                            IssueStatus.IN_PROGRESS,
-                        ]
-                    ),
-                    distinct=True,
-                )
-            )
-            .order_by("open_count", "user__username")
-        )
-
-        # Suggestions must return only assignable users: active, project members, non-admin.
-        memberships = [membership for membership in memberships_qs if not is_admin_user(membership.user)]
+        memberships = list_issue_suggestion_memberships(issue=issue)
         payload = ProjectMembershipSerializer(memberships, many=True).data
         open_count_by_user_id = {membership.user_id: membership.open_count for membership in memberships}
         for item in payload:
@@ -390,13 +248,8 @@ class AttachmentUploadView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_issue_access(request.user, event.issue)
         check_assignee_or_admin(request.user, event.issue)
-
-        attachment = create_attachment_for_event(event, request.data)
-        if not attachment:
-            raise ValidationError({"file": "Attachment file is required"})
-        schedule_issue_event_broadcast(event)
-        created_attachment = attachment[0] if isinstance(attachment, list) else attachment
-        return Response(AttachmentSerializer(created_attachment).data, status=status.HTTP_201_CREATED)
+        attachment = upload_attachment_for_event(event=event, payload=request.data)
+        return Response(AttachmentSerializer(attachment, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
 class AttachmentViewSet(
@@ -413,7 +266,11 @@ class AttachmentViewSet(
     lookup_url_kwarg = "attachmentId"
 
     def get_queryset(self):
-        queryset = super().get_queryset().filter(update__issue__project_id__in=user_project_ids(self.request.user))
+        queryset = filter_by_project_access(
+            queryset=super().get_queryset(),
+            user=self.request.user,
+            project_lookup="update__issue__project_id",
+        )
         issue_id = self.request.query_params.get("issueId")
         update_id = self.request.query_params.get("updateId")
         if issue_id:
@@ -439,26 +296,15 @@ class AttachmentViewSet(
             if not event:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(event.issue)
-            attachment = create_attachment_for_event(event, request.data)
-            schedule_issue_event_broadcast(event)
+            attachment = upload_attachment_for_event(event=event, payload=request.data)
         else:
             issue = Issue.objects.filter(issue_id=issue_id).select_related("project").first()
             if not issue:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(issue)
-            message = (request.data.get("message", "") or "").strip() or "Attachment uploaded"
-            event = create_issue_event_with_attachment(
-                issue=issue,
-                actor=request.user,
-                event_type=EventType.COMMENT,
-                message=message,
-                payload=request.data,
-            )
-            attachment = event.attachments.first()
+            attachment = create_issue_attachment(issue=issue, actor=request.user, payload=request.data)
 
-        if not attachment:
-            raise ValidationError({"file": "Attachment file is required"})
-        return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+        return Response(AttachmentSerializer(attachment, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         attachment = self.get_object()

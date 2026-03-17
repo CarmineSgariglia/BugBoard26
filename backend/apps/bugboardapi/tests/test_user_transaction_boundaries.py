@@ -1,10 +1,8 @@
-from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-from PIL import Image
 from rest_framework.test import APIRequestFactory
 
 from apps.bugboardapi.modules.users.commands import save_profile_image_for_user
@@ -15,12 +13,6 @@ from apps.bugboardapi.modules.users.mutations import (
 )
 from apps.bugboardapi.roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME, get_global_role
 from apps.bugboardapi.tests.utils import create_user_with_profile
-
-
-def make_png_bytes(*, size: tuple[int, int], color: str = "blue") -> bytes:
-    buffer = BytesIO()
-    Image.new("RGB", size, color=color).save(buffer, format="PNG")
-    return buffer.getvalue()
 
 
 class UserTransactionBoundariesTests(TestCase):
@@ -86,11 +78,11 @@ class UserTransactionBoundariesTests(TestCase):
 
     def test_save_profile_image_deletes_new_upload_when_db_update_fails(self):
         request = self.factory.post(
-            "/api/users/me/profile-image",
+            "/api/users/me/upload_profile_image",
             {
                 "profile_img": SimpleUploadedFile(
                     "avatar.png",
-                    make_png_bytes(size=(1200, 1200)),
+                    b"\x89PNG\r\n\x1a\nfake",
                     content_type="image/png",
                 )
             },
@@ -104,18 +96,6 @@ class UserTransactionBoundariesTests(TestCase):
                 path=f"profile-images/{self.member.id}/new-avatar.png",
                 mime_type="image/png",
                 size=8,
-            ),
-        ), patch(
-            "apps.bugboardapi.modules.users.commands.compress_image_upload",
-            return_value=SimpleNamespace(
-                file=SimpleUploadedFile(
-                    "avatar.webp",
-                    b"webp",
-                    content_type="image/webp",
-                ),
-                mime_type="image/webp",
-                size=4,
-                extension=".webp",
             ),
         ), patch.object(
             UserProfileImage,

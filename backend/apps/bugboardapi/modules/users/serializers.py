@@ -17,17 +17,52 @@ from .mutations import (
 )
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserReadSerializer(serializers.ModelSerializer):
     userId = serializers.IntegerField(source="id", read_only=True)
+    firstName = serializers.CharField(source="first_name", read_only=True)
+    lastName = serializers.CharField(source="last_name", read_only=True)
+    group = serializers.SerializerMethodField()
+    isAdmin = serializers.SerializerMethodField()
+    profileImg = serializers.SerializerMethodField()
+    active = serializers.BooleanField(source="is_active", read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "userId",
+            "username",
+            "email",
+            "firstName",
+            "lastName",
+            "group",
+            "isAdmin",
+            "profileImg",
+            "active",
+        ]
+
+    def get_group(self, instance):
+        role = get_global_role(instance) or DEVELOPER_GROUP_NAME
+        return role
+
+    def get_isAdmin(self, instance):
+        return self.get_group(instance) == ADMIN_GROUP_NAME
+
+    def get_profileImg(self, instance):
+        profile = getattr(instance, "profile", None)
+        profile_img = getattr(profile, "profile_img", "") if profile is not None else ""
+        return build_media_url(self, profile_img)
+
+
+class UserMutationSerializer(UserReadSerializer):
     firstName = serializers.CharField(source="first_name", required=False, allow_blank=True)
     lastName = serializers.CharField(source="last_name", required=False, allow_blank=True)
     isAdmin = serializers.BooleanField(required=False, write_only=True)
     group = serializers.ChoiceField(choices=GLOBAL_ROLE_CHOICES, required=False, write_only=True)
     profileImg = serializers.CharField(source="profile.profile_img", required=False, allow_blank=True)
     active = serializers.BooleanField(source="is_active", required=False)
+    password = serializers.CharField(write_only=True, required=False)
 
-    class Meta:
-        model = User
+    class Meta(UserReadSerializer.Meta):
         fields = [
             "userId",
             "username",
@@ -40,15 +75,9 @@ class UserSerializer(serializers.ModelSerializer):
             "profileImg",
             "active",
         ]
-        extra_kwargs = {"password": {"write_only": True, "required": False}}
 
     def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data["profileImg"] = build_media_url(self, data.get("profileImg", ""))
-        role = get_global_role(instance) or DEVELOPER_GROUP_NAME
-        data["group"] = role
-        data["isAdmin"] = role == ADMIN_GROUP_NAME
-        return data
+        return UserReadSerializer(instance, context=self.context).data
 
     def validate_email(self, value: str) -> str:
         normalized_email = value.strip()
@@ -103,6 +132,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         return update_user_from_validated_data(instance, validated_data)
+
+
+class UserSerializer(UserReadSerializer):
+    pass
 
 
 class ChangePasswordSerializer(serializers.Serializer):

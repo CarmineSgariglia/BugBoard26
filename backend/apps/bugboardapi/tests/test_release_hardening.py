@@ -98,21 +98,18 @@ class ProjectViewRegressionTests(APITestCase):
         returned_names = {item["name"] for item in response.data}
         self.assertEqual(returned_names, {"Alpha Board"})
 
-    @patch("apps.bugboardapi.modules.projects.views.notify_users")
-    def test_project_delete_notifies_members_before_deletion(self, mock_notify_users):
+    @patch("apps.bugboardapi.modules.projects.commands.notify_project_removed")
+    def test_project_delete_notifies_members_before_deletion(self, mock_notify_project_removed):
+        expected_project_name = self.alpha_project.name
         response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        mock_notify_users.assert_called_once()
+        mock_notify_project_removed.assert_called_once()
         self.assertEqual(
-            mock_notify_users.call_args.kwargs["notify_type"],
-            NotifyType.PROJECT_REMOVED,
-        )
-        self.assertEqual(
-            mock_notify_users.call_args.kwargs["project"].project_id,
-            self.alpha_project.project_id,
+            mock_notify_project_removed.call_args.kwargs["project"].name,
+            expected_project_name,
         )
         notified_user_ids = {
-            user.id for user in mock_notify_users.call_args.kwargs["users"]
+            user.id for user in mock_notify_project_removed.call_args.kwargs["users"]
         }
         self.assertEqual(notified_user_ids, {self.admin.id, self.member.id})
 

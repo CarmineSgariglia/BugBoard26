@@ -132,4 +132,6 @@ def store_upload(*, uploaded_file, storage_dir: str, filename_suffix: str) -> St
     filename = f"{uuid4().hex}{filename_suffix}"
     storage_path = f"{storage_dir}/{filename}"
     saved_path = default_storage.save(storage_path, uploaded_file)
-    return StoredUpload(path=saved_path, mime_type="", size=0)
+    mime_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower()
+    size = int(getattr(uploaded_file, "size", 0) or 0)
+    return StoredUpload(path=saved_path, mime_type=mime_type, size=size)

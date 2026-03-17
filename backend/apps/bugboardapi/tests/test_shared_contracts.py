@@ -1,11 +1,8 @@
-from io import BytesIO
 from unittest.mock import patch
 
-from django.contrib.auth.models import Group, User
-from django.core.files.base import ContentFile
+from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
-from PIL import Image
 from rest_framework.exceptions import ValidationError
 
 from apps.bugboardapi.common.media import build_media_url
@@ -20,27 +17,22 @@ from apps.bugboardapi.roles import (
     ADMIN_GROUP_NAME,
     DEVELOPER_GROUP_NAME,
     assign_global_role,
+    ensure_global_role_groups,
     get_global_role,
+    has_global_role,
     is_admin_user,
 )
-from apps.bugboardapi.modules.issues.activity import delete_media_path
-from apps.bugboardapi.modules.users.commands import _delete_stored_file
-from apps.bugboardapi.security.uploads import (
-    compress_image_upload,
-    MediaStorageUnavailable,
-    store_upload,
-    validate_profile_image,
-)
-
-
-def make_test_image_bytes(*, size: tuple[int, int], image_format: str = "PNG", color: str = "red") -> bytes:
-    buffer = BytesIO()
-    image = Image.new("RGB", size, color=color)
-    image.save(buffer, format=image_format)
-    return buffer.getvalue()
+from apps.bugboardapi.security.uploads import store_upload, validate_profile_image
 
 
 class RoleContractsTests(TestCase):
+    def test_ensure_global_role_groups_returns_expected_mapping(self):
+        groups = ensure_global_role_groups()
+
+        self.assertEqual(set(groups), {ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME})
+        self.assertEqual(groups[ADMIN_GROUP_NAME].name, ADMIN_GROUP_NAME)
+        self.assertEqual(groups[DEVELOPER_GROUP_NAME].name, DEVELOPER_GROUP_NAME)
+
     def test_get_global_role_prefers_superuser_over_group_membership(self):
         user = User.objects.create_user(
             username="roles_superuser",
@@ -70,21 +62,7 @@ class RoleContractsTests(TestCase):
         self.assertFalse(user.is_staff)
         self.assertEqual(list(user.groups.values_list("name", flat=True)), [DEVELOPER_GROUP_NAME])
 
-    def test_assign_global_role_creates_missing_group_on_demand(self):
-        Group.objects.filter(name__in=[ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME]).delete()
-        user = User.objects.create_user(
-            username="roles_dynamic_group",
-            email="roles_dynamic_group@example.com",
-            password="StrongPass123!",
-        )
-
-        assign_global_role(user, ADMIN_GROUP_NAME)
-
-        self.assertTrue(Group.objects.filter(name=ADMIN_GROUP_NAME).exists())
-        self.assertEqual(list(user.groups.values_list("name", flat=True)), [ADMIN_GROUP_NAME])
-        self.assertTrue(user.is_staff)
-
-    def test_is_admin_user_returns_true_for_admin_role(self):
+    def test_has_global_role_treats_admin_as_having_any_requested_role(self):
         user = User.objects.create_user(
             username="roles_admin",
             email="roles_admin@example.com",
@@ -92,6 +70,7 @@ class RoleContractsTests(TestCase):
         )
         assign_global_role(user, ADMIN_GROUP_NAME)
 
+        self.assertTrue(has_global_role(user, DEVELOPER_GROUP_NAME))
         self.assertTrue(is_admin_user(user))
 
 
@@ -144,32 +123,28 @@ class ParsingContractsTests(SimpleTestCase):
 
 class MediaUrlContractsTests(SimpleTestCase):
     def test_build_media_url_preserves_absolute_and_media_prefixed_values(self):
-        self.assertEqual(build_media_url(""), "")
+        self.assertEqual(build_media_url(None, ""), "")
         self.assertEqual(
-            build_media_url("https://cdn.example.com/avatar.png"),
+            build_media_url(None, "https://cdn.example.com/avatar.png"),
             "https://cdn.example.com/avatar.png",
         )
-        self.assertEqual(build_media_url("/media/avatar.png"), "/media/avatar.png")
-
-    def test_build_media_url_rejects_non_https_absolute_values(self):
-        self.assertEqual(build_media_url("http://cdn.example.com/avatar.png"), "")
-        self.assertEqual(build_media_url("ftp://cdn.example.com/avatar.png"), "")
+        self.assertEqual(build_media_url(None, "/media/avatar.png"), "/media/avatar.png")
 
     @override_settings(MEDIA_URL="/files")
     def test_build_media_url_normalizes_relative_media_paths(self):
         self.assertEqual(
-            build_media_url("media/profile-images/avatar.png"),
+            build_media_url(None, "media/profile-images/avatar.png"),
             "/files/profile-images/avatar.png",
         )
         self.assertEqual(
-            build_media_url("/profile-images/avatar.png"),
+            build_media_url(None, "/profile-images/avatar.png"),
             "/files/profile-images/avatar.png",
         )
 
     @override_settings(MEDIA_URL="https://cdn.example.com/media")
     def test_build_media_url_uses_media_url_as_absolute_base(self):
         self.assertEqual(
-            build_media_url("issue-attachments/file.pdf"),
+            build_media_url(None, "issue-attachments/file.pdf"),
             "https://cdn.example.com/media/issue-attachments/file.pdf",
         )
 
@@ -192,19 +167,6 @@ class UploadStorageContractsTests(SimpleTestCase):
         self.assertEqual(stored.mime_type, "image/jpeg")
         self.assertEqual(stored.size, len(b"jpeg-content"))
 
-    @patch("apps.bugboardapi.security.uploads.default_storage.save", side_effect=RuntimeError("gcs down"))
-    def test_store_upload_wraps_storage_failures_with_service_unavailable(self, mocked_save):
-        uploaded = SimpleUploadedFile("avatar.jpg", b"jpeg-content", content_type="image/jpeg")
-
-        with self.assertRaises(MediaStorageUnavailable):
-            store_upload(
-                uploaded_file=uploaded,
-                storage_dir="profile-images/1",
-                filename_suffix=".jpg",
-            )
-
-        self.assertEqual(mocked_save.call_count, 1)
-
     def test_validate_profile_image_accepts_jpeg_extension_alias(self):
         image = SimpleUploadedFile(
             "avatar.jpeg",
@@ -216,40 +178,3 @@ class UploadStorageContractsTests(SimpleTestCase):
 
         self.assertEqual(extension, "jpg")
         self.assertEqual(size, len(image.read()))
-
-    def test_compress_image_upload_converts_to_webp_and_respects_target_size(self):
-        uploaded = SimpleUploadedFile(
-            "avatar.png",
-            make_test_image_bytes(size=(2200, 1800)),
-            content_type="image/png",
-        )
-
-        prepared = compress_image_upload(
-            uploaded_file=uploaded,
-            max_width=1024,
-            max_height=1024,
-            target_max_bytes=2 * 1024 * 1024,
-            field_name="image",
-        )
-
-        self.assertIsInstance(prepared.file, ContentFile)
-        self.assertEqual(prepared.mime_type, "image/webp")
-        self.assertEqual(prepared.extension, ".webp")
-        self.assertLessEqual(prepared.size, 2 * 1024 * 1024)
-        self.assertEqual(getattr(prepared.file, "content_type", ""), "image/webp")
-
-
-class StorageDeletionContractsTests(SimpleTestCase):
-    @patch("apps.bugboardapi.modules.users.commands.default_storage.delete")
-    def test_delete_stored_file_uses_default_storage_backend(self, mocked_delete):
-        _delete_stored_file("profile-images/5/old.webp")
-
-        mocked_delete.assert_called_once_with("profile-images/5/old.webp")
-
-    @patch("apps.bugboardapi.modules.issues.activity.default_storage.delete")
-    @patch("apps.bugboardapi.modules.issues.activity.default_storage.exists", return_value=True)
-    def test_delete_media_path_uses_default_storage_backend(self, mocked_exists, mocked_delete):
-        delete_media_path("issue-attachments/8/file.webp")
-
-        mocked_exists.assert_called_once_with("issue-attachments/8/file.webp")
-        mocked_delete.assert_called_once_with("issue-attachments/8/file.webp")

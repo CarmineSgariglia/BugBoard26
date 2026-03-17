@@ -26,7 +26,7 @@ class PasswordChangeSessionContractsTests(APITestCase):
     def _login(self, *, email: str, password: str) -> tuple[str, str]:
         client = self.client_class()
         response = client.post(
-            "/api/sessions",
+            "/api/auth/login",
             {"email": email, "password": password},
             format="json",
         )
@@ -39,7 +39,7 @@ class PasswordChangeSessionContractsTests(APITestCase):
     def _assert_old_tokens_are_rejected(self, *, access_token: str, refresh_token: str):
         access_client = self.client_class()
         me_response = access_client.get(
-            "/api/users/me",
+            "/api/auth/me",
             HTTP_AUTHORIZATION=f"Bearer {access_token}",
         )
         self.assertIn(
@@ -49,7 +49,7 @@ class PasswordChangeSessionContractsTests(APITestCase):
 
         refresh_client = self.client_class()
         refresh_client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = refresh_token
-        refresh_response = refresh_client.post("/api/sessions/current/access-token", {}, format="json")
+        refresh_response = refresh_client.post("/api/auth/refresh", {}, format="json")
         self.assertEqual(refresh_response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(refresh_response.data["detail"], "Invalid refresh token")
 
@@ -59,8 +59,8 @@ class PasswordChangeSessionContractsTests(APITestCase):
             password="StrongPass123!",
         )
 
-        response = self.client.put(
-            "/api/users/me/password",
+        response = self.client.post(
+            f"/api/users/{self.member.id}/change-password",
             {"currentPassword": "StrongPass123!", "newPassword": "NewStrongPass123!"},
             format="json",
             HTTP_AUTHORIZATION=f"Bearer {access_token}",
@@ -79,8 +79,8 @@ class PasswordChangeSessionContractsTests(APITestCase):
         )
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.put(
-            f"/api/users/{self.member.id}/password",
+        response = self.client.post(
+            f"/api/users/{self.member.id}/admin-reset-password",
             {"newPassword": "AdminResetPass123!"},
             format="json",
         )
@@ -104,7 +104,7 @@ class PasswordChangeSessionContractsTests(APITestCase):
         )
 
         response = self.client.post(
-            "/api/password-resets",
+            "/api/auth/password/reset",
             {
                 "email": self.member.email,
                 "code": raw_code,

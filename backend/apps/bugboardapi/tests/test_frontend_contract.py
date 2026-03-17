@@ -2,10 +2,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.bugboardapi.modules.issues.models import Attachment, EventType, Issue, IssueEvent, IssueStatus
-from apps.bugboardapi.modules.notifications.models import NotifyType
-from apps.bugboardapi.modules.projects.models import ProjectMembership
+from apps.bugboardapi.modules.notifications.services import notify_issue_updated
 from apps.bugboardapi.modules.tags.models import Tag
-from apps.bugboardapi.modules.notifications.services import notify_users
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -39,7 +37,7 @@ class FrontendContractTests(APITestCase):
             status=IssueStatus.TODO,
             priority="MEDIUM",
         )
-        notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[self.member], issue=self.issue)
+        notify_issue_updated(users=[self.member], issue=self.issue)
 
     def test_auth_me_payload_matches_frontend_contract(self):
         self.client.force_authenticate(user=self.member)

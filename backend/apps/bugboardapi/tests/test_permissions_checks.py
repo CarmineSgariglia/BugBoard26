@@ -7,6 +7,7 @@ from apps.bugboardapi.permissions import (
     check_assignee_or_admin as public_check_assignee_or_admin,
     ensure_issue_access as public_ensure_issue_access,
     ensure_project_access as public_ensure_project_access,
+    filter_by_project_access as public_filter_by_project_access,
     is_admin as public_is_admin,
     user_project_ids as public_user_project_ids,
 )
@@ -15,9 +16,10 @@ from apps.bugboardapi.permissions.checks import (
     check_assignee_or_admin,
     ensure_issue_access,
     ensure_project_access,
-    user_project_ids,
 )
 from apps.bugboardapi.permissions.helpers import is_issue_assignee, is_project_member
+from apps.bugboardapi.permissions.scopes import filter_by_project_access, user_project_ids
+from apps.bugboardapi.modules.projects.models import Project
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -67,6 +69,7 @@ class PermissionsChecksTests(TestCase):
         self.assertTrue(callable(public_is_admin))
         self.assertIs(public_check_admin, check_admin)
         self.assertIs(public_user_project_ids, user_project_ids)
+        self.assertIs(public_filter_by_project_access, filter_by_project_access)
         self.assertIs(public_ensure_project_access, ensure_project_access)
         self.assertIs(public_ensure_issue_access, ensure_issue_access)
         self.assertIs(public_check_assignee_or_admin, check_assignee_or_admin)
@@ -77,6 +80,24 @@ class PermissionsChecksTests(TestCase):
     def test_user_project_ids_is_scoped_for_non_admin_and_global_for_admin(self):
         member_ids = set(user_project_ids(self.member))
         admin_ids = set(user_project_ids(self.admin))
+
+        self.assertEqual(member_ids, {self.project.project_id})
+        self.assertIn(self.project.project_id, admin_ids)
+        self.assertIn(self.other_project.project_id, admin_ids)
+
+    def test_filter_by_project_access_scopes_querysets_for_non_admin_and_not_for_admin(self):
+        member_ids = set(
+            filter_by_project_access(
+                queryset=Project.objects.all(),
+                user=self.member,
+            ).values_list("project_id", flat=True)
+        )
+        admin_ids = set(
+            filter_by_project_access(
+                queryset=Project.objects.all(),
+                user=self.admin,
+            ).values_list("project_id", flat=True)
+        )
 
         self.assertEqual(member_ids, {self.project.project_id})
         self.assertIn(self.project.project_id, admin_ids)

@@ -3,7 +3,7 @@ from rest_framework import serializers
 from ...common.media import build_media_url
 from ...roles import is_admin_user
 from ..tags.serializers import TagSerializer
-from ..users.serializers import UserSerializer
+from ..users.serializers import UserReadSerializer
 from .mutations import (
     create_issue_from_validated_data,
     update_issue_from_validated_data,
@@ -17,7 +17,7 @@ class IssueSerializer(serializers.ModelSerializer):
     issueId = serializers.IntegerField(source="issue_id", read_only=True)
     projectId = serializers.IntegerField(source="project.project_id", read_only=True)
     reporterId = serializers.IntegerField(source="reporter.id", read_only=True)
-    reporter = UserSerializer(read_only=True)
+    reporter = UserReadSerializer(read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     type = serializers.CharField(source="issue_type")
     assigneeIds = serializers.ListField(child=serializers.IntegerField(min_value=1), write_only=True, required=False)

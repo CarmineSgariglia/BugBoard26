@@ -107,10 +107,8 @@ class RevocableJWTAuthenticationTests(SimpleTestCase):
                 "rest_framework_simplejwt.authentication.JWTAuthentication.authenticate",
                 return_value=(user, token),
             ),
-            patch("apps.bugboardapi.security.authentication.RevokedTokenSession") as session_model,
+            patch("apps.bugboardapi.security.authentication.is_token_session_revoked", return_value=True),
         ):
-            session_model.objects.filter.return_value.exists.return_value = True
-
             with self.assertRaises(AuthenticationFailed):
                 RevocableJWTAuthentication().authenticate(request)
 
@@ -124,8 +122,6 @@ class RevocableJWTAuthenticationTests(SimpleTestCase):
                 "rest_framework_simplejwt.authentication.JWTAuthentication.authenticate",
                 return_value=(user, token),
             ),
-            patch("apps.bugboardapi.security.authentication.RevokedTokenSession") as session_model,
+            patch("apps.bugboardapi.security.authentication.is_token_session_revoked", return_value=False),
         ):
-            session_model.objects.filter.return_value.exists.return_value = False
-
             self.assertEqual(RevocableJWTAuthentication().authenticate(request), (user, token))
