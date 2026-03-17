@@ -2,32 +2,32 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone as dt_timezone
-from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
-from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from ...security.authentication import CSRFAwareSessionAuthentication
-from ..users.models import RevokedTokenSession
+from ...security.token_sessions import (
+    build_token_pair_for_user,
+    revoke_session_from_access,
+    revoke_session_from_refresh,
+)
+from ..auth.password_reset import issue_otp_for_email, reset_password_with_otp, verify_otp
 from ..users.serializers import UserSerializer
 from .serializers import (
     PasswordOTPRequestSerializer,
     PasswordOTPVerifySerializer,
     PasswordResetSerializer,
 )
-from ..users.services import issue_otp_for_email, reset_password_with_otp, verify_otp
 
 logger = logging.getLogger(__name__)
 
@@ -61,61 +61,6 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
-def _token_pair_for_user(user: User) -> tuple[str, str]:
-    refresh = RefreshToken.for_user(user)
-    refresh["sid"] = uuid4().hex
-    return str(refresh.access_token), str(refresh)
-
-
-def _revoke_token_session(*, sid: str | None, user_id: int | None, expires_at_unix: int | None) -> None:
-    if not sid or not expires_at_unix:
-        return
-
-    expires_at = datetime.fromtimestamp(expires_at_unix, tz=dt_timezone.utc)
-    RevokedTokenSession.objects.update_or_create(
-        sid=sid,
-        defaults={
-            "user_id": user_id,
-            "expires_at": expires_at,
-        },
-    )
-
-
-def _revoke_session_from_refresh(refresh_token: str) -> None:
-    try:
-        token = RefreshToken(refresh_token)
-    except TokenError:
-        return
-
-    _revoke_token_session(
-        sid=token.get("sid"),
-        user_id=token.get("user_id"),
-        expires_at_unix=token.get("exp"),
-    )
-
-
-def _revoke_session_from_access(request) -> None:
-    authenticator = JWTAuthentication()
-    header = authenticator.get_header(request)
-    if header is None:
-        return
-
-    raw_token = authenticator.get_raw_token(header)
-    if raw_token is None:
-        return
-
-    try:
-        validated_token = authenticator.get_validated_token(raw_token)
-    except TokenError:
-        return
-
-    _revoke_token_session(
-        sid=validated_token.get("sid"),
-        user_id=validated_token.get("user_id"),
-        expires_at_unix=validated_token.get("exp"),
-    )
-
-
 class CSRFTokenView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
@@ -139,7 +84,7 @@ class LoginView(APIView):
         if auth_user is None or not auth_user.is_active:
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        access_token, refresh_token = _token_pair_for_user(auth_user)
+        access_token, refresh_token = build_token_pair_for_user(auth_user)
         get_token(request)
 
         response = Response(
@@ -183,13 +128,13 @@ class LogoutView(APIView):
     def post(self, request):
         refresh_token = request.COOKIES.get(_refresh_cookie_name())
         if refresh_token:
-            _revoke_session_from_refresh(refresh_token)
+            revoke_session_from_refresh(refresh_token)
             try:
                 RefreshToken(refresh_token).blacklist()
             except TokenError:
                 logger.info("logout_with_invalid_refresh_token")
 
-        _revoke_session_from_access(request)
+        revoke_session_from_access(request)
         response = Response(status=status.HTTP_204_NO_CONTENT)
         _clear_refresh_cookie(response)
         return response

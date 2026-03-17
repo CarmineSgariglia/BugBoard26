@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from django.utils import timezone
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from ..modules.users.models import RevokedTokenSession
+from .token_sessions import is_token_session_revoked
 
 
 class CSRFAwareSessionAuthentication(SessionAuthentication):
@@ -22,7 +21,7 @@ class RevocableJWTAuthentication(JWTAuthentication):
 
         user, validated_token = result
         sid = validated_token.get("sid")
-        if sid and RevokedTokenSession.objects.filter(sid=sid, expires_at__gt=timezone.now()).exists():
+        if is_token_session_revoked(sid):
             raise AuthenticationFailed("Token session has been revoked")
 
         return user, validated_token

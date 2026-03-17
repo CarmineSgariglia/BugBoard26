@@ -1,4 +1,4 @@
-"""Password reset OTP service logic."""
+"""Password reset OTP workflow."""
 from __future__ import annotations
 
 import hashlib
@@ -8,17 +8,12 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.files.storage import default_storage
 from django.core.mail import EmailMessage, send_mail
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from ...permissions import is_admin
 from ...security.passwords import ensure_valid_password
-from ...security.uploads import store_upload, validate_profile_image
-from .models import PasswordResetOTP, UserProfileImage
-from .serializers import UserSerializer
+from ..users.models import PasswordResetOTP
 
 logger = logging.getLogger(__name__)
 
@@ -156,36 +151,3 @@ def reset_password_with_otp(email: str, code: str, new_password: str) -> bool:
 
     logger.info("otp_reset_ok user_id=%s email_hash=%s", user.id, _email_hash(user.email))
     return True
-
-
-def save_profile_image_for_user(*, request, user: User):
-    if request.user != user and not is_admin(request.user):
-        raise PermissionDenied("Cannot edit other users")
-
-    image = request.FILES.get("image") or request.FILES.get("profile_img")
-    if image is None:
-        raise ValidationError({"image": "Image file is required"})
-    extension, _size = validate_profile_image(
-        image,
-        max_size_bytes=getattr(settings, "BUGBOARD_MAX_PROFILE_IMAGE_BYTES", 2 * 1024 * 1024),
-    )
-    saved = store_upload(
-        uploaded_file=image,
-        storage_dir=f"profile-images/{user.id}",
-        filename_suffix=f".{extension}",
-    )
-    saved_path = saved.path
-
-    profile, _ = UserProfileImage.objects.get_or_create(user=user)
-    old_path = profile.profile_img
-    profile.profile_img = saved_path
-    profile.save(update_fields=["profile_img"])
-
-    if old_path and old_path != saved_path and old_path.startswith("profile-images/"):
-        try:
-            default_storage.delete(old_path)
-        except Exception:
-            logger.warning("Failed to delete old profile image: %s", old_path)
-
-    refreshed_user = User.objects.get(id=user.id)
-    return UserSerializer(refreshed_user, context={"request": request}).data

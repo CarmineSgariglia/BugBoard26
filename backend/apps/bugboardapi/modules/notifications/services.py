@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -7,8 +8,7 @@ from rest_framework.exceptions import ValidationError
 from ..issues.models import Issue
 from ..projects.models import Project
 from .models import Notification, NotifyType, NotifyUser
-from .realtime import prepend_cached_notification, publish_notification_created
-from .serializers import NotifyUserSerializer
+from .publisher import publish_created_notifications
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +48,8 @@ def notify_users(
         [NotifyUser(notification=notification, user=user) for user in filtered_users]
     )
 
-    def publish_created_notifications() -> None:
-        serialized_notifications = NotifyUserSerializer(notify_users_rows, many=True).data
-        for notify_user, payload in zip(notify_users_rows, serialized_notifications, strict=False):
-            prepend_cached_notification(notify_user.user_id, payload)
-            publish_notification_created(notify_user.user_id, payload)
-
     try:
-        transaction.on_commit(publish_created_notifications)
+        transaction.on_commit(partial(publish_created_notifications, notify_users_rows))
     except Exception:
         logger.warning(
             "notification_realtime_dispatch_registration_failed",
