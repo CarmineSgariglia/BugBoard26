@@ -1,21 +1,21 @@
-﻿import { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { RiArrowGoBackLine } from "react-icons/ri";
 
-import { GlassCard } from "../../shared/ui/GlassCard";
+import { GlassCard } from "@shared/ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { FooterActions } from "../../shared/ui/FooterActions";
-import { isValidName, isValidEmail, isValidPassword } from "../../shared/lib/validation";
-import { getErrorMessage, getFieldError } from "../../shared/lib/error";
-import { resolveMediaUrl } from "../../shared/api/core/media";
+import { FooterActions } from "@shared/ui/FooterActions";
+import { isValidName, isValidEmail, isValidPassword } from "@shared/lib/validation";
+import { getErrorMessage, getFieldError } from "@shared/lib/error";
+import { resolveMediaUrl } from "@shared/api/core/media";
 import {
   updateUserApi,
   adminChangePasswordApi,
   adminUploadProfileImageApi,
-} from "../../shared/api/modules/users";
-import type { AuthUser } from "../../shared/api/types/auth";
+} from "@shared/api/modules/users";
+import type { AuthUser } from "@shared/api/types/auth";
 
 interface AdminUserEditSectionProps {
   user: AuthUser;

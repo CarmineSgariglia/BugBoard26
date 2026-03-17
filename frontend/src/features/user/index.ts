@@ -1,2 +1,3 @@
 export * from "./api";
-export * from "./hooks/usePaginatedUsers";
+export * from "./model";
+export * from "./ui";

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { CreateProjectFlow } from "@features/project/flows/CreateProjectFlow";
-import { listProjectsApi } from "@features/project/api";
+import { listProjectsApi } from "@shared/api/modules/projects";
 import type { Project } from "@shared/api/types/projects";
 import { resolveMediaUrl } from "@shared/api/core/media";
 import { getProjectIcon } from "@features/project/ui/projectIcons";
@@ -32,8 +32,8 @@ export function ProjectsPage() {
     refetch: fetchProjects,
   } = useQuery({
     queryKey: ["projects"],
-    queryFn: async ({ signal }) => {
-      const projectsData = await listProjectsApi(undefined, { signal });
+    queryFn: async () => {
+      const projectsData = await listProjectsApi();
       const sorted = [...projectsData].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -52,7 +52,7 @@ export function ProjectsPage() {
   }, [projects, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#11131A] text-white flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
       <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex mt-8 flex-col">
         <div className="mb-10 w-full max-w-xl mx-auto text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">

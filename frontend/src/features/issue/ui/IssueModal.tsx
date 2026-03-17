@@ -1,15 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { FiX } from "react-icons/fi";
 
 import { buildIssueEditActivityMessage } from "@features/issue/lib/buildIssueEditActivityMessage";
 
-import { createIssueUpdateApi, updateIssueDetailsApi } from "@features/issue/api";
-import { createProjectIssueApi } from "@features/project/api";
+import { createIssueUpdateApi, updateIssueDetailsApi } from "@shared/api/modules/issues";
+import { createProjectIssueApi } from "@shared/api/modules/projects";
 import type { Issue } from "@shared/api/types/issues";
 import { CATEGORIES, STATUSES } from "@features/issue/model/constants";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLength } from "@shared/ui/DescriptionFieldWithLength";
+import { FileAttachment } from "@shared/ui/FileAttachment";
 import { FormField } from "@shared/ui/FormField";
 import { GlassCard } from "@shared/ui/GlassCard";
 import { Select } from "@shared/ui/Select";
@@ -17,7 +18,6 @@ import { TagInput } from "@shared/ui/TagInput";
 import { TitleFieldWithLength } from "@shared/ui/TitleFieldWithLength";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 
-import { FileAttachment } from "./FileAttachment";
 import { PrioritySelector } from "./PrioritySelector";
 
 interface IssueModalProps {
@@ -32,15 +32,6 @@ interface IssueModalProps {
 
 type SubmitResult = {
   warning: string | null;
-};
-
-type IssueFormState = {
-  title: string;
-  description: string;
-  category: string;
-  priority: string;
-  status: string;
-  tags: string[];
 };
 
 function toNonBlockingWarning(error: unknown): string {
@@ -70,69 +61,45 @@ function toNonBlockingWarning(error: unknown): string {
   return "Issue creata, ma primo commento/allegati non salvati.";
 }
 
-function getInitialFormState(mode: "create" | "edit", initialData?: Issue | null): IssueFormState {
-  if (mode === "edit" && initialData) {
-    return {
-      title: initialData.title,
-      description: initialData.description,
-      category: initialData.type || CATEGORIES[0].value,
-      priority: initialData.priority || "MEDIUM",
-      status: initialData.status || STATUSES[0].value,
-      tags: initialData.tags?.map((tag) => tag.name) || [],
-    };
-  }
-
-  return {
-    title: "",
-    description: "",
-    category: CATEGORIES[0].value,
-    priority: "MEDIUM",
-    status: STATUSES[0].value,
-    tags: [],
-  };
-}
-
 export function IssueModal({ isOpen, onClose, mode, projectId, issue, initialData, onSuccess }: IssueModalProps) {
-  if (!isOpen) {
-    return null;
-  }
-
-  const modalKey =
-    mode === "edit"
-      ? `edit-${initialData?.issueId ?? issue?.issueId ?? "unknown"}`
-      : `create-${projectId ?? "unknown"}`;
-
-  return (
-    <IssueModalContent
-      key={modalKey}
-      onClose={onClose}
-      mode={mode}
-      projectId={projectId}
-      issue={issue}
-      initialData={initialData}
-      onSuccess={onSuccess}
-    />
-  );
-}
-
-function IssueModalContent({
-  onClose,
-  mode,
-  projectId,
-  issue,
-  initialData,
-  onSuccess,
-}: Omit<IssueModalProps, "isOpen">) {
-  const initialFormState = useMemo(() => getInitialFormState(mode, initialData), [mode, initialData]);
-  const [title, setTitle] = useState(initialFormState.title);
-  const [description, setDescription] = useState(initialFormState.description);
-  const [category, setCategory] = useState(initialFormState.category);
-  const [priority, setPriority] = useState(initialFormState.priority);
-  const [status, setStatus] = useState(initialFormState.status);
-  const [tags, setTags] = useState<string[]>(initialFormState.tags);
+  const [title, setTitle] = useState(initialData?.title || "");
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [category, setCategory] = useState(initialData?.type || CATEGORIES[0].value);
+  const [priority, setPriority] = useState(initialData?.priority || "MEDIUM");
+  const [status, setStatus] = useState(initialData?.status || STATUSES[0].value);
+  const [tags, setTags] = useState<string[]>(initialData?.tags?.map((tag) => tag.name) || []);
   const [files, setFiles] = useState<File[]>([]);
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
   const [createdWithWarning, setCreatedWithWarning] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (mode === "edit" && initialData) {
+      setTitle(initialData.title);
+      setDescription(initialData.description);
+      setCategory(initialData.type || CATEGORIES[0].value);
+      setPriority(initialData.priority || "MEDIUM");
+      setStatus(initialData.status || STATUSES[0].value);
+      setTags(initialData.tags?.map((t) => t.name) || []);
+      setFiles([]);
+      setSubmitWarning(null);
+      setCreatedWithWarning(false);
+      return;
+    }
+
+    if (mode === "create") {
+      setTitle("");
+      setDescription("");
+      setCategory(CATEGORIES[0].value);
+      setPriority("MEDIUM");
+      setStatus(STATUSES[0].value);
+      setTags([]);
+      setFiles([]);
+      setSubmitWarning(null);
+      setCreatedWithWarning(false);
+    }
+  }, [isOpen, initialData, mode]);
 
   const hasChanges = useMemo(() => {
     if (mode === "create") return true;
@@ -223,7 +190,7 @@ function IssueModalContent({
   };
 
   return (
-    <ModalOverlay isOpen={true} onClose={onClose} maxWidth="max-w-2xl">
+    <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
       <GlassCard className="max-h-[85vh]">
         <div className="flex items-center justify-between p-6 border-b border-white/5">
           <h2 className="text-lg font-bold text-white tracking-tight">

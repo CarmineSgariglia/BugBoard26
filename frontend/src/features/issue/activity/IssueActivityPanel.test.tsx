@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { renderWithProviders } from "../../../../test/render";
+import { renderWithProviders } from "../../../test/render";
 import { IssueActivityPanel } from "./IssueActivityPanel";
 
 const {

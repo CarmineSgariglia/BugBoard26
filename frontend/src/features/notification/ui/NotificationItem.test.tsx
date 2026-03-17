@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
-import { NotificationItem } from "@features/notification/ui/NotificationItem";
+import { NotificationItem } from "./NotificationItem";
 
 describe("NotificationItem", () => {
   it("triggers the main click action from keyboard activation", async () => {

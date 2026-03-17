@@ -5,7 +5,7 @@ import { refreshApi } from "@shared/api/modules/auth";
 import { getIssueUpdatesStreamUrl } from "@shared/api/modules/issues";
 import type { IssueUpdate } from "@shared/api/types/issues";
 import { createSseParser } from "@shared/lib/notificationsRealtime";
-import { useAuth } from "@shared/providers";
+import { useAuth } from "@features/auth";
 
 const STREAM_RETRY_DELAYS_MS = [1000, 2000, 5000, 10000, 20000];
 

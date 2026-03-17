@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { renderWithProviders } from "../../../../test/render";
+import { renderWithProviders } from "../../../test/render";
 import { IssueActivityComposer } from "./IssueActivityComposer";
 
 vi.mock("@shared/hooks/useFileValidation", () => ({

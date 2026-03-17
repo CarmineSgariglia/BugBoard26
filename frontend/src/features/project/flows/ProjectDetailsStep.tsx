@@ -4,7 +4,7 @@ import { HexColorPicker } from "react-colorful";
 import { IoColorPalette } from "react-icons/io5";
 
 import { PREDEFINED_COLORS } from "@features/project/model/constants";
-import { PREDEFINED_ICONS } from "@features/project/ui/projectIconRegistry";
+import { PREDEFINED_ICONS } from "@features/project/ui/projectIcons";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { FormField } from "@shared/ui/FormField";
 import { ScrollComponent } from "@shared/ui/ScrollComponent";
@@ -31,6 +31,7 @@ interface ProjectDetailsStepProps {
 
 export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, onExit, headerAction }: ProjectDetailsStepProps) {
 
+    // 1. STATI
     const [title, setTitle] = useState(initialData?.title || "");
     const [description, setDescription] = useState(initialData?.description || "");
     const [selectedIcon, setSelectedIcon] = useState(initialData?.icon || "folder");
@@ -38,6 +39,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
     const [isOpen, toggle] = useState(false);
     const popover = useRef(null);
 
+    // 2. LOGICA E VALIDAZIONI
     const isSaveEnabled = title.trim().length >= 3 && description.trim().length >= 5;
 
     const handleNextClick = () => {
@@ -176,3 +178,4 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
         </ProjectFormLayout>
     );
 }
+

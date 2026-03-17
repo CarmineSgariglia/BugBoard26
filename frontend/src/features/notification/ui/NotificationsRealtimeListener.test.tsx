@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider } from "@shared/providers";
-import type { NotificationItem, NotificationsPage } from "../../shared/api/types/notifications";
+import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
 import { NotificationsRealtimeListener } from "./NotificationsRealtimeListener";
 
 const {
@@ -22,7 +22,7 @@ const {
   refreshApiMock: vi.fn(),
 }));
 
-vi.mock("@shared/providers/AuthContext", () => ({
+vi.mock("@features/auth", () => ({
   useAuth: () => ({
     user: {
       userId: 1,

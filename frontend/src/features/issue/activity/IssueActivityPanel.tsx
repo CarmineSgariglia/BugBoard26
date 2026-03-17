@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { createIssueUpdateApi, listIssueUpdatesApi } from "@features/issue/api";
+import { createIssueUpdateApi, listIssueUpdatesApi } from "@shared/api/modules/issues";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import type { ProjectMembership } from "@shared/api/types/projects";
-import { InfoBanner } from "@shared/ui";
-import { getLatestIssueUpdateId, upsertIssueUpdates } from "@features/issue/lib/issueUpdatesRealtime";
+import { getLatestIssueUpdateId, upsertIssueUpdates } from "@shared/lib/issueUpdatesRealtime";
 import { formatIssueActivityEvent } from "@features/issue/lib/formatIssueActivityEvent";
 import { IssueActivityFilters } from "./IssueActivityFilters";
 import { IssueActivityRealtimeListener } from "./IssueActivityRealtimeListener";
@@ -17,9 +15,7 @@ type Props = {
     issueId: number;
     issueTitle: string;
     currentUser: AuthUser | null;
-    projectMembers?: ProjectMembership[];
     canCompose: boolean;
-    composeUnavailableMessage?: string | null;
     className?: string;
 };
 
@@ -67,24 +63,7 @@ function getSubmitErrorMessage(error: unknown): string {
     return "File non valido o non supportato.";
 }
 
-function formatActorDisplayName(member: {
-    username: string;
-    firstName?: string;
-    lastName?: string;
-}): string {
-    const fullName = `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim();
-    return fullName ? `${fullName} (${member.username})` : member.username;
-}
-
-export function IssueActivityPanel({
-    issueId,
-    issueTitle,
-    currentUser,
-    projectMembers = [],
-    canCompose,
-    composeUnavailableMessage = null,
-    className = "h-full",
-}: Props) {
+export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompose, className = "h-full" }: Props) {
     const qc = useQueryClient();
     const [scope, setScope] = useState<"ALL" | "YOURS">("ALL");
     const [sort, setSort] = useState<"NEWEST" | "OLDEST">("OLDEST");
@@ -99,9 +78,9 @@ export function IssueActivityPanel({
     const markerVisibleAccumulatedMsRef = useRef(0);
     const markerRemovalTimerRef = useRef<number | null>(null);
 
-    const { data: updates = [], isLoading, isSuccess } = useQuery({
+    const { data: updates = [], isLoading } = useQuery({
         queryKey: ["issue", issueId, "updates"],
-        queryFn: ({ signal }) => listIssueUpdatesApi(issueId, { signal }),
+        queryFn: () => listIssueUpdatesApi(issueId),
         staleTime: 0,
         enabled: Boolean(issueId),
     });
@@ -132,13 +111,9 @@ export function IssueActivityPanel({
     });
 
     const items = useMemo(() => {
-        const actorDisplayNameById = new Map(
-            projectMembers.map((member) => [member.userId, formatActorDisplayName(member)]),
-        );
-
         const mapped = updates
             .filter((update) => update.eventType !== "CREATE")
-            .map((update) => formatIssueActivityEvent(update, actorDisplayNameById.get(update.actorId)));
+            .map(formatIssueActivityEvent);
 
         const filtered =
             scope === "YOURS" && currentUser
@@ -150,7 +125,7 @@ export function IssueActivityPanel({
             const bTime = new Date(b.at).getTime();
             return sort === "NEWEST" ? bTime - aTime : aTime - bTime;
         });
-    }, [updates, scope, sort, currentUser, projectMembers]);
+    }, [updates, scope, sort, currentUser]);
 
     const latestUpdateId = useMemo(() => getLatestIssueUpdateId(updates), [updates]);
 
@@ -174,6 +149,12 @@ export function IssueActivityPanel({
             clearMarkerRemovalTimer();
         };
     }, [clearMarkerRemovalTimer, newMessageMarkerId, resetMarkerVisibilityTracking]);
+
+    useEffect(() => {
+        if (scope === "ALL" && isAtLatestEdge && pendingUpdateIds.length > 0) {
+            setPendingUpdateIds([]);
+        }
+    }, [isAtLatestEdge, pendingUpdateIds.length, scope]);
 
     function handleRealtimeUpdate(newUpdate: IssueUpdate) {
         let alreadyPresent = false;
@@ -267,13 +248,11 @@ export function IssueActivityPanel({
 
     return (
         <div className={`rounded-2xl border border-white/5 bg-[#121620]/20 flex flex-col overflow-hidden ${className}`}>
-            {isSuccess ? (
-                <IssueActivityRealtimeListener
-                    issueId={issueId}
-                    latestUpdateId={latestUpdateId}
-                    onUpdate={handleRealtimeUpdate}
-                />
-            ) : null}
+            <IssueActivityRealtimeListener
+                issueId={issueId}
+                latestUpdateId={latestUpdateId}
+                onUpdate={handleRealtimeUpdate}
+            />
             <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
                 <h3 className="text-xl font-bold text-white">{`${issueTitle} - Activity`}</h3>
                 <IssueActivityFilters
@@ -296,20 +275,16 @@ export function IssueActivityPanel({
                         onScrollToItemDone={(itemId) => {
                             setScrollToItemId((current) => (current === itemId ? null : current));
                         }}
-                        onLatestEdgeChange={(nextIsAtLatestEdge) => {
-                            setIsAtLatestEdge(nextIsAtLatestEdge);
-                            if (scope === "ALL" && nextIsAtLatestEdge && pendingUpdateIds.length > 0) {
-                                setPendingUpdateIds([]);
-                            }
-                        }}
+                        onLatestEdgeChange={setIsAtLatestEdge}
                         onNewMessageMarkerVisibilityChange={handleNewMessageMarkerVisibilityChange}
                     />
                 )}
 
                 {!isLoading && pendingUpdateIds.length > 0 ? (
                     <div
-                        className={`pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4 ${sort === "NEWEST" ? "top-4" : "bottom-4"
-                            }`}
+                        className={`pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4 ${
+                            sort === "NEWEST" ? "top-4" : "bottom-4"
+                        }`}
                     >
                         <button
                             type="button"
@@ -338,9 +313,8 @@ export function IssueActivityPanel({
                         isSubmitting={sendMutation.isPending}
                     />
                 </>
-            ) : composeUnavailableMessage ? (
-                <InfoBanner message={composeUnavailableMessage} />
             ) : null}
         </div>
     );
 }
+

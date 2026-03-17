@@ -7,7 +7,7 @@ export function RequireAuth({ children }: { children: ReactElement }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[#11131A]" />;
+    return <div className="min-h-screen bg-[#0D0D12]" />;
   }
 
   if (!user) {
@@ -21,7 +21,7 @@ export function PublicOnly({ children }: { children: ReactElement }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[#11131A]" />;
+    return <div className="min-h-screen bg-[#0D0D12]" />;
   }
 
   if (user) {

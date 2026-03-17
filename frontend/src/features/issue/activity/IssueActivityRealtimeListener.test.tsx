@@ -14,7 +14,7 @@ const {
   refreshApiMock: vi.fn(),
 }));
 
-vi.mock("@shared/providers/AuthContext", () => ({
+vi.mock("@features/auth", () => ({
   useAuth: () => ({
     user: {
       userId: 1,

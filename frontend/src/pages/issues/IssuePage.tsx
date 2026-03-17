@@ -1,117 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 
 import {
-  getIssueSubscriptionApi,
   IssueActivityPanel,
   IssueAssigneesModal,
   IssueDetailsSidebar,
   IssueModal,
-  subscribeToIssueApi,
-  unsubscribeFromIssueApi,
 } from "@features/issue";
-import { getIssueApi } from "@features/issue/api";
-import { getProjectSubscriptionApi, listProjectMembersApi } from "@features/project/api";
-import type { IssueSubscriptionState } from "@shared/api/types/issues";
+import { getIssueApi } from "@shared/api/modules/issues";
+import { listProjectMembersApi } from "@shared/api/modules/projects";
 import type { ProjectMembership } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { useAuth } from "@features/auth";
-import { useBreadcrumbs } from "@shared/providers/useBreadcrumbs";
+import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
-import { isProjectAccessRevokedError, revokeProjectAccess } from "@features/project/lib/accessRevocation";
 
 export function IssuePage() {
-  const navigate = useNavigate();
-  const { issueId, projectId } = useParams();
+  const { issueId } = useParams();
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
-  const isAdmin = currentUser?.isAdmin === true;
 
   const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [subscriptionError, setSubscriptionError] = useState("");
 
-  const { data: issue, isLoading, error: issueError, refetch } = useQuery({
+  const { data: issue, isLoading, refetch } = useQuery({
     queryKey: ["issue", issueId],
-    queryFn: ({ signal }) => getIssueApi(issueId!, { signal }),
+    queryFn: () => getIssueApi(issueId!),
     enabled: !!issueId,
     staleTime: 0,
   });
 
   const numericIssueId = issueId ? Number(issueId) : Number.NaN;
   const safeIssue = issue && issue.issueId === numericIssueId ? issue : null;
-  const subscriptionQueryKey = ["issue", issueId, "subscription"] as const;
 
-  const { data: projectMembers = [], error: projectMembersError } = useQuery({
+  const { data: projectMembers = [] } = useQuery({
     queryKey: ["project", safeIssue?.projectId, "members"],
-    queryFn: ({ signal }) => listProjectMembersApi(safeIssue!.projectId, { signal }),
+    queryFn: () => listProjectMembersApi(safeIssue!.projectId),
     enabled: Boolean(safeIssue?.projectId),
     staleTime: 0,
-  });
-
-  const {
-    data: projectSubscription = null,
-    isLoading: isProjectSubscriptionLoading,
-    error: projectSubscriptionError,
-  } = useQuery({
-    queryKey: ["project", safeIssue?.projectId, "subscription"],
-    queryFn: ({ signal }) => getProjectSubscriptionApi(safeIssue!.projectId, { signal }),
-    enabled: Boolean(safeIssue?.projectId) && isAdmin,
-    staleTime: 0,
-  });
-
-  const canLoadIssueSubscription =
-    isAdmin &&
-    Boolean(issueId) &&
-    Boolean(safeIssue?.projectId) &&
-    !isProjectSubscriptionLoading &&
-    projectSubscription?.subscribed === true;
-
-  const {
-    data: subscription = null,
-    isLoading: isSubscriptionLoading,
-    error: subscriptionQueryError,
-  } = useQuery({
-    queryKey: subscriptionQueryKey,
-    queryFn: ({ signal }) => getIssueSubscriptionApi(issueId!, { signal }),
-    enabled: canLoadIssueSubscription,
-    staleTime: 0,
-  });
-
-  const subscriptionMutation = useMutation({
-    mutationFn: async (checked: boolean) => {
-      if (!issueId) {
-        throw new Error("Missing issue id");
-      }
-
-      if (checked) {
-        await subscribeToIssueApi(issueId);
-        return { subscribed: true } satisfies IssueSubscriptionState;
-      }
-
-      await unsubscribeFromIssueApi(issueId);
-      return { subscribed: false } satisfies IssueSubscriptionState;
-    },
-    onMutate: async (checked) => {
-      setSubscriptionError("");
-      await queryClient.cancelQueries({ queryKey: subscriptionQueryKey });
-      const previous = queryClient.getQueryData<IssueSubscriptionState>(subscriptionQueryKey);
-      queryClient.setQueryData<IssueSubscriptionState>(subscriptionQueryKey, {
-        subscribed: checked,
-      });
-      return { previous };
-    },
-    onError: (_error, _checked, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(subscriptionQueryKey, context.previous);
-      }
-      setSubscriptionError("Unable to update notification preference. Please try again.");
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: subscriptionQueryKey });
-    },
   });
 
   useEffect(() => {
@@ -119,33 +47,6 @@ export function IssuePage() {
       setLabel(`issue:${issueId}`, safeIssue.title);
     }
   }, [issueId, safeIssue, setLabel]);
-
-  useEffect(() => {
-    const numericProjectId = Number(projectId ?? safeIssue?.projectId);
-    if (!Number.isInteger(numericProjectId) || numericProjectId <= 0) {
-      return;
-    }
-
-    const accessRevoked =
-      isProjectAccessRevokedError(issueError) ||
-      isProjectAccessRevokedError(projectMembersError) ||
-      isProjectAccessRevokedError(projectSubscriptionError);
-
-    if (!accessRevoked) {
-      return;
-    }
-
-    revokeProjectAccess(queryClient, numericProjectId);
-    navigate("/projects", { replace: true });
-  }, [
-    issueError,
-    navigate,
-    projectId,
-    projectMembersError,
-    projectSubscriptionError,
-    queryClient,
-    safeIssue?.projectId,
-  ]);
 
   const isAssigned = useMemo(() => {
     if (!safeIssue || !currentUser) return false;
@@ -165,78 +66,30 @@ export function IssuePage() {
     return safeIssue.assignees.filter((assignee) => !adminIds.has(assignee.userId));
   }, [safeIssue, projectMembers]);
 
-  const isIssueClosedForComments =
-    safeIssue?.status === "DONE" || safeIssue?.status === "CANCELLED";
-  const canCompose = !isIssueClosedForComments && (isAssigned || Boolean(currentUser?.isAdmin));
-  const composeUnavailableMessage =
-    safeIssue?.status === "DONE"
-      ? "This issue is setted as DONE"
-      : safeIssue?.status === "CANCELLED"
-        ? "This issue is cancelled"
-      : canCompose
-        ? null
-        : "You are not assigned to this issue";
-  const issueSubscriptionBlockedByProject =
-    isAdmin &&
-    Boolean(safeIssue) &&
-    !isProjectSubscriptionLoading &&
-    projectSubscription?.subscribed === false;
-  const shouldShowSubscriptionLoadError =
-    Boolean(subscriptionQueryError) && !issueSubscriptionBlockedByProject;
-  const isAdminSubscriptionStateLoading =
-    isAdmin &&
-    (isProjectSubscriptionLoading || (canLoadIssueSubscription && isSubscriptionLoading));
+  const canCompose = isAssigned || Boolean(currentUser?.isAdmin);
 
-  if (isLoading || !safeIssue || isAdminSubscriptionStateLoading) {
+  if (isLoading || !safeIssue) {
     return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
   }
 
   return (
-    <div className="min-h-screen flex flex-col pt-24 pb-6 px-6 lg:min-h-dvh">
+    <div className="h-screen overflow-hidden flex flex-col pt-24 pb-6 px-6">
       <SidebarLayout
         className="flex-1 min-h-0"
-        gridClassName="items-stretch"
+        gridClassName="items-stretch h-full"
         sidebar={
           <IssueDetailsSidebar
             issue={safeIssue}
             assignees={visibleAssignees}
-            isAdmin={isAdmin}
+            isAdmin={currentUser?.isAdmin}
             isAssigned={isAssigned}
             onEditClick={() => setIsModalOpen(true)}
             onManageMembersClick={() => setIsAssigneesModalOpen(true)}
-            subscriptionChecked={subscription?.subscribed ?? false}
-            subscriptionDisabled={
-              isSubscriptionLoading ||
-              isProjectSubscriptionLoading ||
-              subscriptionMutation.isPending ||
-              !subscription ||
-              issueSubscriptionBlockedByProject
-            }
-            subscriptionDisabledReason={
-              issueSubscriptionBlockedByProject ? "Project notifications disabled" : ""
-            }
-            subscriptionError={
-              subscriptionError ||
-              (shouldShowSubscriptionLoadError ? "Unable to load notification preference." : "")
-            }
-            onSubscriptionChange={(checked) => {
-              void subscriptionMutation.mutateAsync(checked).catch(() => {
-                // Error state is surfaced inline in the sidebar.
-              });
-            }}
           />
         }
       >
-        <div className="min-h-[40rem] lg:h-[calc(100dvh-8.5rem)]">
-          <IssueActivityPanel
-            issueId={safeIssue.issueId}
-            issueTitle={safeIssue.title}
-            currentUser={currentUser}
-            projectMembers={projectMembers}
-            canCompose={canCompose}
-            composeUnavailableMessage={composeUnavailableMessage}
-            className="h-full"
-          />
+        <div className="h-full">
+          <IssueActivityPanel issueId={safeIssue.issueId} issueTitle={safeIssue.title} currentUser={currentUser} canCompose={canCompose} className="h-full" />
         </div>
       </SidebarLayout>
 
@@ -266,3 +119,4 @@ export function IssuePage() {
     </div>
   );
 }
+

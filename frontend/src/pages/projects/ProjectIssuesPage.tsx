@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BiCategoryAlt } from "react-icons/bi";
 import { FiPlus, FiUser } from "react-icons/fi";
 import {
@@ -14,18 +14,15 @@ import { EditProjectFlow } from "@features/project/flows/EditProjectFlow";
 import { EditTeamFlow } from "@features/project/flows/EditTeamFlow";
 import { IssueModal } from "@features/issue/ui/IssueModal";
 import {
-  getProjectSubscriptionApi,
   getProjectApi,
   listProjectIssuesApi,
-  subscribeToProjectApi,
-  unsubscribeFromProjectApi,
-} from "@features/project/api";
-import { listProjectMembersApi } from "@features/project/api";
+  listProjectMembersApi,
+} from "@shared/api/modules/projects";
 import type { Issue } from "@shared/api/types/issues";
-import type { ProjectMembership, ProjectSubscriptionState } from "@shared/api/types/projects";
+import type { ProjectMembership } from "@shared/api/types/projects";
 import { CATEGORIES, PRIORITIES, STATUSES } from "@features/issue/model/constants";
 import { useAuth } from "@features/auth";
-import { useBreadcrumbs } from "@shared/providers/useBreadcrumbs";
+import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 import { isAdminLike } from "@shared/lib";
 import { useFluidWheelContainer } from "@shared/hooks";
 import { Button } from "@shared/ui/Button";
@@ -34,7 +31,6 @@ import { Select } from "@shared/ui/Select";
 import { IssueCard } from "@features/issue/ui/IssueCard";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
 import { ProjectSidebar } from "@features/project/ui/ProjectSidebar";
-import { isProjectAccessRevokedError, revokeProjectAccess } from "@features/project/lib/accessRevocation";
 
 export function ProjectIssuesPage() {
   const navigate = useNavigate();
@@ -42,7 +38,6 @@ export function ProjectIssuesPage() {
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
-  const isAdmin = currentUser?.isAdmin === true;
   const issueListRef = useFluidWheelContainer<HTMLDivElement>(true, {
     tailDurationMs: 980,
     tailIntensity: 0.34,
@@ -62,9 +57,6 @@ export function ProjectIssuesPage() {
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
   const [isViewTeamModalOpen, setIsViewTeamModalOpen] = useState(false);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
-  const [subscriptionError, setSubscriptionError] = useState("");
-
-  const subscriptionQueryKey = ["project", projectId, "subscription"] as const;
 
   const {
     data: issues = [],
@@ -73,7 +65,7 @@ export function ProjectIssuesPage() {
     error: issuesError,
   } = useQuery({
     queryKey: ["project", projectId, "issues"],
-    queryFn: ({ signal }) => listProjectIssuesApi(projectId!, { signal }),
+    queryFn: () => listProjectIssuesApi(projectId!),
     enabled: !!projectId,
     staleTime: 0,
   });
@@ -85,7 +77,7 @@ export function ProjectIssuesPage() {
     error: membersError,
   } = useQuery({
     queryKey: ["project", projectId, "members"],
-    queryFn: ({ signal }) => listProjectMembersApi(projectId!, { signal }),
+    queryFn: () => listProjectMembersApi(projectId!),
     enabled: !!projectId,
     staleTime: 0,
   });
@@ -97,54 +89,9 @@ export function ProjectIssuesPage() {
     error: projectError,
   } = useQuery({
     queryKey: ["project", projectId],
-    queryFn: ({ signal }) => getProjectApi(projectId!, { signal }),
+    queryFn: () => getProjectApi(projectId!),
     enabled: !!projectId,
     staleTime: 0,
-  });
-
-  const {
-    data: subscription = null,
-    isLoading: isSubscriptionLoading,
-    error: subscriptionQueryError,
-  } = useQuery({
-    queryKey: subscriptionQueryKey,
-    queryFn: ({ signal }) => getProjectSubscriptionApi(projectId!, { signal }),
-    enabled: !!projectId && isAdmin,
-    staleTime: 0,
-  });
-
-  const subscriptionMutation = useMutation({
-    mutationFn: async (checked: boolean) => {
-      if (!projectId) {
-        throw new Error("Missing project id");
-      }
-
-      if (checked) {
-        await subscribeToProjectApi(projectId);
-        return { subscribed: true } satisfies ProjectSubscriptionState;
-      }
-
-      await unsubscribeFromProjectApi(projectId);
-      return { subscribed: false } satisfies ProjectSubscriptionState;
-    },
-    onMutate: async (checked) => {
-      setSubscriptionError("");
-      await queryClient.cancelQueries({ queryKey: subscriptionQueryKey });
-      const previous = queryClient.getQueryData<ProjectSubscriptionState>(subscriptionQueryKey);
-      queryClient.setQueryData<ProjectSubscriptionState>(subscriptionQueryKey, {
-        subscribed: checked,
-      });
-      return { previous };
-    },
-    onError: (_error, _checked, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(subscriptionQueryKey, context.previous);
-      }
-      setSubscriptionError("Unable to update notification preference. Please try again.");
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: subscriptionQueryKey });
-    },
   });
 
   useEffect(() => {
@@ -196,29 +143,6 @@ export function ProjectIssuesPage() {
       : issuesError || membersError || projectError
         ? "Unable to load project data. Please try again."
         : "";
-
-  useEffect(() => {
-    if (!projectId) {
-      return;
-    }
-
-    const numericProjectId = Number(projectId);
-    if (!Number.isInteger(numericProjectId) || numericProjectId <= 0) {
-      return;
-    }
-
-    const accessRevoked =
-      isProjectAccessRevokedError(issuesError) ||
-      isProjectAccessRevokedError(membersError) ||
-      isProjectAccessRevokedError(projectError);
-
-    if (!accessRevoked) {
-      return;
-    }
-
-    revokeProjectAccess(queryClient, numericProjectId);
-    navigate("/projects", { replace: true });
-  }, [issuesError, membersError, navigate, projectError, projectId, queryClient]);
 
   if (!isLoading && !project && !error) {
     return (
@@ -304,23 +228,10 @@ export function ProjectIssuesPage() {
                   username: m.username,
                   profileImg: m.profileImg,
                 }))}
-                isAdmin={isAdmin}
+                isAdmin={currentUser?.isAdmin}
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
                 onViewTeamClick={() => setIsViewTeamModalOpen(true)}
-                subscriptionChecked={subscription?.subscribed ?? false}
-                subscriptionDisabled={
-                  isSubscriptionLoading || subscriptionMutation.isPending || !subscription
-                }
-                subscriptionError={
-                  subscriptionError ||
-                  (subscriptionQueryError ? "Unable to load notification preference." : "")
-                }
-                onSubscriptionChange={(checked) => {
-                  void subscriptionMutation.mutateAsync(checked).catch(() => {
-                    // Error state is surfaced inline in the sidebar.
-                  });
-                }}
               />
             ) : (
               <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
@@ -413,6 +324,8 @@ export function ProjectIssuesPage() {
     </div>
   );
 }
+
+
 
 
 

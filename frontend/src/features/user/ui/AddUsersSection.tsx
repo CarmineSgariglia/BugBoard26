@@ -5,10 +5,10 @@ import { GlassCard } from "@shared/ui/GlassCard";
 import { Toggle } from "@shared/ui/Toggle";
 import { isValidEmail, isValidName } from "@shared/lib/validation";
 import { getErrorMessage } from "@shared/lib/error";
-import { FooterActions } from "@shared/ui/FooterActions";
-import { createSettingsUserApi } from "@features/settings/api";
+import { createUserApi } from "@shared/api/modules/users";
 import { IdentityFields } from "./IdentityFields";
 import { ProfileHeader } from "./ProfileHeader";
+import { FooterActions } from "@shared/ui/FooterActions";
 
 function buildUsernameFromEmail(email: string): string {
   const localPart = email.split("@")[0] ?? "user";
@@ -17,9 +17,15 @@ function buildUsernameFromEmail(email: string): string {
   return `${base}${suffix}`;
 }
 
+function generateTemporaryPassword(): string {
+  const suffix = Math.floor(100000 + Math.random() * 900000);
+  return `Temp!${suffix}`;
+}
+
 type CreateUserFormPayload = {
   normalizedEmail: string;
   username: string;
+  temporaryPassword: string;
   firstName: string;
   lastName: string;
   isAdmin: boolean;
@@ -51,9 +57,10 @@ export function AddUsersSection() {
 
   const createUserMutation = useMutation({
     mutationFn: async (payload: CreateUserFormPayload) => {
-      await createSettingsUserApi({
+      await createUserApi({
         username: payload.username,
         email: payload.normalizedEmail,
+        password: payload.temporaryPassword,
         firstName: payload.firstName,
         lastName: payload.lastName,
         isAdmin: payload.isAdmin,
@@ -66,7 +73,9 @@ export function AddUsersSection() {
       setSurname("");
       setEmail("");
       setIsAdmin(false);
-      setSuccess(`User created. Temporary password email sent to ${payload.normalizedEmail}.`);
+      setSuccess(
+        `User created. \n Username: ${payload.username} \n Temporary password: ${payload.temporaryPassword}`
+      );
       void queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (err) => {
@@ -83,10 +92,12 @@ export function AddUsersSection() {
 
     const normalizedEmail = email.trim().toLowerCase();
     const username = buildUsernameFromEmail(normalizedEmail);
+    const temporaryPassword = generateTemporaryPassword();
 
     createUserMutation.mutate({
       normalizedEmail,
       username,
+      temporaryPassword,
       firstName: name.trim(),
       lastName: surname.trim(),
       isAdmin,
@@ -128,6 +139,7 @@ export function AddUsersSection() {
 
         <FooterActions
           isSaveEnabled={isFormValid && !createUserMutation.isPending}
+          onSave={() => handleSubmit()}
           isSaving={createUserMutation.isPending}
           saveLabel="Add User"
           links={[]}

@@ -6,17 +6,17 @@ import { IoIosNotificationsOutline } from "react-icons/io";
 import { DynamicBreadcrumbs } from "./DynamicBreadcrumbs";
 import { NavIconButton } from "./NavIconButton";
 import { ProfileDropdown } from "./ProfileDropdown";
-import { NotificationDropdown } from "./NotificationDropdown";
 import { AvatarTrigger } from "./AvatarTrigger";
-import { logoutApi } from "../../shared/api/modules/auth";
+import { logoutApi } from "@shared/api/modules/auth";
 import {
   listNotificationsApi,
   notificationsPageSize,
   notificationsQueryKey,
-} from "../../shared/api/modules/notifications";
-import { useAuth } from "@shared/providers/AuthContext";
+} from "@shared/api/modules/notifications";
+import { useAuth } from "@features/auth";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
 import { getNotificationsHasUnread } from "@shared/lib/notifications";
+import { NotificationDropdown } from "@features/notification/ui/NotificationDropdown";
 
 type NavState = {
   isProfileOpen: boolean;

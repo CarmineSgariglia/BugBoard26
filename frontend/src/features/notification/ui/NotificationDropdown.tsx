@@ -2,8 +2,8 @@ import { useMemo, useState, type UIEvent } from "react";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { GlassCard } from "../../shared/ui/GlassCard";
-import { ScrollComponent } from "../../shared/ui/ScrollComponent";
+import { GlassCard } from "@shared/ui/GlassCard";
+import { ScrollComponent } from "@shared/ui/ScrollComponent";
 import { NotificationItem } from "./NotificationItem";
 import {
     listNotificationsApi,
@@ -11,12 +11,12 @@ import {
     notificationsQueryKey,
     readNotificationApi,
     deleteNotificationApi,
-} from "../../shared/api/modules/notifications";
-import { getIssueApi } from "../../shared/api/modules/issues";
+} from "@shared/api/modules/notifications";
+import { getIssueApi } from "@shared/api/modules/issues";
 import type {
     NotificationType,
     NotificationsPage,
-} from "../../shared/api/types/notifications";
+} from "@shared/api/types/notifications";
 import {
     flattenNotificationsPages,
     getNotificationDescription,
@@ -24,7 +24,7 @@ import {
     getNotificationTargetKind,
     getNotificationTitle,
     updateNotificationsInfiniteData,
-} from "../../shared/lib/notifications";
+} from "@shared/lib/notifications";
 
 interface NotificationDropdownProps {
     isOpen: boolean;

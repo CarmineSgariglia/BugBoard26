@@ -1,15 +1,13 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { RiCloseLine } from "react-icons/ri";
 import { FiTrash2 } from "react-icons/fi";
 
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 import { FooterActions } from "@shared/ui/FooterActions";
-import { deleteProjectApi } from "@features/project/api";
-import { generateConfirmationCode } from "@features/project/lib/confirmationCode";
-import { suppressOwnProjectRemovalNotification } from "@features/project/lib/notificationSuppression";
-import type { Project } from "@shared/api/types/projects";
+import { generateRandomNumber } from "@shared/lib/number";
+import { deleteProjectApi } from "@shared/api/modules/projects";
 
 interface DeleteProjectFlowProps {
   isOpen: boolean;
@@ -19,38 +17,22 @@ interface DeleteProjectFlowProps {
 }
 
 export function DeleteProjectFlow({ isOpen, onClose, projectId, projectName }: DeleteProjectFlowProps) {
-  if (!isOpen) {
-    return null;
-  }
-
-  return (
-    <DeleteProjectDialog
-      onClose={onClose}
-      projectId={projectId}
-      projectName={projectName}
-    />
-  );
-}
-
-function DeleteProjectDialog({
-  onClose,
-  projectId,
-  projectName,
-}: Omit<DeleteProjectFlowProps, "isOpen">) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [confirmationCode] = useState(() => generateConfirmationCode(10));
+  const [confirmationCode, setConfirmationCode] = useState("");
   const [userInput, setUserInput] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setConfirmationCode(generateRandomNumber(10));
+      setUserInput("");
+    }
+  }, [isOpen]);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteProjectApi(projectId),
     onSuccess: () => {
-      suppressOwnProjectRemovalNotification(projectId);
-      queryClient.setQueryData<Project[]>(["projects"], (currentProjects = []) =>
-        currentProjects.filter((project) => project.projectId !== projectId)
-      );
       onClose();
-      navigate("/projects", { replace: true });
+      navigate("/dashboard");
     },
     onError: (error) => {
       console.error("Failed to delete project:", error);
@@ -65,7 +47,7 @@ function DeleteProjectDialog({
   const isMatch = userInput === confirmationCode;
 
   return (
-    <ModalOverlay isOpen={true} onClose={onClose} maxWidth="max-w-xl">
+    <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-xl">
       <div className="bg-[#121620] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
         <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-red-500/5">
           <div className="flex items-center gap-3">

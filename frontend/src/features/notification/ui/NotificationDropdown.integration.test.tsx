@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
 
-import { renderWithProviders } from "../../test/render";
-import { server } from "../../test/mocks/server";
-import type { NotificationItem as NotificationApiItem } from "../../shared/api/types/notifications";
+import { renderWithProviders } from "../../../test/render";
+import { server } from "../../../test/mocks/server";
+import type { NotificationItem as NotificationApiItem } from "@shared/api/types/notifications";
 import { NotificationDropdown } from "./NotificationDropdown";
 
 const navigateMock = vi.fn();

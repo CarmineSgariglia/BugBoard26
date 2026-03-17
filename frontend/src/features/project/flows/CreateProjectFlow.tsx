@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
 import { ProjectTeamStep } from "./ProjectTeamStep";
-import { createProjectApi } from "@features/project/api";
+import { createProjectApi } from "@shared/api/modules/projects";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 
 interface CreateProjectFlowProps {
@@ -33,7 +33,7 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
       onClose();
     },
     onError: () => {
-      setError("Error during project creation");
+      setError("Errore durante la creazione del progetto");
     },
   });
 

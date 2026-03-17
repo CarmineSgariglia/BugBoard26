@@ -1,13 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { ProjectTeamStep } from "./ProjectTeamStep";
-import { listProjectMembersApi, updateProjectApi } from "@features/project/api";
+import { updateProjectApi, listProjectMembersApi } from "@shared/api/modules/projects";
 import type { Project } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
-
-const EMPTY_MEMBERS: Array<{ userId: number; role?: string | null }> = [];
 
 interface EditTeamFlowProps {
   project: Project;
@@ -22,29 +20,26 @@ export function EditTeamFlow({
   onUpdated,
   readOnly = false,
 }: EditTeamFlowProps) {
-  const [selectedUserIdsOverride, setSelectedUserIdsOverride] = useState<number[] | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [adminIds, setAdminIds] = useState<number[]>([]);
   const [error, setError] = useState("");
 
   const {
-    data: membersData,
+    data: members = [],
     isLoading: isLoadingMembers,
     error: membersError,
   } = useQuery({
     queryKey: ["project", project.projectId, "members"],
-    queryFn: ({ signal }) => listProjectMembersApi(project.projectId, { signal }),
+    queryFn: () => listProjectMembersApi(project.projectId),
     staleTime: 0,
   });
 
-  const members = membersData ?? EMPTY_MEMBERS;
-  const adminIds = useMemo(
-    () => members.filter((member) => isAdminLike({ role: member.role })).map((member) => member.userId),
-    [members],
-  );
-  const derivedSelectedUserIds = useMemo(
-    () => members.filter((member) => !isAdminLike({ role: member.role })).map((member) => member.userId),
-    [members],
-  );
-  const selectedUserIds = selectedUserIdsOverride ?? derivedSelectedUserIds;
+  useEffect(() => {
+    const admins = members.filter((m) => isAdminLike({ role: m.role })).map((m) => m.userId);
+    const devs = members.filter((m) => !isAdminLike({ role: m.role })).map((m) => m.userId);
+    setAdminIds(admins);
+    setSelectedUserIds(devs);
+  }, [members, project.projectId]);
 
   const updateTeamMutation = useMutation({
     mutationFn: () =>
@@ -61,21 +56,14 @@ export function EditTeamFlow({
   });
 
   const toggleUser = (userId: number) => {
-    setSelectedUserIdsOverride((prev) => {
-      const nextSelection = prev ?? derivedSelectedUserIds;
-      return nextSelection.includes(userId)
-        ? nextSelection.filter((id) => id !== userId)
-        : [...nextSelection, userId];
-    });
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
   };
 
   const handleUpdateTeam = async () => {
     setError("");
-    try {
-      await updateTeamMutation.mutateAsync();
-    } catch {
-      // onError already maps the failure to user-facing UI state.
-    }
+    await updateTeamMutation.mutateAsync();
   };
 
   const uiError =

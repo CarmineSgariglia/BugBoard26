@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
-import { renderWithProviders } from "../../test/render";
+import { renderWithProviders } from "../../../test/render";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
 const {
@@ -19,17 +19,17 @@ const {
   handleGetHelpMock: vi.fn(),
 }));
 
-vi.mock("@shared/providers/AuthContext", () => ({
+vi.mock("@features/auth", () => ({
   useAuth: useAuthMock,
 }));
 
-vi.mock("../../shared/api/modules/users", () => ({
+vi.mock("@shared/api/modules/users", () => ({
   updateUserApi: updateUserApiMock,
   changePasswordApi: changePasswordApiMock,
   uploadProfileImageApi: uploadProfileImageApiMock,
 }));
 
-vi.mock("../../shared/lib/help", () => ({
+vi.mock("@shared/lib/help", () => ({
   handleGetHelp: handleGetHelpMock,
 }));
 

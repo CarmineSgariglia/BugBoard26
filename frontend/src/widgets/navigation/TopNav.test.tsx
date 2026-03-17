@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
 import { renderWithProviders } from "../../test/render";
-import type { NotificationItem, NotificationsPage } from "../../shared/api/types/notifications";
+import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
 import { TopNav } from "./TopNav";
 
 const { listNotificationsApiMock, refreshUserMock } = vi.hoisted(() => ({
@@ -12,7 +12,7 @@ const { listNotificationsApiMock, refreshUserMock } = vi.hoisted(() => ({
   refreshUserMock: vi.fn(),
 }));
 
-vi.mock("@shared/providers/AuthContext", () => ({
+vi.mock("@features/auth", () => ({
   useAuth: () => ({
     user: {
       userId: 1,
@@ -29,9 +29,9 @@ vi.mock("@shared/providers/AuthContext", () => ({
   }),
 }));
 
-vi.mock("../../shared/api/modules/notifications", async () => {
-  const actual = await vi.importActual<typeof import("../../shared/api/modules/notifications")>(
-    "../../shared/api/modules/notifications",
+vi.mock("@shared/api/modules/notifications", async () => {
+  const actual = await vi.importActual<typeof import("@shared/api/modules/notifications")>(
+    "@shared/api/modules/notifications",
   );
 
   return {
@@ -40,7 +40,7 @@ vi.mock("../../shared/api/modules/notifications", async () => {
   };
 });
 
-vi.mock("../../shared/api/modules/auth", () => ({
+vi.mock("@shared/api/modules/auth", () => ({
   logoutApi: vi.fn(),
 }));
 

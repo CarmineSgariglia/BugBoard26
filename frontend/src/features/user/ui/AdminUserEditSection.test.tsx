@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { renderWithProviders } from "../../test/render";
+import { renderWithProviders } from "../../../test/render";
 import { AdminUserEditSection } from "./AdminUserEditSection";
 
 const {
@@ -15,7 +15,7 @@ const {
   adminUploadProfileImageApiMock: vi.fn(),
 }));
 
-vi.mock("../../shared/api/modules/users", () => ({
+vi.mock("@shared/api/modules/users", () => ({
   updateUserApi: updateUserApiMock,
   adminChangePasswordApi: adminChangePasswordApiMock,
   adminUploadProfileImageApi: adminUploadProfileImageApiMock,

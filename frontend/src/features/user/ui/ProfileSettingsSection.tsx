@@ -4,21 +4,21 @@ import { useNavigate } from "react-router-dom";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";
 
-import { GlassCard } from "../../shared/ui/GlassCard";
+import { GlassCard } from "@shared/ui/GlassCard";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
-import { FooterActions } from "../../shared/ui/FooterActions";
-import { isValidName, isValidEmail, isValidPassword } from "../../shared/lib/validation";
-import { resolveMediaUrl } from "../../shared/api/core/media";
+import { FooterActions } from "@shared/ui/FooterActions";
+import { isValidName, isValidEmail, isValidPassword } from "@shared/lib/validation";
+import { resolveMediaUrl } from "@shared/api/core/media";
 import {
   uploadProfileImageApi,
   changePasswordApi,
   updateUserApi,
-} from "../../shared/api/modules/users";
-import { useAuth } from "@shared/providers/AuthContext";
-import { getErrorMessage, getFieldError } from "../../shared/lib/error";
-import { handleGetHelp } from "../../shared/lib/help";
+} from "@shared/api/modules/users";
+import { useAuth } from "@features/auth";
+import { getErrorMessage, getFieldError } from "@shared/lib/error";
+import { handleGetHelp } from "@shared/lib/help";
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const navigate = useNavigate();

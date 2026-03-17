@@ -1,10 +1,9 @@
 import { http, HttpResponse } from "msw";
 import { screen } from "@testing-library/react";
 
-import { server } from "../../../mocks/server";
-import { renderWithProviders } from "../../../render";
-import { AuthProvider } from "../../../../features/auth/providers/AuthProvider";
-import { useAuth } from "../../../../features/auth/providers/useAuth";
+import { server } from "../../../test/mocks/server";
+import { renderWithProviders } from "../../../test/render";
+import { AuthProvider, useAuth } from "./AuthProvider";
 
 function AuthProbe() {
   const { user, isLoading } = useAuth();
@@ -17,7 +16,7 @@ function AuthProbe() {
 }
 
 describe("AuthProvider", () => {
-  it("exposes the authenticated user when /users/me succeeds", async () => {
+  it("exposes the authenticated user when /auth/me succeeds", async () => {
     renderWithProviders(
       <AuthProvider>
         <AuthProbe />
@@ -27,9 +26,9 @@ describe("AuthProvider", () => {
     expect(await screen.findByText("Dev User")).toBeInTheDocument();
   });
 
-  it("falls back to guest when /users/me returns unauthorized", async () => {
+  it("falls back to guest when /auth/me returns unauthorized", async () => {
     server.use(
-      http.get("/api/users/me", () => HttpResponse.json({ detail: "Unauthorized" }, { status: 401 })),
+      http.get("/api/auth/me", () => HttpResponse.json({ detail: "Unauthorized" }, { status: 401 })),
     );
 
     renderWithProviders(
