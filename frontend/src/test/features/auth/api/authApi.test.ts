@@ -10,10 +10,9 @@ import {
   verifyOtpApi,
 } from "@features/auth/api";
 
-const { getMock, postMock, deleteMock, setAccessTokenMock } = vi.hoisted(() => ({
+const { getMock, postMock, setAccessTokenMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
-  deleteMock: vi.fn(),
   setAccessTokenMock: vi.fn(),
 }));
 
@@ -22,7 +21,6 @@ vi.mock("@shared/api/core/client", () => ({
   default: {
     get: getMock,
     post: postMock,
-    delete: deleteMock,
   },
   setAccessToken: setAccessTokenMock,
 }));
@@ -31,7 +29,6 @@ describe("feature auth api module", () => {
   beforeEach(() => {
     getMock.mockReset();
     postMock.mockReset();
-    deleteMock.mockReset();
     setAccessTokenMock.mockReset();
   });
 
@@ -46,7 +43,7 @@ describe("feature auth api module", () => {
     postMock.mockResolvedValue({ data: { accessToken: "token-123", user } });
 
     await expect(loginApi("dev@example.com", "StrongPass123!")).resolves.toEqual(user);
-    expect(postMock).toHaveBeenCalledWith("/sessions", {
+    expect(postMock).toHaveBeenCalledWith("/auth/login", {
       email: "dev@example.com",
       password: "StrongPass123!",
     });
@@ -63,14 +60,14 @@ describe("feature auth api module", () => {
     await expect(verifyOtpApi("dev@example.com", "123456")).resolves.toEqual({ valid: true });
     await expect(resetPasswordApi("dev@example.com", "123456", "NewPass123!")).resolves.toBeUndefined();
 
-    expect(postMock).toHaveBeenNthCalledWith(1, "/password-reset-requests", {
+    expect(postMock).toHaveBeenNthCalledWith(1, "/auth/password/otp/request", {
       email: "dev@example.com",
     });
-    expect(postMock).toHaveBeenNthCalledWith(2, "/password-reset-verifications", {
+    expect(postMock).toHaveBeenNthCalledWith(2, "/auth/password/otp/verify", {
       email: "dev@example.com",
       code: "123456",
     });
-    expect(postMock).toHaveBeenNthCalledWith(3, "/password-resets", {
+    expect(postMock).toHaveBeenNthCalledWith(3, "/auth/password/reset", {
       email: "dev@example.com",
       code: "123456",
       newPassword: "NewPass123!",
@@ -78,14 +75,14 @@ describe("feature auth api module", () => {
   });
 
   it("always clears the access token on logout, even when the request fails", async () => {
-    deleteMock.mockRejectedValueOnce(new Error("network down"));
+    postMock.mockRejectedValueOnce(new Error("network down"));
 
     await expect(logoutApi()).rejects.toThrow("network down");
-    expect(deleteMock).toHaveBeenCalledWith("/sessions/current");
+    expect(postMock).toHaveBeenCalledWith("/auth/logout");
     expect(setAccessTokenMock).toHaveBeenCalledWith(null);
   });
 
-  it("fetches the current user from /users/me", async () => {
+  it("fetches the current user from /auth/me", async () => {
     const user = {
       userId: 1,
       username: "dev",
@@ -94,14 +91,14 @@ describe("feature auth api module", () => {
     getMock.mockResolvedValue({ data: user });
 
     await expect(meApi()).resolves.toEqual(user);
-    expect(getMock).toHaveBeenCalledWith("/users/me");
+    expect(getMock).toHaveBeenCalledWith("/auth/me");
   });
 
   it("refreshes the session and stores the rotated access token", async () => {
     postMock.mockResolvedValue({ data: { accessToken: "fresh-token" } });
 
     await expect(refreshApi()).resolves.toBe("fresh-token");
-    expect(postMock).toHaveBeenCalledWith("/sessions/current/access-token", {});
+    expect(postMock).toHaveBeenCalledWith("/auth/refresh", {});
     expect(setAccessTokenMock).toHaveBeenCalledWith("fresh-token");
   });
 });

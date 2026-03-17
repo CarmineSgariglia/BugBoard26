@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { ProjectTeamStep } from "./ProjectTeamStep";
-import { updateProjectApi, listProjectMembersApi } from "@shared/api/modules/projects";
+import { listProjectMembersApi, updateProjectApi } from "@features/project/api";
 import type { Project } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";

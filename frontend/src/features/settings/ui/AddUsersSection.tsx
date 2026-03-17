@@ -5,10 +5,10 @@ import { GlassCard } from "@shared/ui/GlassCard";
 import { Toggle } from "@shared/ui/Toggle";
 import { isValidEmail, isValidName } from "@shared/lib/validation";
 import { getErrorMessage } from "@shared/lib/error";
-import { createUserApi } from "@shared/api/modules/users";
+import { FooterActions } from "@shared/ui/FooterActions";
+import { createSettingsUserApi } from "@features/settings/api";
 import { IdentityFields } from "./IdentityFields";
 import { ProfileHeader } from "./ProfileHeader";
-import { FooterActions } from "@shared/ui/FooterActions";
 
 function buildUsernameFromEmail(email: string): string {
   const localPart = email.split("@")[0] ?? "user";
@@ -57,7 +57,7 @@ export function AddUsersSection() {
 
   const createUserMutation = useMutation({
     mutationFn: async (payload: CreateUserFormPayload) => {
-      await createUserApi({
+      await createSettingsUserApi({
         username: payload.username,
         email: payload.normalizedEmail,
         password: payload.temporaryPassword,

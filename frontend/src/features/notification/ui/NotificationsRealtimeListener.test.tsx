@@ -39,7 +39,7 @@ vi.mock("@features/auth", () => ({
   }),
 }));
 
-vi.mock("@shared/api/modules/notifications", () => ({
+vi.mock("@features/notification/api", () => ({
   listNotificationsApi: listNotificationsApiMock,
   readNotificationApi: readNotificationApiMock,
   getNotificationsStreamUrl: () => "/api/notifications/stream",
@@ -52,7 +52,7 @@ vi.mock("@shared/api/core/client", () => ({
   getAccessToken: getAccessTokenMock,
 }));
 
-vi.mock("@shared/api/modules/auth", () => ({
+vi.mock("@features/auth/api", () => ({
   refreshApi: refreshApiMock,
 }));
 

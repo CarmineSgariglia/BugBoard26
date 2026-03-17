@@ -8,12 +8,12 @@ import { SearchBar } from "@shared/ui/SearchBar";
 import { Select } from "@shared/ui/Select";
 import { Pagination } from "@shared/ui/Pagination";
 import { UserTable } from "@shared/ui/UserTable";
-import { AdminUserEditSection } from "./AdminUserEditSection";
-import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
-import { usePaginatedUsers } from "@shared/hooks/usePaginatedUsers";
-import { setUserActiveApi } from "@shared/api/modules/users";
 import type { AuthUser } from "@shared/api/types/auth";
 import { useAuth } from "@features/auth";
+import { usePaginatedUsers } from "@features/user/hooks/usePaginatedUsers";
+import { setSettingsUserActiveApi } from "@features/settings/api";
+import { AdminUserEditSection } from "./AdminUserEditSection";
+import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 
 export interface ManageUsersSectionProps {
   onEditingChange?: (isEditing: boolean) => void;
@@ -44,7 +44,7 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
   const toggleUserStatusMutation = useMutation({
     mutationFn: async (targetUser: AuthUser) => {
       const nextActive = !targetUser.active;
-      return setUserActiveApi(targetUser.userId, nextActive);
+      return setSettingsUserActiveApi(targetUser.userId, nextActive);
     },
     onSuccess: (updatedUser) => {
       updateLocalUser(updatedUser);

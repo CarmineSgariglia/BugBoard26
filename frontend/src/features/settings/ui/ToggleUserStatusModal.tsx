@@ -35,15 +35,11 @@ export function ToggleUserStatusModal({
       icon={isActive ? <MdGroupOff size={24} /> : <MdGroup size={24} />}
       description={
         <>
-          Are you sure you want to {isActive ? "deactivate" : "activate"}? <br />
-          <span className="text-white font-medium">{fullName}</span>
-          <br />
+          Are you sure you want to {isActive ? "deactivate" : "activate"}{" "}
+          <span className="text-white font-medium">{fullName}</span>?
           {isActive
-            ? <>
-              The user will no longer <br />
-              be able to access the system.
-            </>
-            : <>The user will regain access <br /> to the system.</>}
+            ? " They will no longer be able to access the system."
+            : " They will regain access to the system."}
         </>
       }
     />

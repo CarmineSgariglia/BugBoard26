@@ -4,7 +4,7 @@ import { FiTrash2 } from "react-icons/fi";
 
 import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsStep";
 import { DeleteProjectFlow } from "./DeleteProjectFlow";
-import { updateProjectApi } from "@shared/api/modules/projects";
+import { updateProjectApi } from "@features/project/api";
 import type { Project } from "@shared/api/types/projects";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 

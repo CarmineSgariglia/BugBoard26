@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { createIssueUpdateApi, listIssueUpdatesApi } from "@shared/api/modules/issues";
+import { createIssueUpdateApi, listIssueUpdatesApi } from "@features/issue/api";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { getLatestIssueUpdateId, upsertIssueUpdates } from "@shared/lib/issueUpdatesRealtime";
+import { getLatestIssueUpdateId, upsertIssueUpdates } from "@features/issue/lib/issueUpdatesRealtime";
 import { formatIssueActivityEvent } from "@features/issue/lib/formatIssueActivityEvent";
 import { IssueActivityFilters } from "./IssueActivityFilters";
 import { IssueActivityRealtimeListener } from "./IssueActivityRealtimeListener";
@@ -78,7 +78,7 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
     const markerVisibleAccumulatedMsRef = useRef(0);
     const markerRemovalTimerRef = useRef<number | null>(null);
 
-    const { data: updates = [], isLoading } = useQuery({
+    const { data: updates = [], isLoading, isSuccess } = useQuery({
         queryKey: ["issue", issueId, "updates"],
         queryFn: () => listIssueUpdatesApi(issueId),
         staleTime: 0,
@@ -248,11 +248,13 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
 
     return (
         <div className={`rounded-2xl border border-white/5 bg-[#121620]/20 flex flex-col overflow-hidden ${className}`}>
-            <IssueActivityRealtimeListener
-                issueId={issueId}
-                latestUpdateId={latestUpdateId}
-                onUpdate={handleRealtimeUpdate}
-            />
+            {isSuccess ? (
+                <IssueActivityRealtimeListener
+                    issueId={issueId}
+                    latestUpdateId={latestUpdateId}
+                    onUpdate={handleRealtimeUpdate}
+                />
+            ) : null}
             <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
                 <h3 className="text-xl font-bold text-white">{`${issueTitle} - Activity`}</h3>
                 <IssueActivityFilters

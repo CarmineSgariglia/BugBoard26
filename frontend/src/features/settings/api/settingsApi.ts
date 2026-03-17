@@ -9,22 +9,22 @@ export async function updateSettingsUserApi(userId: number, payload: UpdateUserP
 }
 
 export async function changeSettingsPasswordApi(
-  _userId: number,
+  userId: number,
   currentPassword: string,
   newPassword: string
 ): Promise<void> {
-  await apiClient.put("/users/me/password", { currentPassword, newPassword });
+  await apiClient.post(`/users/${userId}/change-password`, { currentPassword, newPassword });
 }
 
 export async function adminChangeSettingsPasswordApi(userId: number, newPassword: string): Promise<void> {
-  await apiClient.put(`/users/${userId}/password`, { newPassword });
+  await apiClient.post(`/users/${userId}/admin-reset-password`, { newPassword });
 }
 
 export async function adminUploadSettingsProfileImageApi(userId: number, file: File): Promise<AuthUser> {
   const preparedFile = await prepareProfileImageUpload(file);
   const formData = new FormData();
   formData.append("profile_img", preparedFile);
-  const { data } = await apiClient.put<AuthUser>(`/users/${userId}/profile-image`, formData, {
+  const { data } = await apiClient.post<AuthUser>(`/users/${userId}/admin-upload-image`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -46,7 +46,7 @@ export async function uploadSettingsProfileImageApi(file: File): Promise<AuthUse
   const preparedFile = await prepareProfileImageUpload(file);
   const formData = new FormData();
   formData.append("profile_img", preparedFile);
-  const { data } = await apiClient.put<AuthUser>("/users/me/profile-image", formData, {
+  const { data } = await apiClient.post<AuthUser>("/users/me/upload-profile-image", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },

@@ -8,8 +8,8 @@ import {
   IssueDetailsSidebar,
   IssueModal,
 } from "@features/issue";
-import { getIssueApi } from "@shared/api/modules/issues";
-import { listProjectMembersApi } from "@shared/api/modules/projects";
+import { getIssueApi } from "@features/issue/api";
+import { listProjectMembersApi } from "@features/project/api";
 import type { ProjectMembership } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { useAuth } from "@features/auth";

@@ -3,19 +3,19 @@ import { useMutation } from "@tanstack/react-query";
 import { RiArrowGoBackLine } from "react-icons/ri";
 
 import { GlassCard } from "@shared/ui/GlassCard";
-import { ProfileHeader } from "./ProfileHeader";
-import { IdentityFields } from "./IdentityFields";
-import { ChangePasswordSection } from "./ChangePasswordSection";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "@shared/lib/validation";
 import { getErrorMessage, getFieldError } from "@shared/lib/error";
 import { resolveMediaUrl } from "@shared/api/core/media";
-import {
-  updateUserApi,
-  adminChangePasswordApi,
-  adminUploadProfileImageApi,
-} from "@shared/api/modules/users";
 import type { AuthUser } from "@shared/api/types/auth";
+import {
+  adminChangeSettingsPasswordApi,
+  adminUploadSettingsProfileImageApi,
+  updateSettingsUserApi,
+} from "@features/settings/api";
+import { ProfileHeader } from "./ProfileHeader";
+import { IdentityFields } from "./IdentityFields";
+import { ChangePasswordSection } from "./ChangePasswordSection";
 
 interface AdminUserEditSectionProps {
   user: AuthUser;
@@ -73,7 +73,7 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
       if (selectedImageFile) {
         setIsUploading(true);
         try {
-          updatedUserObj = await adminUploadProfileImageApi(user.userId, selectedImageFile);
+          updatedUserObj = await adminUploadSettingsProfileImageApi(user.userId, selectedImageFile);
           if (updatedUserObj.profileImg) {
             setAvatarUrl(resolveMediaUrl(updatedUserObj.profileImg));
           }
@@ -84,7 +84,7 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
       }
 
       if (hasIdentityChanged) {
-        updatedUserObj = await updateUserApi(user.userId, {
+        updatedUserObj = await updateSettingsUserApi(user.userId, {
           username: username.trim().toLowerCase(),
           firstName: name.trim(),
           lastName: surname.trim(),
@@ -104,7 +104,7 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
 
       if (hasPasswordInput) {
         try {
-          await adminChangePasswordApi(user.userId, newPassword);
+          await adminChangeSettingsPasswordApi(user.userId, newPassword);
           setNewPassword("");
         } catch (pwdErr) {
           setPasswordError(getErrorMessage(pwdErr, "Failed to change password."));

@@ -2,8 +2,8 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import brandLogo from "@shared/assets/images/LogoBugBoard26.webp";
-import { listProjectsApi } from "@shared/api/modules/projects";
-import { getIssueApi } from "@shared/api/modules/issues";
+import { getProjectApi } from "@features/project/api";
+import { getIssueApi } from "@features/issue/api";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 
 export function DynamicBreadcrumbs() {
@@ -14,29 +14,22 @@ export function DynamicBreadcrumbs() {
   const projectLabel = projectId ? labels[`project:${projectId}`] : "";
   const issueLabel = issueId ? labels[`issue:${issueId}`] : "";
 
-  const { data: fetchedProjectName } = useQuery({
-    queryKey: ["breadcrumb", "project", projectId],
-    queryFn: async () => {
-      const projects = await listProjectsApi();
-      const currentProject = projects.find((p) => String(p.projectId) === projectId);
-      return currentProject ? currentProject.name : `Project #${projectId}`;
-    },
+  const { data: project } = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => getProjectApi(projectId!),
     enabled: !!projectId && !projectLabel && location.pathname.includes("/projects/"),
-    staleTime: 0,
+    staleTime: 30_000,
   });
 
-  const { data: fetchedIssueTitle } = useQuery({
-    queryKey: ["breadcrumb", "issue", issueId],
-    queryFn: async () => {
-      const issue = await getIssueApi(issueId!);
-      return issue ? issue.title : `Issue #${issueId}`;
-    },
+  const { data: issue } = useQuery({
+    queryKey: ["issue", issueId],
+    queryFn: () => getIssueApi(issueId!),
     enabled: !!issueId && !issueLabel,
-    staleTime: 0,
+    staleTime: 30_000,
   });
 
-  const projectName = projectLabel || fetchedProjectName || "";
-  const issueTitle = issueLabel || fetchedIssueTitle || "";
+  const projectName = projectLabel || project?.name || (projectId ? `Project #${projectId}` : "");
+  const issueTitle = issueLabel || issue?.title || (issueId ? `Issue #${issueId}` : "");
 
   const isSettings = location.pathname.startsWith("/settings");
   const isProjects = location.pathname === "/projects";

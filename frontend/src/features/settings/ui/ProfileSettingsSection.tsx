@@ -5,20 +5,20 @@ import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";
 
 import { GlassCard } from "@shared/ui/GlassCard";
-import { ProfileHeader } from "./ProfileHeader";
-import { IdentityFields } from "./IdentityFields";
-import { ChangePasswordSection } from "./ChangePasswordSection";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { isValidName, isValidEmail, isValidPassword } from "@shared/lib/validation";
 import { resolveMediaUrl } from "@shared/api/core/media";
-import {
-  uploadProfileImageApi,
-  changePasswordApi,
-  updateUserApi,
-} from "@shared/api/modules/users";
 import { useAuth } from "@features/auth";
 import { getErrorMessage, getFieldError } from "@shared/lib/error";
 import { handleGetHelp } from "@shared/lib/help";
+import {
+  changeSettingsPasswordApi,
+  updateSettingsUserApi,
+  uploadSettingsProfileImageApi,
+} from "@features/settings/api";
+import { ProfileHeader } from "./ProfileHeader";
+import { IdentityFields } from "./IdentityFields";
+import { ChangePasswordSection } from "./ChangePasswordSection";
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const navigate = useNavigate();
@@ -99,7 +99,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       if (selectedImageFile) {
         setIsUploading(true);
         try {
-          const updatedUser = await uploadProfileImageApi(selectedImageFile);
+          const updatedUser = await uploadSettingsProfileImageApi(selectedImageFile);
           if (updatedUser.profileImg) {
             setAvatarUrl(resolveMediaUrl(updatedUser.profileImg));
           }
@@ -110,7 +110,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       }
 
       if (hasIdentityChanged) {
-        const updated = await updateUserApi(user.userId, {
+        const updated = await updateSettingsUserApi(user.userId, {
           username: username.trim().toLowerCase(),
           firstName: name.trim(),
           lastName: surname.trim(),
@@ -131,7 +131,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
 
       if (hasPasswordInput) {
         try {
-          await changePasswordApi(user.userId, currentPassword, newPassword);
+          await changeSettingsPasswordApi(user.userId, currentPassword, newPassword);
           setCurrentPassword("");
           setNewPassword("");
         } catch (pwdErr) {

@@ -29,9 +29,9 @@ vi.mock("@features/auth", () => ({
   }),
 }));
 
-vi.mock("@shared/api/modules/notifications", async () => {
-  const actual = await vi.importActual<typeof import("@shared/api/modules/notifications")>(
-    "@shared/api/modules/notifications",
+vi.mock("@features/notification/api", async () => {
+  const actual = await vi.importActual<typeof import("@features/notification/api")>(
+    "@features/notification/api",
   );
 
   return {
@@ -40,7 +40,7 @@ vi.mock("@shared/api/modules/notifications", async () => {
   };
 });
 
-vi.mock("@shared/api/modules/auth", () => ({
+vi.mock("@features/auth/api", () => ({
   logoutApi: vi.fn(),
 }));
 

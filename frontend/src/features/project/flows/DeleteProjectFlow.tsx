@@ -6,8 +6,8 @@ import { FiTrash2 } from "react-icons/fi";
 
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 import { FooterActions } from "@shared/ui/FooterActions";
-import { generateRandomNumber } from "@shared/lib/number";
-import { deleteProjectApi } from "@shared/api/modules/projects";
+import { deleteProjectApi } from "@features/project/api";
+import { generateConfirmationCode } from "@features/project/lib/confirmationCode";
 
 interface DeleteProjectFlowProps {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export function DeleteProjectFlow({ isOpen, onClose, projectId, projectName }: D
 
   useEffect(() => {
     if (isOpen) {
-      setConfirmationCode(generateRandomNumber(10));
+      setConfirmationCode(generateConfirmationCode(10));
       setUserInput("");
     }
   }, [isOpen]);

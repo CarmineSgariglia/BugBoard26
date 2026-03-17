@@ -6,7 +6,7 @@ import {
   listNotificationsApi,
   readAllNotificationsApi,
   readNotificationApi,
-} from "./notifications";
+} from "@features/notification/api";
 
 const { getMock, postMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
@@ -14,7 +14,7 @@ const { getMock, postMock, deleteMock } = vi.hoisted(() => ({
   deleteMock: vi.fn(),
 }));
 
-vi.mock("../core/client", () => ({
+vi.mock("@shared/api/core/client", () => ({
   __esModule: true,
   default: {
     get: getMock,
@@ -24,7 +24,7 @@ vi.mock("../core/client", () => ({
   apiBaseUrl: "/api",
 }));
 
-describe("notifications api module", () => {
+describe("feature notifications api module", () => {
   beforeEach(() => {
     getMock.mockReset();
     postMock.mockReset();

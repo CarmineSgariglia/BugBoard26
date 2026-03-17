@@ -18,7 +18,7 @@ const {
   realtimeListenerState: { props: null as null | Record<string, unknown> },
 }));
 
-vi.mock("@shared/api/modules/issues", () => ({
+vi.mock("@features/issue/api", () => ({
   createIssueUpdateApi: createIssueUpdateApiMock,
   listIssueUpdatesApi: listIssueUpdatesApiMock,
 }));
@@ -173,6 +173,36 @@ describe("IssueActivityPanel", () => {
     timelineState.props = null;
     realtimeListenerState.props = null;
     vi.useRealTimers();
+  });
+
+  it("mounts the realtime listener only after the initial history load completes", async () => {
+    let resolveUpdates: ((value: IssueUpdate[]) => void) | null = null;
+    listIssueUpdatesApiMock.mockReturnValue(
+      new Promise<IssueUpdate[]>((resolve) => {
+        resolveUpdates = resolve;
+      }),
+    );
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose
+      />,
+    );
+
+    expect(realtimeListenerState.props).toBeNull();
+
+    resolveUpdates?.([buildUpdate(5), buildUpdate(9)]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+      expect(realtimeListenerState.props).toMatchObject({
+        issueId: 77,
+        latestUpdateId: 9,
+      });
+    });
   });
 
   it("auto-scrolls to a new realtime update when the user is already at the latest edge", async () => {

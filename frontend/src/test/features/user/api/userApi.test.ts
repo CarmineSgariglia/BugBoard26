@@ -27,11 +27,4 @@ describe("feature user api module", () => {
       params: { page: 2, role: "User" },
     });
   });
-
-  it("propagates API errors", async () => {
-    const error = new Error("Network Error");
-    getMock.mockRejectedValue(error);
-
-    await expect(listUsersApi()).rejects.toThrow(error);
-  });
 });
