@@ -176,7 +176,7 @@ describe("IssueActivityPanel", () => {
   });
 
   it("mounts the realtime listener only after the initial history load completes", async () => {
-    let resolveUpdates: ((value: IssueUpdate[]) => void) | null = null;
+    let resolveUpdates!: (value: IssueUpdate[]) => void;
     listIssueUpdatesApiMock.mockReturnValue(
       new Promise<IssueUpdate[]>((resolve) => {
         resolveUpdates = resolve;
@@ -194,7 +194,7 @@ describe("IssueActivityPanel", () => {
 
     expect(realtimeListenerState.props).toBeNull();
 
-    resolveUpdates?.([buildUpdate(5), buildUpdate(9)]);
+    resolveUpdates([buildUpdate(5), buildUpdate(9)]);
 
     await waitFor(() => {
       expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();

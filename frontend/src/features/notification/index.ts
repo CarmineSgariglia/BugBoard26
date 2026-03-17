@@ -1,4 +1,4 @@
 export * from "./api";
-export { notificationQueryKeys } from "./model";
-export type { NotificationItem, NotificationsPage, NotificationType } from "./model";
+export { notificationsQueryKey } from "./api";
+export type { NotificationItem, NotificationsPage, NotificationType } from "@shared/api/types/notifications";
 export { NotificationDropdown, NotificationItem as NotificationItemCard, NotificationsRealtimeListener } from "./ui";
