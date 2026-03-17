@@ -48,6 +48,8 @@ You can also use the shortcuts in the `Makefile`:
 - `make logs`
 - `make shell-backend`
 - `make shell-frontend`
+- `make prod-up`
+- `make prod-scale-up`
 
 The `Makefile` is optional. The source of truth for local development is still `docker compose`.
 

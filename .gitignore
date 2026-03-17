@@ -15,6 +15,9 @@ backend/.coverage
 venv/
 backend/.venv/
 backend/venv/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # macOS
 .DS_Store

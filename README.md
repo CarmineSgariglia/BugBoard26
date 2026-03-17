@@ -10,7 +10,8 @@ Containerized three-tier architecture:
 - `frontend/`: React + TypeScript + Tailwind app
 - `backend/`: Django REST API app
 - `docker-compose.yml`: Orchestrates all tiers
-- `docker-compose.prod.yml`: Production overrides
+- `docker-compose.prod.yml`: Single-node production overrides
+- `docker-compose.scale.yml`: Optional Redis-backed scale-ready overrides
 - `env/dev.example`: Local development environment template
 - `BrunoTesting/env/bruno-safe.ci.env`: Safe CI environment for Bruno and CI workflows
 - `env/production.example`: Production environment template
@@ -46,6 +47,9 @@ Notes:
 - The repository is configured so the SonarCloud scan reads only backend Python sources and the backend coverage XML.
 - SonarCloud should remain non-blocking in branch protection; use it for backend visibility and review, not as a required merge gate.
 - Recommended branch protection for `main`: require only the `Main PR Gate` status check.
+- For local editor feedback in VS Code, install the `SonarLint` extension. The workspace already contains the connected-mode mapping for project `CarmineSgariglia_BugBoard26` in `.vscode/settings.json`.
+- Local SonarLint feedback is expected only for `backend/**/*.py`. Frontend files are not part of the current SonarCloud scope.
+- Terminal output will not match the SonarCloud web UI unless `sonar-scanner` is installed and authenticated separately.
 
 ## Backend Testing
 
@@ -76,16 +80,23 @@ Notes:
 
 - Use `env/production.example` as template for production secrets and security flags.
 - Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs` and `GS_BUCKET_NAME`.
-- Start production stack with:
+- Start the standard single-node production stack with:
   - `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
+- Start the Redis-backed scale-ready variant with:
+  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.scale.yml up -d --build`
 - Exposed ports in production:
   - `80` and `443` on the `web` service only
-- Internal-only services in production:
+- Internal-only services in the standard production stack:
   - `backend` and `db` are reachable only on the Docker network
+- Internal-only services in the scale-ready variant:
+  - `backend`, `db`, and `redis` are reachable only on the Docker network
 - Frontend delivery in production:
   - nginx serves the compiled files from `dist/`
   - sourcemaps are disabled
   - API and media requests go through the same origin (`/api`, `/media`)
+- Realtime runtime mode:
+  - standard production uses in-memory cache/transport and a single Gunicorn worker for single-VM SSE reliability
+  - use `docker-compose.scale.yml` to re-enable Redis-backed realtime before moving to multi-worker or multi-VM deployments
 
 ## API Endpoints
 

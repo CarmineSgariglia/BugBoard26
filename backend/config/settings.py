@@ -7,9 +7,13 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+def _env_flag(name: str, default: bool) -> bool:
+    return os.getenv(name, str(default)).lower() == "true"
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
 
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+DEBUG = _env_flag("DEBUG", True)
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -88,6 +92,7 @@ USE_I18N = True
 USE_TZ = True
 
 IS_TESTING = any(arg in {"test", "pytest"} for arg in sys.argv)
+SINGLE_NODE_RUNTIME = _env_flag("SINGLE_NODE_RUNTIME", not DEBUG)
 
 STATIC_URL = "static/"
 MEDIA_URL = "/media/"
@@ -98,7 +103,10 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
 CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", REDIS_URL)
 NOTIFICATIONS_REDIS_URL = os.getenv("NOTIFICATIONS_REDIS_URL", REDIS_URL)
 
-cache_backend = os.getenv("CACHE_BACKEND", "locmem" if IS_TESTING else "redis").lower()
+cache_backend = os.getenv(
+    "CACHE_BACKEND",
+    "locmem" if IS_TESTING or SINGLE_NODE_RUNTIME else "redis",
+).lower()
 if cache_backend not in {"locmem", "redis"}:
     raise ImproperlyConfigured("CACHE_BACKEND must be one of: locmem, redis")
 
@@ -122,7 +130,7 @@ else:
 
 NOTIFICATIONS_TRANSPORT_BACKEND = os.getenv(
     "NOTIFICATIONS_TRANSPORT_BACKEND",
-    "memory" if IS_TESTING else "redis",
+    "memory" if IS_TESTING or SINGLE_NODE_RUNTIME else "redis",
 ).lower()
 if NOTIFICATIONS_TRANSPORT_BACKEND not in {"memory", "redis"}:
     raise ImproperlyConfigured("NOTIFICATIONS_TRANSPORT_BACKEND must be one of: memory, redis")

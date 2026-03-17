@@ -1,0 +1,16 @@
+services:
+  redis:
+    profiles: !override []
+
+  backend:
+    depends_on: !override
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SINGLE_NODE_RUNTIME: "False"
+      CACHE_BACKEND: redis
+      NOTIFICATIONS_TRANSPORT_BACKEND: redis
+      GUNICORN_WORKERS: "2"
+      GUNICORN_THREADS: "8"
