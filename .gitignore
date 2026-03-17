@@ -30,3 +30,4 @@ BrunoTesting/.tmp/
 # Media (Uploads)
 backend/media/
 backend/coverage/
+.vscode/settings.json
