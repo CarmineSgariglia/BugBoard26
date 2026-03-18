@@ -2,7 +2,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { IssueCard } from "../../../../features/issue/ui/IssueCard";
-import type { Issue } from "../../../../shared/api/types/issues";
 
 describe("IssueCard", () => {
   const dummyIssue = {
@@ -45,7 +44,7 @@ describe("IssueCard", () => {
 
   it("applies accurate status colors", () => {
     const doneIssue = { ...dummyIssue, status: "DONE" };
-    const { container } = render(<IssueCard issue={doneIssue} />);
+    render(<IssueCard issue={doneIssue} />);
 
     // DONE maps to text-emerald-500 usually
     const badge = screen.getByText("DONE");

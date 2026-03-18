@@ -4,7 +4,7 @@ expect.extend({
   toBeInTheDocument(received: unknown) {
     const pass =
       received instanceof Node &&
-      received.ownerDocument?.documentElement.contains(received);
+      received.ownerDocument?.documentElement.contains(received) === true;
 
     return {
       pass,

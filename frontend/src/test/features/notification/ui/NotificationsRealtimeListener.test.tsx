@@ -44,7 +44,6 @@ vi.mock("@features/notification/api", () => ({
   readNotificationApi: readNotificationApiMock,
   getNotificationsStreamUrl: () => "/api/notifications/stream",
   notificationsQueryKey: ["notifications"],
-  notificationsPollingIntervalMs: 15000,
   notificationsPageSize: 20,
 }));
 

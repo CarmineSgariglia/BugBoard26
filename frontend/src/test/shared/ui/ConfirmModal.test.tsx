@@ -53,7 +53,6 @@ describe("ConfirmModal", () => {
 
   it("calls onClose when backdrop is clicked", async () => {
     const onClose = vi.fn();
-    const user = userEvent.setup();
 
     const { container } = render(<ConfirmModal {...getDefaultProps()} onClose={onClose} />);
     

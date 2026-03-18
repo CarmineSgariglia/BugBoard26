@@ -8,7 +8,6 @@ import { refreshApi } from "@features/auth/api";
 import {
   getNotificationsStreamUrl,
   listNotificationsApi,
-  notificationsPollingIntervalMs,
   notificationsPageSize,
   notificationsQueryKey,
   readNotificationApi,
@@ -92,7 +91,6 @@ export function NotificationsRealtimeListener() {
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
     enabled: Boolean(user),
     staleTime: 30000,
-    refetchInterval: user ? notificationsPollingIntervalMs : false,
   });
   const notifications = useMemo(() => flattenNotificationsPages(data), [data]);
 
