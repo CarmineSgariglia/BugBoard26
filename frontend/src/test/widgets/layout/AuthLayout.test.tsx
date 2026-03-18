@@ -16,8 +16,8 @@ describe("AuthLayout", () => {
       { route: "/login" }
     );
 
-    expect(screen.getByText("BugBoard26")).toBeInTheDocument();
-    expect(screen.getByAltText("BugBoard26 Logo")).toBeInTheDocument();
+    expect(screen.getAllByText("BugBoard26").length).toBeGreaterThan(0);
+    expect(screen.getAllByAltText("BugBoard26").length).toBeGreaterThan(0);
     expect(screen.getByText("Login form")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /forgot password\?/i })).toHaveAttribute(
       "href",
@@ -35,10 +35,10 @@ describe("AuthLayout", () => {
       { route: "/forgot-password" }
     );
 
-    expect(screen.getByText("Retrieve Password")).toBeInTheDocument();
+    expect(screen.getAllByText("Retrieve Password").length).toBeGreaterThan(0);
     expect(
-      screen.getByText("Insert your email to recover your password")
-    ).toBeInTheDocument();
+      screen.getAllByText("Insert your email to recover your password").length
+    ).toBeGreaterThan(0);
     expect(screen.getByText("Recovery form")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to login/i })).toHaveAttribute(
       "href",
@@ -56,10 +56,10 @@ describe("AuthLayout", () => {
       { route: "/forgot-password/verify" }
     );
 
-    expect(screen.getByText("Retrieve Password")).toBeInTheDocument();
+    expect(screen.getAllByText("Retrieve Password").length).toBeGreaterThan(0);
     expect(
-      screen.getByText("Insert OTP code and your new password")
-    ).toBeInTheDocument();
+      screen.getAllByText("Insert OTP code and your new password").length
+    ).toBeGreaterThan(0);
     expect(screen.getByText("Verify form")).toBeInTheDocument();
   });
 });

@@ -1,9 +1,6 @@
-{/* 
-    Main layout for authenticated users.
-    It contains the top navigation bar and the main content area
-    The main content area is where we render the ProjectsPage, ProjectIssuesPage, or ManageAccountSettingsPage....
-*/}
-
+/*
+  Main layout for authenticated routes, including app background and top navigation.
+*/
 
 import { Outlet } from "react-router-dom";
 import { AppBackground } from "./AppBackground";

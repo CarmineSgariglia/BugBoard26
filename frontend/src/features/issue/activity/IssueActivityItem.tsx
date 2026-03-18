@@ -86,10 +86,10 @@ export const IssueActivityItem = forwardRef<HTMLDivElement, Props>(function Issu
     const isMe = user?.userId === item.actorId;
     const [selectedAttachment, setSelectedAttachment] = useState<IssueAttachment | null>(null);
 
-    // --- fade in / fade out for the marker ---
-    // Must initialize markerMounted from the prop so the marker div exists in
-    // the DOM on the very first render â€“ scroll-to and IntersectionObserver
-    // in the parent rely on data-activity-marker-id being present immediately.
+    // Fade the inline marker in and out while keeping it mountable for timeline targeting.
+    // markerMounted must be initialized from the prop so the marker element exists
+    // on the first render. The parent scroll and observer logic depends on
+    // data-activity-marker-id being present immediately.
     const [markerMounted, setMarkerMounted] = useState(showNewMessageMarker);
     const [markerVisible, setMarkerVisible] = useState(false);
     const fadeTimerRef = useRef<number | null>(null);
