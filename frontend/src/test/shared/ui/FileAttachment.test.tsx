@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { FileAttachment } from "@features/issue/ui/FileAttachment";
+import { FileAttachment } from "@shared/ui/FileAttachment";
 
 // Mock useFileValidation
 vi.mock("@features/issue/activity/useFileValidation", () => ({
@@ -35,8 +35,7 @@ describe("FileAttachment", () => {
       isPreparingFiles: false,
       handleFiles: vi.fn(),
       removeFile: mockRemoveFile,
-      resetFiles: vi.fn(),
-    });
+    } as any);
 
     render(<FileAttachment onFilesChange={() => {}} />);
     

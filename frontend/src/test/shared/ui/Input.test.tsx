@@ -30,7 +30,7 @@ describe("Input", () => {
   });
 
   it("applies error styles when hasError is true", () => {
-    render(<Input hasError placeholder="Error" />);
+    const { container } = render(<Input hasError placeholder="Error" />);
     const input = screen.getByPlaceholderText("Error");
     
     expect(input.className).toContain("border-rose-500");

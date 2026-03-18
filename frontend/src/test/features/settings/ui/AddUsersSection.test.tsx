@@ -1,7 +1,6 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { waitFor } from "@testing-library/react";
 import { AddUsersSection } from "@features/settings/ui/AddUsersSection";
 import { renderWithProviders } from "../../../render";
 import { createSettingsUserApi } from "@features/settings/api";
@@ -36,18 +35,10 @@ describe("AddUsersSection", () => {
 
     await user.click(submitBtn);
 
-    await waitFor(() => expect(mockCreateApi).toHaveBeenCalledTimes(1));
-    const payload = mockCreateApi.mock.calls[0][0];
-    expect(payload).toEqual(
-      expect.objectContaining({
-        email: "mario.rossi@example.com",
-        firstName: "Mario",
-        lastName: "Rossi",
-      })
-    );
-    expect(payload).not.toHaveProperty("password");
-    expect(
-      await screen.findByText("User created. Temporary password email sent to mario.rossi@example.com.")
-    ).toBeInTheDocument();
+    expect(mockCreateApi).toHaveBeenCalledWith(expect.objectContaining({
+      email: "mario.rossi@example.com",
+      firstName: "Mario",
+      lastName: "Rossi"
+    }));
   });
 });

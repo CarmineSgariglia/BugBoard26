@@ -12,10 +12,9 @@ import {
 
 import { prepareProfileImageUpload } from "@shared/lib/media";
 
-const { postMock, patchMock, putMock } = vi.hoisted(() => ({
+const { postMock, patchMock } = vi.hoisted(() => ({
   postMock: vi.fn(),
   patchMock: vi.fn(),
-  putMock: vi.fn(),
 }));
 
 vi.mock("@shared/api/core/client", () => ({
@@ -23,7 +22,6 @@ vi.mock("@shared/api/core/client", () => ({
   default: {
     post: postMock,
     patch: patchMock,
-    put: putMock,
   },
 }));
 
@@ -40,14 +38,13 @@ describe("feature settings api module", () => {
   beforeEach(() => {
     postMock.mockReset();
     patchMock.mockReset();
-    putMock.mockReset();
     vi.mocked(prepareProfileImageUpload).mockClear();
   });
 
   const dummyUser = { id: 1, email: "test@example.com", name: "Test" };
 
   it("updates user settings", async () => {
-    const payload = { firstName: "Updated" };
+    const payload = { name: "Updated" };
     patchMock.mockResolvedValue({ data: { ...dummyUser, ...payload } });
 
     await expect(updateSettingsUserApi(1, payload)).resolves.toEqual({ ...dummyUser, ...payload });
@@ -55,27 +52,27 @@ describe("feature settings api module", () => {
   });
 
   it("changes password", async () => {
-    putMock.mockResolvedValue({ data: undefined });
+    postMock.mockResolvedValue({ data: undefined });
 
     await expect(changeSettingsPasswordApi(1, "current", "new")).resolves.toBeUndefined();
-    expect(putMock).toHaveBeenCalledWith("/users/me/password", {
+    expect(postMock).toHaveBeenCalledWith("/users/1/change-password", {
       currentPassword: "current",
       newPassword: "new",
     });
   });
 
   it("admin resets password", async () => {
-    putMock.mockResolvedValue({ data: undefined });
+    postMock.mockResolvedValue({ data: undefined });
 
     await expect(adminChangeSettingsPasswordApi(1, "newpass")).resolves.toBeUndefined();
-    expect(putMock).toHaveBeenCalledWith("/users/1/password", {
+    expect(postMock).toHaveBeenCalledWith("/users/1/admin-reset-password", {
       newPassword: "newpass",
     });
   });
 
   it("admin uploads profile image", async () => {
     const file = new File(["test"], "avatar.png", { type: "image/png" });
-    putMock.mockResolvedValue({ data: { ...dummyUser, imageUrl: "new-url" } });
+    postMock.mockResolvedValue({ data: { ...dummyUser, imageUrl: "new-url" } });
 
     await expect(adminUploadSettingsProfileImageApi(1, file)).resolves.toEqual({
       ...dummyUser,
@@ -83,8 +80,8 @@ describe("feature settings api module", () => {
     });
 
     expect(prepareProfileImageUpload).toHaveBeenCalledWith(file);
-    const [url, formData, config] = putMock.mock.calls[0];
-    expect(url).toBe("/users/1/profile-image");
+    const [url, formData, config] = postMock.mock.calls[0];
+    expect(url).toBe("/users/1/admin-upload-image");
     expect(formData).toBeInstanceOf(FormData);
     expect((formData as FormData).get("profile_img")).toBeDefined();
     expect(config).toBeDefined();
@@ -93,7 +90,7 @@ describe("feature settings api module", () => {
   });
 
   it("creates a user", async () => {
-    const payload = { email: "new@example.com", firstName: "New" };
+    const payload = { email: "new@example.com", password: "123", name: "New" };
     postMock.mockResolvedValue({ data: { id: 2, ...payload } });
 
     await expect(createSettingsUserApi(payload as any)).resolves.toEqual({ id: 2, ...payload });
@@ -109,7 +106,7 @@ describe("feature settings api module", () => {
 
   it("uploads own profile image", async () => {
     const file = new File(["test"], "avatar2.png", { type: "image/png" });
-    putMock.mockResolvedValue({ data: { ...dummyUser, imageUrl: "my-url" } });
+    postMock.mockResolvedValue({ data: { ...dummyUser, imageUrl: "my-url" } });
 
     await expect(uploadSettingsProfileImageApi(file)).resolves.toEqual({
       ...dummyUser,
@@ -117,8 +114,8 @@ describe("feature settings api module", () => {
     });
 
     expect(prepareProfileImageUpload).toHaveBeenCalledWith(file);
-    const [url, formData, config] = putMock.mock.calls[0];
-    expect(url).toBe("/users/me/profile-image");
+    const [url, formData, config] = postMock.mock.calls[0];
+    expect(url).toBe("/users/me/upload-profile-image");
     expect(formData).toBeInstanceOf(FormData);
     expect(config).toBeDefined();
     expect(config.headers).toBeDefined();

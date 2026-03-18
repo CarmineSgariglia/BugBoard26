@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { handleGetHelp } from "../../../../src/shared/lib/help";
 
 describe("help helpers", () => {
@@ -12,6 +12,6 @@ describe("help helpers", () => {
 
     handleGetHelp();
 
-    expect(locationMock.href).toBe("mailto:support@bugboard.it");
+    expect(locationMock.href).toBe("mailto:admin@bugboard.com");
   });
 });

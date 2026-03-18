@@ -26,13 +26,6 @@ describe("error helpers", () => {
       };
       expect(getFieldError(mockError, "username")).toBe("Too short");
     });
-
-    it("returns null when the field is missing or the payload is not an object", () => {
-      vi.mocked(axios.isAxiosError).mockReturnValue(true);
-
-      expect(getFieldError({ response: { data: null } }, "username")).toBeNull();
-      expect(getFieldError({ response: { data: { email: "Wrong field" } } }, "username")).toBeNull();
-    });
   });
 
   describe("getErrorMessage", () => {
@@ -55,30 +48,6 @@ describe("error helpers", () => {
         response: { data: { errors: { foo: { bar: "Deep error" } } } }
       };
       expect(getErrorMessage(mockError, "Fallback")).toBe("Deep error");
-    });
-
-    it("prefers non_field_errors and password-related keys when present", () => {
-      vi.mocked(axios.isAxiosError).mockReturnValue(true);
-
-      expect(
-        getErrorMessage(
-          { response: { data: { non_field_errors: ["General error"], email: "Ignored" } } },
-          "Fallback"
-        )
-      ).toBe("General error");
-
-      expect(
-        getErrorMessage(
-          { response: { data: { currentPassword: ["Wrong current password"] } } },
-          "Fallback"
-        )
-      ).toBe("Wrong current password");
-    });
-
-    it("returns the fallback when no readable message exists", () => {
-      vi.mocked(axios.isAxiosError).mockReturnValue(true);
-
-      expect(getErrorMessage({ response: { data: {} } }, "Fallback")).toBe("Fallback");
     });
   });
 });

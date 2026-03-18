@@ -67,35 +67,71 @@ describe("feature issues api module", () => {
     expect((sentPayload as FormData).getAll("file")).toHaveLength(1);
   });
 
-  it("wraps the remaining issue endpoints consistently", async () => {
-    patchMock
-      .mockResolvedValueOnce({ data: { issueId: 6, title: "details" } })
-      .mockResolvedValueOnce({ data: { issueId: 6, title: "patched" } });
-    getMock
-      .mockResolvedValueOnce({ data: [{ updateId: 1 }] })
-      .mockResolvedValueOnce({ data: [{ userId: 9 }] });
-    postMock
-      .mockResolvedValueOnce({ data: { detail: "assigned" } })
-      .mockResolvedValueOnce({ data: { detail: "unassigned" } });
+  it("creates issue updates with multiple files", async () => {
+    const payload = { updateId: 3, message: "multiple file" };
+    const file1 = new File(["hello"], "note1.txt", { type: "text/plain" });
+    const file2 = new File(["world"], "note2.txt", { type: "text/plain" });
+    postMock.mockResolvedValue({ data: payload });
+
+    await expect(createIssueUpdateApi(5, { message: "multiple file", files: [file1, file2] })).resolves.toEqual(payload);
+
+    const [, sentPayload] = postMock.mock.calls[0];
+    expect(sentPayload).toBeInstanceOf(FormData);
+    expect((sentPayload as FormData).getAll("file")).toHaveLength(2);
+  });
+
+  it("updates issue details", async () => {
+    patchMock.mockResolvedValue({ data: { issueId: 6, title: "details" } });
 
     await expect(updateIssueDetailsApi(6, { title: "details" })).resolves.toEqual({
       issueId: 6,
       title: "details",
     });
+    expect(patchMock).toHaveBeenCalledWith("/issues/6/details", { title: "details" });
+  });
+
+  it("updates issue basic fields", async () => {
+    patchMock.mockResolvedValue({ data: { issueId: 6, title: "patched" } });
+
     await expect(updateIssueApi(6, { title: "patched" })).resolves.toEqual({
       issueId: 6,
       title: "patched",
     });
-    await expect(listIssueUpdatesApi(6)).resolves.toEqual([{ updateId: 1 }]);
-    await expect(assignIssueUsersApi(6, [1, 2])).resolves.toEqual({ detail: "assigned" });
-    await expect(unassignIssueUsersApi(6, [1])).resolves.toEqual({ detail: "unassigned" });
-    await expect(listIssueSuggestionsApi(6)).resolves.toEqual([{ userId: 9 }]);
+    expect(patchMock).toHaveBeenCalledWith("/issues/6", { title: "patched" });
+  });
 
-    expect(patchMock).toHaveBeenNthCalledWith(1, "/issues/6/details", { title: "details" });
-    expect(patchMock).toHaveBeenNthCalledWith(2, "/issues/6", { title: "patched" });
-    expect(getMock).toHaveBeenNthCalledWith(1, "/issues/6/updates");
-    expect(postMock).toHaveBeenNthCalledWith(1, "/issues/6/assign", { userIds: [1, 2] });
-    expect(postMock).toHaveBeenNthCalledWith(2, "/issues/6/unassign", { userIds: [1] });
-    expect(getMock).toHaveBeenNthCalledWith(2, "/issues/6/suggestions");
+  it("lists issue updates", async () => {
+    getMock.mockResolvedValue({ data: [{ updateId: 1 }] });
+
+    await expect(listIssueUpdatesApi(6)).resolves.toEqual([{ updateId: 1 }]);
+    expect(getMock).toHaveBeenCalledWith("/issues/6/updates");
+  });
+
+  it("assigns users to an issue", async () => {
+    postMock.mockResolvedValue({ data: { detail: "assigned" } });
+
+    await expect(assignIssueUsersApi(6, [1, 2])).resolves.toEqual({ detail: "assigned" });
+    expect(postMock).toHaveBeenCalledWith("/issues/6/assign", { userIds: [1, 2] });
+  });
+
+  it("unassigns users from an issue", async () => {
+    postMock.mockResolvedValue({ data: { detail: "unassigned" } });
+
+    await expect(unassignIssueUsersApi(6, [1])).resolves.toEqual({ detail: "unassigned" });
+    expect(postMock).toHaveBeenCalledWith("/issues/6/unassign", { userIds: [1] });
+  });
+
+  it("lists issue suggestions", async () => {
+    getMock.mockResolvedValue({ data: [{ userId: 9 }] });
+
+    await expect(listIssueSuggestionsApi(6)).resolves.toEqual([{ userId: 9 }]);
+    expect(getMock).toHaveBeenCalledWith("/issues/6/suggestions");
+  });
+
+  it("propagates API errors", async () => {
+    const error = new Error("Network Error");
+    getMock.mockRejectedValue(error);
+
+    await expect(listIssueSuggestionsApi(6)).rejects.toThrow(error);
   });
 });
