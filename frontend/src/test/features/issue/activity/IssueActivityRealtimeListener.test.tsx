@@ -45,15 +45,20 @@ vi.mock("@features/issue/api", () => ({
 
 describe("IssueActivityRealtimeListener", () => {
   const originalFetch = global.fetch;
+  const originalRandom = Math.random;
 
   beforeEach(() => {
+    vi.useRealTimers();
     refreshUserMock.mockReset();
     getAccessTokenMock.mockReset().mockReturnValue("test-token");
     refreshApiMock.mockReset().mockResolvedValue("test-token");
+    Math.random = vi.fn(() => 0);
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     global.fetch = originalFetch;
+    Math.random = originalRandom;
     vi.clearAllMocks();
   });
 
@@ -125,5 +130,93 @@ describe("IssueActivityRealtimeListener", () => {
       headers: Headers;
     };
     expect(fetchOptions.headers.get("Last-Event-ID")).toBe("7");
+  });
+
+  it("refreshes auth when no access token is available before connecting", async () => {
+    getAccessTokenMock.mockReturnValue(null);
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 204,
+      }),
+    );
+
+    render(<IssueActivityRealtimeListener issueId={42} latestUpdateId={0} onUpdate={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(refreshApiMock).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    const fetchMock = global.fetch as unknown as {
+      mock: { calls: Array<[string, { headers: Headers }]> };
+    };
+    const fetchOptions = fetchMock.mock.calls[0]?.[1] as { headers: Headers };
+    expect(fetchOptions.headers.get("Authorization")).toBe("Bearer test-token");
+  });
+
+  it("refreshes the user and aborts when token refresh fails before connecting", async () => {
+    getAccessTokenMock.mockReturnValue(null);
+    refreshApiMock.mockRejectedValueOnce(new Error("refresh failed"));
+    global.fetch = vi.fn();
+
+    render(<IssueActivityRealtimeListener issueId={42} latestUpdateId={0} onUpdate={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(refreshUserMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("retries once after a 401 stream response and reconnects with a refreshed token", async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    render(<IssueActivityRealtimeListener issueId={42} latestUpdateId={0} onUpdate={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(refreshApiMock).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("ignores unrelated events and malformed payloads from the stream", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    global.fetch = vi.fn().mockImplementation(() => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(
+            encoder.encode("event: ping\ndata: keepalive\n\n"),
+          );
+          controller.enqueue(
+            encoder.encode("event: issue.event.created\ndata: {bad json}\n\n"),
+          );
+          controller.close();
+        },
+      });
+
+      return Promise.resolve(
+        new Response(body, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/event-stream",
+          },
+        }),
+      );
+    });
+
+    const onUpdate = vi.fn();
+
+    render(<IssueActivityRealtimeListener issueId={42} latestUpdateId={0} onUpdate={onUpdate} />);
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalled();
+    });
+
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthUser } from "@shared/api/types/auth";
@@ -24,7 +25,39 @@ vi.mock("@features/issue/api", () => ({
 }));
 
 vi.mock("@features/issue/activity/IssueActivityComposer", () => ({
-  IssueActivityComposer: () => null,
+  IssueActivityComposer: ({
+    message,
+    files,
+    onMessageChange,
+    onFilesChange,
+    onSubmit,
+    isSubmitting,
+  }: {
+    message: string;
+    files: File[];
+    onMessageChange: (message: string) => void;
+    onFilesChange: (files: File[]) => void;
+    onSubmit: () => void;
+    isSubmitting: boolean;
+  }) => (
+    <div data-testid="composer">
+      <input
+        aria-label="composer-message"
+        value={message}
+        onChange={(event) => onMessageChange(event.target.value)}
+      />
+      <button
+        type="button"
+        onClick={() => onFilesChange([new File(["proof"], "proof.txt", { type: "text/plain" })])}
+      >
+        Attach file
+      </button>
+      <span data-testid="composer-file-count">{String(files.length)}</span>
+      <button type="button" onClick={onSubmit} disabled={isSubmitting}>
+        Submit activity
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("@features/issue/activity/IssueActivityFilters", () => ({
@@ -131,6 +164,13 @@ function buildUpdate(updateId: number, actorId = 1, message = `message-${updateI
   };
 }
 
+function buildCreateUpdate(updateId: number): IssueUpdate {
+  return {
+    ...buildUpdate(updateId),
+    eventType: "CREATE",
+  };
+}
+
 const currentUser: AuthUser = {
   userId: 1,
   username: "alice",
@@ -203,6 +243,22 @@ describe("IssueActivityPanel", () => {
         latestUpdateId: 9,
       });
     });
+  });
+
+  it("shows the loading state before the initial history is available", () => {
+    listIssueUpdatesApiMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose
+      />,
+    );
+
+    expect(screen.getByText("Loading activity...")).toBeInTheDocument();
+    expect(screen.queryByTestId("timeline-rendered")).not.toBeInTheDocument();
   });
 
   it("auto-scrolls to a new realtime update when the user is already at the latest edge", async () => {
@@ -337,5 +393,69 @@ describe("IssueActivityPanel", () => {
     });
 
     expect(screen.getByTestId("timeline-marker-target")).toHaveTextContent("none");
+  });
+
+  it("filters out CREATE events and reorders items when sort changes", async () => {
+    await renderPanel([buildUpdate(5, 2, "older"), buildCreateUpdate(6), buildUpdate(7, 1, "newer")]);
+
+    expect(screen.getByTestId("timeline-item-ids")).toHaveTextContent("5,7");
+
+    fireEvent.click(screen.getByRole("button", { name: "Newest sort" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("sort-value")).toHaveTextContent("NEWEST");
+      expect(screen.getByTestId("timeline-item-ids")).toHaveTextContent("7,5");
+      expect(screen.getByTestId("timeline-sort")).toHaveTextContent("NEWEST");
+    });
+  });
+
+  it("hides the composer when composing is not allowed", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(1)]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+  });
+
+  it("renders the composer when composing is allowed", async () => {
+    await renderPanel();
+
+    expect(screen.getByTestId("composer")).toBeInTheDocument();
+    expect(screen.getByLabelText("composer-message")).toHaveValue("");
+  });
+
+  it("keeps all items visible when YOURS is selected without a current user", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(5, 2, "other"), buildUpdate(7, 3, "another")]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={null}
+        canCompose
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Yours filter" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("scope-value")).toHaveTextContent("YOURS");
+      expect(screen.getByTestId("timeline-item-ids")).toHaveTextContent("5,7");
+    });
   });
 });

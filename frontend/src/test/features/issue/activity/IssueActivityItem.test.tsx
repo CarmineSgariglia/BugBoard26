@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { IssueActivityItem } from "@features/issue/activity/IssueActivityItem";
 import { renderWithProviders } from "../../../render";
 import type { UiActivityItem } from "@features/issue/lib/formatIssueActivityEvent";
@@ -45,6 +45,7 @@ const baseItem: UiActivityItem = {
 describe("IssueActivityItem", () => {
   beforeEach(() => {
     useAuthMock.mockReturnValue({ user: { userId: 99, username: "bob" } });
+    vi.useRealTimers();
   });
 
   it("renders the actor name", () => {
@@ -84,6 +85,17 @@ describe("IssueActivityItem", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("annotates non-comment activity titles with (you) for the current user", () => {
+    useAuthMock.mockReturnValue({ user: { userId: 10, username: "alice" } });
+    renderWithProviders(
+      <IssueActivityItem
+        item={{ ...baseItem, isComment: false, title: "alice changed the status" }}
+      />
+    );
+
+    expect(screen.getByText("alice (you) changed the status")).toBeInTheDocument();
+  });
+
   it("renders attachments with download link when present", () => {
     const itemWithAttachment: UiActivityItem = {
       ...baseItem,
@@ -100,6 +112,27 @@ describe("IssueActivityItem", () => {
     };
     renderWithProviders(<IssueActivityItem item={itemWithAttachment} />);
     expect(screen.getByTitle("Download")).toBeInTheDocument();
+  });
+
+  it("does not render a preview button for unsupported attachments", () => {
+    const itemWithAttachment: UiActivityItem = {
+      ...baseItem,
+      attachments: [
+        {
+          attachmentId: 8,
+          url: "/files/archive.zip",
+          path: "/files/archive.zip",
+          mimeType: "application/zip",
+          filename: "archive.zip",
+          size: 4096,
+        } as any,
+      ],
+    };
+
+    renderWithProviders(<IssueActivityItem item={itemWithAttachment} />);
+
+    expect(screen.queryByTitle("Preview")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Download archive.zip")).toBeInTheDocument();
   });
 
   it("opens the preview modal when Preview is clicked on a previewable file", async () => {
@@ -141,5 +174,16 @@ describe("IssueActivityItem", () => {
     await user.click(screen.getByTitle("Preview"));
     await user.click(screen.getByText("Close preview"));
     expect(screen.queryByTestId("preview-modal")).not.toBeInTheDocument();
+  });
+
+  it("renders the marker with the current activity id for timeline targeting", () => {
+    renderWithProviders(
+      <IssueActivityItem item={baseItem} showNewMessageMarker />
+    );
+
+    expect(screen.getByTestId("issue-activity-new-message-marker")).toHaveAttribute(
+      "data-activity-marker-id",
+      "1"
+    );
   });
 });
