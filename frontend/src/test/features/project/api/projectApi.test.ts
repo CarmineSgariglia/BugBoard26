@@ -6,6 +6,9 @@ import {
   createProjectApi,
   updateProjectApi,
   deleteProjectApi,
+  listProjectMembersApi,
+  listProjectIssuesApi,
+  createProjectIssueApi,
 } from "@features/project/api/projectApi";
 
 const { getMock, postMock, patchMock, deleteMock } = vi.hoisted(() => ({
@@ -50,6 +53,13 @@ describe("feature project api module", () => {
     expect(getMock).toHaveBeenLastCalledWith("/projects", { params: { q: "search-query" } });
   });
 
+  it("lists projects with empty search query", async () => {
+    getMock.mockResolvedValue({ data: [{ projectId: 1, name: "Test Project", description: "A test project", color: "#fff" }] });
+
+    await expect(listProjectsApi("")).resolves.toEqual([{ projectId: 1, name: "Test Project", description: "A test project", color: "#fff" }]);
+    expect(getMock).toHaveBeenCalledWith("/projects", { params: undefined });
+  });
+
   it("fetches a single project by id", async () => {
     getMock.mockResolvedValue({ data: dummyProject });
 
@@ -78,5 +88,37 @@ describe("feature project api module", () => {
 
     await expect(deleteProjectApi(1)).resolves.toBeUndefined();
     expect(deleteMock).toHaveBeenCalledWith("/projects/1");
+  });
+
+  it("lists project members", async () => {
+    const dummyMembers = [{ userId: 1, role: "ADMIN" }];
+    getMock.mockResolvedValue({ data: dummyMembers });
+
+    await expect(listProjectMembersApi(1)).resolves.toEqual(dummyMembers);
+    expect(getMock).toHaveBeenCalledWith("/projects/1/members");
+  });
+
+  it("lists project issues", async () => {
+    const dummyIssues = [{ issueId: 1, title: "Issue 1" }];
+    getMock.mockResolvedValue({ data: dummyIssues });
+
+    await expect(listProjectIssuesApi(1)).resolves.toEqual(dummyIssues);
+    expect(getMock).toHaveBeenCalledWith("/projects/1/issues");
+  });
+
+  it("creates a project issue", async () => {
+    const payload = { title: "New Issue", description: "Desc" };
+    const dummyIssue = { issueId: 2, title: "New Issue" };
+    postMock.mockResolvedValue({ data: dummyIssue });
+
+    await expect(createProjectIssueApi(1, payload as any)).resolves.toEqual(dummyIssue);
+    expect(postMock).toHaveBeenCalledWith("/projects/1/issues", payload);
+  });
+
+  it("propagates API errors", async () => {
+    const error = new Error("Network Error");
+    getMock.mockRejectedValue(error);
+
+    await expect(listProjectsApi()).rejects.toThrow(error);
   });
 });
