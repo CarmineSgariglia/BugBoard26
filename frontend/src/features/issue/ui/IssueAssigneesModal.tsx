@@ -17,6 +17,9 @@ import { UserSelectorTable } from "@shared/ui/UserSelectorTable";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 import { ProjectFormLayout } from "@widgets/layout/ProjectFormLayout";
 
+const EMPTY_PROJECT_MEMBERS: Array<{ userId: number; role?: string | null }> = [];
+const EMPTY_SUGGESTIONS: IssueSuggestion[] = [];
+
 interface IssueAssigneesModalProps {
   issue: Issue;
   isOpen: boolean;
@@ -37,7 +40,7 @@ export function IssueAssigneesModal({
   const [search, setSearch] = useState("");
 
   const {
-    data: projectMembers = [],
+    data: projectMembersData,
     isLoading: isMembersLoading,
     error: membersError,
   } = useQuery({
@@ -48,7 +51,7 @@ export function IssueAssigneesModal({
   });
 
   const {
-    data: suggestions = [],
+    data: suggestionsData,
     isLoading: isSuggestionsLoading,
   } = useQuery<IssueSuggestion[]>({
     queryKey: ["issue", issue.issueId, "suggestions"],
@@ -56,6 +59,9 @@ export function IssueAssigneesModal({
     enabled: isOpen,
     staleTime: 0,
   });
+
+  const projectMembers = projectMembersData ?? EMPTY_PROJECT_MEMBERS;
+  const suggestions = suggestionsData ?? EMPTY_SUGGESTIONS;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -135,7 +141,11 @@ export function IssueAssigneesModal({
 
   const handleSave = async () => {
     setError("");
-    await saveMutation.mutateAsync();
+    try {
+      await saveMutation.mutateAsync();
+    } catch {
+      // onError already maps the failure to UI state.
+    }
   };
 
   const isLoading = isMembersLoading || isSuggestionsLoading;

@@ -16,6 +16,8 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}) {
     defaultOptions: {
       queries: {
         retry: false,
+        staleTime: Infinity,
+        gcTime: Infinity,
       },
       mutations: {
         retry: false,

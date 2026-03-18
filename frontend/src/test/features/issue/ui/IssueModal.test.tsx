@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { IssueModal } from "../../../../features/issue/ui/IssueModal";
 import { renderWithProviders } from "../../../render";
 import { createProjectIssueApi } from "@features/project/api";
-import { updateIssueDetailsApi } from "@features/issue/api";
+import { createIssueUpdateApi, updateIssueDetailsApi } from "@features/issue/api";
 
 // Mock API endpoints
 vi.mock("@features/project/api", () => ({
@@ -67,6 +67,7 @@ describe("IssueModal", () => {
 
     it("calls createProjectIssueApi on submit click", async () => {
       vi.mocked(createProjectIssueApi).mockResolvedValue({ issueId: 45 } as any);
+      vi.mocked(createIssueUpdateApi).mockResolvedValue({ updateId: 1 } as any);
       const onSuccess = vi.fn();
 
       renderWithProviders(<IssueModal isOpen={true} onClose={vi.fn()} mode="create" projectId={1} onSuccess={onSuccess} />);
@@ -83,6 +84,44 @@ describe("IssueModal", () => {
           }));
           expect(onSuccess).toHaveBeenCalled();
       });
+    });
+
+    it("shows a non-blocking warning when issue creation succeeds but the first update fails", async () => {
+      vi.mocked(createProjectIssueApi).mockResolvedValue({ issueId: 45 } as any);
+      vi.mocked(createIssueUpdateApi).mockRejectedValue({
+        response: {
+          status: 403,
+        },
+      });
+      const onSuccess = vi.fn();
+
+      renderWithProviders(
+        <IssueModal
+          isOpen={true}
+          onClose={vi.fn()}
+          mode="create"
+          projectId={1}
+          onSuccess={onSuccess}
+        />
+      );
+
+      fireEvent.change(screen.getByPlaceholderText(/what's the issue/i), {
+        target: { value: "New Crash Bug" },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/provide more details/i), {
+        target: { value: "More than 5 characters description for valid payload triggers." },
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: /create issue/i }));
+
+      expect(
+        await screen.findByText(
+          "Issue creata, ma primo commento/allegati non salvati (permessi insufficienti)."
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /issue created/i })).toBeInTheDocument();
+      expect(screen.getByText("Close")).toBeInTheDocument();
+      expect(onSuccess).not.toHaveBeenCalled();
     });
   });
 
@@ -118,6 +157,22 @@ describe("IssueModal", () => {
           }));
           expect(onSuccess).toHaveBeenCalled();
       });
+    });
+
+    it("keeps Save Changes disabled when no edit has been made", () => {
+      renderWithProviders(
+        <IssueModal
+          isOpen={true}
+          onClose={vi.fn()}
+          mode="edit"
+          initialData={dummyIssue}
+          issue={dummyIssue}
+        />
+      );
+
+      expect(screen.getByRole("button", { name: /save changes/i })).toHaveAttribute(
+        "disabled"
+      );
     });
   });
 });

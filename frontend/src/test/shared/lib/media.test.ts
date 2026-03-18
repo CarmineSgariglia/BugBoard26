@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, getAttachmentDisplayName, getAttachmentPreviewKind } from "../../../../src/shared/lib/media";
+import {
+  ATTACHMENT_MAX_FILE_BYTES,
+  ATTACHMENT_MAX_VIDEO_BYTES,
+  formatBytes,
+  getAttachmentDisplayName,
+  getAttachmentKind,
+  getAttachmentPreviewKind,
+  isAttachmentPreviewable,
+  prepareAttachmentUpload,
+} from "../../../../src/shared/lib/media";
 
 describe("media helpers", () => {
   describe("formatBytes", () => {
@@ -24,6 +33,11 @@ describe("media helpers", () => {
     it("appends custom ID if fallback name is empty", () => {
       expect(getAttachmentDisplayName({ attachmentId: 5 })).toBe("File #5");
     });
+
+    it("trims originalName and falls back to unknown when everything is missing", () => {
+      expect(getAttachmentDisplayName({ originalName: "  report.csv  " })).toBe("report.csv");
+      expect(getAttachmentDisplayName({})).toBe("File #unknown");
+    });
   });
 
   describe("getAttachmentPreviewKind", () => {
@@ -40,6 +54,76 @@ describe("media helpers", () => {
 
     it("identifies standard attachment formats as file if not previewable", () => {
       expect(getAttachmentPreviewKind({ path: "bundle.zip" })).toBe("file");
+    });
+
+    it("returns unsupported when neither mime nor extension is available", () => {
+      expect(getAttachmentPreviewKind({})).toBe("unsupported");
+    });
+  });
+
+  describe("isAttachmentPreviewable", () => {
+    it("returns true only for previewable attachment kinds", () => {
+      expect(isAttachmentPreviewable({ mimeType: "image/png" })).toBe(true);
+      expect(isAttachmentPreviewable({ mimeType: "video/mp4" })).toBe(true);
+      expect(isAttachmentPreviewable({ path: "guide.pdf" })).toBe(true);
+      expect(isAttachmentPreviewable({ path: "app.log" })).toBe(true);
+      expect(isAttachmentPreviewable({ path: "bundle.zip" })).toBe(false);
+    });
+  });
+
+  describe("getAttachmentKind", () => {
+    it("classifies files as image, video, file or unsupported", () => {
+      expect(
+        getAttachmentKind(new File(["img"], "photo.png", { type: "image/png" }))
+      ).toBe("image");
+      expect(
+        getAttachmentKind(new File(["vid"], "clip.mov", { type: "video/quicktime" }))
+      ).toBe("video");
+      expect(
+        getAttachmentKind(new File(["json"], "data.json", { type: "application/json" }))
+      ).toBe("file");
+      expect(
+        getAttachmentKind(new File(["bin"], "archive.bin", { type: "application/octet-stream" }))
+      ).toBe("unsupported");
+    });
+  });
+
+  describe("prepareAttachmentUpload", () => {
+    it("rejects unsupported files", async () => {
+      await expect(
+        prepareAttachmentUpload(
+          new File(["bin"], "archive.bin", { type: "application/octet-stream" })
+        )
+      ).rejects.toThrow(
+        "Supported files: images, MP4/WEBM/MOV videos, TXT/LOG/MD, CSV, JSON, PDF, ZIP."
+      );
+    });
+
+    it("returns accepted non-media files unchanged when under the size limit", async () => {
+      const file = new File(["hello"], "notes.txt", { type: "text/plain" });
+
+      await expect(prepareAttachmentUpload(file)).resolves.toBe(file);
+    });
+
+    it("rejects large generic files and large videos", async () => {
+      const oversizedFile = new File(["a"], "report.pdf", { type: "application/pdf" });
+      Object.defineProperty(oversizedFile, "size", {
+        configurable: true,
+        value: ATTACHMENT_MAX_FILE_BYTES + 1,
+      });
+
+      const oversizedVideo = new File(["a"], "movie.mp4", { type: "video/mp4" });
+      Object.defineProperty(oversizedVideo, "size", {
+        configurable: true,
+        value: ATTACHMENT_MAX_VIDEO_BYTES + 1,
+      });
+
+      await expect(prepareAttachmentUpload(oversizedFile)).rejects.toThrow(
+        `Files must be at most ${formatBytes(ATTACHMENT_MAX_FILE_BYTES)}.`
+      );
+      await expect(prepareAttachmentUpload(oversizedVideo)).rejects.toThrow(
+        `Videos must be at most ${formatBytes(ATTACHMENT_MAX_VIDEO_BYTES)}.`
+      );
     });
   });
 });

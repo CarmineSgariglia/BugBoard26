@@ -11,6 +11,8 @@ export default mergeConfig(
       globals: true,
       setupFiles: ["./src/test/setup.ts"],
       css: true,
+      testTimeout: 10000,
+      isolate: true,
       exclude: ["tests/e2e/**"],
       coverage: {
         provider: "v8",

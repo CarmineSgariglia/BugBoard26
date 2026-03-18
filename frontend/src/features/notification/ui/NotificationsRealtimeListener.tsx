@@ -6,6 +6,7 @@ import { matchPath, useLocation } from "react-router-dom";
 import { getAccessToken } from "@shared/api/core/client";
 import { refreshApi } from "@features/auth/api";
 import {
+  deleteNotificationApi,
   getNotificationsStreamUrl,
   listNotificationsApi,
   notificationsPageSize,
@@ -74,6 +75,10 @@ function matchesRouteTarget(notification: NotificationItem, routeTarget: RouteTa
   return false;
 }
 
+function shouldSilenceNotification(notification: NotificationItem, routeTarget: RouteTarget): boolean {
+  return matchesRouteTarget(notification, routeTarget);
+}
+
 export function NotificationsRealtimeListener() {
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -128,6 +133,23 @@ export function NotificationsRealtimeListener() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (notifyUserId: number) => deleteNotificationApi(notifyUserId),
+    onMutate: async (notifyUserId) => {
+      await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
+      queryClient.setQueryData(
+        notificationsQueryKey,
+        (current: InfiniteData<NotificationsPage> | undefined) =>
+          updateNotificationsInfiniteData(current, (item) =>
+            item.notifyUserId === notifyUserId ? null : item,
+          ),
+      );
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+    },
+  });
+
   const markNotificationAsRead = useEffectEvent((notification: NotificationItem) => {
     if (
       routeTarget.kind === "none" ||
@@ -142,16 +164,16 @@ export function NotificationsRealtimeListener() {
   });
 
   const handleNotificationCreated = useEffectEvent((notification: NotificationItem) => {
+    if (shouldSilenceNotification(notification, routeTarget)) {
+      deleteMutation.mutate(notification.notifyUserId);
+      return;
+    }
+
     queryClient.setQueryData(
       notificationsQueryKey,
       (current: InfiniteData<NotificationsPage> | undefined) =>
         prependNotificationToInfiniteData(current, notification),
     );
-
-    if (matchesRouteTarget(notification, routeTarget)) {
-      markNotificationAsRead(notification);
-      return;
-    }
 
     pushToast({
       title: getNotificationTitle(notification.type),
