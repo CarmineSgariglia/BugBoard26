@@ -3,7 +3,7 @@ SHELL := /bin/sh
 COMPOSE := docker compose
 COMPOSE_PROXY := docker compose --profile proxy
 
-.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend prod-up prod-down prod-scale-up prod-scale-down backend-test backend-coverage frontend-test frontend-coverage
+.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend prod-up prod-down backend-test backend-coverage frontend-test frontend-coverage
 
 # Start just the backend service (also brings up database dependency)
 backend:
@@ -65,10 +65,3 @@ prod-up:
 prod-down:
 	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml down
 
-# Start production-like stack with Redis-backed scale-ready realtime
-prod-scale-up:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.scale.yml up -d --build
-
-# Stop scale-ready production-like stack
-prod-scale-down:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.scale.yml down

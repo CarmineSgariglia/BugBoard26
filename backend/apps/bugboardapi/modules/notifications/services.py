@@ -5,6 +5,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from .models import Notification, NotifyType, NotifyUser
@@ -75,6 +76,37 @@ def _create_notification(
         )
 
     return notification
+
+
+def mark_notification_as_read(*, notify_user: NotifyUser) -> NotifyUser:
+    if notify_user.is_read:
+        return notify_user
+
+    notify_user.is_read = True
+    notify_user.read_at = timezone.now()
+    notify_user.save(update_fields=["is_read", "read_at"])
+    return notify_user
+
+
+def mark_all_notifications_as_read(*, user) -> int:
+    return NotifyUser.objects.filter(user=user, is_read=False).update(
+        is_read=True,
+        read_at=timezone.now(),
+    )
+
+
+def delete_notification_for_user(*, notify_user: NotifyUser) -> None:
+    with transaction.atomic():
+        notification = Notification.objects.select_for_update().get(
+            notification_id=notify_user.notification_id
+        )
+        NotifyUser.objects.filter(
+            notify_user_id=notify_user.notify_user_id,
+            user_id=notify_user.user_id,
+        ).delete()
+
+        if not NotifyUser.objects.filter(notification_id=notification.notification_id).exists():
+            notification.delete()
 
 
 def notify_project_added(*, users: list[User], project: Project, actor: User | None = None) -> Notification | None:

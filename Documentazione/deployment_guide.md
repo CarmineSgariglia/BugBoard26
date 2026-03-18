@@ -53,12 +53,7 @@ make prod-up
 ```
 *(Equivale a `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`)*
 
-### Opzione B: Scale-Ready (Con Redis)
-Se prevedi di scalare i worker o hai bisogno di un backend di cache/pubsub basato su Redis:
-```bash
-make prod-scale-up
-```
-*(Usa anche `docker-compose.scale.yml`)*
+Questa modalità usa il realtime in memoria del processo backend ed è quindi compatibile con il contratto di deploy supportato: singola istanza backend e `GUNICORN_WORKERS=1`.
 
 ---
 

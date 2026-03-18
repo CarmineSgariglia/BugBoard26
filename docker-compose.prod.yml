@@ -17,7 +17,6 @@ services:
       CORS_ALLOW_ALL_ORIGINS: "False"
       SINGLE_NODE_RUNTIME: "True"
       CACHE_BACKEND: locmem
-      NOTIFICATIONS_TRANSPORT_BACKEND: memory
       GUNICORN_WORKERS: "1"
       GUNICORN_THREADS: "12"
     healthcheck:

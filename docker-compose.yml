@@ -57,7 +57,6 @@ services:
       DEBUG: ${DEBUG}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://redis:6379/1}
-      NOTIFICATIONS_REDIS_URL: ${NOTIFICATIONS_REDIS_URL:-redis://redis:6379/2}
     volumes:
       - ./backend:/app
     ports:

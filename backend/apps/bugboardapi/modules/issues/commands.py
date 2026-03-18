@@ -27,6 +27,8 @@ from .models import Attachment, EventType, Issue, IssueEvent, IssueStatus
 from .mutations import add_issue_assignees, ensure_issue_assignees, remove_existing_issue_assignees
 from .rules import validate_issue_assignment_user_ids
 
+_UNSET = object()
+
 
 def _project_issue_admin_users(*, project) -> list[User]:
     return [
@@ -41,14 +43,53 @@ def _project_issue_admin_users(*, project) -> list[User]:
 
 
 def _issue_update_recipients(*, issue: Issue, actor=None) -> list[User]:
-    recipients = issue_notification_recipients(issue=issue, actor=actor)
-    return recipients
+    return issue_notification_recipients(issue=issue, actor=actor)
 
 
-def _notify_issue_updated_recipients(*, issue: Issue, actor=None) -> None:
-    recipients = _issue_update_recipients(issue=issue, actor=actor)
-    if recipients:
-        notify_issue_updated(users=recipients, issue=issue)
+def _dispatch_issue_side_effects(
+    *,
+    issue: Issue,
+    actor,
+    event_type: str,
+    message,
+    payload=None,
+    notification_sender=None,
+    notification_users: list[User] | None = None,
+    notification_actor=_UNSET,
+    attachments_required: bool = False,
+    max_files: int = 10,
+    **event_fields,
+):
+    if payload is None:
+        event = create_issue_event(
+            issue=issue,
+            actor=actor,
+            event_type=event_type,
+            message=message,
+            **event_fields,
+        )
+    else:
+        event = create_issue_event_with_attachment(
+            issue=issue,
+            actor=actor,
+            event_type=event_type,
+            message=message,
+            payload=payload,
+            attachments_required=attachments_required,
+            max_files=max_files,
+            **event_fields,
+        )
+
+    if notification_sender and notification_users:
+        notification_kwargs = {
+            "users": notification_users,
+            "issue": issue,
+        }
+        if notification_actor is not _UNSET:
+            notification_kwargs["actor"] = notification_actor
+        notification_sender(**notification_kwargs)
+
+    return event
 
 
 def _issue_attachment_paths(*, issue: Issue) -> list[str]:
@@ -69,24 +110,29 @@ def _delete_issue_attachment_files(paths: list[str]) -> None:
 def create_issue_for_project(*, serializer, reporter, project):
     issue = serializer.save(project=project, reporter=reporter)
     ensure_issue_assignees(issue=issue, user_ids=[reporter.id])
-    create_issue_event(issue=issue, actor=reporter, event_type=EventType.CREATE, message="Issue created")
-
-    admins = _project_issue_admin_users(project=project)
-    notify_issue_added(users=admins, actor=reporter, issue=issue)
+    _dispatch_issue_side_effects(
+        issue=issue,
+        actor=reporter,
+        event_type=EventType.CREATE,
+        message="Issue created",
+        notification_sender=notify_issue_added,
+        notification_users=_project_issue_admin_users(project=project),
+        notification_actor=reporter,
+    )
     return issue
 
 
 def update_issue_from_serializer(*, serializer, actor, raw_message):
     issue = serializer.save()
     message = (raw_message or "").strip() or "Issue updated"
-    create_issue_event(
+    _dispatch_issue_side_effects(
         issue=issue,
         actor=actor,
         event_type=EventType.EDIT,
         message=message,
+        notification_sender=notify_issue_updated,
+        notification_users=_issue_update_recipients(issue=issue, actor=actor),
     )
-
-    _notify_issue_updated_recipients(issue=issue, actor=actor)
     return issue
 
 
@@ -116,13 +162,14 @@ def assign_issue_users(*, issue: Issue, actor, raw_user_ids):
         if not assigned_users:
             return
 
-        create_issue_event(
+        _dispatch_issue_side_effects(
             issue=issue,
             actor=actor,
             event_type=EventType.ASSIGN,
             message="Assignees updated",
+            notification_sender=notify_issue_assigned,
+            notification_users=assigned_users,
         )
-        notify_issue_assigned(users=assigned_users, issue=issue)
 
 
 def unassign_issue_users(*, issue: Issue, actor, raw_user_ids):
@@ -135,15 +182,15 @@ def unassign_issue_users(*, issue: Issue, actor, raw_user_ids):
         if not users:
             return
 
-        create_issue_event(
+        active_users = [user for user in users if user.is_active]
+        _dispatch_issue_side_effects(
             issue=issue,
             actor=actor,
             event_type=EventType.UNASSIGN,
             message="Assignees removed",
+            notification_sender=notify_issue_unassigned,
+            notification_users=active_users,
         )
-        active_users = [user for user in users if user.is_active]
-        if active_users:
-            notify_issue_unassigned(users=active_users, issue=issue)
 
 
 def _validate_issue_status_transition(*, issue: Issue, new_status: str) -> None:
@@ -163,7 +210,7 @@ def update_issue_status(*, issue: Issue, actor, new_status, raw_message, payload
         issue.status = new_status
         issue.save(update_fields=["status"])
 
-        create_issue_event_with_attachment(
+        _dispatch_issue_side_effects(
             issue=issue,
             actor=actor,
             event_type=EventType.STATUS_CHANGE,
@@ -171,10 +218,10 @@ def update_issue_status(*, issue: Issue, actor, new_status, raw_message, payload
             payload=payload,
             old_status=old_status,
             new_status=new_status,
+            notification_sender=notify_issue_closed if new_status == IssueStatus.DONE else None,
+            notification_users=[issue.reporter] if new_status == IssueStatus.DONE else None,
+            notification_actor=actor if new_status == IssueStatus.DONE else _UNSET,
         )
-
-        if new_status == IssueStatus.DONE:
-            notify_issue_closed(users=[issue.reporter], actor=actor, issue=issue)
     return issue
 
 
@@ -184,15 +231,15 @@ def create_issue_comment(*, issue: Issue, actor, raw_message, payload):
         required=True,
         strip=True,
     )
-    event = create_issue_event_with_attachment(
+    event = _dispatch_issue_side_effects(
         issue=issue,
         actor=actor,
         event_type=EventType.COMMENT,
         message=message,
         payload=payload,
+        notification_sender=notify_issue_updated,
+        notification_users=_issue_update_recipients(issue=issue, actor=actor),
     )
-
-    _notify_issue_updated_recipients(issue=issue, actor=actor)
     return event
 
 

@@ -4,21 +4,19 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from django.db import transaction
 from django.http import StreamingHttpResponse
-from django.utils import timezone
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from ...common.sse import ServerSentEventsRenderer, format_sse_event
-from .models import Notification, NotifyUser
-from .realtime import (
-    invalidate_cached_notification_list,
-    open_notification_subscription,
-    remove_cached_notification,
-    replace_cached_notification,
+from .models import NotifyUser
+from .realtime import open_notification_subscription
+from .services import (
+    delete_notification_for_user,
+    mark_all_notifications_as_read,
+    mark_notification_as_read,
 )
 from .serializers import NotifyUserSerializer
 
@@ -89,39 +87,20 @@ class NotificationViewSet(
         notifications = self._load_notifications_from_db(limit=limit, before=before)
         return Response(self._serialize_notifications_page(notifications, limit=limit))
 
-    def _mark_as_read(self, notify_user: NotifyUser) -> NotifyUser:
-        if notify_user.is_read:
-            return notify_user
-        notify_user.is_read = True
-        notify_user.read_at = timezone.now()
-        notify_user.save(update_fields=["is_read", "read_at"])
-        return notify_user
-
     @action(detail=True, methods=["post"], url_path="read")
     def read(self, request, notificationId=None):
         notify_user = self.get_object()
-        notify_user = self._mark_as_read(notify_user)
-        payload = NotifyUserSerializer(notify_user).data
-        replace_cached_notification(request.user.id, payload)
-        return Response(payload)
+        notify_user = mark_notification_as_read(notify_user=notify_user)
+        return Response(NotifyUserSerializer(notify_user).data)
 
     @action(detail=False, methods=["post"], url_path="read-all")
     def read_all(self, request):
-        updated = NotifyUser.objects.filter(user=request.user, is_read=False).update(is_read=True, read_at=timezone.now())
-        invalidate_cached_notification_list(request.user.id)
+        updated = mark_all_notifications_as_read(user=request.user)
         return Response({"updated": updated})
 
     def destroy(self, request, *args, **kwargs):
         notify_user = self.get_object()
-        notification_id = notify_user.notification_id
-        notify_user_id = notify_user.notify_user_id
-
-        with transaction.atomic():
-            notify_user.delete()
-            if not NotifyUser.objects.filter(notification_id=notification_id).exists():
-                Notification.objects.filter(notification_id=notification_id).delete()
-
-        remove_cached_notification(request.user.id, notify_user_id)
+        delete_notification_for_user(notify_user=notify_user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _parse_last_event_id(self, request) -> int:
