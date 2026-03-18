@@ -240,6 +240,100 @@ class IssueRefactorSafetyNetTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(IssueEvent.objects.filter(issue=self.issue).count(), event_count)
 
+    def test_issue_comment_creates_one_event_and_one_notification_for_non_actor_recipient(self):
+        existing_comment_count = IssueEvent.objects.filter(
+            issue=self.issue,
+            event_type=EventType.COMMENT,
+        ).count()
+        existing_notification_count = NotifyUser.objects.filter(
+            notification__notify_type=NotifyType.ISSUE_UPDATED,
+            notification__issue=self.issue,
+        ).count()
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/updates",
+            {"message": "Safety net comment"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                event_type=EventType.COMMENT,
+            ).count(),
+            existing_comment_count + 1,
+        )
+        self.assertEqual(
+            NotifyUser.objects.filter(
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).count(),
+            existing_notification_count + 1,
+        )
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+
+    def test_issue_close_creates_one_status_event_and_one_close_notification(self):
+        existing_status_event_count = IssueEvent.objects.filter(
+            issue=self.issue,
+            event_type=EventType.STATUS_CHANGE,
+        ).count()
+        existing_close_notification_count = NotifyUser.objects.filter(
+            notification__notify_type=NotifyType.ISSUE_CLOSED,
+            notification__issue=self.issue,
+        ).count()
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status",
+            {"status": IssueStatus.DONE, "message": "Done once"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                event_type=EventType.STATUS_CHANGE,
+            ).count(),
+            existing_status_event_count + 1,
+        )
+        self.assertEqual(
+            NotifyUser.objects.filter(
+                notification__notify_type=NotifyType.ISSUE_CLOSED,
+                notification__issue=self.issue,
+            ).count(),
+            existing_close_notification_count + 1,
+        )
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_CLOSED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.ISSUE_CLOSED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+
     def test_attachment_create_rejects_multiple_files_without_creating_issue_event(self):
         event_count = IssueEvent.objects.filter(issue=self.issue).count()
 

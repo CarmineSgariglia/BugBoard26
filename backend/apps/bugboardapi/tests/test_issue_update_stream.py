@@ -226,3 +226,27 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         self.assertEqual(event.event, "issue.event.created")
         self.assertEqual(event.data["message"], "Buffered comment")
         self.assertEqual(event.data["issueId"], self.issue.issue_id)
+
+    def test_issue_event_fans_out_to_multiple_memory_subscribers(self):
+        first_subscription = open_issue_subscription(self.issue.issue_id)
+        second_subscription = open_issue_subscription(self.issue.issue_id)
+
+        create_issue_event(
+            issue=self.issue,
+            actor=self.member,
+            event_type=EventType.COMMENT,
+            message="Broadcast comment",
+        )
+
+        first_event = first_subscription.get_message(timeout=0.1)
+        second_event = second_subscription.get_message(timeout=0.1)
+        first_subscription.close()
+        second_subscription.close()
+
+        self.assertIsNotNone(first_event)
+        self.assertIsNotNone(second_event)
+        self.assertEqual(first_event.event, "issue.event.created")
+        self.assertEqual(second_event.event, "issue.event.created")
+        self.assertEqual(first_event.data["updateId"], second_event.data["updateId"])
+        self.assertEqual(first_event.data["message"], "Broadcast comment")
+        self.assertEqual(second_event.data["message"], "Broadcast comment")

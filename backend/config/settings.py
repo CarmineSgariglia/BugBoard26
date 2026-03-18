@@ -101,7 +101,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
 CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", REDIS_URL)
-NOTIFICATIONS_REDIS_URL = os.getenv("NOTIFICATIONS_REDIS_URL", REDIS_URL)
 
 cache_backend = os.getenv(
     "CACHE_BACKEND",
@@ -128,14 +127,6 @@ else:
         }
     }
 
-NOTIFICATIONS_TRANSPORT_BACKEND = os.getenv(
-    "NOTIFICATIONS_TRANSPORT_BACKEND",
-    "memory" if IS_TESTING or SINGLE_NODE_RUNTIME else "redis",
-).lower()
-if NOTIFICATIONS_TRANSPORT_BACKEND not in {"memory", "redis"}:
-    raise ImproperlyConfigured("NOTIFICATIONS_TRANSPORT_BACKEND must be one of: memory, redis")
-
-NOTIFICATIONS_CACHE_TIMEOUT_SECONDS = int(os.getenv("NOTIFICATIONS_CACHE_TIMEOUT_SECONDS", "3600"))
 NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS = float(
     os.getenv("NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", "20")
 )

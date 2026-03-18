@@ -44,7 +44,7 @@ describe("feature settings api module", () => {
   const dummyUser = { id: 1, email: "test@example.com", name: "Test" };
 
   it("updates user settings", async () => {
-    const payload = { name: "Updated" };
+    const payload = { firstName: "Updated" };
     patchMock.mockResolvedValue({ data: { ...dummyUser, ...payload } });
 
     await expect(updateSettingsUserApi(1, payload)).resolves.toEqual({ ...dummyUser, ...payload });
