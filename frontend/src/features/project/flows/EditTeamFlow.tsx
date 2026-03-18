@@ -7,6 +7,8 @@ import type { Project } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 
+const EMPTY_MEMBERS: Array<{ userId: number; role?: string | null }> = [];
+
 interface EditTeamFlowProps {
   project: Project;
   onClose: () => void;
@@ -25,7 +27,7 @@ export function EditTeamFlow({
   const [error, setError] = useState("");
 
   const {
-    data: members = [],
+    data: membersData,
     isLoading: isLoadingMembers,
     error: membersError,
   } = useQuery({
@@ -34,12 +36,14 @@ export function EditTeamFlow({
     staleTime: 0,
   });
 
+  const members = membersData ?? EMPTY_MEMBERS;
+
   useEffect(() => {
     const admins = members.filter((m) => isAdminLike({ role: m.role })).map((m) => m.userId);
     const devs = members.filter((m) => !isAdminLike({ role: m.role })).map((m) => m.userId);
     setAdminIds(admins);
     setSelectedUserIds(devs);
-  }, [members, project.projectId]);
+  }, [members]);
 
   const updateTeamMutation = useMutation({
     mutationFn: () =>
@@ -63,7 +67,11 @@ export function EditTeamFlow({
 
   const handleUpdateTeam = async () => {
     setError("");
-    await updateTeamMutation.mutateAsync();
+    try {
+      await updateTeamMutation.mutateAsync();
+    } catch {
+      // onError already maps the failure to user-facing UI state.
+    }
   };
 
   const uiError =

@@ -12,12 +12,14 @@ const {
   refreshUserMock,
   listNotificationsApiMock,
   readNotificationApiMock,
+  deleteNotificationApiMock,
   getAccessTokenMock,
   refreshApiMock,
 } = vi.hoisted(() => ({
   refreshUserMock: vi.fn(),
   listNotificationsApiMock: vi.fn(),
   readNotificationApiMock: vi.fn(),
+  deleteNotificationApiMock: vi.fn(),
   getAccessTokenMock: vi.fn(),
   refreshApiMock: vi.fn(),
 }));
@@ -42,6 +44,7 @@ vi.mock("@features/auth", () => ({
 vi.mock("@features/notification/api", () => ({
   listNotificationsApi: listNotificationsApiMock,
   readNotificationApi: readNotificationApiMock,
+  deleteNotificationApi: deleteNotificationApiMock,
   getNotificationsStreamUrl: () => "/api/notifications/stream",
   notificationsQueryKey: ["notifications"],
   notificationsPollingIntervalMs: 15000,
@@ -116,6 +119,7 @@ describe("NotificationsRealtimeListener", () => {
       hasUnread: false,
     } satisfies NotificationsPage);
     readNotificationApiMock.mockReset().mockResolvedValue({ notifyUserId: 0, isRead: true });
+    deleteNotificationApiMock.mockReset().mockResolvedValue(undefined);
     getAccessTokenMock.mockReset().mockReturnValue("test-token");
     refreshApiMock.mockReset().mockResolvedValue("test-token");
     global.fetch = vi.fn().mockImplementation(() => Promise.resolve(createStreamResponse()));
@@ -450,7 +454,7 @@ describe("NotificationsRealtimeListener", () => {
     });
   });
 
-  it("auto-reads matching SSE notifications and suppresses the toast on the target page", async () => {
+  it("deletes matching SSE notifications instead of showing them on the target issue page", async () => {
     const notification: NotificationItem = {
       notifyUserId: 94,
       notificationId: 17,
@@ -473,13 +477,13 @@ describe("NotificationsRealtimeListener", () => {
           hasUnread: false,
         }) satisfies NotificationsPage,
     );
-    readNotificationApiMock.mockImplementation(async (notifyUserId: number) => {
+    deleteNotificationApiMock.mockImplementation(async (notifyUserId: number) => {
       notifications = notifications.map((currentNotification) =>
         currentNotification.notifyUserId === notifyUserId
-          ? { ...currentNotification, isRead: true, readAt: "2026-03-14T11:16:00Z" }
+          ? currentNotification
           : currentNotification,
       );
-      return { notifyUserId, isRead: true };
+      notifications = notifications.filter((currentNotification) => currentNotification.notifyUserId !== notifyUserId);
     });
 
     global.fetch = vi.fn().mockResolvedValue(
@@ -510,17 +514,13 @@ describe("NotificationsRealtimeListener", () => {
     renderListener(queryClient, "/projects/9/issues/42");
 
     await waitFor(() => {
-      expect(readNotificationApiMock).toHaveBeenCalledWith(94);
-      expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
-        toInfiniteData([
-          expect.objectContaining({
-            notifyUserId: 94,
-            isRead: true,
-          }) as unknown as NotificationItem,
-        ], false),
-      );
+      expect(deleteNotificationApiMock).toHaveBeenCalledWith(94);
     });
 
+    expect(queryClient.getQueryData<InfiniteData<NotificationsPage>>(["notifications"])).toEqual(
+      toInfiniteData([], false),
+    );
     expect(screen.queryByText("Issue updated")).not.toBeInTheDocument();
+    expect(readNotificationApiMock).not.toHaveBeenCalled();
   });
 });

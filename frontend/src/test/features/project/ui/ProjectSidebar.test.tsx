@@ -84,7 +84,6 @@ describe("ProjectSidebar", () => {
     const user = userEvent.setup();
     const onSettingsClick = vi.fn();
     const onEditTeamClick = vi.fn();
-    const onSubscriptionChange = vi.fn();
 
     renderWithProviders(
       <ProjectSidebar
@@ -96,8 +95,6 @@ describe("ProjectSidebar", () => {
         isAdmin={true}
         onSettingsClick={onSettingsClick}
         onEditTeamClick={onEditTeamClick}
-        subscriptionChecked={false}
-        onSubscriptionChange={onSubscriptionChange}
       />
     );
 
@@ -114,23 +111,14 @@ describe("ProjectSidebar", () => {
     expect(
       screen.getByRole("button", { name: /manage members/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /project notifications/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Receive notifications for new issues and issue closures in this project."
-      )
-    ).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: /project notifications/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /edit project/i })
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /manage members/i }));
-    await user.click(screen.getByRole("switch", { name: /project notifications/i }));
     await user.click(screen.getByRole("button", { name: /edit project/i }));
 
     expect(onEditTeamClick).toHaveBeenCalledTimes(1);
-    expect(onSubscriptionChange).toHaveBeenCalledWith(true);
     expect(onSettingsClick).toHaveBeenCalledTimes(1);
   });
 
@@ -154,45 +142,11 @@ describe("ProjectSidebar", () => {
       screen.getByRole("button", { name: /view members/i })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("switch", { name: /project notifications/i })
-    ).not.toBeInTheDocument();
-    expect(
       screen.queryByRole("button", { name: /edit project/i })
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /view members/i }));
 
     expect(onViewTeamClick).toHaveBeenCalledTimes(1);
-  });
-
-  it("disables the notifications toggle while the subscription is pending", () => {
-    renderWithProviders(
-      <ProjectSidebar
-        project={baseProject}
-        members={[{ username: "alice", profileImg: null }]}
-        isAdmin={true}
-        subscriptionChecked={true}
-        subscriptionDisabled={true}
-      />
-    );
-
-    expect(screen.getByRole("switch", { name: /project notifications/i })).toHaveAttribute(
-      "disabled"
-    );
-  });
-
-  it("shows the inline subscription error for admins", () => {
-    renderWithProviders(
-      <ProjectSidebar
-        project={baseProject}
-        members={[{ username: "alice", profileImg: null }]}
-        isAdmin={true}
-        subscriptionError="Unable to load notification preference."
-      />
-    );
-
-    expect(
-      screen.getByText("Unable to load notification preference.")
-    ).toBeInTheDocument();
   });
 });

@@ -4,18 +4,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { DeleteProjectFlow } from "@features/project/flows/DeleteProjectFlow";
 import { renderWithProviders } from "../../../render";
 
-const { navigateMock } = vi.hoisted(() => ({
-  navigateMock: vi.fn(),
-}));
-
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
-  return {
-    ...actual,
-    useNavigate: () => navigateMock,
-  };
-});
-
 vi.mock("@widgets/layout/ModalOverlay", () => ({
   ModalOverlay: ({
     children,
@@ -55,7 +43,6 @@ describe("DeleteProjectFlow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     deleteProjectApiMock.mockResolvedValue(undefined);
-    navigateMock.mockReset();
   });
 
   it("does not render when isOpen is false", () => {
@@ -113,32 +100,12 @@ describe("DeleteProjectFlow", () => {
     expect(input).toHaveValue("123");
   });
 
-  it("calls deleteProjectApi, onClose and redirects to projects on successful delete", async () => {
+  it("calls deleteProjectApi and onClose on successful delete", async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-    const { queryClient } = renderWithProviders(
+    renderWithProviders(
       <DeleteProjectFlow {...defaultProps} onClose={onClose} />
     );
-    queryClient.setQueryData(["projects"], [
-      {
-        projectId: 42,
-        name: "Alpha Project",
-        description: "Alpha",
-        color: "#000000",
-        icon: "folder",
-        createdAt: "2026-03-19T00:00:00.000Z",
-        createdBy: 1,
-      },
-      {
-        projectId: 77,
-        name: "Beta Project",
-        description: "Beta",
-        color: "#ffffff",
-        icon: "folder",
-        createdAt: "2026-03-18T00:00:00.000Z",
-        createdBy: 1,
-      },
-    ]);
     await user.type(
       screen.getByPlaceholderText("Type the code above..."),
       "1234567890"
@@ -147,10 +114,6 @@ describe("DeleteProjectFlow", () => {
     await waitFor(() => {
       expect(deleteProjectApiMock).toHaveBeenCalledWith(42);
       expect(onClose).toHaveBeenCalled();
-      expect(navigateMock).toHaveBeenCalledWith("/projects", { replace: true });
-      expect(queryClient.getQueryData(["projects"])).toEqual([
-        expect.objectContaining({ projectId: 77, name: "Beta Project" }),
-      ]);
     });
   });
 

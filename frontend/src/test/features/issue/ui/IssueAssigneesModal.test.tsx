@@ -291,7 +291,7 @@ describe("IssueAssigneesModal", () => {
       />
     );
 
-    await screen.findByText("alice");
+    await screen.findByRole("button", { name: /toggle alice/i });
     await user.click(screen.getByRole("button", { name: /toggle alice/i }));
     await user.click(screen.getByRole("button", { name: /toggle bob/i }));
     await user.click(screen.getByRole("button", { name: /save changes/i }));
@@ -359,7 +359,7 @@ describe("IssueAssigneesModal", () => {
       />
     );
 
-    await screen.findByText("bob");
+    await screen.findByRole("button", { name: /toggle bob/i });
     await user.click(screen.getByRole("button", { name: /toggle bob/i }));
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 

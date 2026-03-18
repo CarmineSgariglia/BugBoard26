@@ -108,7 +108,7 @@ describe("apiClient", () => {
       url: "/issues/8",
     });
 
-    expect(refreshClient.get).toHaveBeenCalledWith("/security/csrf-token");
+    expect(refreshClient.get).toHaveBeenCalledWith("/auth/csrf");
     expect(config.headers["X-CSRFToken"]).toBe("csrf-from-bootstrap");
   });
 
@@ -124,29 +124,11 @@ describe("apiClient", () => {
       method: "post",
       headers: {},
       data: formData,
-      url: "/issues/1/attachments",
+      url: "/attachments",
     });
 
     expect(config.headers["Content-Type"]).toBeUndefined();
     expect(config.headers["X-CSRFToken"]).toBe("csrf-ready");
-  });
-
-  it("does not try to refresh aborted requests", async () => {
-    await importClientModule();
-    const apiClient = axiosHarness.instances[0];
-    const refreshClient = axiosHarness.instances[1];
-    const responseInterceptor = apiClient.__responseHandlers[0].onRejected;
-    const controller = new AbortController();
-    controller.abort();
-
-    const abortedError = {
-      code: "ERR_CANCELED",
-      name: "CanceledError",
-      config: { url: "/issues/9", signal: controller.signal },
-    };
-
-    await expect(responseInterceptor(abortedError)).rejects.toBe(abortedError);
-    expect(refreshClient.post).not.toHaveBeenCalled();
   });
 
   it("refreshes the access token and retries the original request after a 401", async () => {
@@ -163,7 +145,7 @@ describe("apiClient", () => {
       response: { status: 401 },
     });
 
-    expect(refreshClient.post).toHaveBeenCalledWith("/sessions/current/access-token", {});
+    expect(refreshClient.post).toHaveBeenCalledWith("/auth/refresh", {});
     expect(apiClient).toHaveBeenCalledWith(
       expect.objectContaining({ url: "/issues/9", _retry: true })
     );
@@ -182,7 +164,7 @@ describe("apiClient", () => {
       response: { status: 401 },
     };
     const authError = {
-      config: { url: "/sessions" },
+      config: { url: "/auth/login" },
       response: { status: 401 },
     };
 

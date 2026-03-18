@@ -7,6 +7,30 @@ import { useAuth } from "@features/auth";
 
 vi.mock("@features/auth");
 
+vi.mock("@features/settings/ui/ProfileSettingsSection", () => ({
+  ProfileSettingsSection: ({ isAdmin }: { isAdmin: boolean }) => (
+    <div>{`Profile section admin:${String(isAdmin)}`}</div>
+  ),
+}));
+
+vi.mock("@features/settings/ui/AddUsersSection", () => ({
+  AddUsersSection: () => <div>Add New User</div>,
+}));
+
+vi.mock("@features/settings/ui/ManageUsersSection", () => ({
+  ManageUsersSection: ({
+    onEditingChange,
+  }: {
+    onEditingChange?: (isEditing: boolean) => void;
+  }) => (
+    <div>
+      <span>Manage users body</span>
+      <button onClick={() => onEditingChange?.(true)}>Start editing</button>
+      <button onClick={() => onEditingChange?.(false)}>Stop editing</button>
+    </div>
+  ),
+}));
+
 describe("ManageAccountSettingsScreen", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
@@ -28,5 +52,37 @@ describe("ManageAccountSettingsScreen", () => {
 
     // Verify AddUsers section gets rendered instead of Profile
     expect(screen.getByText("Add New User")).toBeInTheDocument();
+  });
+
+  it("does not render the sidebar for non-admin users", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { userId: 2, username: "dev", isAdmin: false },
+    } as any);
+
+    renderWithProviders(<ManageAccountSettingsScreen />);
+
+    expect(screen.getByText("Profile section admin:false")).toBeInTheDocument();
+    expect(screen.queryByText("Add Users")).not.toBeInTheDocument();
+    expect(screen.queryByText("Manage Users")).not.toBeInTheDocument();
+  });
+
+  it("switches to the wide manage-users layout and resets it after editing stops", async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<ManageAccountSettingsScreen />);
+
+    await user.click(screen.getByText("Manage Users"));
+
+    expect(screen.getByText("Manage users body")).toBeInTheDocument();
+
+    const wideLayoutContainer = container.querySelector(".pl-0") as HTMLElement;
+    expect(wideLayoutContainer).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /start editing/i }));
+
+    expect(container.querySelector(".pl-0")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /stop editing/i }));
+
+    expect(container.querySelector(".pl-0")).toBeInTheDocument();
   });
 });

@@ -46,7 +46,7 @@ describe("ToggleUserStatusModal", () => {
     expect(screen.getByText("Deactivate")).toBeInTheDocument();
     expect(screen.getByText("Mario Rossi")).toBeInTheDocument();
     expect(
-      screen.getByText(/The user will no longer be able to access the system/)
+      screen.getByText(/They will no longer be able to access the system/)
     ).toBeInTheDocument();
   });
 
@@ -58,7 +58,7 @@ describe("ToggleUserStatusModal", () => {
     expect(screen.getByText("Activate")).toBeInTheDocument();
     expect(screen.getByText("Luigi Verdi")).toBeInTheDocument();
     expect(
-      screen.getByText(/The user will regain access to the system/)
+      screen.getByText(/They will regain access to the system/)
     ).toBeInTheDocument();
   });
 

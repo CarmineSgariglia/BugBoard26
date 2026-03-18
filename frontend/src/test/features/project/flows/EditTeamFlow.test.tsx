@@ -108,13 +108,11 @@ describe("EditTeamFlow", () => {
     renderWithProviders(<EditTeamFlow project={baseProject} onClose={vi.fn()} />);
 
     expect(await screen.findByTestId("project-team-step")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByTestId("project-team-step")).toHaveAttribute(
-        "data-mode",
-        "edit"
-      );
-      expect(screen.getByText("selected:2")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("project-team-step")).toHaveAttribute(
+      "data-mode",
+      "edit"
+    );
+    expect(screen.getByText("selected:2")).toBeInTheDocument();
   });
 
   it("renders ProjectTeamStep in view mode when readOnly is true", async () => {

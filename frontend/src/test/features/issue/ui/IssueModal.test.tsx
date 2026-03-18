@@ -1,4 +1,4 @@
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { IssueModal } from "../../../../features/issue/ui/IssueModal";
@@ -114,13 +114,11 @@ describe("IssueModal", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /create issue/i }));
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(
-            "Issue creata, ma primo commento/allegati non salvati (permessi insufficienti)."
-          )
-        ).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByText(
+          "Issue creata, ma primo commento/allegati non salvati (permessi insufficienti)."
+        )
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /issue created/i })).toBeInTheDocument();
       expect(screen.getByText("Close")).toBeInTheDocument();
       expect(onSuccess).not.toHaveBeenCalled();
@@ -128,15 +126,13 @@ describe("IssueModal", () => {
   });
 
   describe("Edit Mode", () => {
-    it("hydrates inputs with initialData and hides Description field", async () => {
+    it("hydrates inputs with initialData and hides Description field", () => {
       renderWithProviders(<IssueModal isOpen={true} onClose={vi.fn()} mode="edit" initialData={dummyIssue} issue={dummyIssue} />);
       
       expect(screen.getByText(/edit issue/i)).toBeInTheDocument();
       
       // Hydration
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText(/what's the issue/i)).toHaveValue("Original Issue Title");
-      });
+      expect(screen.getByPlaceholderText(/what's the issue/i)).toHaveValue("Original Issue Title");
       
       // Description input should NOT be rendered in edit mode inside this modal layer
       expect(screen.queryByPlaceholderText(/provide more details/i)).not.toBeInTheDocument();
@@ -163,7 +159,7 @@ describe("IssueModal", () => {
       });
     });
 
-    it("keeps Save Changes disabled when no edit has been made", async () => {
+    it("keeps Save Changes disabled when no edit has been made", () => {
       renderWithProviders(
         <IssueModal
           isOpen={true}
@@ -174,11 +170,9 @@ describe("IssueModal", () => {
         />
       );
 
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save changes/i })).toHaveAttribute(
-          "disabled"
-        );
-      });
+      expect(screen.getByRole("button", { name: /save changes/i })).toHaveAttribute(
+        "disabled"
+      );
     });
   });
 });
