@@ -7,16 +7,24 @@ from ..notifications.services import (
     notify_project_removed,
     notify_project_unassigned,
 )
+from .membership import (
+    ensure_project_creator_membership,
+    mutable_project_team_memberships_queryset,
+    visible_project_memberships,
+)
 from .models import Project, ProjectMembership
 
 
-def create_project_memberships(*, project: Project, owner: User, raw_user_ids):
-    ProjectMembership.objects.get_or_create(
-        project=project,
-        user=owner,
-    )
+def _active_team_users(*, raw_user_ids, excluded_user_id: int):
     user_ids = request_user_ids(raw_user_ids)
-    users = User.objects.filter(id__in=user_ids, is_active=True).exclude(id=owner.id)
+    return list(
+        User.objects.filter(id__in=user_ids, is_active=True).exclude(id=excluded_user_id)
+    )
+
+
+def create_project_memberships(*, project: Project, creator: User, raw_user_ids):
+    ensure_project_creator_membership(project=project)
+    users = _active_team_users(raw_user_ids=raw_user_ids, excluded_user_id=creator.id)
     members = []
     for user in users:
         member, _ = ProjectMembership.objects.get_or_create(
@@ -27,17 +35,20 @@ def create_project_memberships(*, project: Project, owner: User, raw_user_ids):
     if members:
         notify_project_added(
             users=members,
-            actor=owner,
+            actor=creator,
             project=project,
         )
 
 
 def sync_project_team_members(*, project: Project, raw_user_ids, actor: User | None = None):
-    user_ids = request_user_ids(raw_user_ids)
-    target_users = list(User.objects.filter(id__in=user_ids, is_active=True).exclude(id=project.created_by_id))
+    ensure_project_creator_membership(project=project)
+    target_users = _active_team_users(
+        raw_user_ids=raw_user_ids,
+        excluded_user_id=project.created_by_id,
+    )
     target_user_ids = {user.id for user in target_users}
 
-    mutable_memberships = ProjectMembership.objects.filter(project=project).exclude(user_id=project.created_by_id).select_related("user")
+    mutable_memberships = mutable_project_team_memberships_queryset(project=project)
     current_member_ids = {membership.user_id for membership in mutable_memberships}
 
     to_add_ids = target_user_ids - current_member_ids
@@ -51,7 +62,7 @@ def sync_project_team_members(*, project: Project, raw_user_ids, actor: User | N
         )
 
     removed_memberships = list(mutable_memberships.filter(user_id__in=to_remove_ids))
-    removed_users = [membership.user for membership in removed_memberships]
+    removed_users = [membership.user for membership in removed_memberships if membership.user.is_active]
     if to_remove_ids:
         mutable_memberships.filter(user_id__in=to_remove_ids).delete()
 
@@ -65,10 +76,10 @@ def sync_project_team_members(*, project: Project, raw_user_ids, actor: User | N
         notify_project_unassigned(users=removed_users, project=project)
 
 
-def create_project_with_team(*, serializer, owner, raw_user_ids):
+def create_project_with_team(*, serializer, creator, raw_user_ids):
     with transaction.atomic():
-        project = serializer.save(created_by=owner)
-        create_project_memberships(project=project, owner=owner, raw_user_ids=raw_user_ids)
+        project = serializer.save(created_by=creator)
+        create_project_memberships(project=project, creator=creator, raw_user_ids=raw_user_ids)
     return project
 
 
@@ -81,7 +92,14 @@ def update_project_with_team(*, serializer, project: Project, raw_user_ids, has_
 
 
 def delete_project_and_notify(*, project: Project):
-    recipient_users = list(User.objects.filter(project_memberships__project=project).distinct())
+    recipient_users = [
+        membership.user
+        for membership in visible_project_memberships(
+            project=project,
+            include_admins=True,
+            active_only=True,
+        )
+    ]
     if recipient_users:
         notify_project_removed(users=recipient_users, project=project)
     project.delete()

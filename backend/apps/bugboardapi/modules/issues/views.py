@@ -17,6 +17,7 @@ from ...permissions import (
     check_assignee_or_admin,
     check_admin,
     ensure_issue_access,
+    ensure_project_access,
     filter_by_project_access,
 )
 from .models import (
@@ -24,6 +25,7 @@ from .models import (
     Issue,
     IssueEvent,
 )
+from ..projects.models import Project
 from ..projects.serializers import ProjectMembershipSerializer
 from .serializers import (
     AttachmentSerializer,
@@ -33,6 +35,7 @@ from .serializers import (
 from .activity import delete_media_path
 from .commands import (
     assign_issue_users,
+    create_issue_for_project,
     create_issue_attachment,
     create_issue_comment,
     delete_issue,
@@ -41,10 +44,55 @@ from .commands import (
     update_issue_status,
     upload_attachment_for_event,
 )
-from .queries import apply_issue_filters, list_issue_suggestion_memberships
+from .queries import list_issue_suggestion_memberships, list_project_issues_queryset
 from .realtime import open_issue_subscription
 
 logger = logging.getLogger(__name__)
+
+
+def _get_project_or_none(*, project_id: int):
+    return Project.objects.filter(project_id=project_id).first()
+
+
+def _issue_queryset():
+    return Issue.objects.select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
+
+
+def _scoped_issue_or_none(*, user, issue_id):
+    queryset = filter_by_project_access(queryset=_issue_queryset(), user=user)
+    return queryset.filter(issue_id=issue_id).first()
+
+
+def _scoped_issue_event_or_none(*, user, update_id):
+    queryset = IssueEvent.objects.select_related("issue")
+    queryset = filter_by_project_access(
+        queryset=queryset,
+        user=user,
+        project_lookup="issue__project_id",
+    )
+    return queryset.filter(update_id=update_id).first()
+
+
+class ProjectIssueListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, projectId):
+        project = _get_project_or_none(project_id=projectId)
+        if not project:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        ensure_project_access(request.user, project)
+        queryset = list_project_issues_queryset(project=project, request=request)
+        return Response(IssueSerializer(queryset, many=True, context={"request": request}).data)
+
+    def post(self, request, projectId):
+        project = _get_project_or_none(project_id=projectId)
+        if not project:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        ensure_project_access(request.user, project)
+        serializer = IssueSerializer(data=request.data, context={"request": request, "project": project})
+        serializer.is_valid(raise_exception=True)
+        issue = create_issue_for_project(serializer=serializer, reporter=request.user, project=project)
+        return Response(IssueSerializer(issue, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
 class IssueViewSet(
@@ -55,17 +103,12 @@ class IssueViewSet(
 ):
     serializer_class = IssueSerializer
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Issue.objects.select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
+    queryset = _issue_queryset()
     lookup_field = "issue_id"
     lookup_url_kwarg = "issueId"
 
     def get_queryset(self):
-        queryset = Issue.objects.select_related("project", "reporter", "reporter__profile").prefetch_related("assignees", "tags")
-        queryset = filter_by_project_access(queryset=queryset, user=self.request.user)
-        project_id = self.request.query_params.get("projectId")
-        if project_id:
-            queryset = queryset.filter(project_id=project_id)
-        return apply_issue_filters(queryset, self.request)
+        return filter_by_project_access(queryset=_issue_queryset(), user=self.request.user)
 
     def perform_destroy(self, instance):
         check_admin(self.request.user)
@@ -243,7 +286,7 @@ class AttachmentUploadView(APIView):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def post(self, request, updateId):
-        event = IssueEvent.objects.filter(update_id=updateId).first()
+        event = _scoped_issue_event_or_none(user=request.user, update_id=updateId)
         if not event:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_issue_access(request.user, event.issue)
@@ -292,13 +335,13 @@ class AttachmentViewSet(
             raise ValidationError({"detail": "Provide only one between `updateId` and `issueId`"})
 
         if update_id:
-            event = IssueEvent.objects.filter(update_id=update_id).select_related("issue").first()
+            event = _scoped_issue_event_or_none(user=request.user, update_id=update_id)
             if not event:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(event.issue)
             attachment = upload_attachment_for_event(event=event, payload=request.data)
         else:
-            issue = Issue.objects.filter(issue_id=issue_id).select_related("project").first()
+            issue = _scoped_issue_or_none(user=request.user, issue_id=issue_id)
             if not issue:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             self._ensure_attachment_write_access(issue)

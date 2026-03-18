@@ -113,6 +113,20 @@ class ProjectViewRegressionTests(APITestCase):
         }
         self.assertEqual(notified_user_ids, {self.admin.id, self.member.id})
 
+    @patch("apps.bugboardapi.modules.projects.commands.notify_project_removed")
+    def test_project_delete_skips_inactive_members_in_notifications(self, mock_notify_project_removed):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        mock_notify_project_removed.assert_called_once()
+
+        notified_user_ids = {
+            user.id for user in mock_notify_project_removed.call_args.kwargs["users"]
+        }
+        self.assertEqual(notified_user_ids, {self.admin.id})
+
     def test_project_create_rejects_invalid_team_payload(self):
         response = self.client.post(
             "/api/projects",

@@ -11,9 +11,9 @@ from ..modules.auth.views import (
     PasswordResetView,
     RefreshView,
 )
-from ..modules.issues.views import AttachmentUploadView, AttachmentViewSet, IssueViewSet
+from ..modules.issues.views import AttachmentUploadView, AttachmentViewSet, IssueViewSet, ProjectIssueListCreateView
 from ..modules.notifications.views import NotificationViewSet
-from ..modules.projects.views import ProjectIssueListCreateView, ProjectViewSet
+from ..modules.projects.views import ProjectViewSet
 from ..modules.tags.views import TagViewSet, health_check
 from ..modules.users.views import UserViewSet
 

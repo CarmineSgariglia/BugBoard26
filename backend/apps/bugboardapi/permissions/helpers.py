@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..modules.issues.models import IssueAssignee
+from ..modules.projects.membership import is_project_member as has_project_membership
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import User
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 
 
 def is_project_member(user: User, project: Project) -> bool:
-    return project.members.filter(id=user.id).exists()
+    return has_project_membership(user=user, project=project)
 
 
 def is_issue_assignee(user: User, issue: Issue) -> bool:

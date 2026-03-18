@@ -18,6 +18,9 @@ def _role_group(role_name: str) -> Group:
 
 
 def _user_group_names(user: User) -> set[str]:
+    prefetched_groups = getattr(user, "_prefetched_objects_cache", {}).get("groups")
+    if prefetched_groups is not None:
+        return {group.name for group in prefetched_groups}
     return set(user.groups.values_list("name", flat=True))
 
 

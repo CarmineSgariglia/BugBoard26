@@ -77,34 +77,73 @@ def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
     return saved.path, content_type, size, original_name
 
 
-def create_attachment_for_event(event: IssueEvent, payload: dict):
+def extract_issue_uploaded_files(
+    payload: dict,
+    *,
+    required: bool = False,
+    max_files: int = 10,
+):
     uploaded_files = payload.getlist("file") if hasattr(payload, "getlist") else payload.get("file")
     if not uploaded_files:
+        if required:
+            raise ValidationError({"file": "Attachment file is required"})
         return []
 
     if not isinstance(uploaded_files, list):
         uploaded_files = [uploaded_files]
 
-    if len(uploaded_files) > 10:
-        raise ValidationError({"file": "Maximum 10 files allowed per comment."})
+    if len(uploaded_files) > max_files:
+        if max_files == 1:
+            raise ValidationError({"file": "Exactly one attachment file is required"})
+        raise ValidationError({"file": f"Maximum {max_files} files allowed per comment."})
+
+    return uploaded_files
+
+
+def _create_attachments_for_event_from_files(event: IssueEvent, uploaded_files: list):
+    if not uploaded_files:
+        return []
 
     attachments = []
-    for uploaded_file in uploaded_files:
-        saved_path, mime_type, size, original_name = save_issue_uploaded_file(
-            uploaded_file=uploaded_file,
-            issue_id=event.issue_id,
-            base_dir="issue-attachments",
-        )
-        attachment = Attachment.objects.create(
-            update=event,
-            original_name=original_name,
-            path=saved_path,
-            mime_type=mime_type,
-            size=size,
-        )
-        attachments.append(attachment)
+    saved_paths: list[str] = []
+    try:
+        with transaction.atomic():
+            for uploaded_file in uploaded_files:
+                saved_path, mime_type, size, original_name = save_issue_uploaded_file(
+                    uploaded_file=uploaded_file,
+                    issue_id=event.issue_id,
+                    base_dir="issue-attachments",
+                )
+                saved_paths.append(saved_path)
+                attachment = Attachment.objects.create(
+                    update=event,
+                    original_name=original_name,
+                    path=saved_path,
+                    mime_type=mime_type,
+                    size=size,
+                )
+                attachments.append(attachment)
+    except Exception:
+        for saved_path in saved_paths:
+            delete_media_path(saved_path)
+        raise
 
     return attachments
+
+
+def create_attachment_for_event(
+    event: IssueEvent,
+    payload: dict,
+    *,
+    required: bool = False,
+    max_files: int = 10,
+):
+    uploaded_files = extract_issue_uploaded_files(
+        payload,
+        required=required,
+        max_files=max_files,
+    )
+    return _create_attachments_for_event_from_files(event, uploaded_files)
 
 
 def schedule_issue_event_broadcast(event: IssueEvent) -> None:
@@ -146,9 +185,16 @@ def create_issue_event_with_attachment(
     event_type,
     message,
     payload: dict,
+    attachments_required: bool = False,
+    max_files: int = 10,
     **extra_fields,
 ):
     message = validate_issue_event_message(message)
+    uploaded_files = extract_issue_uploaded_files(
+        payload,
+        required=attachments_required,
+        max_files=max_files,
+    )
     with transaction.atomic():
         event = create_issue_event(
             issue=issue,
@@ -157,7 +203,7 @@ def create_issue_event_with_attachment(
             message=message,
             **extra_fields,
         )
-        create_attachment_for_event(event, payload)
+        _create_attachments_for_event_from_files(event, uploaded_files)
     return event
 
 

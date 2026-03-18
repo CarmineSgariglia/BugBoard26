@@ -21,6 +21,7 @@ from apps.bugboardapi.modules.issues.models import (
     IssueAssignee,
     IssueEvent,
     IssueStatus,
+    IssueTag,
 )
 from apps.bugboardapi.modules.notifications.models import Notification, NotifyType, NotifyUser
 from apps.bugboardapi.modules.notifications.services import (
@@ -846,6 +847,16 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertIn(self.member.id, returned_user_ids)
         self.assertIn(self.admin.id, returned_user_ids)
 
+    def test_members_endpoint_keeps_inactive_members_visible_in_current_contract(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(f"/api/projects/{self.project.project_id}/members")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_user_ids = {item["userId"] for item in response.data}
+        self.assertIn(self.member.id, returned_user_ids)
+
     def test_project_patch_team_sync_adds_and_removes_developers(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
@@ -875,6 +886,25 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             ).exists()
         )
         self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.PROJECT_UNASSIGNED,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_project_patch_team_does_not_notify_inactive_removed_members(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/projects/{self.project.project_id}",
+            {"team": []},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
             NotifyUser.objects.filter(
                 user=self.member,
                 notification__notify_type=NotifyType.PROJECT_UNASSIGNED,
@@ -998,7 +1028,85 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_project_issues_forbidden_for_non_member(self):
         self.client.force_authenticate(user=self.outsider)
         response = self.client.get(f"/api/projects/{self.project.project_id}/issues")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_project_issues_support_combined_q_type_priority_and_tag_filters(self):
+        frontend_tag = Tag.objects.create(name="frontend")
+        matching_issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="API filtered feature",
+            description="desc",
+            issue_type="FEATURE",
+            status=IssueStatus.TODO,
+            priority="HIGH",
+        )
+        IssueTag.objects.create(issue=matching_issue, tag=self.tag)
+
+        wrong_priority_issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="API filtered feature low",
+            description="desc",
+            issue_type="FEATURE",
+            status=IssueStatus.TODO,
+            priority="LOW",
+        )
+        IssueTag.objects.create(issue=wrong_priority_issue, tag=self.tag)
+
+        wrong_tag_issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="API filtered feature wrong tag",
+            description="desc",
+            issue_type="FEATURE",
+            status=IssueStatus.TODO,
+            priority="HIGH",
+        )
+        IssueTag.objects.create(issue=wrong_tag_issue, tag=frontend_tag)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(
+            f"/api/projects/{self.project.project_id}/issues"
+            "?q=API filtered&category=FEATURE&priority=HIGH&tag=api"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["issueId"] for item in response.data], [matching_issue.issue_id])
+
+    def test_project_issues_support_date_range_filters(self):
+        old_issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="Old issue",
+            description="desc",
+            issue_type="BUG",
+            status=IssueStatus.TODO,
+            priority="MEDIUM",
+        )
+        recent_issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="Recent issue",
+            description="desc",
+            issue_type="BUG",
+            status=IssueStatus.TODO,
+            priority="MEDIUM",
+        )
+        today = timezone.now()
+        old_date = today - timedelta(days=7)
+        recent_date = today - timedelta(days=1)
+        Issue.objects.filter(issue_id=old_issue.issue_id).update(created_at=old_date)
+        Issue.objects.filter(issue_id=recent_issue.issue_id).update(created_at=recent_date)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(
+            f"/api/projects/{self.project.project_id}/issues"
+            f"?date_from={recent_date.date().isoformat()}&date_to={today.date().isoformat()}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {item["issueId"] for item in response.data}
+        self.assertIn(recent_issue.issue_id, returned_ids)
+        self.assertNotIn(old_issue.issue_id, returned_ids)
 
     def test_issue_create_creates_event(self):
         self.client.force_authenticate(user=self.admin)
@@ -1071,6 +1179,26 @@ class IssueWorkflowEndpointTests(APITestCase):
             IssueAssignee.objects.filter(issue=new_issue, user=self.member).exists()
         )
 
+    def test_issue_create_with_assignee_ids_keeps_reporter_and_requested_assignees(self):
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "title": "Created issue with assignees",
+            "description": "Created from test",
+            "type": "BUG",
+            "status": "TODO",
+            "priority": "MEDIUM",
+            "assigneeIds": [self.member.id],
+        }
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_issue = Issue.objects.get(issue_id=response.data["issueId"])
+        assignee_ids = set(
+            IssueAssignee.objects.filter(issue=new_issue).values_list("user_id", flat=True)
+        )
+        self.assertEqual(assignee_ids, {self.admin.id, self.member.id})
+
     def test_issue_create_rejects_admin_assignee(self):
         self.client.force_authenticate(user=self.admin)
         payload = {
@@ -1088,6 +1216,28 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(
             str(response.data["assigneeIds"][0]),
             f"Admin users cannot be assigned to issues: [{self.admin.id}]",
+        )
+
+    def test_issue_create_rejects_inactive_assignee(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "title": "Created issue",
+            "description": "Created from test",
+            "type": "BUG",
+            "status": "TODO",
+            "priority": "MEDIUM",
+            "assigneeIds": [self.member.id],
+        }
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            str(response.data["assigneeIds"][0]),
+            f"Users must be members of project: [{self.member.id}]",
         )
 
     def test_issue_create_with_tag_names_reuses_existing_and_creates_missing(self):
@@ -1164,6 +1314,42 @@ class IssueWorkflowEndpointTests(APITestCase):
             f"Admin users cannot be assigned to issues: [{self.admin.id}]",
         )
 
+    def test_issue_update_rejects_inactive_assignee(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"assigneeIds": [self.member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            str(response.data["assigneeIds"][0]),
+            f"Users must be members of project: [{self.member.id}]",
+        )
+
+    def test_issue_update_replaces_assignee_set(self):
+        another_member = create_user_with_profile(
+            username="issues_member_replace",
+            email="issues_member_replace@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=another_member)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"assigneeIds": [another_member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        assignee_ids = set(
+            IssueAssignee.objects.filter(issue=self.issue).values_list("user_id", flat=True)
+        )
+        self.assertEqual(assignee_ids, {another_member.id})
+
     def test_outsider_cannot_create_tag_indirectly_via_issue_update(self):
         self.client.force_authenticate(user=self.outsider)
 
@@ -1208,6 +1394,22 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(
             response.data["userIds"],
             f"Admin users cannot be assigned to issues: [{self.admin.id}]",
+        )
+
+    def test_assign_rejects_inactive_assignee(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/assign",
+            {"userIds": [self.member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["userIds"],
+            f"Users must be members of project: [{self.member.id}]",
         )
 
     def test_suggestions_exclude_admins(self):
@@ -1374,6 +1576,29 @@ class IssueWorkflowEndpointTests(APITestCase):
             ).exists()
         )
 
+    def test_assign_creates_assign_event(self):
+        another_member = create_user_with_profile(
+            username="issues_member_event_assign",
+            email="issues_member_event_assign@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=another_member)
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/assign",
+            {"userIds": [another_member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                actor=self.admin,
+                event_type=EventType.ASSIGN,
+            ).exists()
+        )
+
     def test_unassign_creates_notification_with_project(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
@@ -1390,6 +1615,36 @@ class IssueWorkflowEndpointTests(APITestCase):
                 notification__project=self.project,
             ).exists()
         )
+
+    def test_unassign_creates_unassign_event(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/unassign",
+            {"userIds": [self.member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                actor=self.admin,
+                event_type=EventType.UNASSIGN,
+            ).exists()
+        )
+
+    @patch("apps.bugboardapi.modules.issues.commands.notify_issue_unassigned")
+    def test_unassign_skips_inactive_users_in_notifications(self, mock_notify_issue_unassigned):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/unassign",
+            {"userIds": [self.member.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_notify_issue_unassigned.assert_not_called()
 
     def test_status_update_rejects_message_longer_than_1000(self):
         self.client.force_authenticate(user=self.member)
@@ -1516,7 +1771,7 @@ class IssueWorkflowEndpointTests(APITestCase):
             {"file": uploaded},
             format="multipart",
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_attachment_upload_success_for_assignee(self):
         event = IssueEvent.objects.create(
@@ -1820,6 +2075,34 @@ class IssueWorkflowEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(ok_confirm.status_code, status.HTTP_204_NO_CONTENT)
+
+    @patch("apps.bugboardapi.modules.issues.commands.notify_issue_updated")
+    def test_issue_delete_does_not_emit_issue_updated_notification(self, mock_notify_issue_updated):
+        inactive_assignee = create_user_with_profile(
+            username="issues_member_delete_inactive",
+            email="issues_member_delete_inactive@example.com",
+            password="StrongPass123!",
+        )
+        another_member = create_user_with_profile(
+            username="issues_member_delete_active",
+            email="issues_member_delete_active@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=inactive_assignee)
+        ProjectMembership.objects.create(project=self.project, user=another_member)
+        IssueAssignee.objects.create(issue=self.issue, user=inactive_assignee)
+        IssueAssignee.objects.create(issue=self.issue, user=another_member)
+        inactive_assignee.is_active = False
+        inactive_assignee.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}",
+            {"title": self.issue.title},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        mock_notify_issue_updated.assert_not_called()
 
 
 class NotificationTagMetaEndpointTests(APITestCase):

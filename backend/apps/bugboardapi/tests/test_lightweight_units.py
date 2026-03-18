@@ -16,26 +16,24 @@ def _detail_text(detail):
 
 class ValidateProjectAssigneeIdsTests(SimpleTestCase):
     def test_returns_early_when_assignee_ids_is_none(self):
-        with patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model:
+        with patch("apps.bugboardapi.modules.issues.rules.project_memberships_queryset") as memberships_queryset:
             validate_project_assignee_ids(project=object(), assignee_ids=None)
-            membership_model.objects.filter.assert_not_called()
+            memberships_queryset.assert_not_called()
 
     def test_returns_early_when_assignee_ids_is_empty(self):
-        with patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model:
+        with patch("apps.bugboardapi.modules.issues.rules.project_memberships_queryset") as memberships_queryset:
             validate_project_assignee_ids(project=object(), assignee_ids=[])
-            membership_model.objects.filter.assert_not_called()
+            memberships_queryset.assert_not_called()
 
     def test_raises_when_ids_are_not_project_members(self):
         membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
-        queryset = MagicMock()
-        queryset.select_related.return_value = [membership]
+        memberships_queryset = MagicMock()
+        memberships_queryset.filter.return_value = [membership]
 
         with (
-            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.project_memberships_queryset", return_value=memberships_queryset),
             patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=False),
         ):
-            membership_model.objects.filter.return_value = queryset
-
             with self.assertRaises(ValidationError) as ctx:
                 validate_project_assignee_ids(project=object(), assignee_ids=[10, 99])
 
@@ -46,15 +44,13 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
 
     def test_raises_when_assignee_is_admin(self):
         membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
-        queryset = MagicMock()
-        queryset.select_related.return_value = [membership]
+        memberships_queryset = MagicMock()
+        memberships_queryset.filter.return_value = [membership]
 
         with (
-            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.project_memberships_queryset", return_value=memberships_queryset),
             patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=True),
         ):
-            membership_model.objects.filter.return_value = queryset
-
             with self.assertRaises(ValidationError) as ctx:
                 validate_project_assignee_ids(project=object(), assignee_ids=[10])
 
@@ -65,14 +61,13 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
 
     def test_accepts_non_admin_project_members(self):
         membership = SimpleNamespace(user_id=10, user=SimpleNamespace())
-        queryset = MagicMock()
-        queryset.select_related.return_value = [membership]
+        memberships_queryset = MagicMock()
+        memberships_queryset.filter.return_value = [membership]
 
         with (
-            patch("apps.bugboardapi.modules.issues.rules.ProjectMembership") as membership_model,
+            patch("apps.bugboardapi.modules.issues.rules.project_memberships_queryset", return_value=memberships_queryset),
             patch("apps.bugboardapi.modules.issues.rules.is_admin_user", return_value=False),
         ):
-            membership_model.objects.filter.return_value = queryset
             validate_project_assignee_ids(project=object(), assignee_ids=[10])
 
 
