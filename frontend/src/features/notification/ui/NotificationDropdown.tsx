@@ -212,7 +212,14 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                         </div>
                     ) : null}
 
-                    <div className="min-h-0">
+                    <div
+                        className="min-h-0"
+                        style={{
+                            maskImage: "linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent)",
+                            WebkitMaskImage:
+                                "linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent)",
+                        }}
+                    >
                         <ScrollComponent
                             hideBorder
                             wheelOptions={{ tailDurationMs: 760, tailIntensity: 0.2, tailMaxPx: 90, idleMs: 100 }}
@@ -222,13 +229,8 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
                             testId="notification-scroll-panel"
                         >
                             <div
-                                className="flex flex-col gap-1"
+                                className="flex flex-col gap-1 pt-2 pb-2"
                                 data-testid="notification-scroll-container"
-                                style={{
-                                    maskImage: "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
-                                    WebkitMaskImage:
-                                        "linear-gradient(to bottom, transparent, black 4%, black 96%, transparent)",
-                                }}
                             >
                                 {isLoading ? <p className="px-2 py-2 text-xs text-neutral-400">Loading...</p> : null}
                                 {!isLoading && items.length === 0 ? (
