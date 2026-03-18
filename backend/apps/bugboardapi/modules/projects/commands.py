@@ -100,6 +100,9 @@ def delete_project_and_notify(*, project: Project):
             active_only=True,
         )
     ]
-    if recipient_users:
-        notify_project_removed(users=recipient_users, project=project)
-    project.delete()
+    with transaction.atomic():
+        project.delete()
+        if recipient_users:
+            transaction.on_commit(
+                lambda users=recipient_users: notify_project_removed(users=users, project=None)
+            )

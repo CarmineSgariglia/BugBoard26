@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from django.http import StreamingHttpResponse
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -12,7 +11,12 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ...common.sse import ServerSentEventsRenderer, format_sse_event
+from ...common.sse import (
+    ServerSentEventsRenderer,
+    build_sse_response,
+    parse_last_event_id,
+    stream_sse_events,
+)
 from ...permissions import (
     check_assignee_or_admin,
     check_admin,
@@ -20,6 +24,7 @@ from ...permissions import (
     ensure_project_access,
     filter_by_project_access,
 )
+from ...permissions.scopes import first_by_project_access
 from .models import (
     Attachment,
     Issue,
@@ -50,8 +55,12 @@ from .realtime import open_issue_subscription
 logger = logging.getLogger(__name__)
 
 
-def _get_project_or_none(*, project_id: int):
-    return Project.objects.filter(project_id=project_id).first()
+def _get_project_or_none(*, user, project_id: int):
+    return first_by_project_access(
+        queryset=Project.objects.all(),
+        user=user,
+        lookup={"project_id": project_id},
+    )
 
 
 def _issue_queryset():
@@ -59,25 +68,27 @@ def _issue_queryset():
 
 
 def _scoped_issue_or_none(*, user, issue_id):
-    queryset = filter_by_project_access(queryset=_issue_queryset(), user=user)
-    return queryset.filter(issue_id=issue_id).first()
+    return first_by_project_access(
+        queryset=_issue_queryset(),
+        user=user,
+        lookup={"issue_id": issue_id},
+    )
 
 
 def _scoped_issue_event_or_none(*, user, update_id):
-    queryset = IssueEvent.objects.select_related("issue")
-    queryset = filter_by_project_access(
-        queryset=queryset,
+    return first_by_project_access(
+        queryset=IssueEvent.objects.select_related("issue"),
         user=user,
+        lookup={"update_id": update_id},
         project_lookup="issue__project_id",
     )
-    return queryset.filter(update_id=update_id).first()
 
 
 class ProjectIssueListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, projectId):
-        project = _get_project_or_none(project_id=projectId)
+        project = _get_project_or_none(user=request.user, project_id=projectId)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
@@ -85,7 +96,7 @@ class ProjectIssueListCreateView(APIView):
         return Response(IssueSerializer(queryset, many=True, context={"request": request}).data)
 
     def post(self, request, projectId):
-        project = _get_project_or_none(project_id=projectId)
+        project = _get_project_or_none(user=request.user, project_id=projectId)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
@@ -170,15 +181,6 @@ class IssueViewSet(
         )
         return Response(IssueEventSerializer(event, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
-    def _parse_last_event_id(self, request) -> int:
-        raw_last_event_id = request.headers.get("Last-Event-ID", "").strip()
-        if not raw_last_event_id:
-            return 0
-        try:
-            return max(int(raw_last_event_id), 0)
-        except ValueError:
-            return 0
-
     def _load_catchup_events(self, *, issue_id: int, last_seen_id: int) -> list[IssueEvent]:
         return list(
             IssueEvent.objects.select_related("issue", "actor", "actor__profile")
@@ -187,40 +189,12 @@ class IssueViewSet(
             .order_by("update_id")
         )
 
-    def _stream_issue_updates(self, *, issue: Issue, last_seen_id: int, subscription):
-        heartbeat_interval = max(float(getattr(settings, "NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", 20.0)), 1.0)
-        current_last_seen = last_seen_id
-
-        try:
-            catchup_events = self._load_catchup_events(issue_id=issue.issue_id, last_seen_id=current_last_seen)
-            for event in catchup_events:
-                current_last_seen = event.update_id
-                payload = IssueEventSerializer(event).data
-                yield format_sse_event(
-                    event="issue.event.created",
-                    data=payload,
-                    event_id=current_last_seen,
-                )
-
-            while True:
-                stream_event = subscription.get_message(timeout=heartbeat_interval)
-                if stream_event is None:
-                    yield format_sse_event(event="ping", data={})
-                    continue
-
-                if stream_event.event_id <= current_last_seen:
-                    continue
-
-                current_last_seen = stream_event.event_id
-                yield format_sse_event(
-                    event=stream_event.event,
-                    data=stream_event.data,
-                    event_id=stream_event.event_id,
-                )
-        except GeneratorExit:
-            logger.debug("issue_event_stream_client_disconnected", extra={"issue_id": issue.issue_id})
-        finally:
-            subscription.close()
+    def _serialize_catchup_event(self, event: IssueEvent) -> tuple[str, object, int]:
+        return (
+            "issue.event.created",
+            IssueEventSerializer(event).data,
+            event.update_id,
+        )
 
     @action(
         detail=True,
@@ -240,17 +214,23 @@ class IssueViewSet(
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        response = StreamingHttpResponse(
-            self._stream_issue_updates(
-                issue=issue,
-                last_seen_id=self._parse_last_event_id(request),
+        last_seen_id = parse_last_event_id(request)
+        heartbeat_interval = max(float(getattr(settings, "NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", 20.0)), 1.0)
+        catchup_events = self._load_catchup_events(issue_id=issue.issue_id, last_seen_id=last_seen_id)
+
+        return build_sse_response(
+            stream_sse_events(
+                catchup_items=catchup_events,
+                serialize_catchup_item=self._serialize_catchup_event,
                 subscription=subscription,
-            ),
-            content_type="text/event-stream",
+                last_seen_id=last_seen_id,
+                heartbeat_interval=heartbeat_interval,
+                on_disconnect=lambda: logger.debug(
+                    "issue_event_stream_client_disconnected",
+                    extra={"issue_id": issue.issue_id},
+                ),
+            )
         )
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"
-        return response
 
     @action(detail=True, methods=["get"], url_path="suggestions")
     def suggestions(self, request, issueId=None):

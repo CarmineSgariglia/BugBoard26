@@ -3,11 +3,11 @@ from rest_framework import serializers
 from ...common.media import build_media_url
 from ...roles import is_admin_user
 from ..tags.serializers import TagSerializer
+from ..tags.services import validate_existing_tag_ids
 from ..users.serializers import UserReadSerializer
 from .mutations import (
     create_issue_from_validated_data,
     update_issue_from_validated_data,
-    validate_existing_tag_ids,
 )
 from .models import Attachment, Issue, IssueEvent, IssueStatus
 from .rules import validate_project_assignee_ids

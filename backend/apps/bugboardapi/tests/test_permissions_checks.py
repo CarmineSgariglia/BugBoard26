@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.exceptions import PermissionDenied
 
-from apps.bugboardapi.modules.issues.models import Issue, IssueAssignee
+from apps.bugboardapi.modules.issues.models import EventType, Issue, IssueAssignee, IssueEvent
 from apps.bugboardapi.permissions import (
     check_admin as public_check_admin,
     check_assignee_or_admin as public_check_assignee_or_admin,
@@ -18,7 +18,7 @@ from apps.bugboardapi.permissions.checks import (
     ensure_project_access,
 )
 from apps.bugboardapi.permissions.helpers import is_issue_assignee, is_project_member
-from apps.bugboardapi.permissions.scopes import filter_by_project_access, user_project_ids
+from apps.bugboardapi.permissions.scopes import filter_by_project_access, first_by_project_access, user_project_ids
 from apps.bugboardapi.modules.projects.models import Project
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
@@ -59,7 +59,25 @@ class PermissionsChecksTests(TestCase):
             title="Permissions issue",
             description="desc",
         )
+        self.issue_event = IssueEvent.objects.create(
+            issue=self.issue,
+            actor=self.member,
+            event_type=EventType.COMMENT,
+            message="visible",
+        )
         IssueAssignee.objects.create(issue=self.issue, user=self.member)
+        self.other_issue = Issue.objects.create(
+            project=self.other_project,
+            reporter=self.admin,
+            title="Permissions other issue",
+            description="desc",
+        )
+        self.other_issue_event = IssueEvent.objects.create(
+            issue=self.other_issue,
+            actor=self.admin,
+            event_type=EventType.COMMENT,
+            message="hidden",
+        )
 
     def test_check_admin_denies_non_admin_with_same_message(self):
         with self.assertRaisesMessage(PermissionDenied, "Admin privileges required"):
@@ -102,6 +120,45 @@ class PermissionsChecksTests(TestCase):
         self.assertEqual(member_ids, {self.project.project_id})
         self.assertIn(self.project.project_id, admin_ids)
         self.assertIn(self.other_project.project_id, admin_ids)
+
+    def test_filter_by_project_access_supports_related_project_lookup(self):
+        member_event_ids = set(
+            filter_by_project_access(
+                queryset=IssueEvent.objects.all(),
+                user=self.member,
+                project_lookup="issue__project_id",
+            ).values_list("update_id", flat=True)
+        )
+        admin_event_ids = set(
+            filter_by_project_access(
+                queryset=IssueEvent.objects.all(),
+                user=self.admin,
+                project_lookup="issue__project_id",
+            ).values_list("update_id", flat=True)
+        )
+
+        self.assertEqual(member_event_ids, {self.issue_event.update_id})
+        self.assertIn(self.issue_event.update_id, admin_event_ids)
+        self.assertIn(self.other_issue_event.update_id, admin_event_ids)
+
+    def test_first_by_project_access_returns_first_visible_object_only(self):
+        self.assertEqual(
+            first_by_project_access(
+                queryset=IssueEvent.objects.all(),
+                user=self.member,
+                lookup={"update_id": self.issue_event.update_id},
+                project_lookup="issue__project_id",
+            ),
+            self.issue_event,
+        )
+        self.assertIsNone(
+            first_by_project_access(
+                queryset=IssueEvent.objects.all(),
+                user=self.member,
+                lookup={"update_id": self.other_issue_event.update_id},
+                project_lookup="issue__project_id",
+            )
+        )
 
     def test_project_membership_predicate(self):
         self.assertTrue(is_project_member(self.member, self.project))

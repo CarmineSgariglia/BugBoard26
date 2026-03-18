@@ -4,13 +4,17 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from django.http import StreamingHttpResponse
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from ...common.sse import ServerSentEventsRenderer, format_sse_event
+from ...common.sse import (
+    ServerSentEventsRenderer,
+    build_sse_response,
+    parse_last_event_id,
+    stream_sse_events,
+)
 from .models import NotifyUser
 from .realtime import open_notification_subscription
 from .services import (
@@ -103,15 +107,6 @@ class NotificationViewSet(
         delete_notification_for_user(notify_user=notify_user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def _parse_last_event_id(self, request) -> int:
-        raw_last_event_id = request.headers.get("Last-Event-ID", "").strip()
-        if not raw_last_event_id:
-            return 0
-        try:
-            return max(int(raw_last_event_id), 0)
-        except ValueError:
-            return 0
-
     def _load_catchup_notifications(self, *, user_id: int, last_seen_id: int) -> list[NotifyUser]:
         return list(
             NotifyUser.objects.select_related(
@@ -123,43 +118,12 @@ class NotificationViewSet(
             .order_by("notify_user_id")
         )
 
-    def _stream_notifications(self, request, *, last_seen_id: int, subscription):
-        heartbeat_interval = max(float(getattr(settings, "NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", 20.0)), 1.0)
-        current_last_seen = last_seen_id
-
-        try:
-            catchup_notifications = self._load_catchup_notifications(
-                user_id=request.user.id,
-                last_seen_id=current_last_seen,
-            )
-            for notify_user in catchup_notifications:
-                current_last_seen = notify_user.notify_user_id
-                payload = NotifyUserSerializer(notify_user).data
-                yield format_sse_event(
-                    event="notification.created",
-                    data=payload,
-                    event_id=current_last_seen,
-                )
-
-            while True:
-                notification_event = subscription.get_message(timeout=heartbeat_interval)
-                if notification_event is None:
-                    yield format_sse_event(event="ping", data={})
-                    continue
-
-                if notification_event.event_id <= current_last_seen:
-                    continue
-
-                current_last_seen = notification_event.event_id
-                yield format_sse_event(
-                    event=notification_event.event,
-                    data=notification_event.data,
-                    event_id=notification_event.event_id,
-                )
-        except GeneratorExit:
-            logger.debug("notification_stream_client_disconnected", extra={"user_id": request.user.id})
-        finally:
-            subscription.close()
+    def _serialize_catchup_notification(self, notify_user: NotifyUser) -> tuple[str, object, int]:
+        return (
+            "notification.created",
+            NotifyUserSerializer(notify_user).data,
+            notify_user.notify_user_id,
+        )
 
     @action(
         detail=False,
@@ -176,14 +140,23 @@ class NotificationViewSet(
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        response = StreamingHttpResponse(
-            self._stream_notifications(
-                request,
-                last_seen_id=self._parse_last_event_id(request),
-                subscription=subscription,
-            ),
-            content_type="text/event-stream",
+        last_seen_id = parse_last_event_id(request)
+        heartbeat_interval = max(float(getattr(settings, "NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", 20.0)), 1.0)
+        catchup_notifications = self._load_catchup_notifications(
+            user_id=request.user.id,
+            last_seen_id=last_seen_id,
         )
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"
-        return response
+
+        return build_sse_response(
+            stream_sse_events(
+                catchup_items=catchup_notifications,
+                serialize_catchup_item=self._serialize_catchup_notification,
+                subscription=subscription,
+                last_seen_id=last_seen_id,
+                heartbeat_interval=heartbeat_interval,
+                on_disconnect=lambda: logger.debug(
+                    "notification_stream_client_disconnected",
+                    extra={"user_id": request.user.id},
+                ),
+            )
+        )

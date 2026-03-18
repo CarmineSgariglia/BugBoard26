@@ -6,7 +6,14 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
-from apps.bugboardapi.modules.notifications.models import NotifyType
+from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
+from apps.bugboardapi.modules.projects.commands import (
+    create_project_with_team,
+    delete_project_and_notify,
+    update_project_with_team,
+)
+from apps.bugboardapi.modules.projects.models import ProjectMembership
+from apps.bugboardapi.modules.projects.serializers import ProjectSerializer
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -191,3 +198,98 @@ class AuthSessionCookieTests(APITestCase):
         self.assertIn(settings.AUTH_REFRESH_COOKIE_NAME, response.cookies)
         cleared_cookie = response.cookies[settings.AUTH_REFRESH_COOKIE_NAME]
         self.assertEqual(cleared_cookie["path"], settings.AUTH_REFRESH_COOKIE_PATH)
+
+
+class ProjectTransactionalSafetyNetTests(APITestCase):
+    def setUp(self):
+        self.admin = create_user_with_profile(
+            username="txn_project_admin",
+            email="txn_project_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        self.member = create_user_with_profile(
+            username="txn_project_member",
+            email="txn_project_member@example.com",
+            password="StrongPass123!",
+        )
+        self.other_member = create_user_with_profile(
+            username="txn_project_other",
+            email="txn_project_other@example.com",
+            password="StrongPass123!",
+        )
+        self.project = create_project_with_members(
+            created_by=self.admin,
+            name="Transactional Project",
+            admin_members=[self.admin],
+            developer_members=[self.member],
+        )
+
+    def test_create_project_rolls_back_when_notification_dispatch_fails(self):
+        serializer = ProjectSerializer(
+            data={
+                "name": "Created project",
+                "description": "desc",
+                "color": "#14B8A6",
+                "icon": "folder",
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+
+        with patch(
+            "apps.bugboardapi.modules.projects.commands.notify_project_added",
+            side_effect=RuntimeError("project add notification failed"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "project add notification failed"):
+                create_project_with_team(
+                    serializer=serializer,
+                    creator=self.admin,
+                    raw_user_ids=[self.member.id],
+                )
+
+        self.assertFalse(
+            ProjectMembership.objects.filter(project__name="Created project").exists()
+        )
+
+    def test_update_project_rolls_back_when_unassign_notification_fails(self):
+        serializer = ProjectSerializer(
+            self.project,
+            data={"name": "Updated project"},
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+
+        with patch(
+            "apps.bugboardapi.modules.projects.commands.notify_project_unassigned",
+            side_effect=RuntimeError("project unassign notification failed"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "project unassign notification failed"):
+                update_project_with_team(
+                    serializer=serializer,
+                    project=self.project,
+                    raw_user_ids=[],
+                    has_team_payload=True,
+                    actor=self.admin,
+                )
+
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.name, "Transactional Project")
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=self.member,
+            ).exists()
+        )
+
+    def test_project_removed_notification_survives_project_deletion(self):
+        delete_project_and_notify(project=self.project)
+
+        self.assertFalse(
+            ProjectMembership.objects.filter(project_id=self.project.project_id).exists()
+        )
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.member,
+                notification__notify_type=NotifyType.PROJECT_REMOVED,
+            ).exists()
+        )
