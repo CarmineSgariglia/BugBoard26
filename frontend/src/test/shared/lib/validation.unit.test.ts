@@ -10,18 +10,21 @@ describe("validation helpers", () => {
     expect(isValidEmail(" dev@test.it ")).toBe(true);
     expect(isValidEmail("bad")).toBe(false);
     expect(isValidEmail("a@b.c")).toBe(false);
+    expect(isValidEmail("")).toBe(false);
   });
 
   it("accepts names with letters and spaces only", () => {
     expect(isValidName("Mario Rossi")).toBe(true);
     expect(isValidName("Al")).toBe(false);
     expect(isValidName("Mario123")).toBe(false);
+    expect(isValidName("")).toBe(false);
   });
 
   it("requires a six digit code", () => {
     expect(isValidCode("123456")).toBe(true);
     expect(isValidCode("12345")).toBe(false);
     expect(isValidCode("12345a")).toBe(false);
+    expect(isValidCode("")).toBe(false);
   });
 
   it("requires password length, number and special character", () => {
@@ -29,5 +32,6 @@ describe("validation helpers", () => {
     expect(isValidPassword("weakpass")).toBe(false);
     expect(isValidPassword("NoSpecial1")).toBe(false);
     expect(isValidPassword("!NoNumber")).toBe(false);
+    expect(isValidPassword("")).toBe(false);
   });
 });

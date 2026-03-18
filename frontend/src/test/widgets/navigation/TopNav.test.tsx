@@ -1,11 +1,12 @@
+
 import type { InfiniteData } from "@tanstack/react-query";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
-import { renderWithProviders } from "../../test/render";
+import { renderWithProviders } from "../../render";
 import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
-import { TopNav } from "./TopNav";
+import { TopNav } from "../../../widgets/navigation/TopNav";
 
 const { listNotificationsApiMock, refreshUserMock } = vi.hoisted(() => ({
   listNotificationsApiMock: vi.fn(),
@@ -44,19 +45,19 @@ vi.mock("@features/auth/api", () => ({
   logoutApi: vi.fn(),
 }));
 
-vi.mock("./DynamicBreadcrumbs", () => ({
+vi.mock("@widgets/navigation/DynamicBreadcrumbs", () => ({
   DynamicBreadcrumbs: () => <div>Breadcrumbs</div>,
 }));
 
-vi.mock("./ProfileDropdown", () => ({
+vi.mock("@widgets/navigation/ProfileDropdown", () => ({
   ProfileDropdown: () => null,
 }));
 
-vi.mock("./AvatarTrigger", () => ({
+vi.mock("@widgets/navigation/AvatarTrigger", () => ({
   AvatarTrigger: () => <button type="button">Avatar</button>,
 }));
 
-vi.mock("./LogoutConfirmModal", () => ({
+vi.mock("@widgets/navigation/LogoutConfirmModal", () => ({
   LogoutConfirmModal: () => null,
 }));
 

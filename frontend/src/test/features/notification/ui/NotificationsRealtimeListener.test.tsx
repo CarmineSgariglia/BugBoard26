@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider } from "@shared/providers";
 import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
-import { NotificationsRealtimeListener } from "./NotificationsRealtimeListener";
+import { NotificationsRealtimeListener } from "@features/notification/ui/NotificationsRealtimeListener";
 
 const {
   refreshUserMock,

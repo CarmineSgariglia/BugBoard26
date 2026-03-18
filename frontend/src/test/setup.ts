@@ -1,7 +1,7 @@
-import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 
+import "./customMatchers";
 import { server } from "./mocks/server";
 
 if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {

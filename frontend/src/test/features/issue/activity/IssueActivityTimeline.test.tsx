@@ -3,9 +3,9 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { UiActivityItem } from "@features/issue/lib/formatIssueActivityEvent";
-import { IssueActivityTimeline } from "./IssueActivityTimeline";
+import { IssueActivityTimeline } from "@features/issue/activity/IssueActivityTimeline";
 
-vi.mock("./IssueActivityItem", () => ({
+vi.mock("@features/issue/activity/IssueActivityItem", () => ({
   IssueActivityItem: forwardRef<HTMLDivElement, { item: UiActivityItem; showNewMessageMarker?: boolean }>(
     ({ item, showNewMessageMarker = false }, ref) => (
       <div>

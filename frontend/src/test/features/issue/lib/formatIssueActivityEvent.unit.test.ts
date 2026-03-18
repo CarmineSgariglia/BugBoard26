@@ -1,4 +1,4 @@
-import { formatIssueActivityEvent } from "./formatIssueActivityEvent";
+import { formatIssueActivityEvent } from "@features/issue/lib/formatIssueActivityEvent";
 
 const baseEvent = {
   updateId: 10,

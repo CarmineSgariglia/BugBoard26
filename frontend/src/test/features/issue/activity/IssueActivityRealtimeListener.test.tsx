@@ -2,7 +2,7 @@ import { render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { IssueActivityRealtimeListener } from "./IssueActivityRealtimeListener";
+import { IssueActivityRealtimeListener } from "@features/issue/activity/IssueActivityRealtimeListener";
 
 const {
   refreshUserMock,

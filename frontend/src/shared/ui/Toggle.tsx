@@ -20,7 +20,10 @@ export function Toggle({ checked, onChange, label, className = "", ...props }: T
             <span className="sr-only">{label || "Toggle"}</span>
 
             {/* The "I" icon when active */}
-            <span className={`pointer-events-none absolute left-3 text-[11px] font-bold text-white transition-opacity ${checked ? 'opacity-100' : 'opacity-0'}`}>
+            <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute left-3 text-[11px] font-bold text-white transition-opacity ${checked ? 'opacity-100' : 'opacity-0'}`}
+            >
                 |
             </span>
 

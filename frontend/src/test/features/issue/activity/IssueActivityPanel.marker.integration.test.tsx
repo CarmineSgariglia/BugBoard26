@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { renderWithProviders } from "../../../test/render";
-import { IssueActivityPanel } from "./IssueActivityPanel";
+import { renderWithProviders } from "../../../render";
+import { IssueActivityPanel } from "@features/issue/activity/IssueActivityPanel";
 
 const {
   createIssueUpdateApiMock,
@@ -22,7 +22,7 @@ vi.mock("@features/issue/api", () => ({
   listIssueUpdatesApi: listIssueUpdatesApiMock,
 }));
 
-vi.mock("./IssueActivityRealtimeListener", () => ({
+vi.mock("@features/issue/activity/IssueActivityRealtimeListener", () => ({
   IssueActivityRealtimeListener: (props: {
     issueId: number;
     latestUpdateId?: number;
@@ -33,7 +33,7 @@ vi.mock("./IssueActivityRealtimeListener", () => ({
   },
 }));
 
-vi.mock("./IssueActivityItem", () => ({
+vi.mock("@features/issue/activity/IssueActivityItem", () => ({
   IssueActivityItem: forwardRef<
     HTMLDivElement,
     { item: { title: string; message: string; id: number }; showNewMessageMarker?: boolean }
@@ -99,6 +99,15 @@ describe("IssueActivityPanel marker integration", () => {
     listIssueUpdatesApiMock.mockReset().mockResolvedValue([buildUpdate(1, 2, "existing message")]);
     realtimeListenerState.props = null;
     scrollIntoViewMock.mockReset();
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get: () => 1000,
+    });
+
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get: () => 500,
+    });
 
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
@@ -197,3 +206,4 @@ describe("IssueActivityPanel marker integration", () => {
     });
   });
 });
+

@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
 
-import { renderWithProviders } from "../../../test/render";
-import { server } from "../../../test/mocks/server";
+import { renderWithProviders } from "../../../render";
+import { server } from "../../../mocks/server";
 import type { NotificationItem as NotificationApiItem } from "@shared/api/types/notifications";
-import { NotificationDropdown } from "./NotificationDropdown";
+import { NotificationDropdown } from "@features/notification/ui/NotificationDropdown";
 
-const navigateMock = vi.fn();
+const { navigateMock } = vi.hoisted(() => ({
+  navigateMock: vi.fn(),
+}));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");

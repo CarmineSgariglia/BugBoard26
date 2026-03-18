@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { renderWithProviders } from "../../../test/render";
-import { IssueActivityComposer } from "./IssueActivityComposer";
+import { renderWithProviders } from "../../../render";
+import { IssueActivityComposer } from "@features/issue/activity/IssueActivityComposer";
 
-vi.mock("./useFileValidation", () => ({
+vi.mock("@features/issue/activity/useFileValidation", () => ({
   useFileValidation: () => ({
     error: null,
     isPreparingFiles: false,

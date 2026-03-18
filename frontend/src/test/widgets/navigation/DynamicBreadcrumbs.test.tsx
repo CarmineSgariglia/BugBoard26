@@ -2,12 +2,14 @@ import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 
-import { renderWithProviders } from "../../test/render";
+import { renderWithProviders } from "../../render";
 import { BreadcrumbProvider } from "@shared/providers/BreadcrumbContext";
-import { DynamicBreadcrumbs } from "./DynamicBreadcrumbs";
+import { DynamicBreadcrumbs } from "../../../widgets/navigation/DynamicBreadcrumbs";
 
-const getProjectApiMock = vi.fn();
-const getIssueApiMock = vi.fn();
+const { getProjectApiMock, getIssueApiMock } = vi.hoisted(() => ({
+  getProjectApiMock: vi.fn(),
+  getIssueApiMock: vi.fn(),
+}));
 
 vi.mock("@features/project/api", () => ({
   getProjectApi: getProjectApiMock,

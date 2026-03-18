@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { renderWithProviders } from "../../../test/render";
-import { IssueActivityPanel } from "./IssueActivityPanel";
+import { renderWithProviders } from "../../../render";
+import { IssueActivityPanel } from "@features/issue/activity/IssueActivityPanel";
 
 const {
   createIssueUpdateApiMock,
@@ -23,11 +23,11 @@ vi.mock("@features/issue/api", () => ({
   listIssueUpdatesApi: listIssueUpdatesApiMock,
 }));
 
-vi.mock("./IssueActivityComposer", () => ({
+vi.mock("@features/issue/activity/IssueActivityComposer", () => ({
   IssueActivityComposer: () => null,
 }));
 
-vi.mock("./IssueActivityFilters", () => ({
+vi.mock("@features/issue/activity/IssueActivityFilters", () => ({
   IssueActivityFilters: ({
     scope,
     sort,
@@ -58,7 +58,7 @@ vi.mock("./IssueActivityFilters", () => ({
   ),
 }));
 
-vi.mock("./IssueActivityTimeline", () => ({
+vi.mock("@features/issue/activity/IssueActivityTimeline", () => ({
   IssueActivityTimeline: (props: {
     items: Array<{ id: number }>;
     sort: "NEWEST" | "OLDEST";
@@ -107,7 +107,7 @@ vi.mock("./IssueActivityTimeline", () => ({
   },
 }));
 
-vi.mock("./IssueActivityRealtimeListener", () => ({
+vi.mock("@features/issue/activity/IssueActivityRealtimeListener", () => ({
   IssueActivityRealtimeListener: (props: {
     issueId: number;
     latestUpdateId?: number;
