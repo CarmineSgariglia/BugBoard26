@@ -113,6 +113,26 @@ class PermissionsChecksTests(TestCase):
         ):
             ensure_project_access(self.outsider, self.project)
 
+    def test_created_by_alone_does_not_grant_project_access(self):
+        creator = create_user_with_profile(
+            username="perm_creator_only",
+            email="perm_creator_only@example.com",
+            password="StrongPass123!",
+        )
+        project = Project.objects.create(
+            name="Creator Audit Only",
+            description="desc",
+            color="#14B8A6",
+            icon="folder",
+            created_by=creator,
+        )
+
+        self.assertEqual(set(user_project_ids(creator)), set())
+        with self.assertRaisesMessage(
+            PermissionDenied, "You do not have access to this project"
+        ):
+            ensure_project_access(creator, project)
+
     def test_issue_assignee_predicate(self):
         self.assertTrue(is_issue_assignee(self.member, self.issue))
         self.assertFalse(is_issue_assignee(self.outsider, self.issue))

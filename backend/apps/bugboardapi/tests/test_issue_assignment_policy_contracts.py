@@ -62,3 +62,19 @@ class IssueAssignmentPolicyContractsTests(TestCase):
             str(exc.exception.detail["userIds"]),
             f"Admin users cannot be assigned to issues: [{self.admin.id}]",
         )
+
+    def test_assign_issue_users_rejects_inactive_members_with_user_ids_error_key(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        with self.assertRaises(ValidationError) as exc:
+            assign_issue_users(
+                issue=self.issue,
+                actor=self.admin,
+                raw_user_ids=[self.member.id],
+            )
+
+        self.assertEqual(
+            str(exc.exception.detail["userIds"]),
+            f"Users must be members of project: [{self.member.id}]",
+        )

@@ -1,7 +1,6 @@
 from django.db.models import Count, Q
 
-from ...roles import is_admin_user
-from ..projects.models import ProjectMembership
+from ..projects.membership import assignable_project_memberships, project_memberships_queryset
 from .models import IssueStatus
 
 
@@ -28,10 +27,17 @@ def apply_issue_filters(queryset, request):
     return queryset.distinct()
 
 
+def list_project_issues_queryset(*, project, request):
+    queryset = (
+        project.issues.select_related("project", "reporter", "reporter__profile")
+        .prefetch_related("assignees", "tags")
+    )
+    return apply_issue_filters(queryset, request)
+
+
 def list_issue_suggestion_memberships(*, issue):
     memberships_qs = (
-        ProjectMembership.objects.filter(project=issue.project, user__is_active=True)
-        .select_related("user", "user__profile")
+        project_memberships_queryset(project=issue.project, active_only=True)
         .annotate(
             open_count=Count(
                 "user__issue_assignments",
@@ -46,4 +52,7 @@ def list_issue_suggestion_memberships(*, issue):
         )
         .order_by("open_count", "user__username")
     )
-    return [membership for membership in memberships_qs if not is_admin_user(membership.user)]
+    return assignable_project_memberships(
+        project=issue.project,
+        memberships=memberships_qs,
+    )

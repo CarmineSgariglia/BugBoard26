@@ -1,6 +1,6 @@
 {
   "sonarlint.connectedMode.project": {
-    "connectionId": "carminesgariglia",
+    "connectionId": "BugboardSonarQube",
     "projectKey": "CarmineSgariglia_BugBoard26"
   }
 }

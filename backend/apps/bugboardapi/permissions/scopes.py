@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..modules.projects.models import Project
+from ..modules.projects.membership import project_ids_for_user
 from .checks import is_admin
 
 if TYPE_CHECKING:
@@ -10,9 +10,7 @@ if TYPE_CHECKING:
 
 
 def user_project_ids(user: User):
-    if is_admin(user):
-        return Project.objects.values_list("project_id", flat=True)
-    return user.projects.values_list("project_id", flat=True)
+    return project_ids_for_user(user=user)
 
 
 def filter_by_project_access(*, queryset, user: User, project_lookup: str = "project_id"):

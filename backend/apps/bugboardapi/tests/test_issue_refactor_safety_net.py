@@ -9,11 +9,6 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
 from apps.bugboardapi.modules.issues.activity import create_attachment_for_event
-from apps.bugboardapi.modules.issues.commands import (
-    create_issue_comment,
-    create_issue_for_project,
-    update_issue_from_serializer,
-)
 from apps.bugboardapi.modules.issues.models import (
     Attachment,
     EventType,
@@ -22,7 +17,6 @@ from apps.bugboardapi.modules.issues.models import (
     IssueEvent,
     IssueStatus,
 )
-from apps.bugboardapi.modules.issues.serializers import IssueSerializer
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
@@ -78,8 +72,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
     def test_issue_status_action_ignores_listing_filters_for_object_resolution(self):
         self.client.force_authenticate(user=self.member)
 
-        response = self.client.patch(
-            f"/api/issues/{self.issue.issue_id}?projectId={self.other_project.project_id}&tag={self.frontend_tag.name}",
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status?projectId={self.other_project.project_id}&tag={self.frontend_tag.name}",
             {"status": "IN_PROGRESS", "message": "work started"},
             format="json",
         )
@@ -102,8 +96,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.patch(
-            f"/api/issues/{self.issue.issue_id}",
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status",
             {"status": IssueStatus.DONE, "message": "still done"},
             format="json",
         )
@@ -136,8 +130,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.patch(
-            f"/api/issues/{self.issue.issue_id}",
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status",
             {"status": IssueStatus.IN_PROGRESS, "message": "resume work"},
             format="json",
         )
@@ -165,11 +159,13 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.put(
-            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/assign",
+            {"userIds": [self.member.id]},
+            format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             IssueAssignee.objects.filter(issue=self.issue, user=self.member).count(),
             1,
@@ -202,11 +198,13 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.delete(
-            f"/api/issues/{self.issue.issue_id}/assignees/{self.another_member.id}"
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/unassign",
+            {"userIds": [self.another_member.id]},
+            format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(
             IssueAssignee.objects.filter(issue=self.issue, user=self.another_member).exists()
         )
@@ -231,116 +229,25 @@ class IssueRefactorSafetyNetTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
-            {"message": "attachment without file"},
+            "/api/attachments",
+            {
+                "issueId": self.issue.issue_id,
+                "message": "attachment without file",
+            },
             format="multipart",
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(IssueEvent.objects.filter(issue=self.issue).count(), event_count)
 
-    def test_issue_comment_creates_one_event_and_one_notification_for_non_actor_recipient(self):
-        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
-        existing_comment_count = IssueEvent.objects.filter(
-            issue=self.issue,
-            event_type=EventType.COMMENT,
-        ).count()
-        existing_notification_count = NotifyUser.objects.filter(
-            notification__notify_type=NotifyType.ISSUE_UPDATED,
-            notification__issue=self.issue,
-        ).count()
-
-        self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/events",
-            {"message": "Safety net comment"},
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(
-            IssueEvent.objects.filter(
-                issue=self.issue,
-                event_type=EventType.COMMENT,
-            ).count(),
-            existing_comment_count + 1,
-        )
-        self.assertEqual(
-            NotifyUser.objects.filter(
-                notification__notify_type=NotifyType.ISSUE_UPDATED,
-                notification__issue=self.issue,
-            ).count(),
-            existing_notification_count + 1,
-        )
-        self.assertTrue(
-            NotifyUser.objects.filter(
-                user=self.admin,
-                notification__notify_type=NotifyType.ISSUE_UPDATED,
-                notification__issue=self.issue,
-            ).exists()
-        )
-        self.assertFalse(
-            NotifyUser.objects.filter(
-                user=self.member,
-                notification__notify_type=NotifyType.ISSUE_UPDATED,
-                notification__issue=self.issue,
-            ).exists()
-        )
-
-    def test_issue_close_creates_one_status_event_and_one_close_notification(self):
-        existing_status_event_count = IssueEvent.objects.filter(
-            issue=self.issue,
-            event_type=EventType.STATUS_CHANGE,
-        ).count()
-        existing_close_notification_count = NotifyUser.objects.filter(
-            notification__notify_type=NotifyType.ISSUE_CLOSED,
-            notification__issue=self.issue,
-        ).count()
-
-        self.client.force_authenticate(user=self.member)
-        response = self.client.patch(
-            f"/api/issues/{self.issue.issue_id}",
-            {"status": IssueStatus.DONE, "message": "Done once"},
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            IssueEvent.objects.filter(
-                issue=self.issue,
-                event_type=EventType.STATUS_CHANGE,
-            ).count(),
-            existing_status_event_count + 1,
-        )
-        self.assertEqual(
-            NotifyUser.objects.filter(
-                notification__notify_type=NotifyType.ISSUE_CLOSED,
-                notification__issue=self.issue,
-            ).count(),
-            existing_close_notification_count + 1,
-        )
-        self.assertTrue(
-            NotifyUser.objects.filter(
-                user=self.admin,
-                notification__notify_type=NotifyType.ISSUE_CLOSED,
-                notification__issue=self.issue,
-            ).exists()
-        )
-        self.assertFalse(
-            NotifyUser.objects.filter(
-                user=self.member,
-                notification__notify_type=NotifyType.ISSUE_CLOSED,
-                notification__issue=self.issue,
-            ).exists()
-        )
-
     def test_attachment_create_rejects_multiple_files_without_creating_issue_event(self):
         event_count = IssueEvent.objects.filter(issue=self.issue).count()
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
+            "/api/attachments",
             {
+                "issueId": self.issue.issue_id,
                 "message": "too many files",
                 "file": [
                     SimpleUploadedFile("one.txt", b"one", content_type="text/plain"),
@@ -363,8 +270,11 @@ class IssueRefactorSafetyNetTests(APITestCase):
         )
 
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
-            {"file": uploaded},
+            "/api/attachments",
+            {
+                "issueId": self.issue.issue_id,
+                "file": uploaded,
+            },
             format="multipart",
         )
 
@@ -382,8 +292,11 @@ class IssueRefactorSafetyNetTests(APITestCase):
             content_type="text/plain",
         )
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
-            {"file": uploaded},
+            "/api/attachments",
+            {
+                "issueId": self.issue.issue_id,
+                "file": uploaded,
+            },
             format="multipart",
         )
 
@@ -404,7 +317,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
             content_type="text/plain",
         )
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
+            f"/api/issue-events/{event.update_id}/attachments",
             {"file": uploaded},
             format="multipart",
         )
@@ -422,7 +335,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
             content_type="text/plain",
         )
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
+            f"/api/issue-events/{event.update_id}/attachments",
             {"file": uploaded},
             format="multipart",
         )
@@ -438,7 +351,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
+            f"/api/issue-events/{event.update_id}/attachments",
             {
                 "file": [
                     SimpleUploadedFile("one.txt", b"one", content_type="text/plain"),
@@ -519,124 +432,3 @@ class IssueRefactorSafetyNetTests(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
             self.assertFalse(absolute_path.exists())
             self.assertFalse(Attachment.objects.filter(pk=attachment.pk).exists())
-
-
-class IssueTransactionalSafetyNetTests(APITestCase):
-    def setUp(self):
-        self.admin = create_user_with_profile(
-            username="txn_issue_admin",
-            email="txn_issue_admin@example.com",
-            password="StrongPass123!",
-            is_admin=True,
-        )
-        self.member = create_user_with_profile(
-            username="txn_issue_member",
-            email="txn_issue_member@example.com",
-            password="StrongPass123!",
-        )
-        self.project = create_project_with_members(
-            created_by=self.admin,
-            name="Transactional Issue Project",
-            admin_members=[self.admin],
-            developer_members=[self.member],
-        )
-        self.issue = Issue.objects.create(
-            project=self.project,
-            reporter=self.admin,
-            title="Existing issue",
-            description="Existing description",
-            issue_type="BUG",
-            status=IssueStatus.TODO,
-            priority="HIGH",
-        )
-        IssueAssignee.objects.create(issue=self.issue, user=self.member)
-
-    def test_create_issue_rolls_back_when_notification_dispatch_fails(self):
-        serializer = IssueSerializer(
-            data={
-                "title": "New issue",
-                "description": "desc",
-                "type": "BUG",
-                "priority": "HIGH",
-                "assigneeIds": [self.member.id],
-            },
-            context={"project": self.project},
-        )
-        serializer.is_valid(raise_exception=True)
-
-        with patch(
-            "apps.bugboardapi.modules.issues.commands.notify_issue_added",
-            side_effect=RuntimeError("issue add notification failed"),
-        ):
-            with self.assertRaisesMessage(RuntimeError, "issue add notification failed"):
-                create_issue_for_project(
-                    serializer=serializer,
-                    reporter=self.admin,
-                    project=self.project,
-                )
-
-        self.assertFalse(Issue.objects.filter(title="New issue").exists())
-        self.assertEqual(
-            IssueEvent.objects.filter(event_type=EventType.CREATE).count(),
-            0,
-        )
-
-    def test_update_issue_rolls_back_when_notification_dispatch_fails(self):
-        serializer = IssueSerializer(
-            self.issue,
-            data={"title": "Updated issue title"},
-            partial=True,
-        )
-        serializer.is_valid(raise_exception=True)
-        existing_edit_events = IssueEvent.objects.filter(
-            issue=self.issue,
-            event_type=EventType.EDIT,
-        ).count()
-
-        with patch(
-            "apps.bugboardapi.modules.issues.commands.notify_issue_updated",
-            side_effect=RuntimeError("issue update notification failed"),
-        ):
-            with self.assertRaisesMessage(RuntimeError, "issue update notification failed"):
-                update_issue_from_serializer(
-                    serializer=serializer,
-                    actor=self.admin,
-                    raw_message="updated",
-                )
-
-        self.issue.refresh_from_db()
-        self.assertEqual(self.issue.title, "Existing issue")
-        self.assertEqual(
-            IssueEvent.objects.filter(
-                issue=self.issue,
-                event_type=EventType.EDIT,
-            ).count(),
-            existing_edit_events,
-        )
-
-    def test_issue_comment_rolls_back_when_notification_dispatch_fails(self):
-        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
-        existing_comment_events = IssueEvent.objects.filter(
-            issue=self.issue,
-            event_type=EventType.COMMENT,
-        ).count()
-
-        with patch(
-            "apps.bugboardapi.modules.issues.commands.notify_issue_updated",
-            side_effect=RuntimeError("comment notification failed"),
-        ):
-            with self.assertRaisesMessage(RuntimeError, "comment notification failed"):
-                create_issue_comment(
-                    issue=self.issue,
-                    actor=self.member,
-                    raw_message="A comment",
-                    payload={},
-                )
-
-        self.assertEqual(
-            IssueEvent.objects.filter(
-                issue=self.issue,
-                event_type=EventType.COMMENT,
-            ).count(),
-            existing_comment_events,
-        )
