@@ -20,6 +20,11 @@ def build_token_pair_for_user(user) -> tuple[str, str]:
     return str(refresh.access_token), str(refresh)
 
 
+def set_password_and_invalidate_sessions(*, user, new_password: str) -> None:
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+
+
 def revoke_token_session(*, sid: str | None, user_id: int | None, expires_at_unix: int | None) -> None:
     if not sid or not expires_at_unix:
         return

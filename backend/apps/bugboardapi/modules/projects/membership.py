@@ -64,14 +64,38 @@ def assignable_project_memberships(
     if candidate_memberships is None:
         candidate_memberships = project_memberships_queryset(project=project)
 
-    return [
-        membership
-        for membership in candidate_memberships
-        if membership.user.is_active and not is_admin_user(membership.user)
-    ]
+    return [membership for membership in candidate_memberships if _is_assignable_project_membership(membership)]
+
+
+def classify_project_assignment_user_ids(
+    *,
+    project: Project,
+    user_ids: list[int],
+) -> tuple[list[int], list[int], list[int]]:
+    memberships = list(project_memberships_queryset(project=project).filter(user_id__in=user_ids))
+    membership_by_user_id = {membership.user_id: membership for membership in memberships}
+
+    invalid_ids = [user_id for user_id in user_ids if user_id not in membership_by_user_id]
+    admin_ids = [membership.user_id for membership in memberships if is_admin_user(membership.user)]
+
+    inactive_ids: list[int] = []
+    for user_id in user_ids:
+        membership = membership_by_user_id.get(user_id)
+        if membership is None:
+            continue
+        if is_admin_user(membership.user):
+            continue
+        if not _is_assignable_project_membership(membership):
+            inactive_ids.append(user_id)
+
+    return invalid_ids, admin_ids, inactive_ids
 
 
 def project_ids_for_user(*, user: User):
     if is_admin_user(user):
         return Project.objects.values_list("project_id", flat=True)
     return ProjectMembership.objects.filter(user=user).values_list("project_id", flat=True)
+
+
+def _is_assignable_project_membership(membership: ProjectMembership) -> bool:
+    return membership.user.is_active and not is_admin_user(membership.user)

@@ -60,6 +60,10 @@ class UserViewSet(
     def _validate_user_update_permissions(self, request, user: User) -> None:
         ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
 
+    def _profile_image_response(self, *, request, user: User) -> Response:
+        updated_user = save_profile_image_for_user(request=request, user=user)
+        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
+
     def get_queryset(self):
         queryset = super().get_queryset()
         user_ids = self._parse_csv_ints_query_param("userIds")
@@ -108,18 +112,15 @@ class UserViewSet(
     def admin_upload_profile_image(self, request, userId=None):
         check_admin(request.user)
         user = self.get_object()
-        updated_user = save_profile_image_for_user(request=request, user=user)
-        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
+        return self._profile_image_response(request=request, user=user)
 
     @action(detail=False, methods=["post"], url_path="me/upload_profile_image")
     def upload_profile_image_me(self, request):
-        updated_user = save_profile_image_for_user(request=request, user=request.user)
-        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
+        return self._profile_image_response(request=request, user=request.user)
 
     @action(detail=False, methods=["post"], url_path="me/upload-profile-image")
     def upload_profile_image_me_kebab(self, request):
-        updated_user = save_profile_image_for_user(request=request, user=request.user)
-        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
+        return self._profile_image_response(request=request, user=request.user)
 
     @action(detail=True, methods=["post"], url_path="change-password")
     def change_password(self, request, userId=None):

@@ -108,31 +108,33 @@ def _delete_issue_attachment_files(paths: list[str]) -> None:
 
 
 def create_issue_for_project(*, serializer, reporter, project):
-    issue = serializer.save(project=project, reporter=reporter)
-    ensure_issue_assignees(issue=issue, user_ids=[reporter.id])
-    _dispatch_issue_side_effects(
-        issue=issue,
-        actor=reporter,
-        event_type=EventType.CREATE,
-        message="Issue created",
-        notification_sender=notify_issue_added,
-        notification_users=_project_issue_admin_users(project=project),
-        notification_actor=reporter,
-    )
+    with transaction.atomic():
+        issue = serializer.save(project=project, reporter=reporter)
+        ensure_issue_assignees(issue=issue, user_ids=[reporter.id])
+        _dispatch_issue_side_effects(
+            issue=issue,
+            actor=reporter,
+            event_type=EventType.CREATE,
+            message="Issue created",
+            notification_sender=notify_issue_added,
+            notification_users=_project_issue_admin_users(project=project),
+            notification_actor=reporter,
+        )
     return issue
 
 
 def update_issue_from_serializer(*, serializer, actor, raw_message):
-    issue = serializer.save()
-    message = (raw_message or "").strip() or "Issue updated"
-    _dispatch_issue_side_effects(
-        issue=issue,
-        actor=actor,
-        event_type=EventType.EDIT,
-        message=message,
-        notification_sender=notify_issue_updated,
-        notification_users=_issue_update_recipients(issue=issue, actor=actor),
-    )
+    with transaction.atomic():
+        issue = serializer.save()
+        message = (raw_message or "").strip() or "Issue updated"
+        _dispatch_issue_side_effects(
+            issue=issue,
+            actor=actor,
+            event_type=EventType.EDIT,
+            message=message,
+            notification_sender=notify_issue_updated,
+            notification_users=_issue_update_recipients(issue=issue, actor=actor),
+        )
     return issue
 
 
@@ -231,15 +233,16 @@ def create_issue_comment(*, issue: Issue, actor, raw_message, payload):
         required=True,
         strip=True,
     )
-    event = _dispatch_issue_side_effects(
-        issue=issue,
-        actor=actor,
-        event_type=EventType.COMMENT,
-        message=message,
-        payload=payload,
-        notification_sender=notify_issue_updated,
-        notification_users=_issue_update_recipients(issue=issue, actor=actor),
-    )
+    with transaction.atomic():
+        event = _dispatch_issue_side_effects(
+            issue=issue,
+            actor=actor,
+            event_type=EventType.COMMENT,
+            message=message,
+            payload=payload,
+            notification_sender=notify_issue_updated,
+            notification_users=_issue_update_recipients(issue=issue, actor=actor),
+        )
     return event
 
 

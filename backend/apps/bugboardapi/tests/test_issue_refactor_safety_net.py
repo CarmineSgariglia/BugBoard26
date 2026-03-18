@@ -9,6 +9,11 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
 from apps.bugboardapi.modules.issues.activity import create_attachment_for_event
+from apps.bugboardapi.modules.issues.commands import (
+    create_issue_comment,
+    create_issue_for_project,
+    update_issue_from_serializer,
+)
 from apps.bugboardapi.modules.issues.models import (
     Attachment,
     EventType,
@@ -17,6 +22,7 @@ from apps.bugboardapi.modules.issues.models import (
     IssueEvent,
     IssueStatus,
 )
+from apps.bugboardapi.modules.issues.serializers import IssueSerializer
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
@@ -526,3 +532,123 @@ class IssueRefactorSafetyNetTests(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
             self.assertFalse(absolute_path.exists())
             self.assertFalse(Attachment.objects.filter(pk=attachment.pk).exists())
+
+
+class IssueTransactionalSafetyNetTests(APITestCase):
+    def setUp(self):
+        self.admin = create_user_with_profile(
+            username="txn_issue_admin",
+            email="txn_issue_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        self.member = create_user_with_profile(
+            username="txn_issue_member",
+            email="txn_issue_member@example.com",
+            password="StrongPass123!",
+        )
+        self.project = create_project_with_members(
+            created_by=self.admin,
+            name="Transactional Issue Project",
+            admin_members=[self.admin],
+            developer_members=[self.member],
+        )
+        self.issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="Existing issue",
+            description="Existing description",
+            issue_type="BUG",
+            status=IssueStatus.TODO,
+            priority="HIGH",
+        )
+        IssueAssignee.objects.create(issue=self.issue, user=self.member)
+
+    def test_create_issue_rolls_back_when_notification_dispatch_fails(self):
+        serializer = IssueSerializer(
+            data={
+                "title": "New issue",
+                "description": "desc",
+                "type": "BUG",
+                "priority": "HIGH",
+                "assigneeIds": [self.member.id],
+            },
+            context={"project": self.project},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        with patch(
+            "apps.bugboardapi.modules.issues.commands.notify_issue_added",
+            side_effect=RuntimeError("issue add notification failed"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "issue add notification failed"):
+                create_issue_for_project(
+                    serializer=serializer,
+                    reporter=self.admin,
+                    project=self.project,
+                )
+
+        self.assertFalse(Issue.objects.filter(title="New issue").exists())
+        self.assertEqual(
+            IssueEvent.objects.filter(event_type=EventType.CREATE).count(),
+            0,
+        )
+
+    def test_update_issue_rolls_back_when_notification_dispatch_fails(self):
+        serializer = IssueSerializer(
+            self.issue,
+            data={"title": "Updated issue title"},
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        existing_edit_events = IssueEvent.objects.filter(
+            issue=self.issue,
+            event_type=EventType.EDIT,
+        ).count()
+
+        with patch(
+            "apps.bugboardapi.modules.issues.commands.notify_issue_updated",
+            side_effect=RuntimeError("issue update notification failed"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "issue update notification failed"):
+                update_issue_from_serializer(
+                    serializer=serializer,
+                    actor=self.admin,
+                    raw_message="updated",
+                )
+
+        self.issue.refresh_from_db()
+        self.assertEqual(self.issue.title, "Existing issue")
+        self.assertEqual(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                event_type=EventType.EDIT,
+            ).count(),
+            existing_edit_events,
+        )
+
+    def test_issue_comment_rolls_back_when_notification_dispatch_fails(self):
+        existing_comment_events = IssueEvent.objects.filter(
+            issue=self.issue,
+            event_type=EventType.COMMENT,
+        ).count()
+
+        with patch(
+            "apps.bugboardapi.modules.issues.commands.notify_issue_updated",
+            side_effect=RuntimeError("comment notification failed"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "comment notification failed"):
+                create_issue_comment(
+                    issue=self.issue,
+                    actor=self.member,
+                    raw_message="A comment",
+                    payload={},
+                )
+
+        self.assertEqual(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                event_type=EventType.COMMENT,
+            ).count(),
+            existing_comment_events,
+        )

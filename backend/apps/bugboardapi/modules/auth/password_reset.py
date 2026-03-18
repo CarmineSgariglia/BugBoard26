@@ -13,6 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from ...security.passwords import ensure_valid_password
+from ...security.token_sessions import set_password_and_invalidate_sessions
 from ..users.password_reset_models import PasswordResetOTP
 
 logger = logging.getLogger(__name__)
@@ -91,10 +92,7 @@ def issue_otp_for_email(email: str) -> None:
 
     try:
         _send_otp_email(email=user.email, code=raw_code)
-        with transaction.atomic():
-            PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
-            pending_otp.is_used = False
-            pending_otp.save(update_fields=["is_used"])
+        _mark_pending_otp_delivered(user=user, pending_otp=pending_otp)
         logger.info("otp_request_sent user_id=%s email_hash=%s", user.id, _email_hash(user.email))
     except Exception:
         logger.exception("otp_request_send_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))
@@ -148,10 +146,16 @@ def reset_password_with_otp(email: str, code: str, new_password: str) -> bool:
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
     with transaction.atomic():
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
+        set_password_and_invalidate_sessions(user=user, new_password=new_password)
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
     logger.info("otp_reset_ok user_id=%s email_hash=%s", user.id, _email_hash(user.email))
     return True
+
+
+def _mark_pending_otp_delivered(*, user: User, pending_otp: PasswordResetOTP) -> None:
+    with transaction.atomic():
+        PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
+        pending_otp.is_used = False
+        pending_otp.save(update_fields=["is_used"])

@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from .health import health_check
 from ..modules.auth.views import (
     CSRFTokenView,
     LoginView,
@@ -14,7 +15,7 @@ from ..modules.auth.views import (
 from ..modules.issues.views import AttachmentUploadView, AttachmentViewSet, IssueViewSet, ProjectIssueListCreateView
 from ..modules.notifications.views import NotificationViewSet
 from ..modules.projects.views import ProjectViewSet
-from ..modules.tags.views import TagViewSet, health_check
+from ..modules.tags.views import TagViewSet
 from ..modules.users.views import UserViewSet
 
 router = DefaultRouter(trailing_slash=False)

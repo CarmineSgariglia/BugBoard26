@@ -100,31 +100,17 @@ class UserMutationSerializer(UserReadSerializer):
         return value
 
     def validate(self, attrs):
-        requested_group = attrs.get("group")
-        requested_is_admin = attrs.pop("isAdmin", None)
         password = attrs.get("password")
-
-        if requested_is_admin is not None:
-            alias_group = ADMIN_GROUP_NAME if requested_is_admin else DEVELOPER_GROUP_NAME
-            if requested_group is not None and requested_group != alias_group:
-                raise serializers.ValidationError({"group": "group and isAdmin must describe the same role"})
-            requested_group = alias_group
-
-        if requested_group is not None:
-            attrs["group"] = requested_group
-        elif self.instance is None:
-            attrs["group"] = DEVELOPER_GROUP_NAME
-
-        if self.instance is None and not password:
-            raise serializers.ValidationError({"password": "Password is required"})
-
-        if self.instance is not None and password is not None:
-            raise serializers.ValidationError({"password": "Use the dedicated password endpoint"})
-
-        if password:
-            candidate_user = build_password_validation_user(instance=self.instance, attrs=attrs)
-            ensure_valid_password(password, user=candidate_user, field_name="password")
-
+        attrs["group"] = _resolve_requested_group(
+            requested_group=attrs.get("group"),
+            requested_is_admin=attrs.pop("isAdmin", None),
+            default_group=DEVELOPER_GROUP_NAME if self.instance is None else None,
+        )
+        _validate_user_mutation_password(
+            instance=self.instance,
+            attrs=attrs,
+            password=password,
+        )
         return attrs
 
     def create(self, validated_data):
@@ -141,3 +127,35 @@ class UserSerializer(UserReadSerializer):
 class ChangePasswordSerializer(serializers.Serializer):
     currentPassword = serializers.CharField(required=False, allow_blank=True)
     newPassword = serializers.CharField(min_length=8)
+
+
+def _resolve_requested_group(
+    *,
+    requested_group,
+    requested_is_admin,
+    default_group,
+):
+    resolved_group = requested_group
+    if requested_is_admin is not None:
+        alias_group = ADMIN_GROUP_NAME if requested_is_admin else DEVELOPER_GROUP_NAME
+        if resolved_group is not None and resolved_group != alias_group:
+            raise serializers.ValidationError({"group": "group and isAdmin must describe the same role"})
+        resolved_group = alias_group
+
+    if resolved_group is not None:
+        return resolved_group
+    return default_group
+
+
+def _validate_user_mutation_password(*, instance, attrs: dict, password: str | None) -> None:
+    if instance is None and not password:
+        raise serializers.ValidationError({"password": "Password is required"})
+
+    if instance is not None and password is not None:
+        raise serializers.ValidationError({"password": "Use the dedicated password endpoint"})
+
+    if not password:
+        return
+
+    candidate_user = build_password_validation_user(instance=instance, attrs=attrs)
+    ensure_valid_password(password, user=candidate_user, field_name="password")

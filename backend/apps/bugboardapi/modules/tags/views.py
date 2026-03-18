@@ -3,22 +3,14 @@ from __future__ import annotations
 
 import logging
 
-from rest_framework import mixins, permissions, status, viewsets
-from rest_framework.decorators import api_view, permission_classes as perm_classes
+from rest_framework import mixins, permissions, viewsets
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.response import Response
 
 from ...permissions import is_admin
 from .models import Tag
 from .serializers import TagSerializer
 
 logger = logging.getLogger(__name__)
-
-
-@api_view(["GET"])
-@perm_classes([permissions.AllowAny])
-def health_check(_request):
-    return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
 
 class TagViewSet(

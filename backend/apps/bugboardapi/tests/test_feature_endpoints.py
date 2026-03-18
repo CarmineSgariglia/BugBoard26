@@ -1030,6 +1030,21 @@ class IssueWorkflowEndpointTests(APITestCase):
         response = self.client.get(f"/api/projects/{self.project.project_id}/issues")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_project_issue_create_forbidden_for_non_member(self):
+        self.client.force_authenticate(user=self.outsider)
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues",
+            {
+                "title": "Outsider issue",
+                "description": "Should stay hidden",
+                "type": "BUG",
+                "status": "TODO",
+                "priority": "HIGH",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_project_issues_support_combined_q_type_priority_and_tag_filters(self):
         frontend_tag = Tag.objects.create(name="frontend")
         matching_issue = Issue.objects.create(
@@ -2270,6 +2285,60 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         delete_ok = self.client.delete(f"/api/tags/{tag_id}", format="json")
         self.assertEqual(delete_ok.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_tags_list_returns_alphabetical_names(self):
+        Tag.objects.create(name="ops")
+        Tag.objects.create(name="api")
+        Tag.objects.create(name="frontend")
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get("/api/tags")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["name"] for item in response.data],
+            ["Api", "Frontend", "Ops"],
+        )
+        self.assertTrue(all("tagId" in item for item in response.data))
+
+    def test_tags_create_normalizes_whitespace_and_casing(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            "/api/tags",
+            {"name": "  fRoNtEnD  "},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_tag = Tag.objects.get(tag_id=response.data["tagId"])
+        self.assertEqual(created_tag.name, "Frontend")
+        self.assertEqual(response.data["name"], "Frontend")
+
+    def test_tags_create_rejects_duplicates_after_normalization(self):
+        Tag.objects.create(name="frontend")
+        self.client.force_authenticate(user=self.admin)
+        self.client.raise_request_exception = False
+
+        response = self.client.post(
+            "/api/tags",
+            {"name": " FRONTEND "},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Tag.objects.filter(name__iexact="frontend").count(), 1)
+
+    def test_tags_delete_removes_issue_relations_without_deleting_issue(self):
+        tag = Tag.objects.create(name="frontend")
+        IssueTag.objects.create(issue=self.issue, tag=tag)
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.delete(f"/api/tags/{tag.tag_id}", format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertTrue(Issue.objects.filter(issue_id=self.issue.issue_id).exists())
+        self.assertFalse(IssueTag.objects.filter(issue=self.issue, tag_id=tag.tag_id).exists())
 
     def test_tags_update_and_retrieve_are_not_exposed(self):
         self.client.force_authenticate(user=self.admin)
