@@ -4,6 +4,17 @@
 
 /*Hide scrollbar for elements with the "no-scrollbar" class */
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background-color: #0d0d12;
+  }
+
+  body {
+    min-height: 100vh;
+  }
+
   * {
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
