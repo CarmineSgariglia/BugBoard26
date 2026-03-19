@@ -15,9 +15,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION }}
-  GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}
   PROD_VM_APP_DIR: ${{ vars.PROD_VM_APP_DIR || '/opt/bugboard26' }}
 
 jobs:
@@ -43,6 +40,12 @@ jobs:
       - backend_safe
       - frontend_safe
       - bruno_safe
+    environment:
+      name: production
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+      GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION || secrets.GCP_ARTIFACT_REGISTRY_REGION }}
+      GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPO }}
     outputs:
       backend_image: ${{ steps.meta.outputs.backend_image }}
       web_image: ${{ steps.meta.outputs.web_image }}
