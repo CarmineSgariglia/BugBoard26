@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import random
+import secrets
 from datetime import datetime, timedelta
 
 from django.conf import settings
@@ -79,7 +79,7 @@ def issue_otp_for_email(email: str) -> None:
         return
 
     now = timezone.now()
-    raw_code = f"{random.randint(0, 999999):06d}"
+    raw_code = f"{secrets.randbelow(1_000_000):06d}"
     with transaction.atomic():
         pending_otp = PasswordResetOTP.objects.create(
             user=user,

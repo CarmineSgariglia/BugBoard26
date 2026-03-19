@@ -1,3 +1,4 @@
+from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.test import SimpleTestCase
 from rest_framework import status
@@ -7,6 +8,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from apps.bugboardapi.modules.projects.models import Project, ProjectMembership
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.modules.auth.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
+from config.settings import MIN_SECRET_KEY_LENGTH, _validate_secret_key
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
 
@@ -111,6 +113,21 @@ class UserPermissionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, updated_email)
+
+    def test_non_admin_cannot_patch_profile_img_directly(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(
+            f"/api/users/{self.user.id}",
+            {"profileImg": "https://example.com/avatar.png"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["profileImg"][0],
+            "Use the dedicated upload endpoint",
+        )
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.profile.profile_img, "")
 
     def test_admin_can_set_is_admin_on_other_user(self):
         self.client.force_authenticate(user=self.admin)
@@ -284,6 +301,18 @@ class AuthThrottleConfigurationTests(SimpleTestCase):
         rates = settings.REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {})
         self.assertIn("login", rates)
         self.assertIn("otp", rates)
+
+
+class SettingsValidationTests(SimpleTestCase):
+    def test_secret_key_validation_rejects_short_production_values(self):
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            f"DJANGO_SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters in production",
+        ):
+            _validate_secret_key(secret_key="too-short-for-production", debug=False)
+
+    def test_secret_key_validation_allows_short_values_only_in_debug(self):
+        _validate_secret_key(secret_key="debug-short", debug=True)
 
 
 class AuthCsrfTests(APITestCase):
