@@ -4,15 +4,16 @@ from __future__ import annotations
 from urllib.parse import urljoin
 
 from django.conf import settings
-from rest_framework import serializers
 
 
-def build_media_url(serializer: serializers.Serializer, path_or_url: str) -> str:
-    """Return an absolute media URL for a stored path."""
+def build_media_url(path_or_url: str) -> str:
+    """Return an absolute media URL for a stored path or trusted HTTPS URL."""
     if not path_or_url:
         return ""
     if path_or_url.startswith(("http://", "https://")):
         return path_or_url
+    if "://" in path_or_url:
+        return ""
     if path_or_url.startswith("/media/"):
         return path_or_url
     media_base = settings.MEDIA_URL or "/media/"

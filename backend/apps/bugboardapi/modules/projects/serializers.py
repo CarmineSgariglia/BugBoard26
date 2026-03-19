@@ -25,7 +25,7 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["profileImg"] = build_media_url(self, data.get("profileImg", ""))
+        data["profileImg"] = build_media_url(data.get("profileImg", ""))
         return data
 
 
@@ -41,5 +41,5 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["authorProfileImg"] = build_media_url(self, data.get("authorProfileImg", ""))
+        data["authorProfileImg"] = build_media_url(data.get("authorProfileImg", ""))
         return data

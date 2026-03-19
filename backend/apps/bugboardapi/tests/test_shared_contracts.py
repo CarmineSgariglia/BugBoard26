@@ -139,28 +139,31 @@ class ParsingContractsTests(SimpleTestCase):
 
 class MediaUrlContractsTests(SimpleTestCase):
     def test_build_media_url_preserves_absolute_and_media_prefixed_values(self):
-        self.assertEqual(build_media_url(None, ""), "")
+        self.assertEqual(build_media_url(""), "")
         self.assertEqual(
-            build_media_url(None, "https://cdn.example.com/avatar.png"),
+            build_media_url("https://cdn.example.com/avatar.png"),
             "https://cdn.example.com/avatar.png",
         )
-        self.assertEqual(build_media_url(None, "/media/avatar.png"), "/media/avatar.png")
+        self.assertEqual(build_media_url("/media/avatar.png"), "/media/avatar.png")
+
+    def test_build_media_url_rejects_non_https_absolute_values(self):
+        self.assertEqual(build_media_url("http://cdn.example.com/avatar.png"), "")
 
     @override_settings(MEDIA_URL="/files")
     def test_build_media_url_normalizes_relative_media_paths(self):
         self.assertEqual(
-            build_media_url(None, "media/profile-images/avatar.png"),
+            build_media_url("media/profile-images/avatar.png"),
             "/files/profile-images/avatar.png",
         )
         self.assertEqual(
-            build_media_url(None, "/profile-images/avatar.png"),
+            build_media_url("/profile-images/avatar.png"),
             "/files/profile-images/avatar.png",
         )
 
     @override_settings(MEDIA_URL="https://cdn.example.com/media")
     def test_build_media_url_uses_media_url_as_absolute_base(self):
         self.assertEqual(
-            build_media_url(None, "issue-attachments/file.pdf"),
+            build_media_url("issue-attachments/file.pdf"),
             "https://cdn.example.com/media/issue-attachments/file.pdf",
         )
 
