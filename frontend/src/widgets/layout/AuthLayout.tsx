@@ -2,15 +2,14 @@
   Main layout for unauthenticated routes.
 */
 
-import { Outlet, useLocation } from "react-router-dom";
-import { GlassCard } from "@shared/ui/GlassCard";
+import { Link, Outlet, useLocation } from "react-router-dom";
+
 import logoUrl from "@shared/assets/images/LogoBugBoard26.webp";
-import { Link } from "react-router-dom";
+import { GlassCard } from "@shared/ui/GlassCard";
 
 export function AuthLayout() {
     const location = useLocation();
 
-    // Determine the title based on the route
     let pageTitle = "BugBoard26";
     let subtitle = "";
 
@@ -27,63 +26,62 @@ export function AuthLayout() {
     const footerLabel = isLoginPage ? "Forgot password?" : "Back to login";
 
     return (
-        <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#0D0D12]">
-            {/* Radial Gradient Background */}
+        <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#0D0D12] lg:min-h-dvh">
             <div
                 className="pointer-events-none absolute inset-0 z-0"
                 style={{
-                    background: "radial-gradient(circle at center, #1b1e2a 0%, #0d0d12 60%)"
+                    background: "radial-gradient(circle at center, #1b1e2a 0%, #0d0d12 60%)",
                 }}
             />
 
-            {/* Dotted Pattern Background */}
-            <div className="absolute inset-0 z-0 opacity-[0.04] bg-[radial-gradient(circle,_rgba(255,255,255,0.18)_1px,_transparent_1px)] [background-size:24px_24px]" />
+            <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:18px_18px]" />
 
-            {/* Grain Overlay */}
-            <div className="absolute inset-0 z-0 opacity-[0.02] mix-blend-overlay">
+            <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.04] mix-blend-overlay">
                 <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-                    <filter id="noiseFilter">
-                        <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="2" stitchTiles="stitch" />
+                    <filter id="authNoiseFilter">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" stitchTiles="stitch" />
                     </filter>
-                    <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+                    <rect width="100%" height="100%" filter="url(#authNoiseFilter)" />
                 </svg>
             </div>
 
-            {/* Content Wrapper */}
-            <div className="relative z-10 flex w-full max-w-5xl items-center justify-center px-6 py-16">
-                <GlassCard className="flex w-full max-w-4xl overflow-hidden rounded-[32px] border border-white/10 bg-[#121620]/80 shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
-                    <div className="hidden w-1/2 flex-col justify-between border-r border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-10 lg:flex">
-                        <div>
-                            <img src={logoUrl} alt="BugBoard26" className="mb-10 h-10 w-auto object-contain" />
-                            <p className="mb-3 text-sm uppercase tracking-[0.22em] text-sky-300/80">Workspace control</p>
-                            <h1 className="max-w-sm text-4xl font-semibold leading-tight text-white">{pageTitle}</h1>
-                            <p className="mt-4 max-w-sm text-sm leading-7 text-neutral-400">{subtitle || "Sign in to continue managing projects, issues, and your team workspace."}</p>
-                        </div>
+            <main className="relative z-10 flex w-full flex-col items-center px-4">
+                <h1 className="mb-6 text-center text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                    {pageTitle}
+                </h1>
 
-                        <div className="text-xs leading-6 text-neutral-500">
-                            Built for focused project tracking, smooth collaboration, and issue management.
-                        </div>
-                    </div>
+                <GlassCard className="w-full max-w-[440px] rounded-[28px] border border-white/10 bg-[#1A1F2B]/88 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)] sm:p-8">
+                    <div className="flex flex-col items-center">
+                        <Link to="/login" className="mb-5 inline-flex">
+                            <img
+                                src={logoUrl}
+                                alt="BugBoard26"
+                                className="h-16 w-auto object-contain"
+                                style={{ filter: "brightness(0) invert(1)" }}
+                            />
+                        </Link>
 
-                    <div className="flex w-full flex-1 flex-col justify-between p-8 sm:p-10 lg:w-1/2">
-                        <div className="mb-8 lg:hidden">
-                            <img src={logoUrl} alt="BugBoard26" className="mb-6 h-10 w-auto object-contain" />
-                            <h1 className="text-3xl font-semibold text-white">{pageTitle}</h1>
-                            <p className="mt-3 text-sm leading-7 text-neutral-400">{subtitle || "Sign in to continue managing projects, issues, and your team workspace."}</p>
-                        </div>
+                        {subtitle ? (
+                            <p className="mb-5 text-center text-[13px] leading-6 text-[#8B949E]">
+                                {subtitle}
+                            </p>
+                        ) : null}
 
-                        <div className="flex-1">
+                        <div className="w-full">
                             <Outlet />
                         </div>
 
-                        <div className="mt-8 border-t border-white/10 pt-5 text-sm text-neutral-400">
-                            <Link to={footerTo} className="transition hover:text-white">
+                        <div className="mt-5 text-center">
+                            <Link
+                                to={footerTo}
+                                className="text-[13px] text-[#8B949E] underline underline-offset-4 transition-colors hover:text-[#C9D1D9]"
+                            >
                                 {footerLabel}
                             </Link>
                         </div>
                     </div>
                 </GlassCard>
-            </div>
+            </main>
         </div>
     );
 }
