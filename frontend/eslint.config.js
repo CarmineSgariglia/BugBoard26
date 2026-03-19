@@ -11,7 +11,7 @@ const featureImports = ['@features/*', '**/features/*']
 const widgetImports = ['@widgets/*', '**/widgets/*']
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage', 'playwright-report', 'test-results']),
+  globalIgnores(['dist', 'coverage']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -8,9 +8,7 @@ DJANGO_SECRET_KEY=CHANGE_ME_LONG_RANDOM_SECRET
 DEBUG=False
 ALLOWED_HOSTS=your-domain.com,www.your-domain.com,backend
 
-# Single-node runtime defaults
-SINGLE_NODE_RUNTIME=True
-CACHE_BACKEND=locmem
+# Gunicorn runtime
 GUNICORN_WORKERS=1
 GUNICORN_THREADS=12
 

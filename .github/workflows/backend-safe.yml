@@ -23,8 +23,8 @@ jobs:
       - name: Create CI env file
         run: cp BrunoTesting/env/bruno-safe.ci.env .env
 
-      - name: Start database and redis
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db redis
+      - name: Start database
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db
 
       - name: Wait for database health
         run: |
@@ -35,17 +35,6 @@ jobs:
             sleep 2
           done
           docker compose -f docker-compose.yml -f docker-compose.ci.yml logs db
-          exit 1
-
-      - name: Wait for redis health
-        run: |
-          for i in $(seq 1 60); do
-            if docker compose -f docker-compose.yml -f docker-compose.ci.yml exec -T redis redis-cli ping | grep -q PONG; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker compose -f docker-compose.yml -f docker-compose.ci.yml logs redis
           exit 1
 
       - name: Build backend test image
@@ -75,7 +64,7 @@ jobs:
 
       - name: Dump docker logs on failure
         if: failure()
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --no-color db redis
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --no-color db
 
       - name: Stop stack
         if: always()

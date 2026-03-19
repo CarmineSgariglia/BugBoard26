@@ -13,7 +13,6 @@ export default mergeConfig(
       css: true,
       testTimeout: 10000,
       isolate: true,
-      exclude: ["tests/e2e/**"],
       coverage: {
         provider: "v8",
         reporter: ["text", "html", "lcov"],

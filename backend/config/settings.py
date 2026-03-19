@@ -92,40 +92,18 @@ USE_I18N = True
 USE_TZ = True
 
 IS_TESTING = any(arg in {"test", "pytest"} for arg in sys.argv)
-SINGLE_NODE_RUNTIME = _env_flag("SINGLE_NODE_RUNTIME", not DEBUG)
 
 STATIC_URL = "static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
-CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", REDIS_URL)
-
-cache_backend = os.getenv(
-    "CACHE_BACKEND",
-    "locmem" if IS_TESTING or SINGLE_NODE_RUNTIME else "redis",
-).lower()
-if cache_backend not in {"locmem", "redis"}:
-    raise ImproperlyConfigured("CACHE_BACKEND must be one of: locmem, redis")
-
-if cache_backend == "redis":
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": CACHE_REDIS_URL,
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        }
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "bugboard-cache",
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "bugboard-cache",
-        }
-    }
+}
 
 NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS = float(
     os.getenv("NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", "20")

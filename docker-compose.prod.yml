@@ -2,10 +2,6 @@ services:
   db:
     ports: !override []
 
-  redis:
-    profiles:
-      - scale-ready
-
   backend:
     ports: !override []
     volumes: !override []
@@ -15,8 +11,6 @@ services:
     environment:
       DEBUG: "False"
       CORS_ALLOW_ALL_ORIGINS: "False"
-      SINGLE_NODE_RUNTIME: "True"
-      CACHE_BACKEND: locmem
       GUNICORN_WORKERS: "1"
       GUNICORN_THREADS: "12"
     healthcheck:

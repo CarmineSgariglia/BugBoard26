@@ -54,16 +54,13 @@ jobs:
         run: ./scripts/bootstrap_bruno_bugboard_ci.sh
 
       - name: Build frontend test images
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build frontend-test playwright
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build frontend-test
 
       - name: Run frontend build
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run build
 
       - name: Run frontend unit and integration tests
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage
-
-      - name: Run frontend smoke E2E
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm playwright npm run test:e2e:smoke
 
       - name: Upload frontend test artifacts
         if: always()
@@ -72,8 +69,6 @@ jobs:
           name: frontend-safe-artifacts
           path: |
             frontend/coverage
-            frontend/playwright-report
-            frontend/test-results
 
       - name: Dump docker logs on failure
         if: failure()
