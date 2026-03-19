@@ -6,12 +6,25 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+MIN_SECRET_KEY_LENGTH = 32
+DEFAULT_DEV_SECRET_KEY = "dev-secret-key-change-me-please-rotate"
 
 def _env_flag(name: str, default: bool) -> bool:
     return os.getenv(name, str(default)).lower() == "true"
 
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
+def _validate_secret_key(*, secret_key: str, debug: bool) -> None:
+    if debug:
+        return
+    if secret_key == DEFAULT_DEV_SECRET_KEY:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production")
+    if len(secret_key) < MIN_SECRET_KEY_LENGTH:
+        raise ImproperlyConfigured(
+            f"DJANGO_SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters in production"
+        )
+
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", DEFAULT_DEV_SECRET_KEY)
 
 DEBUG = _env_flag("DEBUG", True)
 
@@ -21,8 +34,7 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
-if not DEBUG and SECRET_KEY == "dev-secret-key-change-me":
-    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production")
+_validate_secret_key(secret_key=SECRET_KEY, debug=DEBUG)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -105,6 +105,18 @@ class UserTransactionBoundariesTests(TestCase):
                 mime_type="image/png",
                 size=8,
             ),
+        ), patch(
+            "apps.bugboardapi.modules.users.commands.compress_image_upload",
+            return_value=SimpleNamespace(
+                file=SimpleUploadedFile(
+                    "avatar.webp",
+                    b"webp",
+                    content_type="image/webp",
+                ),
+                mime_type="image/webp",
+                size=4,
+                extension=".webp",
+            ),
         ), patch.object(
             UserProfileImage,
             "save",

@@ -58,7 +58,7 @@ class UserMutationSerializer(UserReadSerializer):
     lastName = serializers.CharField(source="last_name", required=False, allow_blank=True)
     isAdmin = serializers.BooleanField(required=False, write_only=True)
     group = serializers.ChoiceField(choices=GLOBAL_ROLE_CHOICES, required=False, write_only=True)
-    profileImg = serializers.CharField(source="profile.profile_img", required=False, allow_blank=True)
+    profileImg = serializers.CharField(read_only=True)
     active = serializers.BooleanField(source="is_active", required=False)
     password = serializers.CharField(write_only=True, required=False)
 
@@ -100,6 +100,10 @@ class UserMutationSerializer(UserReadSerializer):
         return value
 
     def validate(self, attrs):
+        if "profileImg" in self.initial_data:
+            raise serializers.ValidationError(
+                {"profileImg": "Use the dedicated upload endpoint"}
+            )
         password = attrs.get("password")
         attrs["group"] = _resolve_requested_group(
             requested_group=attrs.get("group"),
