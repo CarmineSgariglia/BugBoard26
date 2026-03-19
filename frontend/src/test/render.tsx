@@ -7,23 +7,26 @@ import { ToastProvider } from "@shared/providers";
 
 type Options = {
   route?: string;
+  queryClient?: QueryClient;
 } & Omit<RenderOptions, "wrapper">;
 
 export function renderWithProviders(ui: ReactElement, options: Options = {}) {
-  const { route = "/", ...renderOptions } = options;
+  const { route = "/", queryClient: providedQueryClient, ...renderOptions } = options;
 
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        staleTime: Infinity,
-        gcTime: Infinity,
+  const queryClient =
+    providedQueryClient ??
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Infinity,
+          gcTime: Infinity,
+        },
+        mutations: {
+          retry: false,
+        },
       },
-      mutations: {
-        retry: false,
-      },
-    },
-  });
+    });
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
