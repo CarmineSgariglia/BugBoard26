@@ -8,6 +8,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from ...permissions import check_admin, ensure_project_access, filter_by_project_access
+from .membership import (
+    is_admin_project_subscribed,
+    subscribe_admin_to_project,
+    unsubscribe_admin_from_project,
+)
 from .commands import (
     create_project_with_team,
     delete_project_and_notify,
@@ -89,3 +94,20 @@ class ProjectViewSet(
         include_admins = str(request.query_params.get("includeAdmins", "")).lower() in {"1", "true", "yes"}
         memberships = list_project_memberships(project=project, include_admins=include_admins)
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
+
+    @action(detail=True, methods=["get", "post", "delete"], url_path="subscription")
+    def subscription(self, request, projectId=None):
+        check_admin(request.user)
+        project = self.get_object()
+
+        if request.method == "GET":
+            return Response({
+                "subscribed": is_admin_project_subscribed(project=project, user=request.user),
+            })
+
+        if request.method == "POST":
+            subscribe_admin_to_project(project=project, user=request.user)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        unsubscribe_admin_from_project(project=project, user=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)

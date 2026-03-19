@@ -26,16 +26,51 @@ def is_project_member(*, user: User, project: Project) -> bool:
     return ProjectMembership.objects.filter(project=project, user=user).exists()
 
 
-def ensure_project_creator_membership(*, project: Project) -> ProjectMembership:
-    membership, _ = ProjectMembership.objects.get_or_create(
-        project=project,
-        user_id=project.created_by_id,
+def admin_project_subscriptions(
+    *,
+    project: Project,
+    active_only: bool = False,
+) -> list[ProjectMembership]:
+    memberships = list(
+        project_memberships_queryset(
+            project=project,
+            active_only=active_only,
+        )
     )
+    return [membership for membership in memberships if is_admin_user(membership.user)]
+
+
+def admin_project_subscription_users(*, project: Project, active_only: bool = False) -> list[User]:
+    return [membership.user for membership in admin_project_subscriptions(project=project, active_only=active_only)]
+
+
+def is_admin_project_subscribed(*, project: Project, user: User) -> bool:
+    if not is_admin_user(user):
+        return False
+    return ProjectMembership.objects.filter(project=project, user=user).exists()
+
+
+def subscribe_admin_to_project(*, project: Project, user: User) -> ProjectMembership:
+    membership, _ = ProjectMembership.objects.get_or_create(project=project, user=user)
     return membership
 
 
-def mutable_project_team_memberships_queryset(*, project: Project) -> QuerySet[ProjectMembership]:
-    return project_memberships_queryset(project=project).exclude(user_id=project.created_by_id)
+def unsubscribe_admin_from_project(*, project: Project, user: User) -> None:
+    ProjectMembership.objects.filter(project=project, user=user).delete()
+
+
+def developer_project_memberships(
+    *,
+    project: Project,
+    active_only: bool = False,
+) -> list[ProjectMembership]:
+    memberships = list(
+        project_memberships_queryset(
+            project=project,
+            active_only=active_only,
+        )
+    )
+    return [membership for membership in memberships if not is_admin_user(membership.user)]
 
 
 def visible_project_memberships(
@@ -62,7 +97,7 @@ def assignable_project_memberships(
 ) -> list[ProjectMembership]:
     candidate_memberships = memberships
     if candidate_memberships is None:
-        candidate_memberships = project_memberships_queryset(project=project)
+        candidate_memberships = developer_project_memberships(project=project)
 
     return [membership for membership in candidate_memberships if _is_assignable_project_membership(membership)]
 

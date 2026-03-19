@@ -758,7 +758,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         membership = ProjectMembership.objects.filter(
             project_id=project_id, user=self.admin
         ).first()
-        self.assertIsNotNone(membership)
+        self.assertIsNone(membership)
         self.assertEqual(response.data["createdBy"], self.admin.id)
 
     def test_project_membership_is_exposed_through_many_to_many_relation(self):
@@ -809,8 +809,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         project_id = response.data["projectId"]
 
-        # Creator/admin membership must remain untouched.
-        self.assertTrue(
+        self.assertFalse(
             ProjectMembership.objects.filter(
                 project_id=project_id,
                 user=self.admin,
@@ -847,6 +846,75 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertIn(self.member.id, returned_user_ids)
         self.assertIn(self.admin.id, returned_user_ids)
 
+    def test_project_subscription_get_returns_current_admin_state(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(f"/api/projects/{self.project.project_id}/subscription")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"subscribed": True})
+
+    def test_project_subscription_get_returns_false_for_unsubscribed_admin(self):
+        other_admin = create_user_with_profile(
+            username="projects_subscription_admin",
+            email="projects_subscription_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        self.client.force_authenticate(user=other_admin)
+        response = self.client.get(f"/api/projects/{self.project.project_id}/subscription")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"subscribed": False})
+
+    def test_project_subscription_post_is_idempotent(self):
+        other_admin = create_user_with_profile(
+            username="projects_subscribe_post_admin",
+            email="projects_subscribe_post_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        self.client.force_authenticate(user=other_admin)
+
+        first_response = self.client.post(
+            f"/api/projects/{self.project.project_id}/subscription",
+            format="json",
+        )
+        second_response = self.client.post(
+            f"/api/projects/{self.project.project_id}/subscription",
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(second_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            ProjectMembership.objects.filter(project=self.project, user=other_admin).count(),
+            1,
+        )
+
+    def test_project_subscription_delete_is_idempotent(self):
+        self.client.force_authenticate(user=self.admin)
+
+        first_response = self.client.delete(
+            f"/api/projects/{self.project.project_id}/subscription",
+            format="json",
+        )
+        second_response = self.client.delete(
+            f"/api/projects/{self.project.project_id}/subscription",
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(second_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(
+            ProjectMembership.objects.filter(project=self.project, user=self.admin).exists()
+        )
+
+    def test_project_subscription_forbidden_for_developer(self):
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/subscription",
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_members_endpoint_keeps_inactive_members_visible_in_current_contract(self):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])
@@ -878,7 +946,6 @@ class ProjectAndMembershipEndpointTests(APITestCase):
                 user=self.member,
             ).exists()
         )
-        # Creator/admin membership must remain untouched.
         self.assertTrue(
             ProjectMembership.objects.filter(
                 project=self.project,
@@ -927,7 +994,6 @@ class ProjectAndMembershipEndpointTests(APITestCase):
                 user=self.member,
             ).exists()
         )
-        # Creator/admin membership must remain untouched.
         self.assertTrue(
             ProjectMembership.objects.filter(
                 project=self.project,
@@ -942,7 +1008,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             ).exists()
         )
 
-    def test_project_patch_does_not_notify_actor_about_their_own_membership_change(self):
+    def test_project_patch_team_ignores_admin_ids_in_team_payload(self):
         other_admin = create_user_with_profile(
             username="projects_admin_two",
             email="projects_admin_two@example.com",
@@ -957,7 +1023,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(
+        self.assertFalse(
             ProjectMembership.objects.filter(
                 project=self.project,
                 user=other_admin,
@@ -1171,6 +1237,50 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertFalse(
             NotifyUser.objects.filter(
                 user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_ADDED,
+                notification__issue=new_issue,
+            ).exists()
+        )
+
+    def test_issue_create_notifies_only_subscribed_admins(self):
+        subscribed_admin = create_user_with_profile(
+            username="issues_subscribed_admin",
+            email="issues_subscribed_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        unsubscribed_admin = create_user_with_profile(
+            username="issues_unsubscribed_admin",
+            email="issues_unsubscribed_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        ProjectMembership.objects.create(project=self.project, user=subscribed_admin)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/projects/{self.project.project_id}/issues",
+            {
+                "title": "Subscription issue create",
+                "description": "Created from test",
+                "type": "BUG",
+                "status": "TODO",
+                "priority": "LOW",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_issue = Issue.objects.get(issue_id=response.data["issueId"])
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=subscribed_admin,
+                notification__notify_type=NotifyType.ISSUE_ADDED,
+                notification__issue=new_issue,
+            ).exists()
+        )
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=unsubscribed_admin,
                 notification__notify_type=NotifyType.ISSUE_ADDED,
                 notification__issue=new_issue,
             ).exists()
@@ -1567,6 +1677,43 @@ class IssueWorkflowEndpointTests(APITestCase):
             ).exists()
         )
 
+    def test_status_update_notifies_subscribed_admins_and_skips_unsubscribed_admins(self):
+        subscribed_admin = create_user_with_profile(
+            username="issues_close_subscribed_admin",
+            email="issues_close_subscribed_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        unsubscribed_admin = create_user_with_profile(
+            username="issues_close_unsubscribed_admin",
+            email="issues_close_unsubscribed_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        ProjectMembership.objects.create(project=self.project, user=subscribed_admin)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status",
+            {"status": "DONE", "message": "done with subscriptions"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=subscribed_admin,
+                notification__notify_type=NotifyType.ISSUE_CLOSED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=unsubscribed_admin,
+                notification__notify_type=NotifyType.ISSUE_CLOSED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+
     def test_assign_creates_notification_with_project(self):
         another_member = create_user_with_profile(
             username="issues_member_two",
@@ -1588,6 +1735,30 @@ class IssueWorkflowEndpointTests(APITestCase):
                 notification__notify_type=NotifyType.ISSUE_ASSIGNED,
                 notification__issue=self.issue,
                 notification__project=self.project,
+            ).exists()
+        )
+
+    def test_project_patch_team_does_not_remove_existing_admin_subscription(self):
+        other_admin = create_user_with_profile(
+            username="projects_admin_three",
+            email="projects_admin_three@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        ProjectMembership.objects.create(project=self.project, user=other_admin)
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/projects/{self.project.project_id}",
+            {"team": []},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project=self.project,
+                user=other_admin,
             ).exists()
         )
 
