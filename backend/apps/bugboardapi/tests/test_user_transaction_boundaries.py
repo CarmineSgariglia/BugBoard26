@@ -1,8 +1,10 @@
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from PIL import Image
 from rest_framework.test import APIRequestFactory
 
 from apps.bugboardapi.modules.users.commands import save_profile_image_for_user
@@ -13,6 +15,12 @@ from apps.bugboardapi.modules.users.mutations import (
 )
 from apps.bugboardapi.roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME, get_global_role
 from apps.bugboardapi.tests.utils import create_user_with_profile
+
+
+def make_png_bytes(*, size: tuple[int, int], color: str = "blue") -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", size, color=color).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 class UserTransactionBoundariesTests(TestCase):
@@ -82,7 +90,7 @@ class UserTransactionBoundariesTests(TestCase):
             {
                 "profile_img": SimpleUploadedFile(
                     "avatar.png",
-                    b"\x89PNG\r\n\x1a\nfake",
+                    make_png_bytes(size=(1200, 1200)),
                     content_type="image/png",
                 )
             },

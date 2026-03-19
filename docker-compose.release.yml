@@ -64,9 +64,13 @@ services:
     init: true
     security_opt:
       - no-new-privileges:true
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-your-domain.com www.your-domain.com}
+      NGINX_SSL_CERT_PATH: ${NGINX_SSL_CERT_PATH:-/etc/nginx/certs/live/your-domain.com/fullchain.pem}
+      NGINX_SSL_KEY_PATH: ${NGINX_SSL_KEY_PATH:-/etc/nginx/certs/live/your-domain.com/privkey.pem}
     volumes:
-      - ./nginx/default.conf/production.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/default.conf/production.conf:/etc/nginx/templates/default.conf.template:ro
+      - ${SSL_CERTS_HOST_PATH:-/opt/bugboard26/certs}:/etc/nginx/certs:ro
       - staticfiles:/usr/share/nginx/django-static:ro
     ports:
       - "80:80"

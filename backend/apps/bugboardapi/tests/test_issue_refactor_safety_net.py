@@ -247,6 +247,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
         self.assertEqual(IssueEvent.objects.filter(issue=self.issue).count(), event_count)
 
     def test_issue_comment_creates_one_event_and_one_notification_for_non_actor_recipient(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
         existing_comment_count = IssueEvent.objects.filter(
             issue=self.issue,
             event_type=EventType.COMMENT,
@@ -628,6 +629,7 @@ class IssueTransactionalSafetyNetTests(APITestCase):
         )
 
     def test_issue_comment_rolls_back_when_notification_dispatch_fails(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
         existing_comment_events = IssueEvent.objects.filter(
             issue=self.issue,
             event_type=EventType.COMMENT,

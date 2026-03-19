@@ -77,7 +77,7 @@ Notes:
 ## Production
 
 - Use `env/production.example` as template for production secrets and security flags.
-- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs`, `GS_BUCKET_NAME`, and `GOOGLE_APPLICATION_CREDENTIALS`.
+- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs`, `GS_BUCKET_NAME`, and VM IAM / ADC credentials.
 - Production deployment model:
   - CI validates the repo
   - release workflow builds immutable `backend` and `web` images
@@ -89,6 +89,7 @@ Notes:
   - `make release-config`
 - Exposed ports in production:
   - `80` and `443` on the `web` service only
+- TLS certificates are managed on the VM host with Let's Encrypt / `certbot` and mounted into `web` from `${SSL_CERTS_HOST_PATH}`.
 - Internal-only services in the production stack:
   - `backend` and `db` are reachable only on the Docker network
 - Frontend delivery in production:
