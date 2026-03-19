@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import { Route, Routes } from "react-router-dom";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -293,19 +294,31 @@ describe("ProjectIssuesPage", () => {
     projectIssuesPageState.listProjectIssuesApi.mockRejectedValue(createAxiosStatusError(403));
     projectIssuesPageState.listProjectMembersApi.mockRejectedValue(createAxiosStatusError(403));
 
-    const { queryClient } = renderWithProviders(
-      <Routes>
-        <Route path="/projects" element={<div>Projects Home</div>} />
-        <Route path="/projects/:projectId/issues" element={<ProjectIssuesPage />} />
-      </Routes>,
-      { route: "/projects/7/issues" }
-    );
-
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Infinity,
+          gcTime: Infinity,
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    });
     queryClient.setQueryData(["projects"], [
       { projectId: 7, name: "Orbit" },
       { projectId: 14, name: "Nova" },
     ]);
     queryClient.setQueryData(["project", "7"], { projectId: 7, name: "Orbit" });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/projects" element={<div>Projects Home</div>} />
+        <Route path="/projects/:projectId/issues" element={<ProjectIssuesPage />} />
+      </Routes>,
+      { route: "/projects/7/issues", queryClient }
+    );
 
     expect(await screen.findByText("Projects Home")).toBeInTheDocument();
     expect(queryClient.getQueryData(["projects"])).toEqual([

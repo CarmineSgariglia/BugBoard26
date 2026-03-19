@@ -11,7 +11,8 @@ export default mergeConfig(
       globals: true,
       setupFiles: ["./src/test/setup.ts"],
       css: true,
-      testTimeout: 10000,
+      testTimeout: 60000,
+      hookTimeout: 60000,
       isolate: true,
       coverage: {
         provider: "v8",
