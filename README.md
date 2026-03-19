@@ -11,7 +11,6 @@ Containerized three-tier architecture:
 - `backend/`: Django REST API app
 - `docker-compose.yml`: Orchestrates all tiers
 - `docker-compose.prod.yml`: Single-node production overrides
-- `docker-compose.scale.yml`: Optional Redis-backed scale-ready overrides
 - `env/dev.example`: Local development environment template
 - `BrunoTesting/env/bruno-safe.ci.env`: Safe CI environment for Bruno and CI workflows
 - `env/production.example`: Production environment template
@@ -72,9 +71,7 @@ Notes:
 - Run frontend coverage:
   - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage`
   - `make frontend-coverage`
-- Run frontend smoke E2E:
-  - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm playwright npm run test:e2e:smoke`
-- Frontend artifacts are written under `frontend/coverage/`, `frontend/playwright-report/`, and `frontend/test-results/`.
+- Frontend artifacts are written under `frontend/coverage/`.
 
 ## Production
 
@@ -82,21 +79,16 @@ Notes:
 - Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs` and `GS_BUCKET_NAME`.
 - Start the standard single-node production stack with:
   - `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
-- Start the Redis-backed scale-ready variant with:
-  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.scale.yml up -d --build`
 - Exposed ports in production:
   - `80` and `443` on the `web` service only
-- Internal-only services in the standard production stack:
+- Internal-only services in the production stack:
   - `backend` and `db` are reachable only on the Docker network
-- Internal-only services in the scale-ready variant:
-  - `backend`, `db`, and `redis` are reachable only on the Docker network
 - Frontend delivery in production:
   - nginx serves the compiled files from `dist/`
   - sourcemaps are disabled
   - API and media requests go through the same origin (`/api`, `/media`)
 - Realtime runtime mode:
-  - standard production uses in-memory cache/transport and a single Gunicorn worker for single-VM SSE reliability
-  - use `docker-compose.scale.yml` to re-enable Redis-backed realtime before moving to multi-worker or multi-VM deployments
+  - production uses in-memory cache/transport and a single Gunicorn worker for single-VM SSE reliability
 
 ## API Endpoints
 

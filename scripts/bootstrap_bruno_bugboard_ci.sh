@@ -12,8 +12,7 @@ docker compose exec -T backend python manage.py shell <<'PY'
 from django.contrib.auth.models import User
 
 from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
-from apps.bugboardapi.modules.notifications.models import NotifyType
-from apps.bugboardapi.modules.notifications.services import notify_users
+from apps.bugboardapi.modules.notifications.services import notify_issue_updated
 from apps.bugboardapi.modules.projects.models import Project, ProjectMembership
 from apps.bugboardapi.roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME, assign_global_role
 from apps.bugboardapi.modules.users.models import UserProfileImage
@@ -79,7 +78,7 @@ issue, _ = Issue.objects.get_or_create(
 )
 
 if not issue.notifications.filter(recipients__user=dev).exists():
-    notify_users(notify_type=NotifyType.ISSUE_UPDATED, users=[dev], issue=issue)
+    notify_issue_updated(users=[dev], issue=issue)
 
 print("Bruno BugBoard CI bootstrap complete")
 PY

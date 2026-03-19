@@ -13,9 +13,7 @@ ALLOWED_HOSTS=35.240.52.33,your-domain.com,www.your-domain.com,backend
 GUNICORN_WORKERS=1
 GUNICORN_THREADS=8
 
-# Single-node runtime defaults
-SINGLE_NODE_RUNTIME=True
-CACHE_BACKEND=locmem
+# Gunicorn runtime
 GUNICORN_WORKERS=1
 GUNICORN_THREADS=12
 

@@ -1,12 +1,10 @@
 Django>=5.0,<6.0
 djangorestframework>=3.15,<4.0
 djangorestframework-simplejwt>=5.3,<6.0
-drf-spectacular>=0.27,<1.0
 django-cors-headers>=4.4,<5.0
 django-anymail[brevo]>=11,<12
 psycopg2-binary>=2.9,<3.0
 gunicorn>=22.0,<23.0
 django-storages>=1.14,<2.0
 google-cloud-storage>=2.18,<3.0
-Pillow>=11.0,<12.0
 coverage[toml]>=7.6,<8.0
