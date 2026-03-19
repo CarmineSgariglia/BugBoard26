@@ -1,3 +1,6 @@
+from io import BytesIO
+
+from PIL import Image
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -5,6 +8,12 @@ from apps.bugboardapi.modules.issues.models import Attachment, EventType, Issue,
 from apps.bugboardapi.modules.notifications.services import notify_issue_updated
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
+
+
+def make_png_bytes(*, size: tuple[int, int], color: str = "blue") -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", size, color=color).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 class FrontendContractTests(APITestCase):
@@ -170,7 +179,7 @@ class FrontendContractTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(
-            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+            "avatar.png", make_png_bytes(size=(1200, 1600)), content_type="image/png"
         )
         response = self.client.post(
             "/api/users/me/upload-profile-image",
