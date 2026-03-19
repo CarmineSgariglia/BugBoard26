@@ -18,8 +18,7 @@ env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION }}
   GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}
-  PROD_VM_APP_DIR: ${{ vars.PROD_VM_APP_DIR }}
-  PROD_VM_PORT: ${{ vars.PROD_VM_PORT }}
+  PROD_VM_APP_DIR: ${{ vars.PROD_VM_APP_DIR || '/opt/bugboard26' }}
 
 jobs:
   backend_safe:
@@ -103,40 +102,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.9.1
+      - name: Copy release files to VM
+        uses: appleboy/scp-action@v0.1.7
         with:
-          ssh-private-key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
-
-      - name: Trust production host
-        run: |
-          port="${PROD_VM_PORT:-22}"
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "${port}" -H "${{ secrets.PROD_VM_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Upload release assets to VM
-        run: |
-          port="${PROD_VM_PORT:-22}"
-          remote_dir="${PROD_VM_APP_DIR}"
-          test -n "${remote_dir}"
-          ssh -p "${port}" "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}" \
-            "mkdir -p '${remote_dir}/scripts' '${remote_dir}/nginx/default.conf' '${remote_dir}/nginx/certs'"
-          scp -P "${port}" docker-compose.release.yml \
-            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/docker-compose.release.yml"
-          scp -P "${port}" nginx/default.conf/production.conf \
-            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/nginx/default.conf/production.conf"
-          scp -P "${port}" scripts/deploy_prod.sh \
-            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/scripts/deploy_prod.sh"
+          host: ${{ secrets.PROD_VM_HOST }}
+          username: ${{ secrets.PROD_VM_USER }}
+          key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
+          port: ${{ vars.PROD_VM_PORT || 22 }}
+          target: ${{ env.PROD_VM_APP_DIR }}
+          source: "docker-compose.release.yml,nginx,scripts/deploy_prod.sh"
+          overwrite: true
 
       - name: Run deployment on VM
-        run: |
-          port="${PROD_VM_PORT:-22}"
-          remote_dir="${PROD_VM_APP_DIR}"
-          test -n "${remote_dir}"
-          ssh -p "${port}" "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}" "
-            chmod +x '${remote_dir}/scripts/deploy_prod.sh' && \
-            APP_DIR='${remote_dir}' \
-            BACKEND_IMAGE='${{ needs.build_and_push.outputs.backend_image }}' \
-            WEB_IMAGE='${{ needs.build_and_push.outputs.web_image }}' \
-            '${remote_dir}/scripts/deploy_prod.sh'
-          "
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          BACKEND_IMAGE: ${{ needs.build_and_push.outputs.backend_image }}
+          WEB_IMAGE: ${{ needs.build_and_push.outputs.web_image }}
+        with:
+          host: ${{ secrets.PROD_VM_HOST }}
+          username: ${{ secrets.PROD_VM_USER }}
+          key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
+          port: ${{ vars.PROD_VM_PORT || 22 }}
+          envs: BACKEND_IMAGE,WEB_IMAGE
+          script: |
+            cd "${{ env.PROD_VM_APP_DIR }}"
+            chmod +x scripts/deploy_prod.sh
+            ./scripts/deploy_prod.sh
