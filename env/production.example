@@ -1,46 +1,42 @@
 # Database
 POSTGRES_DB=bugboard
 POSTGRES_USER=bugboard
-POSTGRES_PASSWORD=CHANGE_ME_DB_PASSWORD
+POSTGRES_PASSWORD=UNA_PASSWORD_MOLTO_SICURA_123
 
 # Django
-DJANGO_SECRET_KEY=CHANGE_ME_LONG_RANDOM_SECRET
+DJANGO_SECRET_KEY=GENERA_UNA_STRINGA_CASUALE_LUNGA_E_COMPLESSA
 DEBUG=False
-ALLOWED_HOSTS=your-domain.com,www.your-domain.com,backend
+# Aggiungi l'IP della tua VM per ora, oltre al dominio
+ALLOWED_HOSTS=35.240.52.33,your-domain.com,www.your-domain.com,backend
 
 # Gunicorn runtime
-GUNICORN_WORKERS=1
-GUNICORN_THREADS=8
+GUNICORN_WORKERS=2
+GUNICORN_THREADS=4
 
 # CORS / CSRF
 CORS_ALLOW_ALL_ORIGINS=False
-CORS_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
-CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com
+CORS_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com,http://35.240.52.33
+CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com,http://35.240.52.33
 
-# Security headers/cookies
+# Security (Disabilita SSL_REDIRECT se non hai ancora i certificati TLS installati, altrimenti non vedrai nulla)
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
-SECURE_SSL_REDIRECT=True
+SECURE_SSL_REDIRECT=False  # <--- Metti True solo DOPO aver installato i certificati SSL
 SECURE_HSTS_SECONDS=31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS=True
-SECURE_HSTS_PRELOAD=True
-SECURE_REFERRER_POLICY=strict-origin-when-cross-origin
 
-# Email provider
+# Email provider (Brevo)
 EMAIL_PROVIDER=brevo
-BREVO_API_KEY=CHANGE_ME_BREVO_API_KEY
-BREVO_OTP_TEMPLATE_ID=CHANGE_ME_BREVO_TEMPLATE_ID
+BREVO_API_KEY=LA_TUA_API_KEY_BREVO
+BREVO_OTP_TEMPLATE_ID=ID_DEL_TEMPLATE
 BREVO_SENDER_NAME=BugBoard26
 DEFAULT_FROM_EMAIL=noreply@your-domain.com
 
 # Frontend API base
 VITE_API_BASE_URL=/api
 
-# Media storage (Google Cloud Storage)
+# Media storage (Google Cloud Storage) - CONFIGURAZIONE SENZA JSON
 MEDIA_STORAGE_BACKEND=gcs
-GS_PROJECT_ID=CHANGE_ME_GCP_PROJECT
-GS_BUCKET_NAME=CHANGE_ME_GCS_BUCKET
+GS_PROJECT_ID=bugboard-prod-2026
+GS_BUCKET_NAME=IL_NOME_DEL_TUO_BUCKET_GCS
 GS_QUERYSTRING_AUTH=False
-GCS_MEDIA_URL=https://storage.googleapis.com/CHANGE_ME_GCS_BUCKET/
-GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-media-sa.json
-GCP_MEDIA_CREDENTIALS_FILE=./secrets/gcp-media-sa.json
+GCS_MEDIA_URL=https://storage.googleapis.com/IL_NOME_DEL_TUO_BUCKET_GCS/

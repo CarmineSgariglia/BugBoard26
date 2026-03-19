@@ -19,7 +19,6 @@ Modifica il file `.env` con i tuoi parametri di produzione:
 | `ALLOWED_HOSTS` | Aggiungi il tuo dominio (es. `tuo-dominio.com`). |
 | `CORS_ALLOWED_ORIGINS` | Inserisci l'URL del tuo dominio (es. `https://tuo-dominio.com`). |
 | `CSRF_TRUSTED_ORIGINS` | Inserisci l'URL del tuo dominio (es. `https://tuo-dominio.com`). |
-| `GCP_MEDIA_CREDENTIALS_FILE` | Path locale del file JSON del service account media montato nel container backend. |
 
 Assicurati che `DEBUG=False` per disabilitare la modalità di debug in Django.
 
