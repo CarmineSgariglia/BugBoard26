@@ -1,4 +1,5 @@
 from datetime import timedelta
+from io import BytesIO
 from pathlib import Path
 import subprocess
 import re
@@ -8,8 +9,10 @@ from unittest.mock import patch
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
+from PIL import Image
 from rest_framework import status
 from django.test import override_settings
 from rest_framework.test import APITestCase
@@ -36,6 +39,12 @@ from apps.bugboardapi.tests.utils import create_project_with_members, create_use
 
 def make_fake_mp4_bytes() -> bytes:
     return b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom"
+
+
+def make_png_bytes(*, size: tuple[int, int], color: str = "blue") -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", size, color=color).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 class AuthOtpEndpointTests(APITestCase):
@@ -482,7 +491,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_profile_image_upload_self_success(self):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(
-            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+            "avatar.png", make_png_bytes(size=(1800, 1800)), content_type="image/png"
         )
         response = self.client.post(
             "/api/users/me/upload_profile_image",
@@ -496,7 +505,7 @@ class UserManagementEndpointTests(APITestCase):
                 f"profile-images/{self.member.id}/"
             )
         )
-        self.assertIn("/media/profile-images/", response.data["profileImg"])
+        self.assertTrue(response.data["profileImg"].endswith(".webp"))
 
     def test_profile_image_upload_rejects_invalid_type(self):
         self.client.force_authenticate(user=self.member)
@@ -526,7 +535,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_profile_image_upload_me_endpoint_with_profile_img_field(self):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(
-            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+            "avatar.png", make_png_bytes(size=(1600, 1200)), content_type="image/png"
         )
         response = self.client.post(
             "/api/users/me/upload_profile_image",
@@ -544,7 +553,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_profile_image_upload_me_endpoint_kebab_case_alias(self):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(
-            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+            "avatar.png", make_png_bytes(size=(1200, 1600)), content_type="image/png"
         )
         response = self.client.post(
             "/api/users/me/upload-profile-image",
@@ -562,7 +571,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_admin_upload_profile_image_for_other_user_via_admin_endpoint(self):
         self.client.force_authenticate(user=self.admin)
         image = SimpleUploadedFile(
-            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+            "avatar.png", make_png_bytes(size=(1400, 1400)), content_type="image/png"
         )
         response = self.client.post(
             f"/api/users/{self.member.id}/admin-upload-image",
@@ -580,7 +589,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_non_admin_cannot_use_admin_upload_profile_image_endpoint(self):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(
-            "avatar.png", b"\x89PNG\r\n\x1a\nfake", content_type="image/png"
+            "avatar.png", make_png_bytes(size=(1000, 1000)), content_type="image/png"
         )
         response = self.client.post(
             f"/api/users/{self.admin.id}/admin-upload-image",
@@ -588,6 +597,28 @@ class UserManagementEndpointTests(APITestCase):
             format="multipart",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_profile_image_upload_uses_compressed_storage_artifact(self):
+        self.client.force_authenticate(user=self.member)
+        raw_bytes = make_png_bytes(size=(2600, 2100))
+        image = SimpleUploadedFile("avatar.png", raw_bytes, content_type="image/png")
+
+        with patch(
+            "apps.bugboardapi.security.uploads.default_storage.save",
+            return_value=f"profile-images/{self.member.id}/compressed.webp",
+        ) as save_mock:
+            response = self.client.post(
+                "/api/users/me/upload_profile_image",
+                {"profile_img": image},
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.member.refresh_from_db()
+        stored_file = save_mock.call_args.args[1]
+        self.assertEqual(getattr(stored_file, "content_type", ""), "image/webp")
+        self.assertLess(getattr(stored_file, "size", 0), len(raw_bytes))
+        self.assertEqual(self.member.profile.profile_img, f"profile-images/{self.member.id}/compressed.webp")
 
     def test_change_password_success(self):
         self.client.force_authenticate(user=self.member)
@@ -2355,7 +2386,7 @@ class IssueWorkflowEndpointTests(APITestCase):
             Attachment.objects.filter(attachment_id=attachment_id).exists()
         )
 
-    def test_attachments_api_multipart_upload_saves_file_on_disk(self):
+    def test_attachments_api_multipart_upload_uses_abstract_storage(self):
         self.client.force_authenticate(user=self.member)
         uploaded = SimpleUploadedFile(
             "notes.txt", b"hello attachment", content_type="text/plain"
@@ -2381,7 +2412,7 @@ class IssueWorkflowEndpointTests(APITestCase):
                         f"issue-attachments/{self.issue.issue_id}/"
                     )
                 )
-                self.assertTrue((Path(tmp_dir) / attachment.path).exists())
+                self.assertTrue(default_storage.exists(attachment.path))
                 self.assertEqual(response.data["mimeType"], "text/plain")
                 self.assertEqual(response.data["originalName"], "notes.txt")
                 self.assertEqual(attachment.original_name, "notes.txt")
@@ -2394,7 +2425,34 @@ class IssueWorkflowEndpointTests(APITestCase):
                 self.assertEqual(
                     delete_response.status_code, status.HTTP_204_NO_CONTENT
                 )
-                self.assertFalse((Path(tmp_dir) / attachment.path).exists())
+                self.assertFalse(default_storage.exists(attachment.path))
+
+    def test_attachments_api_compresses_image_before_storage(self):
+        self.client.force_authenticate(user=self.member)
+        raw_bytes = make_png_bytes(size=(2600, 2100))
+        uploaded = SimpleUploadedFile("photo.png", raw_bytes, content_type="image/png")
+
+        with patch(
+            "apps.bugboardapi.security.uploads.default_storage.save",
+            return_value=f"issue-attachments/{self.issue.issue_id}/compressed.webp",
+        ) as save_mock:
+            response = self.client.post(
+                "/api/attachments",
+                {
+                    "issueId": self.issue.issue_id,
+                    "message": "image upload",
+                    "file": uploaded,
+                },
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        stored_file = save_mock.call_args.args[1]
+        self.assertEqual(getattr(stored_file, "content_type", ""), "image/webp")
+        self.assertLess(getattr(stored_file, "size", 0), len(raw_bytes))
+        self.assertEqual(response.data["mimeType"], "image/webp")
+        self.assertEqual(response.data["originalName"], "photo.webp")
+        self.assertTrue(response.data["url"].endswith("/issue-attachments/%s/compressed.webp" % self.issue.issue_id))
 
     def test_attachments_api_transcodes_video_to_mp4(self):
         self.client.force_authenticate(user=self.member)
@@ -2432,9 +2490,30 @@ class IssueWorkflowEndpointTests(APITestCase):
                 self.assertEqual(response.data["originalName"], "demo.mp4")
                 self.assertEqual(attachment.original_name, "demo.mp4")
                 self.assertTrue(attachment.path.endswith(".mp4"))
-                self.assertTrue((Path(tmp_dir) / attachment.path).exists())
+                self.assertTrue(default_storage.exists(attachment.path))
                 self.assertGreater(response.data["size"], 0)
                 self.assertTrue(run_mock.called)
+
+    @override_settings(MEDIA_URL="https://storage.googleapis.com/test-bucket/")
+    def test_attachment_serializer_uses_absolute_gcs_media_url(self):
+        self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile(
+            "notes.txt", b"hello attachment", content_type="text/plain"
+        )
+        response = self.client.post(
+            "/api/attachments",
+            {
+                "issueId": self.issue.issue_id,
+                "message": "file upload",
+                "file": uploaded,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            response.data["url"].startswith("https://storage.googleapis.com/test-bucket/")
+        )
 
     def test_attachments_api_rejects_video_when_transcoding_fails(self):
         self.client.force_authenticate(user=self.member)
