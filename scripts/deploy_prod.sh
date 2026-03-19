@@ -1,9 +1,12 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-cd /opt/bugboard26
+APP_DIR="${PROD_VM_APP_DIR:-/opt/bugboard26}"
+ARTIFACT_REGISTRY_REGION="${GCP_ARTIFACT_REGISTRY_REGION:-europe-west8}"
 
-gcloud auth configure-docker europe-west8-docker.pkg.dev --quiet
+cd "${APP_DIR}"
+
+gcloud auth configure-docker "${ARTIFACT_REGISTRY_REGION}-docker.pkg.dev" --quiet
 
 docker compose -f docker-compose.release.yml pull
 
