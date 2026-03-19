@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   getIssueSubscriptionApi,
@@ -19,9 +19,11 @@ import { isAdminLike } from "@shared/lib";
 import { useAuth } from "@features/auth";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
+import { isProjectAccessRevokedError, revokeProjectAccess } from "@features/project/lib/accessRevocation";
 
 export function IssuePage() {
-  const { issueId } = useParams();
+  const navigate = useNavigate();
+  const { issueId, projectId } = useParams();
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
@@ -31,7 +33,7 @@ export function IssuePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState("");
 
-  const { data: issue, isLoading, refetch } = useQuery({
+  const { data: issue, isLoading, error: issueError, refetch } = useQuery({
     queryKey: ["issue", issueId],
     queryFn: () => getIssueApi(issueId!),
     enabled: !!issueId,
@@ -42,7 +44,7 @@ export function IssuePage() {
   const safeIssue = issue && issue.issueId === numericIssueId ? issue : null;
   const subscriptionQueryKey = ["issue", issueId, "subscription"] as const;
 
-  const { data: projectMembers = [] } = useQuery({
+  const { data: projectMembers = [], error: projectMembersError } = useQuery({
     queryKey: ["project", safeIssue?.projectId, "members"],
     queryFn: () => listProjectMembersApi(safeIssue!.projectId),
     enabled: Boolean(safeIssue?.projectId),
@@ -52,6 +54,7 @@ export function IssuePage() {
   const {
     data: projectSubscription = null,
     isLoading: isProjectSubscriptionLoading,
+    error: projectSubscriptionError,
   } = useQuery({
     queryKey: ["project", safeIssue?.projectId, "subscription"],
     queryFn: () => getProjectSubscriptionApi(safeIssue!.projectId),
@@ -109,6 +112,33 @@ export function IssuePage() {
       setLabel(`issue:${issueId}`, safeIssue.title);
     }
   }, [issueId, safeIssue, setLabel]);
+
+  useEffect(() => {
+    const numericProjectId = Number(projectId ?? safeIssue?.projectId);
+    if (!Number.isInteger(numericProjectId) || numericProjectId <= 0) {
+      return;
+    }
+
+    const accessRevoked =
+      isProjectAccessRevokedError(issueError) ||
+      isProjectAccessRevokedError(projectMembersError) ||
+      isProjectAccessRevokedError(projectSubscriptionError);
+
+    if (!accessRevoked) {
+      return;
+    }
+
+    revokeProjectAccess(queryClient, numericProjectId);
+    navigate("/projects", { replace: true });
+  }, [
+    issueError,
+    navigate,
+    projectId,
+    projectMembersError,
+    projectSubscriptionError,
+    queryClient,
+    safeIssue?.projectId,
+  ]);
 
   const isAssigned = useMemo(() => {
     if (!safeIssue || !currentUser) return false;
@@ -176,7 +206,14 @@ export function IssuePage() {
         }
       >
         <div className="h-full">
-          <IssueActivityPanel issueId={safeIssue.issueId} issueTitle={safeIssue.title} currentUser={currentUser} canCompose={canCompose} className="h-full" />
+          <IssueActivityPanel
+            issueId={safeIssue.issueId}
+            issueTitle={safeIssue.title}
+            currentUser={currentUser}
+            projectMembers={projectMembers}
+            canCompose={canCompose}
+            className="h-full"
+          />
         </div>
       </SidebarLayout>
 

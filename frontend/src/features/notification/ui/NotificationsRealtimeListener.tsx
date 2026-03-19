@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { matchPath, useLocation } from "react-router-dom";
+import { matchPath, useLocation, useNavigate } from "react-router-dom";
 
 import { getAccessToken } from "@shared/api/core/client";
 import { refreshApi } from "@features/auth/api";
@@ -26,6 +26,16 @@ import type { NotificationItem, NotificationsPage } from "@shared/api/types/noti
 import { createSseParser } from "@shared/lib/sse";
 import { useAuth } from "@features/auth";
 import { useToast } from "@shared/providers";
+import { consumeOwnProjectRemovalNotificationSuppression } from "@features/project/lib/notificationSuppression";
+import {
+  invalidateProjectAccessQueries,
+  revokeProjectAccess,
+} from "@features/project/lib/accessRevocation";
+import { getProjectApi } from "@features/project/api";
+import { getIssueApi } from "@features/issue/api";
+import { resolveMediaUrl } from "@shared/api/core/media";
+import type { Project } from "@shared/api/types/projects";
+import type { Issue } from "@shared/api/types/issues";
 
 const STREAM_RETRY_DELAYS_MS = [1000, 2000, 5000, 10000, 20000];
 
@@ -60,6 +70,20 @@ function getRouteTarget(pathname: string): RouteTarget {
   return { kind: "none" };
 }
 
+function getRouteProjectId(pathname: string): number | null {
+  const issueMatch = matchPath("/projects/:projectId/issues/:issueId", pathname);
+  if (issueMatch) {
+    return parsePositiveInt(issueMatch.params.projectId);
+  }
+
+  const projectMatch = matchPath("/projects/:projectId/issues", pathname);
+  if (projectMatch) {
+    return parsePositiveInt(projectMatch.params.projectId);
+  }
+
+  return null;
+}
+
 function matchesRouteTarget(notification: NotificationItem, routeTarget: RouteTarget): boolean {
   if (routeTarget.kind === "issue") {
     return notification.issueId === routeTarget.issueId;
@@ -79,14 +103,38 @@ function shouldSilenceNotification(notification: NotificationItem, routeTarget: 
   return matchesRouteTarget(notification, routeTarget);
 }
 
+function mergeProjectIntoHomeProjects(
+  currentProjects: Project[] | undefined,
+  nextProject: Project,
+): Project[] {
+  const merged = [
+    nextProject,
+    ...(currentProjects ?? []).filter((project) => project.projectId !== nextProject.projectId),
+  ];
+
+  return merged.sort(
+    (left, right) =>
+      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  );
+}
+
+function mergeIssueIntoProjectIssues(
+  currentIssues: Issue[] | undefined,
+  nextIssue: Issue,
+): Issue[] {
+  return [...(currentIssues ?? []).filter((issue) => issue.issueId !== nextIssue.issueId), nextIssue];
+}
+
 export function NotificationsRealtimeListener() {
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, refreshUser } = useAuth();
   const { pushToast } = useToast();
   const pendingReadIdsRef = useRef(new Set<number>());
 
   const routeTarget = useMemo(() => getRouteTarget(location.pathname), [location.pathname]);
+  const routeProjectId = useMemo(() => getRouteProjectId(location.pathname), [location.pathname]);
 
   const { data, isSuccess } = useInfiniteQuery({
     queryKey: notificationsQueryKey,
@@ -163,7 +211,90 @@ export function NotificationsRealtimeListener() {
     readMutation.mutate(notification.notifyUserId);
   });
 
+  const hydrateAddedProjectInHome = useEffectEvent(async (projectId: number) => {
+    try {
+      const project = await getProjectApi(projectId);
+      const normalizedProject = {
+        ...project,
+        authorProfileImg: resolveMediaUrl(project.authorProfileImg || undefined),
+      } satisfies Project;
+
+      queryClient.setQueryData<Project[]>(["projects"], (currentProjects) =>
+        mergeProjectIntoHomeProjects(currentProjects, normalizedProject),
+      );
+    } catch (error) {
+      console.error("Failed to hydrate added project in home cache", error);
+    }
+  });
+
+  const hydrateAddedIssueInProject = useEffectEvent(async (projectId: number, issueId: number) => {
+    try {
+      const issue = await getIssueApi(issueId);
+
+      queryClient.setQueriesData<Issue[]>(
+        {
+          predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === "project" &&
+            String(query.queryKey[1]) === String(projectId) &&
+            query.queryKey[2] === "issues",
+        },
+        (currentIssues) => mergeIssueIntoProjectIssues(currentIssues, issue),
+      );
+      queryClient.setQueryData(["issue", issueId], issue);
+      queryClient.setQueryData(["issue", String(issueId)], issue);
+    } catch (error) {
+      console.error("Failed to hydrate added issue in project cache", error);
+    }
+  });
+
   const handleNotificationCreated = useEffectEvent((notification: NotificationItem) => {
+    if (notification.projectId != null) {
+      if (notification.type === "PROJECT_ADDED") {
+        void hydrateAddedProjectInHome(notification.projectId);
+      }
+
+      if (notification.type === "ISSUE_ADDED" && notification.issueId != null) {
+        void hydrateAddedIssueInProject(notification.projectId, notification.issueId);
+      }
+
+      if (notification.type === "PROJECT_REMOVED") {
+        queryClient.setQueryData(
+          notificationsQueryKey,
+          (current: InfiniteData<NotificationsPage> | undefined) =>
+            updateNotificationsInfiniteData(current, (item) =>
+              item.projectId === notification.projectId &&
+              item.type === "PROJECT_REMOVED"
+                ? null
+                : item,
+            ),
+        );
+      }
+
+      if (notification.type === "PROJECT_UNASSIGNED" || notification.type === "PROJECT_REMOVED") {
+        revokeProjectAccess(queryClient, notification.projectId);
+
+        if (routeProjectId === notification.projectId) {
+          navigate("/projects", { replace: true });
+        }
+      }
+    } else if (notification.type === "PROJECT_REMOVED" && routeProjectId != null) {
+      invalidateProjectAccessQueries(
+        queryClient,
+        routeProjectId,
+        routeTarget.kind === "issue" ? routeTarget.issueId : null,
+      );
+    }
+
+    if (
+      notification.type === "PROJECT_REMOVED" &&
+      notification.projectId != null &&
+      consumeOwnProjectRemovalNotificationSuppression(notification.projectId)
+    ) {
+      deleteMutation.mutate(notification.notifyUserId);
+      return;
+    }
+
     if (shouldSilenceNotification(notification, routeTarget)) {
       deleteMutation.mutate(notification.notifyUserId);
       return;
@@ -345,7 +476,7 @@ export function NotificationsRealtimeListener() {
       clearReconnectTimer();
       abortController?.abort();
     };
-  }, [isSuccess, queryClient, refreshUser, user]);
+  }, [isSuccess, navigate, queryClient, refreshUser, routeProjectId, user]);
 
   return null;
 }

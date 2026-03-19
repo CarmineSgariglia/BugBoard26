@@ -170,6 +170,16 @@ vi.mock("@features/issue/ui/IssueCard", () => ({
 }));
 
 describe("ProjectIssuesPage", () => {
+  function createAxiosStatusError(status: number) {
+    return {
+      isAxiosError: true,
+      response: {
+        status,
+        data: {},
+      },
+    };
+  }
+
   const project = {
     projectId: 7,
     name: "Orbit",
@@ -276,5 +286,31 @@ describe("ProjectIssuesPage", () => {
       screen.queryByRole("button", { name: /toggle subscription/i })
     ).not.toBeInTheDocument();
     expect(screen.getByText("isAdmin:false")).toBeInTheDocument();
+  });
+
+  it("redirects to /projects when project access is revoked with a 403 response", async () => {
+    projectIssuesPageState.getProjectApi.mockRejectedValue(createAxiosStatusError(403));
+    projectIssuesPageState.listProjectIssuesApi.mockRejectedValue(createAxiosStatusError(403));
+    projectIssuesPageState.listProjectMembersApi.mockRejectedValue(createAxiosStatusError(403));
+
+    const { queryClient } = renderWithProviders(
+      <Routes>
+        <Route path="/projects" element={<div>Projects Home</div>} />
+        <Route path="/projects/:projectId/issues" element={<ProjectIssuesPage />} />
+      </Routes>,
+      { route: "/projects/7/issues" }
+    );
+
+    queryClient.setQueryData(["projects"], [
+      { projectId: 7, name: "Orbit" },
+      { projectId: 14, name: "Nova" },
+    ]);
+    queryClient.setQueryData(["project", "7"], { projectId: 7, name: "Orbit" });
+
+    expect(await screen.findByText("Projects Home")).toBeInTheDocument();
+    expect(queryClient.getQueryData(["projects"])).toEqual([
+      { projectId: 14, name: "Nova" },
+    ]);
+    expect(queryClient.getQueryData(["project", "7"])).toBeUndefined();
   });
 });

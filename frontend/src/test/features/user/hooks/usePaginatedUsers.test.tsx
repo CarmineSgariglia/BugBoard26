@@ -11,20 +11,28 @@ vi.mock("@features/user/api", () => ({
   listUsersApi: vi.fn(),
 }));
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
+const createWrapper = (queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
     },
-  });
+  },
+})) => {
   return ({ children }: { children: React.ReactNode }) => (
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </MemoryRouter>
   );
 };
+
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
 
 describe("usePaginatedUsers", () => {
   beforeEach(() => {
@@ -118,6 +126,82 @@ describe("usePaginatedUsers", () => {
 
     await waitFor(() => {
       expect(listUsersApi).toHaveBeenCalledWith({ page: 1, excludeUserIds: "2" });
+    });
+  });
+
+  it("removes a user immediately from the current filtered view when the updated status no longer matches", async () => {
+    const queryClient = createQueryClient();
+    const activeUsersResponse = {
+      count: 1,
+      next: null,
+      previous: null,
+      results: [{ userId: 1, username: "alice", email: "alice@example.com", isAdmin: false, active: true }],
+    };
+
+    queryClient.setQueryData(["users", { page: 1, status: "Active" }], activeUsersResponse);
+    vi.mocked(listUsersApi).mockResolvedValue(activeUsersResponse as any);
+
+    const { result } = renderHook(() => usePaginatedUsers({ initialStatus: "Active" }), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.users).toHaveLength(1);
+      expect(result.current.statusFilter).toBe("Active");
+    });
+
+    act(() => {
+      result.current.updateLocalUser({
+        userId: 1,
+        username: "alice",
+        email: "alice@example.com",
+        isAdmin: false,
+        active: false,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.users).toEqual([]);
+      expect(result.current.totalItems).toBe(0);
+    });
+  });
+
+  it("adds a user immediately to a cached filtered view when the updated status starts matching", async () => {
+    const queryClient = createQueryClient();
+    const inactiveUsersResponse = {
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    };
+
+    queryClient.setQueryData(["users", { page: 1, status: "Inactive" }], inactiveUsersResponse);
+    vi.mocked(listUsersApi).mockResolvedValue(inactiveUsersResponse as any);
+
+    const { result } = renderHook(() => usePaginatedUsers({ initialStatus: "Inactive" }), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.users).toEqual([]);
+      expect(result.current.statusFilter).toBe("Inactive");
+    });
+
+    act(() => {
+      result.current.updateLocalUser({
+        userId: 1,
+        username: "alice",
+        email: "alice@example.com",
+        isAdmin: false,
+        active: false,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.users).toEqual([
+        expect.objectContaining({ userId: 1, active: false }),
+      ]);
+      expect(result.current.totalItems).toBe(1);
     });
   });
 });

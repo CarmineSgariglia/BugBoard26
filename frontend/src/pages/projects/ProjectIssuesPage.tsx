@@ -34,6 +34,7 @@ import { Select } from "@shared/ui/Select";
 import { IssueCard } from "@features/issue/ui/IssueCard";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
 import { ProjectSidebar } from "@features/project/ui/ProjectSidebar";
+import { isProjectAccessRevokedError, revokeProjectAccess } from "@features/project/lib/accessRevocation";
 
 export function ProjectIssuesPage() {
   const navigate = useNavigate();
@@ -195,6 +196,29 @@ export function ProjectIssuesPage() {
       : issuesError || membersError || projectError
         ? "Unable to load project data. Please try again."
         : "";
+
+  useEffect(() => {
+    if (!projectId) {
+      return;
+    }
+
+    const numericProjectId = Number(projectId);
+    if (!Number.isInteger(numericProjectId) || numericProjectId <= 0) {
+      return;
+    }
+
+    const accessRevoked =
+      isProjectAccessRevokedError(issuesError) ||
+      isProjectAccessRevokedError(membersError) ||
+      isProjectAccessRevokedError(projectError);
+
+    if (!accessRevoked) {
+      return;
+    }
+
+    revokeProjectAccess(queryClient, numericProjectId);
+    navigate("/projects", { replace: true });
+  }, [issuesError, membersError, navigate, projectError, projectId, queryClient]);
 
   if (!isLoading && !project && !error) {
     return (

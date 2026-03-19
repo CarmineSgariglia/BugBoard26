@@ -46,4 +46,18 @@ describe("formatIssueActivityEvent", () => {
     expect(formatted.title).toBe("dev added member(s)");
     expect(formatted.message).toBe("Assigned to Alex");
   });
+
+  it("uses the provided display name in Nome Cognome (username) format", () => {
+    const formatted = formatIssueActivityEvent(
+      {
+        ...baseEvent,
+        eventType: "COMMENT",
+        message: "Ping",
+      },
+      "Mattia Lemma (mattia.lemma)"
+    );
+
+    expect(formatted.actorName).toBe("Mattia Lemma (mattia.lemma)");
+    expect(formatted.title).toBe("Mattia Lemma (mattia.lemma)");
+  });
 });

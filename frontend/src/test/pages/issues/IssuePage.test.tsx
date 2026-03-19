@@ -50,13 +50,25 @@ vi.mock("@features/issue", () => ({
     issueId,
     issueTitle,
     canCompose,
+    projectMembers = [],
   }: {
     issueId: number;
     issueTitle: string;
     canCompose: boolean;
+    projectMembers?: Array<{ firstName?: string; lastName?: string; username: string }>;
   }) => (
     <div data-testid="issue-activity-panel">
       {issueId}:{issueTitle}:{String(canCompose)}
+      <span>
+        members:
+        {projectMembers
+          .map((member) =>
+            `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim()
+              ? `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim() + ` (${member.username})`
+              : member.username
+          )
+          .join(",")}
+      </span>
     </div>
   ),
   IssueDetailsSidebar: ({
@@ -131,6 +143,16 @@ vi.mock("@features/issue", () => ({
 }));
 
 describe("IssuePage", () => {
+  function createAxiosStatusError(status: number) {
+    return {
+      isAxiosError: true,
+      response: {
+        status,
+        data: {},
+      },
+    };
+  }
+
   const issue = {
     issueId: 12,
     projectId: 7,
@@ -172,9 +194,9 @@ describe("IssuePage", () => {
       subscribed: true,
     });
     issuePageState.listProjectMembersApi.mockResolvedValue([
-      { userId: 1, username: "admin", role: "ADMIN" },
-      { userId: 2, username: "devuser", role: "MEMBER" },
-      { userId: 3, username: "qa", role: "MEMBER" },
+      { userId: 1, username: "admin", firstName: "Admin", lastName: "User", role: "ADMIN" },
+      { userId: 2, username: "devuser", firstName: "Dev", lastName: "User", role: "MEMBER" },
+      { userId: 3, username: "qa", firstName: "Quality", lastName: "Analyst", role: "MEMBER" },
     ]);
     issuePageState.subscribeToIssueApi.mockResolvedValue(undefined);
     issuePageState.unsubscribeFromIssueApi.mockResolvedValue(undefined);
@@ -204,6 +226,9 @@ describe("IssuePage", () => {
     expect(issuePageState.getProjectSubscriptionApi).not.toHaveBeenCalled();
     expect(
       screen.getByText("12:Broken login flow:true")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("members:Admin User (admin),Dev User (devuser),Quality Analyst (qa)")
     ).toBeInTheDocument();
   });
 
@@ -326,5 +351,29 @@ describe("IssuePage", () => {
 
     expect(issuePageState.unsubscribeFromIssueApi).not.toHaveBeenCalled();
     expect(issuePageState.subscribeToIssueApi).not.toHaveBeenCalled();
+  });
+
+  it("redirects to /projects when the issue becomes inaccessible with a 404 response", async () => {
+    issuePageState.getIssueApi.mockRejectedValue(createAxiosStatusError(404));
+
+    const { queryClient } = renderWithProviders(
+      <Routes>
+        <Route path="/projects" element={<div>Projects Home</div>} />
+        <Route path="/projects/:projectId/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/projects/7/issues/12" }
+    );
+
+    queryClient.setQueryData(["projects"], [
+      { projectId: 7, name: "Orbit" },
+      { projectId: 14, name: "Nova" },
+    ]);
+    queryClient.setQueryData(["project", 7], { projectId: 7, name: "Orbit" });
+
+    expect(await screen.findByText("Projects Home")).toBeInTheDocument();
+    expect(queryClient.getQueryData(["projects"])).toEqual([
+      { projectId: 14, name: "Nova" },
+    ]);
+    expect(queryClient.getQueryData(["project", 7])).toBeUndefined();
   });
 });
