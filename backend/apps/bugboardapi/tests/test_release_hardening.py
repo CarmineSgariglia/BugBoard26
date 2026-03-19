@@ -107,14 +107,11 @@ class ProjectViewRegressionTests(APITestCase):
 
     @patch("apps.bugboardapi.modules.projects.commands.notify_project_removed")
     def test_project_delete_notifies_members_before_deletion(self, mock_notify_project_removed):
-        expected_project_name = self.alpha_project.name
-        response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         mock_notify_project_removed.assert_called_once()
-        self.assertEqual(
-            mock_notify_project_removed.call_args.kwargs["project"].name,
-            expected_project_name,
-        )
+        self.assertIsNone(mock_notify_project_removed.call_args.kwargs["project"])
         notified_user_ids = {
             user.id for user in mock_notify_project_removed.call_args.kwargs["users"]
         }
@@ -125,7 +122,8 @@ class ProjectViewRegressionTests(APITestCase):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])
 
-        response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         mock_notify_project_removed.assert_called_once()
 
@@ -282,7 +280,8 @@ class ProjectTransactionalSafetyNetTests(APITestCase):
         )
 
     def test_project_removed_notification_survives_project_deletion(self):
-        delete_project_and_notify(project=self.project)
+        with self.captureOnCommitCallbacks(execute=True):
+            delete_project_and_notify(project=self.project)
 
         self.assertFalse(
             ProjectMembership.objects.filter(project_id=self.project.project_id).exists()

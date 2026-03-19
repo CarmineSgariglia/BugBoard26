@@ -5,8 +5,7 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from ...common.parsing import request_user_ids
-from ...roles import is_admin_user
-from ..projects.membership import visible_project_memberships
+from ..projects.membership import admin_project_subscription_users
 from ..notifications.services import (
     notify_issue_added,
     notify_issue_assigned,
@@ -31,19 +30,15 @@ _UNSET = object()
 
 
 def _project_issue_admin_users(*, project) -> list[User]:
-    return [
-        membership.user
-        for membership in visible_project_memberships(
-            project=project,
-            include_admins=True,
-            active_only=True,
-        )
-        if is_admin_user(membership.user)
-    ]
+    return admin_project_subscription_users(project=project, active_only=True)
 
 
 def _issue_update_recipients(*, issue: Issue, actor=None) -> list[User]:
     return issue_notification_recipients(issue=issue, actor=actor)
+
+
+def _issue_closed_recipients(*, issue: Issue) -> list[User]:
+    return [issue.reporter, *admin_project_subscription_users(project=issue.project, active_only=True)]
 
 
 def _dispatch_issue_side_effects(
@@ -221,7 +216,7 @@ def update_issue_status(*, issue: Issue, actor, new_status, raw_message, payload
             old_status=old_status,
             new_status=new_status,
             notification_sender=notify_issue_closed if new_status == IssueStatus.DONE else None,
-            notification_users=[issue.reporter] if new_status == IssueStatus.DONE else None,
+            notification_users=_issue_closed_recipients(issue=issue) if new_status == IssueStatus.DONE else None,
             notification_actor=actor if new_status == IssueStatus.DONE else _UNSET,
         )
     return issue
