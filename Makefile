@@ -2,8 +2,10 @@ SHELL := /bin/sh
 
 COMPOSE := docker compose
 COMPOSE_PROXY := docker compose --profile proxy
+PROD_BACKEND_IMAGE ?= bugboard26/backend:local-prod
+PROD_WEB_IMAGE ?= bugboard26/web:local-prod
 
-.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend prod-up prod-down backend-test backend-coverage frontend-test frontend-coverage
+.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend prod-up prod-down backend-test backend-coverage frontend-test frontend-coverage release-config
 
 # Start just the backend service (also brings up database dependency)
 backend:
@@ -57,11 +59,16 @@ frontend-test:
 frontend-coverage:
 	$(COMPOSE) -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage
 
-# Start production-like stack (uses docker-compose.prod.yml overrides)
+# Start production-like stack using the immutable-image release compose
 prod-up:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+	docker build -t $(PROD_BACKEND_IMAGE) ./backend
+	docker build -t $(PROD_WEB_IMAGE) -f nginx/Dockerfile .
+	BACKEND_IMAGE=$(PROD_BACKEND_IMAGE) WEB_IMAGE=$(PROD_WEB_IMAGE) $(COMPOSE) -f docker-compose.release.yml up -d
 
 # Stop production-like stack
 prod-down:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml down
+	BACKEND_IMAGE=$(PROD_BACKEND_IMAGE) WEB_IMAGE=$(PROD_WEB_IMAGE) $(COMPOSE) -f docker-compose.release.yml down
 
+# Validate the release compose definition with sample production env values
+release-config:
+	BACKEND_IMAGE=example.com/bugboard/backend:local WEB_IMAGE=example.com/bugboard/web:local $(COMPOSE) --env-file env/production.example -f docker-compose.release.yml config >/dev/null

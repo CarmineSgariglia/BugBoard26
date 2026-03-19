@@ -1,53 +1,46 @@
 # Database
 POSTGRES_DB=bugboard
 POSTGRES_USER=bugboard
-POSTGRES_PASSWORD=UNA_PASSWORD_MOLTO_SICURA_123
+POSTGRES_PASSWORD=CHANGE_ME_DB_PASSWORD
 
 # Django
-DJANGO_SECRET_KEY=GENERA_UNA_STRINGA_CASUALE_LUNGA_E_COMPLESSA
+DJANGO_SECRET_KEY=CHANGE_ME_LONG_RANDOM_SECRET
 DEBUG=False
-# Aggiungi l'IP della tua VM solo per bootstrap/debug iniziale, poi preferisci il dominio
-ALLOWED_HOSTS=35.240.52.33,your-domain.com,www.your-domain.com,backend
+ALLOWED_HOSTS=your-domain.com,www.your-domain.com,backend
 
 # Gunicorn runtime
 GUNICORN_WORKERS=1
 GUNICORN_THREADS=8
 
-# Gunicorn runtime
-GUNICORN_WORKERS=1
-GUNICORN_THREADS=12
-
 # CORS / CSRF
 CORS_ALLOW_ALL_ORIGINS=False
-CORS_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com,http://35.240.52.33
-CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com,http://35.240.52.33
+CORS_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
+CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com
 
-# Nginx / TLS (Let's Encrypt montato dalla VM host)
-NGINX_SERVER_NAME=your-domain.com www.your-domain.com
-SSL_CERTS_HOST_PATH=/opt/bugboard26/certs
-NGINX_SSL_CERT_PATH=/etc/nginx/certs/live/your-domain.com/fullchain.pem
-NGINX_SSL_KEY_PATH=/etc/nginx/certs/live/your-domain.com/privkey.pem
-
-# Security (Disabilita SSL_REDIRECT se non hai ancora i certificati TLS installati, altrimenti non vedrai nulla)
+# Security headers/cookies
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
-SECURE_SSL_REDIRECT=False  # <--- Metti True solo DOPO aver installato i certificati SSL
+SECURE_SSL_REDIRECT=True
 SECURE_HSTS_SECONDS=31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+SECURE_HSTS_PRELOAD=True
+SECURE_REFERRER_POLICY=strict-origin-when-cross-origin
 
-# Email provider (Brevo)
+# Email provider
 EMAIL_PROVIDER=brevo
-BREVO_API_KEY=LA_TUA_API_KEY_BREVO
-BREVO_OTP_TEMPLATE_ID=ID_DEL_TEMPLATE
-BREVO_NEW_USER_TEMPLATE_ID=ID_DEL_TEMPLATE_NUOVO_UTENTE
+BREVO_API_KEY=CHANGE_ME_BREVO_API_KEY
+BREVO_OTP_TEMPLATE_ID=CHANGE_ME_BREVO_TEMPLATE_ID
 BREVO_SENDER_NAME=BugBoard26
 DEFAULT_FROM_EMAIL=noreply@your-domain.com
 
 # Frontend API base
 VITE_API_BASE_URL=/api
 
-# Media storage (Google Cloud Storage) - configurazione IAM-based senza JSON locale
+# Media storage (Google Cloud Storage)
 MEDIA_STORAGE_BACKEND=gcs
-GS_PROJECT_ID=bugboard-prod-2026
-GS_BUCKET_NAME=IL_NOME_DEL_TUO_BUCKET_GCS
+GS_PROJECT_ID=CHANGE_ME_GCP_PROJECT
+GS_BUCKET_NAME=CHANGE_ME_GCS_BUCKET
 GS_QUERYSTRING_AUTH=False
-GCS_MEDIA_URL=https://storage.googleapis.com/IL_NOME_DEL_TUO_BUCKET_GCS/
+GCS_MEDIA_URL=https://storage.googleapis.com/CHANGE_ME_GCS_BUCKET/
+GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-media-sa.json
+GCP_MEDIA_CREDENTIALS_FILE=./secrets/gcp-media-sa.json

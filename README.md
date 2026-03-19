@@ -10,7 +10,7 @@ Containerized three-tier architecture:
 - `frontend/`: React + TypeScript + Tailwind app
 - `backend/`: Django REST API app
 - `docker-compose.yml`: Orchestrates all tiers
-- `docker-compose.prod.yml`: Single-node production overrides
+- `docker-compose.release.yml`: Immutable-image production release definition for VM deploys
 - `env/dev.example`: Local development environment template
 - `BrunoTesting/env/bruno-safe.ci.env`: Safe CI environment for Bruno and CI workflows
 - `env/production.example`: Production environment template
@@ -37,6 +37,7 @@ Notes:
 - Backend changes are validated on push by `.github/workflows/backend-safe.yml`, which runs the Django suite with coverage.
 - SonarCloud analysis runs from `.github/workflows/sonar.yml` only for backend-related changes and analyzes the backend codebase only.
 - Pull requests targeting `main` are gated by `.github/workflows/main-pr-gate.yml`, which aggregates the safe backend, frontend, and Bruno suites into a single required check.
+- Production releases run from `.github/workflows/deploy-prod.yml`: the workflow rebuilds `backend` and `web`, pushes immutable images to Artifact Registry, and deploys to the VM only after GitHub Environment approval.
 - SonarCloud is intentionally informational: keep `Main PR Gate` as the only required status check on `main`.
 - GitHub secret required for SonarCloud: `SONAR_TOKEN`.
 
@@ -76,9 +77,16 @@ Notes:
 ## Production
 
 - Use `env/production.example` as template for production secrets and security flags.
-- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs` and `GS_BUCKET_NAME`.
-- Start the standard single-node production stack with:
-  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
+- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs`, `GS_BUCKET_NAME`, and `GOOGLE_APPLICATION_CREDENTIALS`.
+- Production deployment model:
+  - CI validates the repo
+  - release workflow builds immutable `backend` and `web` images
+  - the VM deploys by pulling validated images from Artifact Registry
+  - production must never rely on `git pull` or local `docker compose build`
+- Start a production-like stack locally with:
+  - `make prod-up`
+- Validate the release compose with sample production values:
+  - `make release-config`
 - Exposed ports in production:
   - `80` and `443` on the `web` service only
 - Internal-only services in the production stack:
@@ -86,7 +94,12 @@ Notes:
 - Frontend delivery in production:
   - nginx serves the compiled files from `dist/`
   - sourcemaps are disabled
-  - API and media requests go through the same origin (`/api`, `/media`)
+  - API requests go through the same origin (`/api`)
+  - media files are served directly by GCS using the absolute URLs returned by the backend
+- Recommended production VM baseline on Google Cloud:
+  - `e2-standard-2`
+  - `pd-balanced` disk `50-100 GB`
+  - region `europe-west8`
 - Realtime runtime mode:
   - production uses in-memory cache/transport and a single Gunicorn worker for single-VM SSE reliability
 
@@ -124,4 +137,4 @@ Notes:
 - PostgreSQL data persistence is provided by Docker volume `postgres_data`.
 - Docker internal communication uses service names over `bugboard_net`.
 - In development, frontend requests use the Vite proxy for `/api`.
-- In production, nginx serves the frontend and proxies `/api`, `/media`, and `/admin` to Django.
+- In production, nginx serves the frontend and proxies `/api` and `/admin` to Django; media URLs are served directly from GCS.

@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
+from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from PIL import Image, ImageOps, UnidentifiedImageError
 from rest_framework.exceptions import ValidationError
 
 IMAGE_SIGNATURES: dict[str, bytes] = {
@@ -46,6 +49,20 @@ class StoredUpload:
     path: str
     mime_type: str
     size: int
+
+
+@dataclass(frozen=True)
+class PreparedImageUpload:
+    file: ContentFile
+    mime_type: str
+    size: int
+    extension: str
+
+
+COMPRESSED_IMAGE_MIME_TYPE = "image/webp"
+COMPRESSED_IMAGE_EXTENSION = ".webp"
+IMAGE_QUALITY_STEPS = (82, 74, 66, 58, 50)
+IMAGE_SCALE_STEPS = (1.0, 0.85, 0.72, 0.6)
 
 
 def _read_prefix(uploaded_file, size: int = 16) -> bytes:
@@ -103,7 +120,100 @@ def validate_profile_image(uploaded_file, *, max_size_bytes: int = 2 * 1024 * 10
     return expected_suffix.removeprefix("."), size
 
 
-def validate_issue_attachment(uploaded_file, *, max_size_bytes: int = 10 * 1024 * 1024) -> tuple[str, int]:
+def _coerce_image_mode(image: Image.Image) -> Image.Image:
+    if image.mode in {"RGB", "RGBA"}:
+        return image
+    if image.mode in {"LA", "PA"}:
+        return image.convert("RGBA")
+    if image.mode == "P":
+        if "transparency" in image.info:
+            return image.convert("RGBA")
+        return image.convert("RGB")
+    return image.convert("RGB")
+
+
+def _resized_dimensions(
+    width: int,
+    height: int,
+    *,
+    max_width: int,
+    max_height: int,
+    scale_factor: float,
+) -> tuple[int, int]:
+    ratio = min(max_width / width, max_height / height, 1.0) * scale_factor
+    safe_ratio = ratio if ratio > 0 else 1.0
+    return (
+        max(1, round(width * safe_ratio)),
+        max(1, round(height * safe_ratio)),
+    )
+
+
+def _build_prepared_image_upload(*, payload: bytes, original_name: str) -> PreparedImageUpload:
+    prepared = ContentFile(payload, name=f"{Path(original_name or 'upload').stem}{COMPRESSED_IMAGE_EXTENSION}")
+    prepared.content_type = COMPRESSED_IMAGE_MIME_TYPE
+    return PreparedImageUpload(
+        file=prepared,
+        mime_type=COMPRESSED_IMAGE_MIME_TYPE,
+        size=len(payload),
+        extension=COMPRESSED_IMAGE_EXTENSION,
+    )
+
+
+def compress_image_upload(
+    *,
+    uploaded_file,
+    max_width: int,
+    max_height: int,
+    target_max_bytes: int,
+    field_name: str,
+) -> PreparedImageUpload:
+    position = uploaded_file.tell() if hasattr(uploaded_file, "tell") else None
+    try:
+        image = Image.open(uploaded_file)
+        image = ImageOps.exif_transpose(image)
+        image.load()
+    except (OSError, UnidentifiedImageError) as exc:
+        raise ValidationError({field_name: "Image file is invalid or could not be processed"}) from exc
+    finally:
+        if position is not None and hasattr(uploaded_file, "seek"):
+            uploaded_file.seek(position)
+
+    image = _coerce_image_mode(image)
+    for scale_factor in IMAGE_SCALE_STEPS:
+        target_width, target_height = _resized_dimensions(
+            image.width,
+            image.height,
+            max_width=max_width,
+            max_height=max_height,
+            scale_factor=scale_factor,
+        )
+
+        resized = image.copy()
+        if resized.size != (target_width, target_height):
+            resized = resized.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+        for quality in IMAGE_QUALITY_STEPS:
+            buffer = BytesIO()
+            resized.save(buffer, format="WEBP", quality=quality, method=6)
+            payload = buffer.getvalue()
+
+            if len(payload) <= target_max_bytes:
+                return _build_prepared_image_upload(
+                    payload=payload,
+                    original_name=getattr(uploaded_file, "name", "upload"),
+                )
+
+    raise ValidationError(
+        {field_name: f"Image could not be compressed below {target_max_bytes // (1024 * 1024)}MB"}
+    )
+
+
+def validate_issue_attachment(
+    uploaded_file,
+    *,
+    max_size_bytes: int = 10 * 1024 * 1024,
+    max_image_size_bytes: int | None = None,
+) -> tuple[str, int]:
     size = int(getattr(uploaded_file, "size", 0) or 0)
     if size <= 0:
         raise ValidationError({"file": "File is empty"})
@@ -117,7 +227,8 @@ def validate_issue_attachment(uploaded_file, *, max_size_bytes: int = 10 * 1024 
         raise ValidationError({"file": "File extension does not match attachment type"})
 
     if content_type.startswith("image/"):
-        if size > max_size_bytes:
+        image_size_limit = max_image_size_bytes or max_size_bytes
+        if size > image_size_limit:
             raise ValidationError({"file": "Max image/file size is 10MB"})
         _ensure_image_signature(content_type, uploaded_file)
     elif content_type.startswith("video/"):

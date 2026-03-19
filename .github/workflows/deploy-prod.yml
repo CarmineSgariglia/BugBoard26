@@ -15,7 +15,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PROD_VM_APP_DIR: ${{ vars.PROD_VM_APP_DIR || '/opt/bugboard26' }}
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION }}
+  GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}
+  PROD_VM_APP_DIR: ${{ vars.PROD_VM_APP_DIR }}
+  PROD_VM_PORT: ${{ vars.PROD_VM_PORT }}
 
 jobs:
   backend_safe:
@@ -40,12 +44,6 @@ jobs:
       - backend_safe
       - frontend_safe
       - bruno_safe
-    environment:
-      name: production
-    env:
-      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
-      GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION || secrets.GCP_ARTIFACT_REGISTRY_REGION }}
-      GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPO }}
     outputs:
       backend_image: ${{ steps.meta.outputs.backend_image }}
       web_image: ${{ steps.meta.outputs.web_image }}
@@ -100,57 +98,45 @@ jobs:
       - build_and_push
     environment:
       name: production
-    env:
-      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
-      GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION || secrets.GCP_ARTIFACT_REGISTRY_REGION }}
-      GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPO }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Validate deploy configuration
-        run: |
-          test -n "${GCP_PROJECT_ID}"
-          test -n "${GCP_ARTIFACT_REGISTRY_REGION}"
-          test -n "${GCP_ARTIFACT_REGISTRY_REPOSITORY}"
-
-      - name: Compute immutable image tags
-        id: meta
-        run: |
-          registry_host="${GCP_ARTIFACT_REGISTRY_REGION}-docker.pkg.dev"
-          repository_path="${registry_host}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REGISTRY_REPOSITORY}"
-          release_tag="${GITHUB_SHA}"
-          echo "backend_image=${repository_path}/backend:${release_tag}" >> "$GITHUB_OUTPUT"
-          echo "web_image=${repository_path}/web:${release_tag}" >> "$GITHUB_OUTPUT"
-
-      - name: Copy release files to VM
-        uses: appleboy/scp-action@v0.1.7
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.1
         with:
-          host: ${{ secrets.PROD_VM_HOST }}
-          username: ${{ secrets.PROD_VM_USER }}
-          key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
-          port: ${{ vars.PROD_VM_PORT || 22 }}
-          target: ${{ env.PROD_VM_APP_DIR }}
-          source: "docker-compose.prod.yml,nginx,scripts/deploy_prod.sh"
-          overwrite: true
+          ssh-private-key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
+
+      - name: Trust production host
+        run: |
+          port="${PROD_VM_PORT:-22}"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${port}" -H "${{ secrets.PROD_VM_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload release assets to VM
+        run: |
+          port="${PROD_VM_PORT:-22}"
+          remote_dir="${PROD_VM_APP_DIR}"
+          test -n "${remote_dir}"
+          ssh -p "${port}" "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}" \
+            "mkdir -p '${remote_dir}/scripts' '${remote_dir}/nginx/default.conf' '${remote_dir}/nginx/certs'"
+          scp -P "${port}" docker-compose.release.yml \
+            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/docker-compose.release.yml"
+          scp -P "${port}" nginx/default.conf/production.conf \
+            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/nginx/default.conf/production.conf"
+          scp -P "${port}" scripts/deploy_prod.sh \
+            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/scripts/deploy_prod.sh"
 
       - name: Run deployment on VM
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          BACKEND_IMAGE: ${{ steps.meta.outputs.backend_image }}
-          WEB_IMAGE: ${{ steps.meta.outputs.web_image }}
-          GCP_ARTIFACT_REGISTRY_REGION: ${{ env.GCP_ARTIFACT_REGISTRY_REGION }}
-          PROD_VM_APP_DIR: ${{ env.PROD_VM_APP_DIR }}
-        with:
-          host: ${{ secrets.PROD_VM_HOST }}
-          username: ${{ secrets.PROD_VM_USER }}
-          key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
-          port: ${{ vars.PROD_VM_PORT || 22 }}
-          envs: BACKEND_IMAGE,WEB_IMAGE,GCP_ARTIFACT_REGISTRY_REGION,PROD_VM_APP_DIR
-          script: |
-            test -n "${BACKEND_IMAGE}"
-            test -n "${WEB_IMAGE}"
-            cd "${PROD_VM_APP_DIR}"
-            chmod +x scripts/deploy_prod.sh
-            ./scripts/deploy_prod.sh
+        run: |
+          port="${PROD_VM_PORT:-22}"
+          remote_dir="${PROD_VM_APP_DIR}"
+          test -n "${remote_dir}"
+          ssh -p "${port}" "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}" "
+            chmod +x '${remote_dir}/scripts/deploy_prod.sh' && \
+            APP_DIR='${remote_dir}' \
+            BACKEND_IMAGE='${{ needs.build_and_push.outputs.backend_image }}' \
+            WEB_IMAGE='${{ needs.build_and_push.outputs.web_image }}' \
+            '${remote_dir}/scripts/deploy_prod.sh'
+          "

@@ -11,7 +11,7 @@ from ...common.parsing import parse_csv_ints_query_param
 from ...roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from ...security.passwords import ensure_valid_password
 from ...security.token_sessions import set_password_and_invalidate_sessions
-from ...security.uploads import store_upload, validate_profile_image
+from ...security.uploads import compress_image_upload, store_upload, validate_profile_image
 from .policies import (
     ensure_can_upload_profile_image,
     validate_password_change_request,
@@ -107,10 +107,17 @@ def save_profile_image_for_user(*, request, user: User):
         image,
         max_size_bytes=getattr(settings, "BUGBOARD_MAX_PROFILE_IMAGE_BYTES", 2 * 1024 * 1024),
     )
-    saved = store_upload(
+    prepared_image = compress_image_upload(
         uploaded_file=image,
+        max_width=1024,
+        max_height=1024,
+        target_max_bytes=getattr(settings, "BUGBOARD_MAX_PROFILE_IMAGE_BYTES", 2 * 1024 * 1024),
+        field_name="image",
+    )
+    saved = store_upload(
+        uploaded_file=prepared_image.file,
         storage_dir=f"profile-images/{user.id}",
-        filename_suffix=f".{extension}",
+        filename_suffix=prepared_image.extension or f".{extension}",
     )
     saved_path = saved.path
 

@@ -7,4 +7,5 @@ psycopg2-binary>=2.9,<3.0
 gunicorn>=22.0,<23.0
 django-storages>=1.14,<2.0
 google-cloud-storage>=2.18,<3.0
+Pillow>=11.0,<12.0
 coverage[toml]>=7.6,<8.0
