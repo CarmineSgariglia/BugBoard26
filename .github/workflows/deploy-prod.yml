@@ -118,22 +118,20 @@ jobs:
 
       - name: Run deployment on VM
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          BACKEND_IMAGE: ${{ needs.build_and_push.outputs.backend_image }}
+          WEB_IMAGE: ${{ needs.build_and_push.outputs.web_image }}
+          GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION || secrets.GCP_ARTIFACT_REGISTRY_REGION }}
+          PROD_VM_APP_DIR: ${{ env.PROD_VM_APP_DIR }}
         with:
           host: ${{ secrets.PROD_VM_HOST }}
           username: ${{ secrets.PROD_VM_USER }}
           key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
           port: ${{ vars.PROD_VM_PORT || 22 }}
+          envs: BACKEND_IMAGE,WEB_IMAGE,GCP_ARTIFACT_REGISTRY_REGION,PROD_VM_APP_DIR
           script: |
-            BACKEND_IMAGE="${{ needs.build_and_push.outputs.backend_image }}"
-            WEB_IMAGE="${{ needs.build_and_push.outputs.web_image }}"
-            GCP_ARTIFACT_REGISTRY_REGION="${{ vars.GCP_ARTIFACT_REGISTRY_REGION || secrets.GCP_ARTIFACT_REGISTRY_REGION }}"
-            PROD_VM_APP_DIR="${{ env.PROD_VM_APP_DIR }}"
             test -n "${BACKEND_IMAGE}"
             test -n "${WEB_IMAGE}"
             cd "${PROD_VM_APP_DIR}"
             chmod +x scripts/deploy_prod.sh
-            BACKEND_IMAGE="${BACKEND_IMAGE}" \
-            WEB_IMAGE="${WEB_IMAGE}" \
-            GCP_ARTIFACT_REGISTRY_REGION="${GCP_ARTIFACT_REGISTRY_REGION}" \
-            PROD_VM_APP_DIR="${PROD_VM_APP_DIR}" \
             ./scripts/deploy_prod.sh
