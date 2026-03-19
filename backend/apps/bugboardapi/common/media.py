@@ -10,8 +10,10 @@ def build_media_url(path_or_url: str) -> str:
     """Return an absolute media URL for a stored path or trusted HTTPS URL."""
     if not path_or_url:
         return ""
-    if path_or_url.startswith(("http://", "https://")):
+    if path_or_url.startswith("https://"):
         return path_or_url
+    if path_or_url.startswith("http://"):
+        return ""
     if "://" in path_or_url:
         return ""
     if path_or_url.startswith("/media/"):
