@@ -10,7 +10,7 @@ ALLOWED_HOSTS=your-domain.com,www.your-domain.com,backend
 
 # Gunicorn runtime
 GUNICORN_WORKERS=1
-GUNICORN_THREADS=12
+GUNICORN_THREADS=8
 
 # CORS / CSRF
 CORS_ALLOW_ALL_ORIGINS=False
@@ -38,6 +38,9 @@ VITE_API_BASE_URL=/api
 
 # Media storage (Google Cloud Storage)
 MEDIA_STORAGE_BACKEND=gcs
+GS_PROJECT_ID=CHANGE_ME_GCP_PROJECT
 GS_BUCKET_NAME=CHANGE_ME_GCS_BUCKET
 GS_QUERYSTRING_AUTH=False
 GCS_MEDIA_URL=https://storage.googleapis.com/CHANGE_ME_GCS_BUCKET/
+GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-media-sa.json
+GCP_MEDIA_CREDENTIALS_FILE=./secrets/gcp-media-sa.json

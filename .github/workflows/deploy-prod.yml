@@ -1,0 +1,142 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION }}
+  GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}
+  PROD_VM_APP_DIR: ${{ vars.PROD_VM_APP_DIR }}
+  PROD_VM_PORT: ${{ vars.PROD_VM_PORT }}
+
+jobs:
+  backend_safe:
+    name: Backend Safe Suite
+    uses: ./.github/workflows/backend-safe.yml
+    secrets: inherit
+
+  frontend_safe:
+    name: Frontend Safe Suite
+    uses: ./.github/workflows/frontend-safe.yml
+    secrets: inherit
+
+  bruno_safe:
+    name: Bruno Safe Suite
+    uses: ./.github/workflows/bruno-safe.yml
+    secrets: inherit
+
+  build_and_push:
+    name: Build And Push Production Images
+    runs-on: ubuntu-latest
+    needs:
+      - backend_safe
+      - frontend_safe
+      - bruno_safe
+    outputs:
+      backend_image: ${{ steps.meta.outputs.backend_image }}
+      web_image: ${{ steps.meta.outputs.web_image }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate build configuration
+        run: |
+          test -n "${GCP_PROJECT_ID}"
+          test -n "${GCP_ARTIFACT_REGISTRY_REGION}"
+          test -n "${GCP_ARTIFACT_REGISTRY_REPOSITORY}"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_ARTIFACT_REGISTRY_REGION}-docker.pkg.dev" --quiet
+
+      - name: Compute immutable image tags
+        id: meta
+        run: |
+          registry_host="${GCP_ARTIFACT_REGISTRY_REGION}-docker.pkg.dev"
+          repository_path="${registry_host}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REGISTRY_REPOSITORY}"
+          release_tag="${GITHUB_SHA}"
+          echo "backend_image=${repository_path}/backend:${release_tag}" >> "$GITHUB_OUTPUT"
+          echo "web_image=${repository_path}/web:${release_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Build backend image
+        run: docker build -t "${{ steps.meta.outputs.backend_image }}" ./backend
+
+      - name: Build web image
+        run: docker build -t "${{ steps.meta.outputs.web_image }}" -f nginx/Dockerfile .
+
+      - name: Push backend image
+        run: docker push "${{ steps.meta.outputs.backend_image }}"
+
+      - name: Push web image
+        run: docker push "${{ steps.meta.outputs.web_image }}"
+
+  deploy_production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs:
+      - build_and_push
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
+
+      - name: Trust production host
+        run: |
+          port="${PROD_VM_PORT:-22}"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${port}" -H "${{ secrets.PROD_VM_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload release assets to VM
+        run: |
+          port="${PROD_VM_PORT:-22}"
+          remote_dir="${PROD_VM_APP_DIR}"
+          test -n "${remote_dir}"
+          ssh -p "${port}" "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}" \
+            "mkdir -p '${remote_dir}/scripts' '${remote_dir}/nginx/default.conf' '${remote_dir}/nginx/certs'"
+          scp -P "${port}" docker-compose.release.yml \
+            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/docker-compose.release.yml"
+          scp -P "${port}" nginx/default.conf/production.conf \
+            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/nginx/default.conf/production.conf"
+          scp -P "${port}" scripts/deploy_prod.sh \
+            "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}:${remote_dir}/scripts/deploy_prod.sh"
+
+      - name: Run deployment on VM
+        run: |
+          port="${PROD_VM_PORT:-22}"
+          remote_dir="${PROD_VM_APP_DIR}"
+          test -n "${remote_dir}"
+          ssh -p "${port}" "${{ secrets.PROD_VM_USER }}@${{ secrets.PROD_VM_HOST }}" "
+            chmod +x '${remote_dir}/scripts/deploy_prod.sh' && \
+            APP_DIR='${remote_dir}' \
+            BACKEND_IMAGE='${{ needs.build_and_push.outputs.backend_image }}' \
+            WEB_IMAGE='${{ needs.build_and_push.outputs.web_image }}' \
+            '${remote_dir}/scripts/deploy_prod.sh'
+          "

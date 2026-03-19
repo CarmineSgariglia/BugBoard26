@@ -1,8 +1,11 @@
+from io import BytesIO
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
+from PIL import Image
 from rest_framework.exceptions import ValidationError
 
 from apps.bugboardapi.common.media import build_media_url
@@ -22,7 +25,20 @@ from apps.bugboardapi.roles import (
     has_global_role,
     is_admin_user,
 )
-from apps.bugboardapi.security.uploads import store_upload, validate_profile_image
+from apps.bugboardapi.modules.issues.activity import delete_media_path
+from apps.bugboardapi.modules.users.commands import _delete_stored_file
+from apps.bugboardapi.security.uploads import (
+    compress_image_upload,
+    store_upload,
+    validate_profile_image,
+)
+
+
+def make_test_image_bytes(*, size: tuple[int, int], image_format: str = "PNG", color: str = "red") -> bytes:
+    buffer = BytesIO()
+    image = Image.new("RGB", size, color=color)
+    image.save(buffer, format=image_format)
+    return buffer.getvalue()
 
 
 class RoleContractsTests(TestCase):
@@ -178,3 +194,40 @@ class UploadStorageContractsTests(SimpleTestCase):
 
         self.assertEqual(extension, "jpg")
         self.assertEqual(size, len(image.read()))
+
+    def test_compress_image_upload_converts_to_webp_and_respects_target_size(self):
+        uploaded = SimpleUploadedFile(
+            "avatar.png",
+            make_test_image_bytes(size=(2200, 1800)),
+            content_type="image/png",
+        )
+
+        prepared = compress_image_upload(
+            uploaded_file=uploaded,
+            max_width=1024,
+            max_height=1024,
+            target_max_bytes=2 * 1024 * 1024,
+            field_name="image",
+        )
+
+        self.assertIsInstance(prepared.file, ContentFile)
+        self.assertEqual(prepared.mime_type, "image/webp")
+        self.assertEqual(prepared.extension, ".webp")
+        self.assertLessEqual(prepared.size, 2 * 1024 * 1024)
+        self.assertEqual(getattr(prepared.file, "content_type", ""), "image/webp")
+
+
+class StorageDeletionContractsTests(SimpleTestCase):
+    @patch("apps.bugboardapi.modules.users.commands.default_storage.delete")
+    def test_delete_stored_file_uses_default_storage_backend(self, mocked_delete):
+        _delete_stored_file("profile-images/5/old.webp")
+
+        mocked_delete.assert_called_once_with("profile-images/5/old.webp")
+
+    @patch("apps.bugboardapi.modules.issues.activity.default_storage.delete")
+    @patch("apps.bugboardapi.modules.issues.activity.default_storage.exists", return_value=True)
+    def test_delete_media_path_uses_default_storage_backend(self, mocked_exists, mocked_delete):
+        delete_media_path("issue-attachments/8/file.webp")
+
+        mocked_exists.assert_called_once_with("issue-attachments/8/file.webp")
+        mocked_delete.assert_called_once_with("issue-attachments/8/file.webp")

@@ -165,13 +165,22 @@ MEDIA_STORAGE_BACKEND = os.getenv("MEDIA_STORAGE_BACKEND", "local").lower()
 if MEDIA_STORAGE_BACKEND not in {"local", "gcs"}:
     raise ImproperlyConfigured("MEDIA_STORAGE_BACKEND must be one of: local, gcs")
 
+if not DEBUG and not IS_TESTING and MEDIA_STORAGE_BACKEND != "gcs":
+    raise ImproperlyConfigured("Production media storage must use Google Cloud Storage")
+
 if MEDIA_STORAGE_BACKEND == "gcs":
+    gcs_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
     GS_BUCKET_NAME = os.getenv("GS_BUCKET_NAME", "").strip()
     if not GS_BUCKET_NAME:
         raise ImproperlyConfigured("GS_BUCKET_NAME must be set when MEDIA_STORAGE_BACKEND=gcs")
 
     GS_DEFAULT_ACL = None
+    GS_PROJECT_ID = os.getenv("GS_PROJECT_ID", "").strip()
     GS_QUERYSTRING_AUTH = os.getenv("GS_QUERYSTRING_AUTH", "False").lower() == "true"
+    if gcs_credentials_path:
+        from google.oauth2 import service_account
+
+        GS_CREDENTIALS = service_account.Credentials.from_service_account_file(gcs_credentials_path)
     MEDIA_URL = os.getenv("GCS_MEDIA_URL", f"https://storage.googleapis.com/{GS_BUCKET_NAME}/")
     if not MEDIA_URL.endswith("/"):
         MEDIA_URL = f"{MEDIA_URL}/"

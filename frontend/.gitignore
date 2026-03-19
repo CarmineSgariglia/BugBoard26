@@ -26,3 +26,11 @@ dist-ssr
 coverage
 playwright-report
 test-results
+create_flow_error.txt
+exact_error.txt
+failure.txt
+issue_card_error.txt
+test-report.txt
+test_output.json
+test_output.txt
+tsc_errors.txt
