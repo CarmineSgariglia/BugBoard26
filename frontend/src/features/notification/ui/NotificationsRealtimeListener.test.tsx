@@ -1,18 +1,22 @@
 import type { InfiniteData } from "@tanstack/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider } from "@shared/providers";
 import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
-import { NotificationsRealtimeListener } from "./NotificationsRealtimeListener";
+import type { Issue } from "@shared/api/types/issues";
+import type { Project } from "@shared/api/types/projects";
+import { NotificationsRealtimeListener } from "@features/notification/ui/NotificationsRealtimeListener";
 
 const {
   refreshUserMock,
   listNotificationsApiMock,
   readNotificationApiMock,
   deleteNotificationApiMock,
+  getProjectApiMock,
+  getIssueApiMock,
   getAccessTokenMock,
   refreshApiMock,
 } = vi.hoisted(() => ({
@@ -20,6 +24,8 @@ const {
   listNotificationsApiMock: vi.fn(),
   readNotificationApiMock: vi.fn(),
   deleteNotificationApiMock: vi.fn(),
+  getProjectApiMock: vi.fn(),
+  getIssueApiMock: vi.fn(),
   getAccessTokenMock: vi.fn(),
   refreshApiMock: vi.fn(),
 }));
@@ -47,8 +53,15 @@ vi.mock("@features/notification/api", () => ({
   deleteNotificationApi: deleteNotificationApiMock,
   getNotificationsStreamUrl: () => "/api/notifications/stream",
   notificationsQueryKey: ["notifications"],
-  notificationsPollingIntervalMs: 15000,
   notificationsPageSize: 20,
+}));
+
+vi.mock("@features/project/api", () => ({
+  getProjectApi: getProjectApiMock,
+}));
+
+vi.mock("@features/issue/api", () => ({
+  getIssueApi: getIssueApiMock,
 }));
 
 vi.mock("@shared/api/core/client", () => ({
@@ -99,11 +112,17 @@ describe("NotificationsRealtimeListener", () => {
   }
 
   function renderListener(queryClient: QueryClient, route = "/settings") {
+    function PathnameProbe() {
+      const location = useLocation();
+      return <div data-testid="pathname-probe">{location.pathname}</div>;
+    }
+
     render(
       <MemoryRouter initialEntries={[route]}>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
             <NotificationsRealtimeListener />
+            <PathnameProbe />
           </ToastProvider>
         </QueryClientProvider>
       </MemoryRouter>,
@@ -120,9 +139,45 @@ describe("NotificationsRealtimeListener", () => {
     } satisfies NotificationsPage);
     readNotificationApiMock.mockReset().mockResolvedValue({ notifyUserId: 0, isRead: true });
     deleteNotificationApiMock.mockReset().mockResolvedValue(undefined);
+    getProjectApiMock.mockReset().mockResolvedValue({
+      projectId: 9,
+      name: "Realtime Project",
+      description: "Loaded from notification",
+      color: "#123456",
+      icon: "folder",
+      createdAt: "2026-03-19T10:19:00Z",
+      createdBy: 1,
+      authorProfileImg: null,
+    });
+    getIssueApiMock.mockReset().mockResolvedValue({
+      issueId: 101,
+      projectId: 9,
+      reporterId: 1,
+      reporter: {
+        userId: 1,
+        username: "stream-user",
+        email: "stream@example.com",
+        firstName: "Stream",
+        lastName: "User",
+        isAdmin: false,
+        profileImg: null,
+        active: true,
+      },
+      title: "Realtime Issue",
+      description: "Loaded from notification",
+      type: "Bug",
+      status: "Open",
+      priority: "High",
+      createdAt: "2026-03-19T10:25:00Z",
+      updatedAt: "2026-03-19T10:25:00Z",
+      closedAt: null,
+      tags: [],
+      assignees: [],
+    } satisfies Issue);
     getAccessTokenMock.mockReset().mockReturnValue("test-token");
     refreshApiMock.mockReset().mockResolvedValue("test-token");
     global.fetch = vi.fn().mockImplementation(() => Promise.resolve(createStreamResponse()));
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -186,6 +241,115 @@ describe("NotificationsRealtimeListener", () => {
         toInfiniteData([notification], true),
       );
     });
+  });
+
+  it("hydrates only the added project into the home projects cache on PROJECT_ADDED", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 78,
+      notificationId: 14,
+      type: "PROJECT_ADDED",
+      createdAt: "2026-03-19T10:20:00Z",
+      issueId: null,
+      projectId: 9,
+      isRead: false,
+      readAt: null,
+    };
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    queryClient.setQueryData(["projects"], [
+      {
+        projectId: 2,
+        name: "Existing Project",
+        description: "Already in cache",
+        color: "#654321",
+        icon: "folder",
+        createdAt: "2026-03-18T10:00:00Z",
+        createdBy: 1,
+        authorProfileImg: null,
+      },
+    ]);
+
+    renderListener(queryClient, "/projects");
+
+    await waitFor(() => {
+      expect(getProjectApiMock).toHaveBeenCalledWith(9);
+      expect(queryClient.getQueryData<Project[]>(["projects"])).toEqual([
+        expect.objectContaining({ projectId: 9, name: "Realtime Project" }),
+        expect.objectContaining({ projectId: 2, name: "Existing Project" }),
+      ]);
+    });
+  });
+
+  it("hydrates only the added issue into the cached project issues on ISSUE_ADDED", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 79,
+      notificationId: 15,
+      type: "ISSUE_ADDED",
+      createdAt: "2026-03-19T10:26:00Z",
+      issueId: 101,
+      projectId: 9,
+      isRead: false,
+      readAt: null,
+    };
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    queryClient.setQueryData(["project", "9", "issues"], [
+      {
+        issueId: 88,
+        projectId: 9,
+        title: "Existing Issue",
+      },
+    ]);
+
+    renderListener(queryClient, "/projects/9/issues");
+
+    await waitFor(() => {
+      expect(getIssueApiMock).toHaveBeenCalledWith(101);
+      expect(queryClient.getQueryData<Issue[]>(["project", "9", "issues"])).toEqual([
+        expect.objectContaining({ issueId: 88, title: "Existing Issue" }),
+        expect.objectContaining({ issueId: 101, title: "Realtime Issue" }),
+      ]);
+    });
+
+    expect(queryClient.getQueryData<Issue>(["issue", 101])).toEqual(
+      expect.objectContaining({ issueId: 101, title: "Realtime Issue" }),
+    );
   });
 
   it("does not show a toast for already loaded read notifications during stream bootstrap", async () => {
@@ -522,5 +686,199 @@ describe("NotificationsRealtimeListener", () => {
     );
     expect(screen.queryByText("Issue updated")).not.toBeInTheDocument();
     expect(readNotificationApiMock).not.toHaveBeenCalled();
+  });
+
+  it("suppresses the self-generated project removed notification when the project was just deleted locally", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 201,
+      notificationId: 30,
+      type: "PROJECT_REMOVED",
+      createdAt: "2026-03-19T10:15:00Z",
+      issueId: null,
+      projectId: 77,
+      isRead: false,
+      readAt: null,
+    };
+
+    window.sessionStorage.setItem(
+      "bugboard26:suppressed-project-removals",
+      JSON.stringify([77]),
+    );
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    renderListener(queryClient, "/projects");
+
+    await waitFor(() => {
+      expect(deleteNotificationApiMock).toHaveBeenCalledWith(201);
+    });
+
+    expect(screen.queryByText("Project removed")).not.toBeInTheDocument();
+    expect(window.sessionStorage.getItem("bugboard26:suppressed-project-removals")).toBeNull();
+  });
+
+  it("removes project access immediately and redirects to home when a project unassignment arrives", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 202,
+      notificationId: 31,
+      type: "PROJECT_UNASSIGNED",
+      createdAt: "2026-03-19T10:16:00Z",
+      issueId: null,
+      projectId: 9,
+      isRead: false,
+      readAt: null,
+    };
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    queryClient.setQueryData(["projects"], [
+      { projectId: 9, name: "Locked Project" },
+      { projectId: 14, name: "Open Project" },
+    ]);
+    queryClient.setQueryData(["project", 9], { projectId: 9, name: "Locked Project" });
+    queryClient.setQueryData(["project", "9", "issues"], [{ issueId: 1 }]);
+
+    renderListener(queryClient, "/projects/9/issues");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pathname-probe")).toHaveTextContent("/projects");
+      expect(queryClient.getQueryData(["projects"])).toEqual([
+        { projectId: 14, name: "Open Project" },
+      ]);
+    });
+
+    expect(queryClient.getQueryData(["project", 9])).toBeUndefined();
+    expect(screen.getByText("Project unassigned")).toBeInTheDocument();
+  });
+
+  it("redirects to home and removes project cache when a project removed event arrives", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 203,
+      notificationId: 32,
+      type: "PROJECT_REMOVED",
+      createdAt: "2026-03-19T10:17:00Z",
+      issueId: null,
+      projectId: 9,
+      isRead: false,
+      readAt: null,
+    };
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    queryClient.setQueryData(["projects"], [
+      { projectId: 9, name: "Removed Project" },
+      { projectId: 14, name: "Open Project" },
+    ]);
+    queryClient.setQueryData(["project", "9"], { projectId: 9, name: "Removed Project" });
+    queryClient.setQueryData(["project", "9", "members"], [{ userId: 1 }]);
+
+    renderListener(queryClient, "/projects/9/issues/42");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pathname-probe")).toHaveTextContent("/projects");
+      expect(queryClient.getQueryData(["projects"])).toEqual([
+        { projectId: 14, name: "Open Project" },
+      ]);
+    });
+
+    expect(queryClient.getQueryData(["project", "9"])).toBeUndefined();
+    expect(screen.getByText("Project removed")).toBeInTheDocument();
+  });
+
+  it("invalidates the current project queries when project removed arrives without projectId", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 204,
+      notificationId: 33,
+      type: "PROJECT_REMOVED",
+      createdAt: "2026-03-19T10:18:00Z",
+      issueId: null,
+      projectId: null,
+      isRead: false,
+      readAt: null,
+    };
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderListener(queryClient, "/projects/9/issues/42");
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalled();
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      predicate: expect.any(Function),
+    });
+    expect(screen.getByTestId("pathname-probe")).toHaveTextContent("/projects/9/issues/42");
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { RiCloseLine } from "react-icons/ri";
 import { FiTrash2 } from "react-icons/fi";
@@ -8,6 +8,8 @@ import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { deleteProjectApi } from "@features/project/api";
 import { generateConfirmationCode } from "@features/project/lib/confirmationCode";
+import { suppressOwnProjectRemovalNotification } from "@features/project/lib/notificationSuppression";
+import type { Project } from "@shared/api/types/projects";
 
 interface DeleteProjectFlowProps {
   isOpen: boolean;
@@ -18,6 +20,7 @@ interface DeleteProjectFlowProps {
 
 export function DeleteProjectFlow({ isOpen, onClose, projectId, projectName }: DeleteProjectFlowProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [confirmationCode, setConfirmationCode] = useState("");
   const [userInput, setUserInput] = useState("");
 
@@ -31,6 +34,10 @@ export function DeleteProjectFlow({ isOpen, onClose, projectId, projectName }: D
   const deleteMutation = useMutation({
     mutationFn: () => deleteProjectApi(projectId),
     onSuccess: () => {
+      suppressOwnProjectRemovalNotification(projectId);
+      queryClient.setQueryData<Project[]>(["projects"], (currentProjects = []) =>
+        currentProjects.filter((project) => project.projectId !== projectId)
+      );
       onClose();
       navigate("/dashboard");
     },

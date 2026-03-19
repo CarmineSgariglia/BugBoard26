@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createIssueUpdateApi, listIssueUpdatesApi } from "@features/issue/api";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
+import type { ProjectMembership } from "@shared/api/types/projects";
 import { getLatestIssueUpdateId, upsertIssueUpdates } from "@features/issue/lib/issueUpdatesRealtime";
 import { formatIssueActivityEvent } from "@features/issue/lib/formatIssueActivityEvent";
 import { IssueActivityFilters } from "./IssueActivityFilters";
@@ -15,6 +16,7 @@ type Props = {
     issueId: number;
     issueTitle: string;
     currentUser: AuthUser | null;
+    projectMembers?: ProjectMembership[];
     canCompose: boolean;
     className?: string;
 };
@@ -63,7 +65,23 @@ function getSubmitErrorMessage(error: unknown): string {
     return "File non valido o non supportato.";
 }
 
-export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompose, className = "h-full" }: Props) {
+function formatActorDisplayName(member: {
+    username: string;
+    firstName?: string;
+    lastName?: string;
+}): string {
+    const fullName = `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim();
+    return fullName ? `${fullName} (${member.username})` : member.username;
+}
+
+export function IssueActivityPanel({
+    issueId,
+    issueTitle,
+    currentUser,
+    projectMembers = [],
+    canCompose,
+    className = "h-full",
+}: Props) {
     const qc = useQueryClient();
     const [scope, setScope] = useState<"ALL" | "YOURS">("ALL");
     const [sort, setSort] = useState<"NEWEST" | "OLDEST">("OLDEST");
@@ -111,9 +129,13 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
     });
 
     const items = useMemo(() => {
+        const actorDisplayNameById = new Map(
+            projectMembers.map((member) => [member.userId, formatActorDisplayName(member)]),
+        );
+
         const mapped = updates
             .filter((update) => update.eventType !== "CREATE")
-            .map(formatIssueActivityEvent);
+            .map((update) => formatIssueActivityEvent(update, actorDisplayNameById.get(update.actorId)));
 
         const filtered =
             scope === "YOURS" && currentUser
@@ -125,7 +147,7 @@ export function IssueActivityPanel({ issueId, issueTitle, currentUser, canCompos
             const bTime = new Date(b.at).getTime();
             return sort === "NEWEST" ? bTime - aTime : aTime - bTime;
         });
-    }, [updates, scope, sort, currentUser]);
+    }, [updates, scope, sort, currentUser, projectMembers]);
 
     const latestUpdateId = useMemo(() => getLatestIssueUpdateId(updates), [updates]);
 

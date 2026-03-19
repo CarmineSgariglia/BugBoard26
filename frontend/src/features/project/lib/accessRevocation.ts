@@ -1,12 +1,3 @@
-/*
-  This function revokes the access of a project.
-  
-  @param queryClient - The query client to use to revoke the access.
-  @param projectId - The ID of the project to revoke the access of.
-  @param currentProjects - The current projects of the user.
-  @returns The revoked project access.
-*/
-
 import axios from "axios";
 import type { QueryClient } from "@tanstack/react-query";
 

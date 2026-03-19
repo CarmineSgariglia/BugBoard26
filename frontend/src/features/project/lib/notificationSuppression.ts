@@ -1,10 +1,3 @@
-/*
-  This function suppresses the notification of a project removal.
-  
-  @param projectId - The ID of the project to suppress the notification of.
-  @returns The suppressed project removal IDs.
-*/
-
 const suppressedProjectRemovalStorageKey = "bugboard26:suppressed-project-removals";
 
 function readSuppressedProjectRemovalIds(): number[] {

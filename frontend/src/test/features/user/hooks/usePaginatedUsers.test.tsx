@@ -60,10 +60,7 @@ describe("usePaginatedUsers", () => {
 
     // React query triggers async fetch on mount
     await waitFor(() => {
-      expect(listUsersApi).toHaveBeenCalledWith(
-        { page: 1 },
-        { signal: expect.any(AbortSignal) }
-      );
+      expect(listUsersApi).toHaveBeenCalledWith({ page: 1 });
       expect(result.current.users).toHaveLength(2);
       expect(result.current.totalItems).toBe(2);
     });
@@ -75,10 +72,7 @@ describe("usePaginatedUsers", () => {
     const { result } = renderHook(() => usePaginatedUsers(), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(listUsersApi).toHaveBeenCalledWith(
-        { page: 1 },
-        { signal: expect.any(AbortSignal) }
-      );
+      expect(listUsersApi).toHaveBeenCalledWith({ page: 1 });
     });
 
     // Change Search
@@ -93,10 +87,7 @@ describe("usePaginatedUsers", () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
     await waitFor(() => {
-      expect(listUsersApi).toHaveBeenCalledWith(
-        expect.objectContaining({ search: "bob", page: 1 }),
-        { signal: expect.any(AbortSignal) }
-      );
+      expect(listUsersApi).toHaveBeenCalledWith(expect.objectContaining({ search: "bob", page: 1 }));
     });
   });
 
@@ -106,10 +97,7 @@ describe("usePaginatedUsers", () => {
     const { result } = renderHook(() => usePaginatedUsers(), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(listUsersApi).toHaveBeenCalledWith(
-        { page: 1 },
-        { signal: expect.any(AbortSignal) }
-      );
+      expect(listUsersApi).toHaveBeenCalledWith({ page: 1 });
     });
 
     // Set Role to Admin
@@ -118,10 +106,7 @@ describe("usePaginatedUsers", () => {
     });
 
     await waitFor(() => {
-      expect(listUsersApi).toHaveBeenCalledWith(
-        expect.objectContaining({ role: "Admin", page: 1 }),
-        { signal: expect.any(AbortSignal) }
-      );
+      expect(listUsersApi).toHaveBeenCalledWith(expect.objectContaining({ role: "Admin", page: 1 }));
     });
 
     // Set Status to Inactive
@@ -130,10 +115,7 @@ describe("usePaginatedUsers", () => {
     });
 
     await waitFor(() => {
-      expect(listUsersApi).toHaveBeenCalledWith(
-        expect.objectContaining({ role: "Admin", status: "Inactive", page: 1 }),
-        { signal: expect.any(AbortSignal) }
-      );
+      expect(listUsersApi).toHaveBeenCalledWith(expect.objectContaining({ role: "Admin", status: "Inactive", page: 1 }));
     });
   });
 
@@ -143,10 +125,7 @@ describe("usePaginatedUsers", () => {
     renderHook(() => usePaginatedUsers({ excludeUserIds: [2] }), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(listUsersApi).toHaveBeenCalledWith(
-        { page: 1, excludeUserIds: "2" },
-        { signal: expect.any(AbortSignal) }
-      );
+      expect(listUsersApi).toHaveBeenCalledWith({ page: 1, excludeUserIds: "2" });
     });
   });
 

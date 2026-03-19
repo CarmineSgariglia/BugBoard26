@@ -36,10 +36,10 @@ export function ToggleUserStatusModal({
       description={
         <>
           Are you sure you want to {isActive ? "deactivate" : "activate"}{" "}
-          <span className="text-white font-medium">{fullName}</span>?
+          <span className="text-white font-medium">{fullName}</span>? <br />
           {isActive
-            ? " They will no longer be able to access the system."
-            : " They will regain access to the system."}
+            ? "The user will no longer be able to access the system."
+            : "The user will regain access to the system."}
         </>
       }
     />

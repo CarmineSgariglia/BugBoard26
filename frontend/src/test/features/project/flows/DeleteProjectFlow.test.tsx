@@ -103,9 +103,29 @@ describe("DeleteProjectFlow", () => {
   it("calls deleteProjectApi and onClose on successful delete", async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(
+    const { queryClient } = renderWithProviders(
       <DeleteProjectFlow {...defaultProps} onClose={onClose} />
     );
+    queryClient.setQueryData(["projects"], [
+      {
+        projectId: 42,
+        name: "Alpha Project",
+        description: "Alpha",
+        color: "#000000",
+        icon: "folder",
+        createdAt: "2026-03-19T00:00:00.000Z",
+        createdBy: 1,
+      },
+      {
+        projectId: 77,
+        name: "Beta Project",
+        description: "Beta",
+        color: "#ffffff",
+        icon: "folder",
+        createdAt: "2026-03-18T00:00:00.000Z",
+        createdBy: 1,
+      },
+    ]);
     await user.type(
       screen.getByPlaceholderText("Type the code above..."),
       "1234567890"
@@ -114,6 +134,9 @@ describe("DeleteProjectFlow", () => {
     await waitFor(() => {
       expect(deleteProjectApiMock).toHaveBeenCalledWith(42);
       expect(onClose).toHaveBeenCalled();
+      expect(queryClient.getQueryData(["projects"])).toEqual([
+        expect.objectContaining({ projectId: 77, name: "Beta Project" }),
+      ]);
     });
   });
 
