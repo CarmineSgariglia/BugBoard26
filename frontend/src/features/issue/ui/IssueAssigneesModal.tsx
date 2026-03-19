@@ -17,7 +17,7 @@ import { UserSelectorTable } from "@shared/ui/UserSelectorTable";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 import { ProjectFormLayout } from "@widgets/layout/ProjectFormLayout";
 
-const EMPTY_PROJECT_MEMBERS: Array<{ userId: number; role?: string | null }> = [];
+const EMPTY_PROJECT_MEMBERS: any[] = [];
 const EMPTY_SUGGESTIONS: IssueSuggestion[] = [];
 
 interface IssueAssigneesModalProps {

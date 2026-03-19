@@ -1,5 +1,4 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthUser } from "@shared/api/types/auth";

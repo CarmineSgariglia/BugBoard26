@@ -71,7 +71,7 @@ describe("IssueAttachmentPreviewModal", () => {
   it("renders the header, mime type and download link", () => {
     renderWithProviders(
       <IssueAttachmentPreviewModal
-        attachment={makeAttachment({ filename: "photo.png", url: "/files/photo.png" })}
+        attachment={makeAttachment({ originalName: "photo.png", url: "/files/photo.png" })}
         onClose={vi.fn()}
       />,
     );

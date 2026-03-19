@@ -31,7 +31,7 @@ vi.mock("@shared/api/core/media", () => ({
 }));
 
 const baseItem: UiActivityItem = {
-  id: "1",
+  id: 1,
   actorId: 10,
   actorName: "alice",
   actorProfileImg: null,
@@ -40,6 +40,7 @@ const baseItem: UiActivityItem = {
   isComment: true,
   attachments: [],
   at: "2026-01-15T12:00:00Z",
+  eventType: "COMMENT",
 };
 
 describe("IssueActivityItem", () => {

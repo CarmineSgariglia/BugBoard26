@@ -20,7 +20,7 @@ describe("useFluidWheelContainer", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     // Setup requestAnimationFrame mock that integrates with setTimeout fake timers
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: any) => {
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: FrameRequestCallback) => {
       setTimeout(() => cb(performance.now()), 16);
       return 1;
     });
@@ -140,7 +140,7 @@ describe("useFluidWheelContainer", () => {
 describe("useFluidWheelWindow", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: any) => {
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: FrameRequestCallback) => {
       setTimeout(() => cb(performance.now()), 16);
       return 1;
     });
