@@ -50,7 +50,7 @@ class UserReadSerializer(serializers.ModelSerializer):
     def get_profileImg(self, instance):
         profile = getattr(instance, "profile", None)
         profile_img = getattr(profile, "profile_img", "") if profile is not None else ""
-        return build_media_url(self, profile_img)
+        return build_media_url(profile_img)
 
 
 class UserMutationSerializer(UserReadSerializer):

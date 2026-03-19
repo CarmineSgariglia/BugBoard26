@@ -56,7 +56,7 @@ class IssueSerializer(serializers.ModelSerializer):
             {
                 "userId": user.id,
                 "username": user.username,
-                "profileImg": build_media_url(self, getattr(getattr(user, "profile", None), "profile_img", "")),
+                "profileImg": build_media_url(getattr(getattr(user, "profile", None), "profile_img", "")),
             }
             for user in obj.assignees.all()
             if not is_admin_user(user)
@@ -111,4 +111,4 @@ class AttachmentSerializer(serializers.ModelSerializer):
         fields = ["attachmentId", "updateId", "originalName", "path", "url", "mimeType", "size", "uploadedAt"]
 
     def get_url(self, obj):
-        return build_media_url(self, obj.path)
+        return build_media_url(obj.path)
