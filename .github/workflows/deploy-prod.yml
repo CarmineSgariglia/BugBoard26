@@ -100,10 +100,29 @@ jobs:
       - build_and_push
     environment:
       name: production
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+      GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION || secrets.GCP_ARTIFACT_REGISTRY_REGION }}
+      GCP_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPOSITORY || secrets.GCP_ARTIFACT_REGISTRY_REPO }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Validate deploy configuration
+        run: |
+          test -n "${GCP_PROJECT_ID}"
+          test -n "${GCP_ARTIFACT_REGISTRY_REGION}"
+          test -n "${GCP_ARTIFACT_REGISTRY_REPOSITORY}"
+
+      - name: Compute immutable image tags
+        id: meta
+        run: |
+          registry_host="${GCP_ARTIFACT_REGISTRY_REGION}-docker.pkg.dev"
+          repository_path="${registry_host}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REGISTRY_REPOSITORY}"
+          release_tag="${GITHUB_SHA}"
+          echo "backend_image=${repository_path}/backend:${release_tag}" >> "$GITHUB_OUTPUT"
+          echo "web_image=${repository_path}/web:${release_tag}" >> "$GITHUB_OUTPUT"
 
       - name: Copy release files to VM
         uses: appleboy/scp-action@v0.1.7
@@ -119,9 +138,9 @@ jobs:
       - name: Run deployment on VM
         uses: appleboy/ssh-action@v1.2.0
         env:
-          BACKEND_IMAGE: ${{ needs.build_and_push.outputs.backend_image }}
-          WEB_IMAGE: ${{ needs.build_and_push.outputs.web_image }}
-          GCP_ARTIFACT_REGISTRY_REGION: ${{ vars.GCP_ARTIFACT_REGISTRY_REGION || secrets.GCP_ARTIFACT_REGISTRY_REGION }}
+          BACKEND_IMAGE: ${{ steps.meta.outputs.backend_image }}
+          WEB_IMAGE: ${{ steps.meta.outputs.web_image }}
+          GCP_ARTIFACT_REGISTRY_REGION: ${{ env.GCP_ARTIFACT_REGISTRY_REGION }}
           PROD_VM_APP_DIR: ${{ env.PROD_VM_APP_DIR }}
         with:
           host: ${{ secrets.PROD_VM_HOST }}
