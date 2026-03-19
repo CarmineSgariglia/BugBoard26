@@ -11,8 +11,8 @@ variables:
     value: "999999"
   - name: invalid_token
     value: abc.def.ghi
-  - name: access_token
-    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzczNzQ4MDc1LCJpYXQiOjE3NzM3NDcxNzUsImp0aSI6IjhhNTNlMTJiNTdjZDQ1MTM5NTQwMmQ4MTIxNjVlZWY5IiwidXNlcl9pZCI6IjEiLCJzaWQiOiJkMmEyZDkwNjI3MWQ0OTQ4YTZlZDRkNTUwZDlmY2E5NCJ9.2SvAxrJnIswtH2VC_fT6OvA0kmGeEX2MkhdOXBx2m5E
+  - secret: true
+    name: access_token
   - name: project_id
     value: "10"
   - name: issue_id
