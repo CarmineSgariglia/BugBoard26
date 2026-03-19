@@ -1304,7 +1304,7 @@ class IssueWorkflowEndpointTests(APITestCase):
             IssueAssignee.objects.filter(issue=new_issue, user=self.member).exists()
         )
 
-    def test_issue_create_with_assignee_ids_keeps_reporter_and_requested_assignees(self):
+    def test_issue_create_with_assignee_ids_keeps_requested_assignees_and_skips_admin_reporter_subscription(self):
         self.client.force_authenticate(user=self.admin)
         payload = {
             "title": "Created issue with assignees",
@@ -1322,7 +1322,63 @@ class IssueWorkflowEndpointTests(APITestCase):
         assignee_ids = set(
             IssueAssignee.objects.filter(issue=new_issue).values_list("user_id", flat=True)
         )
-        self.assertEqual(assignee_ids, {self.admin.id, self.member.id})
+        self.assertEqual(assignee_ids, {self.member.id})
+
+    def test_issue_subscription_get_returns_false_for_unsubscribed_admin(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/subscription")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"subscribed": False})
+
+    def test_issue_subscription_post_is_idempotent(self):
+        self.client.force_authenticate(user=self.admin)
+
+        first_response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/subscription",
+            format="json",
+        )
+        second_response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/subscription",
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(second_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            IssueAssignee.objects.filter(issue=self.issue, user=self.admin).count(),
+            1,
+        )
+
+    def test_issue_subscription_delete_is_idempotent(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
+        self.client.force_authenticate(user=self.admin)
+
+        first_response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/subscription",
+            format="json",
+        )
+        second_response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/subscription",
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(second_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(
+            IssueAssignee.objects.filter(issue=self.issue, user=self.admin).exists()
+        )
+
+    def test_issue_subscription_forbidden_for_developer(self):
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/subscription",
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_issue_create_rejects_admin_assignee(self):
         self.client.force_authenticate(user=self.admin)
@@ -1535,6 +1591,69 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(
             response.data["userIds"],
             f"Users must be members of project: [{self.member.id}]",
+        )
+
+    def test_assign_notifies_subscribed_admin_observer(self):
+        observer_admin = create_user_with_profile(
+            username="issues_assign_observer_admin",
+            email="issues_assign_observer_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        another_member = create_user_with_profile(
+            username="issues_assign_target_member",
+            email="issues_assign_target_member@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=observer_admin)
+        ProjectMembership.objects.create(project=self.project, user=another_member)
+        IssueAssignee.objects.create(issue=self.issue, user=observer_admin)
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/assign",
+            {"userIds": [another_member.id]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=observer_admin,
+                notification__notify_type=NotifyType.ISSUE_ASSIGNED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+
+    def test_assign_does_not_notify_issue_observer_when_project_notifications_disabled(self):
+        observer_admin = create_user_with_profile(
+            username="issues_assign_blocked_admin",
+            email="issues_assign_blocked_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        another_member = create_user_with_profile(
+            username="issues_assign_blocked_target",
+            email="issues_assign_blocked_target@example.com",
+            password="StrongPass123!",
+        )
+        ProjectMembership.objects.create(project=self.project, user=another_member)
+        IssueAssignee.objects.create(issue=self.issue, user=observer_admin)
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/assign",
+            {"userIds": [another_member.id]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=observer_admin,
+                notification__notify_type=NotifyType.ISSUE_ASSIGNED,
+                notification__issue=self.issue,
+            ).exists()
         )
 
     def test_suggestions_exclude_admins(self):
@@ -2012,6 +2131,78 @@ class IssueWorkflowEndpointTests(APITestCase):
                 event_type=EventType.EDIT,
             ).exists()
         )
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_unassign_notifies_subscribed_admin_observer(self):
+        observer_admin = create_user_with_profile(
+            username="issues_unassign_observer_admin",
+            email="issues_unassign_observer_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        ProjectMembership.objects.create(project=self.project, user=observer_admin)
+        IssueAssignee.objects.create(issue=self.issue, user=observer_admin)
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/unassign",
+            {"userIds": [self.member.id]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=observer_admin,
+                notification__notify_type=NotifyType.ISSUE_UNASSIGNED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+
+    def test_issue_comment_does_not_notify_issue_subscribed_admin_when_project_notifications_disabled(self):
+        observer_admin = create_user_with_profile(
+            username="issues_comment_blocked_admin",
+            email="issues_comment_blocked_admin@example.com",
+            password="StrongPass123!",
+            is_admin=True,
+        )
+        IssueAssignee.objects.create(issue=self.issue, user=observer_admin)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/updates",
+            {"message": "new comment"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=observer_admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_issue_partial_update_notifies_subscribed_admin(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"description": "Issue desc updated"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=self.admin,
@@ -2021,7 +2212,7 @@ class IssueWorkflowEndpointTests(APITestCase):
             ).exists()
         )
 
-    def test_issue_comment_creates_notification_with_project(self):
+    def test_issue_comment_does_not_notify_unsubscribed_admin(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
             f"/api/issues/{self.issue.issue_id}/updates",
@@ -2029,12 +2220,78 @@ class IssueWorkflowEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+                notification__project=self.project,
+            ).exists()
+        )
+
+    def test_issue_comment_notifies_subscribed_admin(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/updates",
+            {"message": "new comment"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=self.admin,
                 notification__notify_type=NotifyType.ISSUE_UPDATED,
                 notification__issue=self.issue,
                 notification__project=self.project,
+            ).exists()
+        )
+
+    def test_issue_status_change_non_terminal_notifies_subscribed_admin(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/api/issues/{self.issue.issue_id}/status",
+            {"status": "IN_PROGRESS", "message": "progressing"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).exists()
+        )
+
+    def test_issue_attachment_comment_notifies_subscribed_admin(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
+
+        self.client.force_authenticate(user=self.member)
+        uploaded = SimpleUploadedFile(
+            "notes.txt", b"hello attachment", content_type="text/plain"
+        )
+
+        response = self.client.post(
+            "/api/attachments",
+            {
+                "issueId": self.issue.issue_id,
+                "message": "file attached",
+                "file": uploaded,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
             ).exists()
         )
 

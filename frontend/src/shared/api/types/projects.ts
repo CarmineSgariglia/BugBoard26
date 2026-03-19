@@ -30,3 +30,7 @@ export type ProjectMembership = {
   role: string;
   profileImg?: string | null;
 };
+
+export type ProjectSubscriptionState = {
+  subscribed: boolean;
+};

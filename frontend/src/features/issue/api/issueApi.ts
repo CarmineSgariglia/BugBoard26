@@ -1,5 +1,11 @@
 import apiClient, { apiBaseUrl } from "@shared/api/core/client";
-import type { Issue, IssueSuggestion, IssueUpdate, UpdateIssuePayload } from "@shared/api/types/issues";
+import type {
+  Issue,
+  IssueSubscriptionState,
+  IssueSuggestion,
+  IssueUpdate,
+  UpdateIssuePayload,
+} from "@shared/api/types/issues";
 
 export async function updateIssueDetailsApi(
   issueId: number | string,
@@ -16,6 +22,13 @@ export async function updateIssueApi(issueId: number | string, payload: UpdateIs
 
 export async function getIssueApi(issueId: string | number): Promise<Issue> {
   const { data } = await apiClient.get<Issue>(`/issues/${issueId}`);
+  return data;
+}
+
+export async function getIssueSubscriptionApi(
+  issueId: string | number
+): Promise<IssueSubscriptionState> {
+  const { data } = await apiClient.get<IssueSubscriptionState>(`/issues/${issueId}/subscription`);
   return data;
 }
 
@@ -62,6 +75,14 @@ export async function assignIssueUsersApi(issueId: number | string, userIds: num
 export async function unassignIssueUsersApi(issueId: number | string, userIds: number[]): Promise<{ detail: string }> {
   const { data } = await apiClient.post<{ detail: string }>(`/issues/${issueId}/unassign`, { userIds });
   return data;
+}
+
+export async function subscribeToIssueApi(issueId: number | string): Promise<void> {
+  await apiClient.post(`/issues/${issueId}/subscription`);
+}
+
+export async function unsubscribeFromIssueApi(issueId: number | string): Promise<void> {
+  await apiClient.delete(`/issues/${issueId}/subscription`);
 }
 
 export async function listIssueSuggestionsApi(issueId: number | string): Promise<IssueSuggestion[]> {

@@ -5,6 +5,8 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from ...common.parsing import request_user_ids
+from ...roles import is_admin_user
+from .membership import effective_admin_issue_subscription_users
 from ..projects.membership import admin_project_subscription_users
 from ..notifications.services import (
     notify_issue_added,
@@ -39,6 +41,13 @@ def _issue_update_recipients(*, issue: Issue, actor=None) -> list[User]:
 
 def _issue_closed_recipients(*, issue: Issue) -> list[User]:
     return [issue.reporter, *admin_project_subscription_users(project=issue.project, active_only=True)]
+
+
+def _merge_issue_notification_users(*, users: list[User], issue: Issue) -> list[User]:
+    recipients_by_id = {user.id: user for user in users if getattr(user, "id", None) is not None}
+    for user in effective_admin_issue_subscription_users(issue=issue, active_only=True):
+        recipients_by_id[user.id] = user
+    return list(recipients_by_id.values())
 
 
 def _dispatch_issue_side_effects(
@@ -105,7 +114,8 @@ def _delete_issue_attachment_files(paths: list[str]) -> None:
 def create_issue_for_project(*, serializer, reporter, project):
     with transaction.atomic():
         issue = serializer.save(project=project, reporter=reporter)
-        ensure_issue_assignees(issue=issue, user_ids=[reporter.id])
+        if not is_admin_user(reporter):
+            ensure_issue_assignees(issue=issue, user_ids=[reporter.id])
         _dispatch_issue_side_effects(
             issue=issue,
             actor=reporter,
@@ -165,7 +175,8 @@ def assign_issue_users(*, issue: Issue, actor, raw_user_ids):
             event_type=EventType.ASSIGN,
             message="Assignees updated",
             notification_sender=notify_issue_assigned,
-            notification_users=assigned_users,
+            notification_users=_merge_issue_notification_users(users=assigned_users, issue=issue),
+            notification_actor=actor,
         )
 
 
@@ -186,7 +197,8 @@ def unassign_issue_users(*, issue: Issue, actor, raw_user_ids):
             event_type=EventType.UNASSIGN,
             message="Assignees removed",
             notification_sender=notify_issue_unassigned,
-            notification_users=active_users,
+            notification_users=_merge_issue_notification_users(users=active_users, issue=issue),
+            notification_actor=actor,
         )
 
 
@@ -215,8 +227,12 @@ def update_issue_status(*, issue: Issue, actor, new_status, raw_message, payload
             payload=payload,
             old_status=old_status,
             new_status=new_status,
-            notification_sender=notify_issue_closed if new_status == IssueStatus.DONE else None,
-            notification_users=_issue_closed_recipients(issue=issue) if new_status == IssueStatus.DONE else None,
+            notification_sender=notify_issue_closed if new_status == IssueStatus.DONE else notify_issue_updated,
+            notification_users=(
+                _issue_closed_recipients(issue=issue)
+                if new_status == IssueStatus.DONE
+                else _issue_update_recipients(issue=issue, actor=actor)
+            ),
             notification_actor=actor if new_status == IssueStatus.DONE else _UNSET,
         )
     return issue
@@ -254,7 +270,7 @@ def upload_attachment_for_event(*, event: IssueEvent, payload):
 
 def create_issue_attachment(*, issue: Issue, actor, payload):
     message = (payload.get("message", "") or "").strip() or "Attachment uploaded"
-    event = create_issue_event_with_attachment(
+    event = _dispatch_issue_side_effects(
         issue=issue,
         actor=actor,
         event_type=EventType.COMMENT,
@@ -262,6 +278,8 @@ def create_issue_attachment(*, issue: Issue, actor, payload):
         payload=payload,
         attachments_required=True,
         max_files=1,
+        notification_sender=notify_issue_updated,
+        notification_users=_issue_update_recipients(issue=issue, actor=actor),
     )
     attachment = event.attachments.first()
     return attachment

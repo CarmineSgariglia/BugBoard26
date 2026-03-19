@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..modules.issues.models import IssueAssignee
+from ..modules.issues.membership import is_developer_issue_assignee
 from ..modules.projects.membership import is_project_member as has_project_membership
 
 if TYPE_CHECKING:
@@ -17,4 +17,4 @@ def is_project_member(user: User, project: Project) -> bool:
 
 
 def is_issue_assignee(user: User, issue: Issue) -> bool:
-    return IssueAssignee.objects.filter(issue=issue, user=user).exists()
+    return is_developer_issue_assignee(issue=issue, user=user)

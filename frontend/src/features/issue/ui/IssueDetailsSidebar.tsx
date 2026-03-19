@@ -4,6 +4,7 @@ import type { Issue, IssueAssignee } from "@shared/api/types/issues";
 import { Avatar } from "@shared/ui/Avatar";
 import { SidebarButton } from "@shared/ui/SidebarButton";
 import { Tag } from "@shared/ui/Tag";
+import { Toggle } from "@shared/ui/Toggle";
 import { SidebarCard } from "@widgets/layout/SidebarCard";
 import { SidebarMembersSection } from "@widgets/layout/SidebarMembersSection";
 
@@ -17,6 +18,11 @@ interface IssueDetailsSidebarProps {
   assignees?: IssueAssignee[];
   onEditClick?: () => void;
   onManageMembersClick?: () => void;
+  subscriptionChecked?: boolean;
+  subscriptionDisabled?: boolean;
+  subscriptionDisabledReason?: string;
+  subscriptionError?: string;
+  onSubscriptionChange?: (checked: boolean) => void;
 }
 
 export function IssueDetailsSidebar({
@@ -26,6 +32,11 @@ export function IssueDetailsSidebar({
   assignees,
   onEditClick,
   onManageMembersClick,
+  subscriptionChecked = false,
+  subscriptionDisabled = false,
+  subscriptionDisabledReason = "",
+  subscriptionError = "",
+  onSubscriptionChange,
 }: IssueDetailsSidebarProps) {
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
@@ -88,6 +99,30 @@ export function IssueDetailsSidebar({
         userLabel="View members"
         emptyText="No one assigned"
       />
+
+      {isAdmin ? (
+        <SidebarCard.Section title="Issue notifications">
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-sm text-neutral-400 leading-relaxed">
+              Receive notifications for updates, chat activity, assignments, and status changes for this issue.
+            </p>
+            <div title={subscriptionDisabledReason || undefined}>
+              <Toggle
+                checked={subscriptionChecked}
+                onChange={(checked) => onSubscriptionChange?.(checked)}
+                disabled={subscriptionDisabled}
+                label="Issue notifications"
+              />
+            </div>
+          </div>
+          {subscriptionError ? (
+            <p className="mt-3 text-xs text-rose-400">{subscriptionError}</p>
+          ) : null}
+          {!subscriptionError && subscriptionDisabledReason ? (
+            <p className="mt-3 text-xs text-neutral-500">{subscriptionDisabledReason}</p>
+          ) : null}
+        </SidebarCard.Section>
+      ) : null}
 
       <SidebarCard.Section title="Tags">
         <div className="flex flex-wrap gap-2">

@@ -49,6 +49,11 @@ from .commands import (
     update_issue_status,
     upload_attachment_for_event,
 )
+from .membership import (
+    is_admin_issue_subscribed,
+    subscribe_admin_to_issue,
+    unsubscribe_admin_from_issue,
+)
 from .queries import list_issue_suggestion_memberships, list_project_issues_queryset
 from .realtime import open_issue_subscription
 
@@ -162,6 +167,24 @@ class IssueViewSet(
             payload=request.data,
         )
         return Response(IssueSerializer(updated_issue, context={"request": request}).data)
+
+    @action(detail=True, methods=["get", "post", "delete"], url_path="subscription")
+    def subscription(self, request, issueId=None):
+        check_admin(request.user)
+        issue = self.get_object()
+        ensure_issue_access(request.user, issue)
+
+        if request.method == "GET":
+            return Response({
+                "subscribed": is_admin_issue_subscribed(issue=issue, user=request.user),
+            })
+
+        if request.method == "POST":
+            subscribe_admin_to_issue(issue=issue, user=request.user)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        unsubscribe_admin_from_issue(issue=issue, user=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get", "post"], url_path="updates")
     def updates(self, request, issueId=None):

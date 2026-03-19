@@ -6,9 +6,12 @@ import {
   createProjectApi,
   updateProjectApi,
   deleteProjectApi,
+  getProjectSubscriptionApi,
   listProjectMembersApi,
   listProjectIssuesApi,
   createProjectIssueApi,
+  subscribeToProjectApi,
+  unsubscribeFromProjectApi,
 } from "@features/project/api/projectApi";
 
 const { getMock, postMock, patchMock, deleteMock } = vi.hoisted(() => ({
@@ -96,6 +99,28 @@ describe("feature project api module", () => {
 
     await expect(listProjectMembersApi(1)).resolves.toEqual(dummyMembers);
     expect(getMock).toHaveBeenCalledWith("/projects/1/members");
+  });
+
+  it("gets the current project subscription state", async () => {
+    const subscription = { subscribed: false };
+    getMock.mockResolvedValue({ data: subscription });
+
+    await expect(getProjectSubscriptionApi(1)).resolves.toEqual(subscription);
+    expect(getMock).toHaveBeenCalledWith("/projects/1/subscription");
+  });
+
+  it("subscribes the current admin to a project", async () => {
+    postMock.mockResolvedValue({ data: {} });
+
+    await expect(subscribeToProjectApi(1)).resolves.toBeUndefined();
+    expect(postMock).toHaveBeenCalledWith("/projects/1/subscription");
+  });
+
+  it("unsubscribes the current admin from a project", async () => {
+    deleteMock.mockResolvedValue({ data: {} });
+
+    await expect(unsubscribeFromProjectApi(1)).resolves.toBeUndefined();
+    expect(deleteMock).toHaveBeenCalledWith("/projects/1/subscription");
   });
 
   it("lists project issues", async () => {

@@ -11,6 +11,10 @@ export type IssueAssignee = {
   profileImg?: string | null;
 };
 
+export type IssueSubscriptionState = {
+  subscribed: boolean;
+};
+
 export type IssueSuggestion = {
   projectMembershipId?: number;
   projectId?: number;
