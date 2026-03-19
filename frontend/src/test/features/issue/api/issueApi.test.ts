@@ -4,18 +4,22 @@ import {
   assignIssueUsersApi,
   createIssueUpdateApi,
   getIssueApi,
+  getIssueSubscriptionApi,
   getIssueUpdatesStreamUrl,
   listIssueSuggestionsApi,
   listIssueUpdatesApi,
+  subscribeToIssueApi,
   unassignIssueUsersApi,
+  unsubscribeFromIssueApi,
   updateIssueApi,
   updateIssueDetailsApi,
 } from "@features/issue/api";
 
-const { getMock, postMock, patchMock } = vi.hoisted(() => ({
+const { getMock, postMock, patchMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
   patchMock: vi.fn(),
+  deleteMock: vi.fn(),
 }));
 
 vi.mock("@shared/api/core/client", () => ({
@@ -24,6 +28,7 @@ vi.mock("@shared/api/core/client", () => ({
     get: getMock,
     post: postMock,
     patch: patchMock,
+    delete: deleteMock,
   },
   apiBaseUrl: "/api",
 }));
@@ -33,6 +38,7 @@ describe("feature issues api module", () => {
     getMock.mockReset();
     postMock.mockReset();
     patchMock.mockReset();
+    deleteMock.mockReset();
   });
 
   it("builds the issue stream URL from the shared api base url", () => {
@@ -44,6 +50,13 @@ describe("feature issues api module", () => {
 
     await expect(getIssueApi(6)).resolves.toEqual({ issueId: 6 });
     expect(getMock).toHaveBeenCalledWith("/issues/6");
+  });
+
+  it("gets the current issue subscription state", async () => {
+    getMock.mockResolvedValue({ data: { subscribed: false } });
+
+    await expect(getIssueSubscriptionApi(6)).resolves.toEqual({ subscribed: false });
+    expect(getMock).toHaveBeenCalledWith("/issues/6/subscription");
   });
 
   it("creates issue updates as JSON when there are no files", async () => {
@@ -119,6 +132,20 @@ describe("feature issues api module", () => {
 
     await expect(unassignIssueUsersApi(6, [1])).resolves.toEqual({ detail: "unassigned" });
     expect(postMock).toHaveBeenCalledWith("/issues/6/unassign", { userIds: [1] });
+  });
+
+  it("subscribes the current admin to an issue", async () => {
+    postMock.mockResolvedValue({ data: {} });
+
+    await expect(subscribeToIssueApi(6)).resolves.toBeUndefined();
+    expect(postMock).toHaveBeenCalledWith("/issues/6/subscription");
+  });
+
+  it("unsubscribes the current admin from an issue", async () => {
+    deleteMock.mockResolvedValue({ data: {} });
+
+    await expect(unsubscribeFromIssueApi(6)).resolves.toBeUndefined();
+    expect(deleteMock).toHaveBeenCalledWith("/issues/6/subscription");
   });
 
   it("lists issue suggestions", async () => {

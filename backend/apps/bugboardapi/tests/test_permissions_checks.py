@@ -194,6 +194,10 @@ class PermissionsChecksTests(TestCase):
         self.assertTrue(is_issue_assignee(self.member, self.issue))
         self.assertFalse(is_issue_assignee(self.outsider, self.issue))
 
+    def test_issue_assignee_predicate_excludes_admin_issue_subscription(self):
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
+        self.assertFalse(is_issue_assignee(self.admin, self.issue))
+
     def test_ensure_issue_access_denies_user_without_project_access(self):
         with self.assertRaisesMessage(
             PermissionDenied, "You do not have access to this project"

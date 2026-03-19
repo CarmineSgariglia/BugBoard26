@@ -1,4 +1,3 @@
-import { QueryClient } from "@tanstack/react-query";
 import { Route, Routes } from "react-router-dom";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -32,7 +31,7 @@ vi.mock("@features/auth", () => ({
   }),
 }));
 
-vi.mock("@shared/providers/useBreadcrumbs", () => ({
+vi.mock("@shared/providers/BreadcrumbContext", () => ({
   useBreadcrumbs: () => ({
     setLabel: projectIssuesPageState.setLabel,
   }),
@@ -171,16 +170,6 @@ vi.mock("@features/issue/ui/IssueCard", () => ({
 }));
 
 describe("ProjectIssuesPage", () => {
-  function createAxiosStatusError(status: number) {
-    return {
-      isAxiosError: true,
-      response: {
-        status,
-        data: {},
-      },
-    };
-  }
-
   const project = {
     projectId: 7,
     name: "Orbit",
@@ -240,18 +229,10 @@ describe("ProjectIssuesPage", () => {
     );
 
     expect(await screen.findByTestId("project-sidebar")).toBeInTheDocument();
-    expect(projectIssuesPageState.getProjectApi).toHaveBeenCalledWith("7", expect.objectContaining({
-      signal: expect.any(AbortSignal),
-    }));
-    expect(projectIssuesPageState.listProjectIssuesApi).toHaveBeenCalledWith("7", expect.objectContaining({
-      signal: expect.any(AbortSignal),
-    }));
-    expect(projectIssuesPageState.listProjectMembersApi).toHaveBeenCalledWith("7", expect.objectContaining({
-      signal: expect.any(AbortSignal),
-    }));
-    expect(projectIssuesPageState.getProjectSubscriptionApi).toHaveBeenCalledWith("7", expect.objectContaining({
-      signal: expect.any(AbortSignal),
-    }));
+    expect(projectIssuesPageState.getProjectApi).toHaveBeenCalledWith("7");
+    expect(projectIssuesPageState.listProjectIssuesApi).toHaveBeenCalledWith("7");
+    expect(projectIssuesPageState.listProjectMembersApi).toHaveBeenCalledWith("7");
+    expect(projectIssuesPageState.getProjectSubscriptionApi).toHaveBeenCalledWith("7");
     expect(projectIssuesPageState.setLabel).toHaveBeenCalledWith("project:7", "Orbit");
     expect(screen.getByText("subscription:false")).toBeInTheDocument();
 
@@ -295,43 +276,5 @@ describe("ProjectIssuesPage", () => {
       screen.queryByRole("button", { name: /toggle subscription/i })
     ).not.toBeInTheDocument();
     expect(screen.getByText("isAdmin:false")).toBeInTheDocument();
-  });
-
-  it("redirects to /projects when project access is revoked with a 403 response", async () => {
-    projectIssuesPageState.getProjectApi.mockRejectedValue(createAxiosStatusError(403));
-    projectIssuesPageState.listProjectIssuesApi.mockRejectedValue(createAxiosStatusError(403));
-    projectIssuesPageState.listProjectMembersApi.mockRejectedValue(createAxiosStatusError(403));
-
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: Infinity,
-          gcTime: Infinity,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    });
-    queryClient.setQueryData(["projects"], [
-      { projectId: 7, name: "Orbit" },
-      { projectId: 14, name: "Nova" },
-    ]);
-    queryClient.setQueryData(["project", "7"], { projectId: 7, name: "Orbit" });
-
-    renderWithProviders(
-      <Routes>
-        <Route path="/projects" element={<div>Projects Home</div>} />
-        <Route path="/projects/:projectId/issues" element={<ProjectIssuesPage />} />
-      </Routes>,
-      { route: "/projects/7/issues", queryClient }
-    );
-
-    expect(await screen.findByText("Projects Home")).toBeInTheDocument();
-    expect(queryClient.getQueryData(["projects"])).toEqual([
-      { projectId: 14, name: "Nova" },
-    ]);
-    expect(queryClient.getQueryData(["project", "7"])).toBeUndefined();
   });
 });

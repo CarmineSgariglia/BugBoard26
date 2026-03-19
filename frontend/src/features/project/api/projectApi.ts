@@ -4,6 +4,7 @@ import type {
   CreateProjectPayload,
   ProjectMembership,
   Project,
+  ProjectSubscriptionState,
   UpdateProjectPayload,
 } from "@shared/api/types/projects";
 
@@ -38,6 +39,23 @@ export async function deleteProjectApi(projectId: number | string): Promise<void
 export async function listProjectMembersApi(projectId: string | number): Promise<ProjectMembership[]> {
   const { data } = await apiClient.get<ProjectMembership[]>(`/projects/${projectId}/members`);
   return data;
+}
+
+export async function getProjectSubscriptionApi(
+  projectId: string | number
+): Promise<ProjectSubscriptionState> {
+  const { data } = await apiClient.get<ProjectSubscriptionState>(
+    `/projects/${projectId}/subscription`
+  );
+  return data;
+}
+
+export async function subscribeToProjectApi(projectId: string | number): Promise<void> {
+  await apiClient.post(`/projects/${projectId}/subscription`);
+}
+
+export async function unsubscribeFromProjectApi(projectId: string | number): Promise<void> {
+  await apiClient.delete(`/projects/${projectId}/subscription`);
 }
 
 export async function listProjectIssuesApi(projectId: string | number): Promise<Issue[]> {

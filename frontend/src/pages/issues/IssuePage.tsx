@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
 import {
+  getIssueSubscriptionApi,
   IssueActivityPanel,
   IssueAssigneesModal,
   IssueDetailsSidebar,
   IssueModal,
+  subscribeToIssueApi,
+  unsubscribeFromIssueApi,
 } from "@features/issue";
 import { getIssueApi } from "@features/issue/api";
-import { listProjectMembersApi } from "@features/project/api";
+import { getProjectSubscriptionApi, listProjectMembersApi } from "@features/project/api";
+import type { IssueSubscriptionState } from "@shared/api/types/issues";
 import type { ProjectMembership } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { useAuth } from "@features/auth";
@@ -21,9 +25,11 @@ export function IssuePage() {
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
+  const isAdmin = currentUser?.isAdmin === true;
 
   const [isAssigneesModalOpen, setIsAssigneesModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState("");
 
   const { data: issue, isLoading, refetch } = useQuery({
     queryKey: ["issue", issueId],
@@ -34,12 +40,68 @@ export function IssuePage() {
 
   const numericIssueId = issueId ? Number(issueId) : Number.NaN;
   const safeIssue = issue && issue.issueId === numericIssueId ? issue : null;
+  const subscriptionQueryKey = ["issue", issueId, "subscription"] as const;
 
   const { data: projectMembers = [] } = useQuery({
     queryKey: ["project", safeIssue?.projectId, "members"],
     queryFn: () => listProjectMembersApi(safeIssue!.projectId),
     enabled: Boolean(safeIssue?.projectId),
     staleTime: 0,
+  });
+
+  const {
+    data: projectSubscription = null,
+    isLoading: isProjectSubscriptionLoading,
+  } = useQuery({
+    queryKey: ["project", safeIssue?.projectId, "subscription"],
+    queryFn: () => getProjectSubscriptionApi(safeIssue!.projectId),
+    enabled: Boolean(safeIssue?.projectId) && isAdmin,
+    staleTime: 0,
+  });
+
+  const {
+    data: subscription = null,
+    isLoading: isSubscriptionLoading,
+    error: subscriptionQueryError,
+  } = useQuery({
+    queryKey: subscriptionQueryKey,
+    queryFn: () => getIssueSubscriptionApi(issueId!),
+    enabled: !!issueId && isAdmin,
+    staleTime: 0,
+  });
+
+  const subscriptionMutation = useMutation({
+    mutationFn: async (checked: boolean) => {
+      if (!issueId) {
+        throw new Error("Missing issue id");
+      }
+
+      if (checked) {
+        await subscribeToIssueApi(issueId);
+        return { subscribed: true } satisfies IssueSubscriptionState;
+      }
+
+      await unsubscribeFromIssueApi(issueId);
+      return { subscribed: false } satisfies IssueSubscriptionState;
+    },
+    onMutate: async (checked) => {
+      setSubscriptionError("");
+      await queryClient.cancelQueries({ queryKey: subscriptionQueryKey });
+      const previous = queryClient.getQueryData<IssueSubscriptionState>(subscriptionQueryKey);
+      queryClient.setQueryData<IssueSubscriptionState>(subscriptionQueryKey, {
+        subscribed: checked,
+      });
+      return { previous };
+    },
+    onError: (_error, _checked, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(subscriptionQueryKey, context.previous);
+      }
+      setSubscriptionError("Unable to update notification preference. Please try again.");
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: subscriptionQueryKey });
+    },
   });
 
   useEffect(() => {
@@ -67,6 +129,11 @@ export function IssuePage() {
   }, [safeIssue, projectMembers]);
 
   const canCompose = isAssigned || Boolean(currentUser?.isAdmin);
+  const issueSubscriptionBlockedByProject =
+    isAdmin &&
+    Boolean(safeIssue) &&
+    !isProjectSubscriptionLoading &&
+    projectSubscription?.subscribed === false;
 
   if (isLoading || !safeIssue) {
     return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
@@ -81,10 +148,30 @@ export function IssuePage() {
           <IssueDetailsSidebar
             issue={safeIssue}
             assignees={visibleAssignees}
-            isAdmin={currentUser?.isAdmin}
+            isAdmin={isAdmin}
             isAssigned={isAssigned}
             onEditClick={() => setIsModalOpen(true)}
             onManageMembersClick={() => setIsAssigneesModalOpen(true)}
+            subscriptionChecked={subscription?.subscribed ?? false}
+            subscriptionDisabled={
+              isSubscriptionLoading ||
+              isProjectSubscriptionLoading ||
+              subscriptionMutation.isPending ||
+              !subscription ||
+              issueSubscriptionBlockedByProject
+            }
+            subscriptionDisabledReason={
+              issueSubscriptionBlockedByProject ? "Project notifications disabled" : ""
+            }
+            subscriptionError={
+              subscriptionError ||
+              (subscriptionQueryError ? "Unable to load notification preference." : "")
+            }
+            onSubscriptionChange={(checked) => {
+              void subscriptionMutation.mutateAsync(checked).catch(() => {
+                // Error state is surfaced inline in the sidebar.
+              });
+            }}
           />
         }
       >

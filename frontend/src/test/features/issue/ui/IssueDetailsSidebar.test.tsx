@@ -146,6 +146,7 @@ describe("IssueDetailsSidebar", () => {
       <IssueDetailsSidebar issue={baseIssue} isAdmin={true} />
     );
     expect(screen.getByText("Edit Issue")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: /issue notifications/i })).toBeInTheDocument();
   });
 
   it("shows Edit Issue button when isAssigned is true", () => {
@@ -158,6 +159,9 @@ describe("IssueDetailsSidebar", () => {
   it("hides Edit Issue button when neither isAdmin nor isAssigned", () => {
     renderWithProviders(<IssueDetailsSidebar issue={baseIssue} />);
     expect(screen.queryByText("Edit Issue")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: /issue notifications/i })
+    ).not.toBeInTheDocument();
   });
 
   it("calls onEditClick when Edit Issue button is clicked", async () => {
@@ -177,5 +181,70 @@ describe("IssueDetailsSidebar", () => {
   it("shows 'No one assigned' when assignees list is empty", () => {
     renderWithProviders(<IssueDetailsSidebar issue={baseIssue} />);
     expect(screen.getByText("No one assigned")).toBeInTheDocument();
+  });
+
+  it("calls onSubscriptionChange when the admin toggle is clicked", async () => {
+    const onSubscriptionChange = vi.fn();
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <IssueDetailsSidebar
+        issue={baseIssue}
+        isAdmin={true}
+        subscriptionChecked={false}
+        onSubscriptionChange={onSubscriptionChange}
+      />
+    );
+
+    await user.click(screen.getByRole("switch", { name: /issue notifications/i }));
+
+    expect(onSubscriptionChange).toHaveBeenCalledWith(true);
+  });
+
+  it("disables the notifications toggle while the subscription is pending", () => {
+    renderWithProviders(
+      <IssueDetailsSidebar
+        issue={baseIssue}
+        isAdmin={true}
+        subscriptionChecked={true}
+        subscriptionDisabled={true}
+      />
+    );
+
+    expect(screen.getByRole("switch", { name: /issue notifications/i })).toHaveAttribute(
+      "disabled"
+    );
+  });
+
+  it("shows the project-disabled reason on the blocked issue toggle", () => {
+    renderWithProviders(
+      <IssueDetailsSidebar
+        issue={baseIssue}
+        isAdmin={true}
+        subscriptionChecked={true}
+        subscriptionDisabled={true}
+        subscriptionDisabledReason="Project notifications disabled"
+      />
+    );
+
+    expect(screen.getByTitle("Project notifications disabled")).toBeInTheDocument();
+    expect(screen.getByText("Project notifications disabled")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: /issue notifications/i })).toHaveAttribute(
+      "disabled"
+    );
+  });
+
+  it("shows the inline subscription error for admins", () => {
+    renderWithProviders(
+      <IssueDetailsSidebar
+        issue={baseIssue}
+        isAdmin={true}
+        subscriptionError="Unable to load notification preference."
+      />
+    );
+
+    expect(
+      screen.getByText("Unable to load notification preference.")
+    ).toBeInTheDocument();
   });
 });

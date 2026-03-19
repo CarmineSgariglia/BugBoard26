@@ -7,19 +7,24 @@ import { IssuePage } from "@pages/issues/IssuePage";
 import { renderWithProviders } from "../../render";
 
 const issuePageState = vi.hoisted(() => ({
+  currentUser: {
+    userId: 2,
+    username: "devuser",
+    email: "dev@example.com",
+    isAdmin: false,
+  },
   getIssueApi: vi.fn(),
+  getIssueSubscriptionApi: vi.fn(),
+  getProjectSubscriptionApi: vi.fn(),
   listProjectMembersApi: vi.fn(),
+  subscribeToIssueApi: vi.fn(),
+  unsubscribeFromIssueApi: vi.fn(),
   setLabel: vi.fn(),
 }));
 
 vi.mock("@features/auth", () => ({
   useAuth: () => ({
-    user: {
-      userId: 2,
-      username: "devuser",
-      email: "dev@example.com",
-      isAdmin: false,
-    },
+    user: issuePageState.currentUser,
     refreshUser: vi.fn(),
     isLoading: false,
   }),
@@ -36,6 +41,7 @@ vi.mock("@features/issue/api", () => ({
 }));
 
 vi.mock("@features/project/api", () => ({
+  getProjectSubscriptionApi: issuePageState.getProjectSubscriptionApi,
   listProjectMembersApi: issuePageState.listProjectMembersApi,
 }));
 
@@ -59,21 +65,44 @@ vi.mock("@features/issue", () => ({
     isAssigned,
     onEditClick,
     onManageMembersClick,
+    subscriptionChecked,
+    subscriptionDisabled,
+    subscriptionDisabledReason,
+    subscriptionError,
+    onSubscriptionChange,
   }: {
     assignees: Array<{ username: string }>;
     isAdmin?: boolean;
     isAssigned: boolean;
     onEditClick: () => void;
     onManageMembersClick: () => void;
+    subscriptionChecked?: boolean;
+    subscriptionDisabled?: boolean;
+    subscriptionDisabledReason?: string;
+    subscriptionError?: string;
+    onSubscriptionChange?: (checked: boolean) => void;
   }) => (
     <div data-testid="issue-details-sidebar">
       <span>assignees:{assignees.map((assignee) => assignee.username).join(",")}</span>
       <span>isAdmin:{String(isAdmin)}</span>
       <span>isAssigned:{String(isAssigned)}</span>
+      <span>subscription:{String(subscriptionChecked)}</span>
+      <span>subscriptionDisabled:{String(subscriptionDisabled)}</span>
+      <span>subscriptionDisabledReason:{subscriptionDisabledReason || ""}</span>
+      <span>subscriptionError:{subscriptionError || ""}</span>
       <button onClick={onEditClick}>Open edit modal</button>
       <button onClick={onManageMembersClick}>Open assignees modal</button>
+      {isAdmin ? (
+        <button
+          onClick={() => onSubscriptionChange?.(!subscriptionChecked)}
+          disabled={subscriptionDisabled}
+        >
+          Toggle subscription
+        </button>
+      ) : null}
     </div>
   ),
+  getIssueSubscriptionApi: issuePageState.getIssueSubscriptionApi,
   IssueAssigneesModal: ({
     isOpen,
     readOnly,
@@ -97,6 +126,8 @@ vi.mock("@features/issue", () => ({
     onSuccess: () => void;
   }) =>
     isOpen ? <button onClick={onSuccess}>Confirm issue edit</button> : null,
+  subscribeToIssueApi: issuePageState.subscribeToIssueApi,
+  unsubscribeFromIssueApi: issuePageState.unsubscribeFromIssueApi,
 }));
 
 describe("IssuePage", () => {
@@ -127,12 +158,26 @@ describe("IssuePage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    issuePageState.currentUser = {
+      userId: 2,
+      username: "devuser",
+      email: "dev@example.com",
+      isAdmin: false,
+    };
     issuePageState.getIssueApi.mockResolvedValue(issue);
+    issuePageState.getIssueSubscriptionApi.mockResolvedValue({
+      subscribed: false,
+    });
+    issuePageState.getProjectSubscriptionApi.mockResolvedValue({
+      subscribed: true,
+    });
     issuePageState.listProjectMembersApi.mockResolvedValue([
       { userId: 1, username: "admin", role: "ADMIN" },
       { userId: 2, username: "devuser", role: "MEMBER" },
       { userId: 3, username: "qa", role: "MEMBER" },
     ]);
+    issuePageState.subscribeToIssueApi.mockResolvedValue(undefined);
+    issuePageState.unsubscribeFromIssueApi.mockResolvedValue(undefined);
   });
 
   it("loads the issue, updates the breadcrumb and filters admin assignees", async () => {
@@ -155,6 +200,8 @@ describe("IssuePage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("isAdmin:false")).toBeInTheDocument();
     expect(screen.getByText("isAssigned:true")).toBeInTheDocument();
+    expect(issuePageState.getIssueSubscriptionApi).not.toHaveBeenCalled();
+    expect(issuePageState.getProjectSubscriptionApi).not.toHaveBeenCalled();
     expect(
       screen.getByText("12:Broken login flow:true")
     ).toBeInTheDocument();
@@ -192,5 +239,92 @@ describe("IssuePage", () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads the admin subscription state and toggles it", async () => {
+    issuePageState.currentUser = {
+      userId: 1,
+      username: "admin",
+      email: "admin@example.com",
+      isAdmin: true,
+    };
+    issuePageState.getIssueSubscriptionApi
+      .mockResolvedValueOnce({ subscribed: false })
+      .mockResolvedValueOnce({ subscribed: true })
+      .mockResolvedValueOnce({ subscribed: false });
+
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
+    expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12");
+    expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
+    expect(screen.getByText("isAdmin:true")).toBeInTheDocument();
+    expect(screen.getByText("subscription:false")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("subscriptionDisabled:false")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /toggle subscription/i }));
+
+    await waitFor(() => {
+      expect(issuePageState.subscribeToIssueApi).toHaveBeenCalledWith("12");
+    });
+    await waitFor(() => {
+      expect(screen.getByText("subscription:true")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /toggle subscription/i }));
+
+    await waitFor(() => {
+      expect(issuePageState.unsubscribeFromIssueApi).toHaveBeenCalledWith("12");
+    });
+    await waitFor(() => {
+      expect(screen.getByText("subscription:false")).toBeInTheDocument();
+    });
+  });
+
+  it("disables the issue toggle when project notifications are disabled", async () => {
+    issuePageState.currentUser = {
+      userId: 1,
+      username: "admin",
+      email: "admin@example.com",
+      isAdmin: true,
+    };
+    issuePageState.getIssueSubscriptionApi.mockResolvedValue({
+      subscribed: true,
+    });
+    issuePageState.getProjectSubscriptionApi.mockResolvedValue({
+      subscribed: false,
+    });
+
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
+    expect(screen.getByText("subscription:true")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("subscriptionDisabled:true")).toBeInTheDocument();
+      expect(
+        screen.getByText("subscriptionDisabledReason:Project notifications disabled")
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /toggle subscription/i }));
+
+    expect(issuePageState.unsubscribeFromIssueApi).not.toHaveBeenCalled();
+    expect(issuePageState.subscribeToIssueApi).not.toHaveBeenCalled();
   });
 });

@@ -5,10 +5,11 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Q
 from rest_framework.exceptions import ValidationError
 
+from ...roles import is_admin_user
 from ...security.uploads import store_upload, validate_issue_attachment
+from .membership import developer_issue_assignee_users, effective_admin_issue_subscription_users
 from .media import transcode_video_upload
 from .models import Attachment, IssueEvent
 from .realtime import publish_issue_event_created
@@ -218,11 +219,20 @@ def delete_media_path(path: str) -> None:
 
 
 def issue_notification_recipients(*, issue, actor) -> list[User]:
-    return list(
-        User.objects.filter(
-            Q(issue_assignments__issue=issue) | Q(id=issue.reporter_id)
-        )
-        .filter(is_active=True)
-        .exclude(id=getattr(actor, "id", None))
-        .distinct()
-    )
+    actor_id = getattr(actor, "id", None)
+    recipient_by_id: dict[int, User] = {}
+
+    reporter = getattr(issue, "reporter", None)
+    if reporter and reporter.is_active and not is_admin_user(reporter):
+        recipient_by_id[reporter.id] = reporter
+
+    for user in developer_issue_assignee_users(issue=issue, active_only=True):
+        recipient_by_id[user.id] = user
+
+    for user in effective_admin_issue_subscription_users(issue=issue, active_only=True):
+        recipient_by_id[user.id] = user
+
+    if actor_id is not None:
+        recipient_by_id.pop(actor_id, None)
+
+    return list(recipient_by_id.values())

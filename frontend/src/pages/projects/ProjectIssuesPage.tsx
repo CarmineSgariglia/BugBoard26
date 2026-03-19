@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BiCategoryAlt } from "react-icons/bi";
 import { FiPlus, FiUser } from "react-icons/fi";
 import {
@@ -14,12 +14,15 @@ import { EditProjectFlow } from "@features/project/flows/EditProjectFlow";
 import { EditTeamFlow } from "@features/project/flows/EditTeamFlow";
 import { IssueModal } from "@features/issue/ui/IssueModal";
 import {
+  getProjectSubscriptionApi,
   getProjectApi,
   listProjectIssuesApi,
+  subscribeToProjectApi,
+  unsubscribeFromProjectApi,
 } from "@features/project/api";
 import { listProjectMembersApi } from "@features/project/api";
 import type { Issue } from "@shared/api/types/issues";
-import type { ProjectMembership } from "@shared/api/types/projects";
+import type { ProjectMembership, ProjectSubscriptionState } from "@shared/api/types/projects";
 import { CATEGORIES, PRIORITIES, STATUSES } from "@features/issue/model/constants";
 import { useAuth } from "@features/auth";
 import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
@@ -38,6 +41,7 @@ export function ProjectIssuesPage() {
   const { user: currentUser } = useAuth();
   const { setLabel } = useBreadcrumbs();
   const queryClient = useQueryClient();
+  const isAdmin = currentUser?.isAdmin === true;
   const issueListRef = useFluidWheelContainer<HTMLDivElement>(true, {
     tailDurationMs: 980,
     tailIntensity: 0.34,
@@ -57,6 +61,9 @@ export function ProjectIssuesPage() {
   const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
   const [isViewTeamModalOpen, setIsViewTeamModalOpen] = useState(false);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState("");
+
+  const subscriptionQueryKey = ["project", projectId, "subscription"] as const;
 
   const {
     data: issues = [],
@@ -92,6 +99,51 @@ export function ProjectIssuesPage() {
     queryFn: () => getProjectApi(projectId!),
     enabled: !!projectId,
     staleTime: 0,
+  });
+
+  const {
+    data: subscription = null,
+    isLoading: isSubscriptionLoading,
+    error: subscriptionQueryError,
+  } = useQuery({
+    queryKey: subscriptionQueryKey,
+    queryFn: () => getProjectSubscriptionApi(projectId!),
+    enabled: !!projectId && isAdmin,
+    staleTime: 0,
+  });
+
+  const subscriptionMutation = useMutation({
+    mutationFn: async (checked: boolean) => {
+      if (!projectId) {
+        throw new Error("Missing project id");
+      }
+
+      if (checked) {
+        await subscribeToProjectApi(projectId);
+        return { subscribed: true } satisfies ProjectSubscriptionState;
+      }
+
+      await unsubscribeFromProjectApi(projectId);
+      return { subscribed: false } satisfies ProjectSubscriptionState;
+    },
+    onMutate: async (checked) => {
+      setSubscriptionError("");
+      await queryClient.cancelQueries({ queryKey: subscriptionQueryKey });
+      const previous = queryClient.getQueryData<ProjectSubscriptionState>(subscriptionQueryKey);
+      queryClient.setQueryData<ProjectSubscriptionState>(subscriptionQueryKey, {
+        subscribed: checked,
+      });
+      return { previous };
+    },
+    onError: (_error, _checked, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(subscriptionQueryKey, context.previous);
+      }
+      setSubscriptionError("Unable to update notification preference. Please try again.");
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: subscriptionQueryKey });
+    },
   });
 
   useEffect(() => {
@@ -228,10 +280,23 @@ export function ProjectIssuesPage() {
                   username: m.username,
                   profileImg: m.profileImg,
                 }))}
-                isAdmin={currentUser?.isAdmin}
+                isAdmin={isAdmin}
                 onSettingsClick={() => setIsEditModalOpen(true)}
                 onEditTeamClick={() => setIsEditTeamModalOpen(true)}
                 onViewTeamClick={() => setIsViewTeamModalOpen(true)}
+                subscriptionChecked={subscription?.subscribed ?? false}
+                subscriptionDisabled={
+                  isSubscriptionLoading || subscriptionMutation.isPending || !subscription
+                }
+                subscriptionError={
+                  subscriptionError ||
+                  (subscriptionQueryError ? "Unable to load notification preference." : "")
+                }
+                onSubscriptionChange={(checked) => {
+                  void subscriptionMutation.mutateAsync(checked).catch(() => {
+                    // Error state is surfaced inline in the sidebar.
+                  });
+                }}
               />
             ) : (
               <div className="h-80 rounded-2xl bg-white/5 animate-pulse border border-white/5" />
