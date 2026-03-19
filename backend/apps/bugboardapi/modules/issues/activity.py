@@ -8,7 +8,7 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from ...roles import is_admin_user
-from ...security.uploads import store_upload, validate_issue_attachment
+from ...security.uploads import compress_image_upload, store_upload, validate_issue_attachment
 from .membership import developer_issue_assignee_users, effective_admin_issue_subscription_users
 from .media import transcode_video_upload
 from .models import Attachment, IssueEvent
@@ -51,6 +51,7 @@ def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
     content_type, size = validate_issue_attachment(
         uploaded_file,
         max_size_bytes=getattr(settings, "BUGBOARD_MAX_ATTACHMENT_FILE_BYTES", 10 * 1024 * 1024),
+        max_image_size_bytes=getattr(settings, "BUGBOARD_MAX_ATTACHMENT_IMAGE_BYTES", 10 * 1024 * 1024),
     )
     if content_type.startswith("video/"):
         if size > getattr(settings, "BUGBOARD_MAX_ATTACHMENT_VIDEO_BYTES", 50 * 1024 * 1024):
@@ -64,6 +65,25 @@ def save_issue_uploaded_file(*, uploaded_file, issue_id: int, base_dir: str):
             Path(result.path).suffix.lower() or ".mp4",
         )
         return result.path, result.mime_type, result.size, original_name
+
+    if content_type.startswith("image/"):
+        prepared_image = compress_image_upload(
+            uploaded_file=uploaded_file,
+            max_width=1600,
+            max_height=1600,
+            target_max_bytes=getattr(settings, "BUGBOARD_MAX_ATTACHMENT_IMAGE_BYTES", 10 * 1024 * 1024),
+            field_name="file",
+        )
+        saved = store_upload(
+            uploaded_file=prepared_image.file,
+            storage_dir=f"{base_dir}/{issue_id}",
+            filename_suffix=prepared_image.extension,
+        )
+        original_name = build_attachment_display_name(
+            getattr(uploaded_file, "name", ""),
+            prepared_image.extension,
+        )
+        return saved.path, prepared_image.mime_type, prepared_image.size, original_name
 
     suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
     saved = store_upload(
