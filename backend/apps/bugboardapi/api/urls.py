@@ -36,7 +36,7 @@ urlpatterns = [
     path("auth/password/otp/request", PasswordOTPRequestView.as_view(), name="otp-request"),
     path("auth/password/otp/verify", PasswordOTPVerifyView.as_view(), name="otp-verify"),
     path("auth/password/reset", PasswordResetView.as_view(), name="password-reset"),
-    path("projects/<int:projectId>/issues", ProjectIssueListCreateView.as_view(), name="project-issues"),
-    path("issue-events/<int:updateId>/attachments", AttachmentUploadView.as_view(), name="issue-event-attachment"),
+    path("projects/<int:project_id>/issues", ProjectIssueListCreateView.as_view(), name="project-issues"),
+    path("issue-events/<int:update_id>/attachments", AttachmentUploadView.as_view(), name="issue-event-attachment"),
     *router.urls,
 ]

@@ -88,7 +88,7 @@ class ProjectViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get"], url_path="members")
-    def members(self, request, projectId=None):
+    def members(self, request, *args, **kwargs):
         project = self.get_object()
         ensure_project_access(request.user, project)
         include_admins = str(request.query_params.get("includeAdmins", "")).lower() in {"1", "true", "yes"}
@@ -96,7 +96,7 @@ class ProjectViewSet(
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
     @action(detail=True, methods=["get", "post", "delete"], url_path="subscription")
-    def subscription(self, request, projectId=None):
+    def subscription(self, request, *args, **kwargs):
         check_admin(request.user)
         project = self.get_object()
 

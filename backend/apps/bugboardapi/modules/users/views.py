@@ -98,7 +98,7 @@ class UserViewSet(
         return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], url_path="status")
-    def set_status(self, request, userId=None):
+    def set_status(self, request, *args, **kwargs):
         check_admin(request.user)
         user = self.get_object()
         updated_user = set_user_status(
@@ -109,7 +109,7 @@ class UserViewSet(
         return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="admin-upload-image")
-    def admin_upload_profile_image(self, request, userId=None):
+    def admin_upload_profile_image(self, request, *args, **kwargs):
         check_admin(request.user)
         user = self.get_object()
         return self._profile_image_response(request=request, user=user)
@@ -123,7 +123,7 @@ class UserViewSet(
         return self._profile_image_response(request=request, user=request.user)
 
     @action(detail=True, methods=["post"], url_path="change-password")
-    def change_password(self, request, userId=None):
+    def change_password(self, request, *args, **kwargs):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload = change_user_password(
@@ -134,6 +134,6 @@ class UserViewSet(
         return Response(payload)
 
     @action(detail=True, methods=["post"], url_path="admin-reset-password")
-    def admin_reset_password(self, request, userId=None):
+    def admin_reset_password(self, request, *args, **kwargs):
         check_admin(request.user)
-        return self.change_password(request, userId=userId)
+        return self.change_password(request, *args, **kwargs)
