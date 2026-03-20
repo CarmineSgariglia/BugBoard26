@@ -39,7 +39,9 @@ def validate_issue_event_message(
 def build_attachment_display_name(raw_name: str, final_suffix: str) -> str:
     normalized_name = PurePosixPath((raw_name or "").replace("\\", "/")).name
     base_name = Path(normalized_name).stem.strip() if normalized_name else ""
-    safe_suffix = final_suffix if final_suffix.startswith(".") else f".{final_suffix}" if final_suffix else ""
+    safe_suffix = final_suffix or ""
+    if safe_suffix and not safe_suffix.startswith("."):
+        safe_suffix = f".{safe_suffix}"
 
     if not base_name:
         base_name = "attachment"

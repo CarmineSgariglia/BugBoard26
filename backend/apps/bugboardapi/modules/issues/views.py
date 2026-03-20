@@ -92,16 +92,16 @@ def _scoped_issue_event_or_none(*, user, update_id):
 class ProjectIssueListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, projectId):
-        project = _get_project_or_none(user=request.user, project_id=projectId)
+    def get(self, request, project_id):
+        project = _get_project_or_none(user=request.user, project_id=project_id)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
         queryset = list_project_issues_queryset(project=project, request=request)
         return Response(IssueSerializer(queryset, many=True, context={"request": request}).data)
 
-    def post(self, request, projectId):
-        project = _get_project_or_none(user=request.user, project_id=projectId)
+    def post(self, request, project_id):
+        project = _get_project_or_none(user=request.user, project_id=project_id)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
@@ -121,7 +121,7 @@ class IssueViewSet(
     permission_classes = [permissions.IsAuthenticated]
     queryset = _issue_queryset()
     lookup_field = "issue_id"
-    lookup_url_kwarg = "issueId"
+    lookup_url_kwarg = "issue_id"
 
     def get_queryset(self):
         return filter_by_project_access(queryset=_issue_queryset(), user=self.request.user)
@@ -139,7 +139,7 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["post"], url_path="assign")
-    def assign(self, request, issueId=None):
+    def assign(self, request, issue_id=None):
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
@@ -147,7 +147,7 @@ class IssueViewSet(
         return Response({"detail": "Issue assigned"})
 
     @action(detail=True, methods=["post"], url_path="unassign")
-    def unassign(self, request, issueId=None):
+    def unassign(self, request, issue_id=None):
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
@@ -155,7 +155,7 @@ class IssueViewSet(
         return Response({"detail": "Issue unassigned"})
 
     @action(detail=True, methods=["post"], url_path="status")
-    def update_status(self, request, issueId=None):
+    def update_status(self, request, issue_id=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
         check_assignee_or_admin(request.user, issue)
@@ -169,7 +169,7 @@ class IssueViewSet(
         return Response(IssueSerializer(updated_issue, context={"request": request}).data)
 
     @action(detail=True, methods=["get", "post", "delete"], url_path="subscription")
-    def subscription(self, request, issueId=None):
+    def subscription(self, request, issue_id=None):
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
@@ -187,7 +187,7 @@ class IssueViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get", "post"], url_path="updates")
-    def updates(self, request, issueId=None):
+    def updates(self, request, issue_id=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
 
@@ -225,7 +225,7 @@ class IssueViewSet(
         url_path="updates/stream",
         renderer_classes=[ServerSentEventsRenderer],
     )
-    def updates_stream(self, request, issueId=None):
+    def updates_stream(self, request, issue_id=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
 
@@ -256,7 +256,7 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["get"], url_path="suggestions")
-    def suggestions(self, request, issueId=None):
+    def suggestions(self, request, issue_id=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
         memberships = list_issue_suggestion_memberships(issue=issue)
@@ -267,9 +267,9 @@ class IssueViewSet(
         return Response(payload)
 
     @action(detail=True, methods=["patch"], url_path="details")
-    def details(self, request, issueId=None):
+    def details(self, request, issue_id=None):
         """Dedicated endpoint for issue edit pages to patch full issue details."""
-        return self.partial_update(request, issueId=issueId)
+        return self.partial_update(request, issue_id=issue_id)
 
     def partial_update(self, request, *args, **kwargs):
         issue = self.get_object()
@@ -288,8 +288,8 @@ class AttachmentUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
-    def post(self, request, updateId):
-        event = _scoped_issue_event_or_none(user=request.user, update_id=updateId)
+    def post(self, request, update_id):
+        event = _scoped_issue_event_or_none(user=request.user, update_id=update_id)
         if not event:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_issue_access(request.user, event.issue)

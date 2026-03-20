@@ -8,21 +8,29 @@ from uuid import uuid4
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageOps
 from rest_framework.exceptions import ValidationError
 
+IMAGE_JPEG_MIME_TYPE = "image/jpeg"
+IMAGE_PNG_MIME_TYPE = "image/png"
+IMAGE_WEBP_MIME_TYPE = "image/webp"
+JPG_EXTENSION = ".jpg"
+JPEG_EXTENSION = ".jpeg"
+PNG_EXTENSION = ".png"
+WEBP_EXTENSION = ".webp"
+
 IMAGE_SIGNATURES: dict[str, bytes] = {
-    "image/png": b"\x89PNG\r\n\x1a\n",
-    "image/webp": b"RIFF",
+    IMAGE_PNG_MIME_TYPE: b"\x89PNG\r\n\x1a\n",
+    IMAGE_WEBP_MIME_TYPE: b"RIFF",
 }
 JPEG_SIGNATURE = b"\xff\xd8\xff"
 WEBM_SIGNATURE = b"\x1A\x45\xDF\xA3"
 FTYP_MARKER = b"ftyp"
 
 ALLOWED_IMAGE_TYPES: dict[str, str] = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
+    IMAGE_JPEG_MIME_TYPE: JPG_EXTENSION,
+    IMAGE_PNG_MIME_TYPE: PNG_EXTENSION,
+    IMAGE_WEBP_MIME_TYPE: WEBP_EXTENSION,
 }
 
 ALLOWED_VIDEO_TYPES: dict[str, set[str]] = {
@@ -37,9 +45,9 @@ ALLOWED_ATTACHMENT_TYPES: dict[str, set[str]] = {
     "application/json": {".json"},
     "application/pdf": {".pdf"},
     "application/zip": {".zip"},
-    "image/jpeg": {".jpg", ".jpeg"},
-    "image/png": {".png"},
-    "image/webp": {".webp"},
+    IMAGE_JPEG_MIME_TYPE: {JPG_EXTENSION, JPEG_EXTENSION},
+    IMAGE_PNG_MIME_TYPE: {PNG_EXTENSION},
+    IMAGE_WEBP_MIME_TYPE: {WEBP_EXTENSION},
     **ALLOWED_VIDEO_TYPES,
 }
 
@@ -59,8 +67,8 @@ class PreparedImageUpload:
     extension: str
 
 
-COMPRESSED_IMAGE_MIME_TYPE = "image/webp"
-COMPRESSED_IMAGE_EXTENSION = ".webp"
+COMPRESSED_IMAGE_MIME_TYPE = IMAGE_WEBP_MIME_TYPE
+COMPRESSED_IMAGE_EXTENSION = WEBP_EXTENSION
 IMAGE_QUALITY_STEPS = (82, 74, 66, 58, 50)
 IMAGE_SCALE_STEPS = (1.0, 0.85, 0.72, 0.6)
 
@@ -75,11 +83,11 @@ def _read_prefix(uploaded_file, size: int = 16) -> bytes:
 
 def _ensure_image_signature(content_type: str, uploaded_file) -> None:
     prefix = _read_prefix(uploaded_file)
-    if content_type == "image/jpeg":
+    if content_type == IMAGE_JPEG_MIME_TYPE:
         if not prefix.startswith(JPEG_SIGNATURE):
             raise ValidationError({"image": "File content does not match JPEG format"})
         return
-    if content_type == "image/webp":
+    if content_type == IMAGE_WEBP_MIME_TYPE:
         if not (prefix.startswith(b"RIFF") and prefix[8:12] == b"WEBP"):
             raise ValidationError({"image": "File content does not match WEBP format"})
         return
@@ -113,7 +121,7 @@ def validate_profile_image(uploaded_file, *, max_size_bytes: int = 2 * 1024 * 10
 
     suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
     expected_suffix = ALLOWED_IMAGE_TYPES[content_type]
-    if suffix and suffix not in {expected_suffix, ".jpeg" if expected_suffix == ".jpg" else expected_suffix}:
+    if suffix and suffix not in {expected_suffix, JPEG_EXTENSION if expected_suffix == JPG_EXTENSION else expected_suffix}:
         raise ValidationError({"image": "File extension does not match image type"})
 
     _ensure_image_signature(content_type, uploaded_file)
@@ -172,7 +180,7 @@ def compress_image_upload(
         image = Image.open(uploaded_file)
         image = ImageOps.exif_transpose(image)
         image.load()
-    except (OSError, UnidentifiedImageError) as exc:
+    except OSError as exc:
         raise ValidationError({field_name: "Image file is invalid or could not be processed"}) from exc
     finally:
         if position is not None and hasattr(uploaded_file, "seek"):

@@ -40,7 +40,7 @@ class NotificationViewSet(
     permission_classes = [permissions.IsAuthenticated]
     queryset = NotifyUser.objects.select_related("notification", "notification__issue", "notification__project")
     lookup_field = "notify_user_id"
-    lookup_url_kwarg = "notificationId"
+    lookup_url_kwarg = "notification_id"
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user).order_by("-notify_user_id")
@@ -92,7 +92,7 @@ class NotificationViewSet(
         return Response(self._serialize_notifications_page(notifications, limit=limit))
 
     @action(detail=True, methods=["post"], url_path="read")
-    def read(self, request, notificationId=None):
+    def read(self, request, notification_id=None):
         notify_user = self.get_object()
         notify_user = mark_notification_as_read(notify_user=notify_user)
         return Response(NotifyUserSerializer(notify_user).data)
