@@ -16,14 +16,14 @@ export function DynamicBreadcrumbs() {
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
-    queryFn: () => getProjectApi(projectId!),
+    queryFn: ({ signal }) => getProjectApi(projectId!, { signal }),
     enabled: !!projectId && !projectLabel && location.pathname.includes("/projects/"),
     staleTime: 30_000,
   });
 
   const { data: issue } = useQuery({
     queryKey: ["issue", issueId],
-    queryFn: () => getIssueApi(issueId!),
+    queryFn: ({ signal }) => getIssueApi(issueId!, { signal }),
     enabled: !!issueId && !issueLabel,
     staleTime: 30_000,
   });

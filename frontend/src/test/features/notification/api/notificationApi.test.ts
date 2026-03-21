@@ -56,6 +56,20 @@ describe("feature notifications api module", () => {
     });
   });
 
+  it("passes AbortSignal when listing notifications", async () => {
+    const controller = new AbortController();
+    getMock.mockResolvedValue({
+      data: { results: [], nextCursor: null, hasMore: false, hasUnread: false },
+    });
+
+    await listNotificationsApi({ limit: 10 }, { signal: controller.signal });
+
+    expect(getMock).toHaveBeenCalledWith("/notifications", {
+      params: { limit: 10 },
+      signal: controller.signal,
+    });
+  });
+
   it("reads a notification", async () => {
     postMock.mockResolvedValue({ data: { notifyUserId: 1, isRead: true } });
 

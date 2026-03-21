@@ -89,7 +89,7 @@ export function UserTable({
                                             <img src={resolveMediaUrl(user.profileImg)} alt={displayName} className="h-full w-full object-cover" />
                                         ) : (
                                             <span className="text-black/60 font-bold text-sm">
-                                                {(user.firstName?.[0] || user.username[0]).toUpperCase()}
+                                                {(user.firstName?.[0] || user.username?.[0] || "?").toUpperCase()}
                                             </span>
                                         )}
                                     </div>

@@ -34,6 +34,7 @@ import {
 import { getProjectApi } from "@features/project/api";
 import { getIssueApi } from "@features/issue/api";
 import { resolveMediaUrl } from "@shared/api/core/media";
+import { isRequestAbortError } from "@shared/api";
 import type { Project } from "@shared/api/types/projects";
 import type { Issue } from "@shared/api/types/issues";
 
@@ -132,14 +133,16 @@ export function NotificationsRealtimeListener() {
   const { user, refreshUser } = useAuth();
   const { pushToast } = useToast();
   const pendingReadIdsRef = useRef(new Set<number>());
+  const projectHydrationControllersRef = useRef(new Map<number, AbortController>());
+  const issueHydrationControllersRef = useRef(new Map<number, AbortController>());
 
   const routeTarget = useMemo(() => getRouteTarget(location.pathname), [location.pathname]);
   const routeProjectId = useMemo(() => getRouteProjectId(location.pathname), [location.pathname]);
 
   const { data, isSuccess } = useInfiniteQuery({
     queryKey: notificationsQueryKey,
-    queryFn: ({ pageParam }) =>
-      listNotificationsApi({ limit: notificationsPageSize, before: pageParam }),
+    queryFn: ({ pageParam, signal }) =>
+      listNotificationsApi({ limit: notificationsPageSize, before: pageParam }, { signal }),
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
     enabled: Boolean(user),
@@ -212,8 +215,12 @@ export function NotificationsRealtimeListener() {
   });
 
   const hydrateAddedProjectInHome = useEffectEvent(async (projectId: number) => {
+    projectHydrationControllersRef.current.get(projectId)?.abort();
+    const controller = new AbortController();
+    projectHydrationControllersRef.current.set(projectId, controller);
+
     try {
-      const project = await getProjectApi(projectId);
+      const project = await getProjectApi(projectId, { signal: controller.signal });
       const normalizedProject = {
         ...project,
         authorProfileImg: resolveMediaUrl(project.authorProfileImg || undefined),
@@ -223,13 +230,24 @@ export function NotificationsRealtimeListener() {
         mergeProjectIntoHomeProjects(currentProjects, normalizedProject),
       );
     } catch (error) {
+      if (isRequestAbortError(error)) {
+        return;
+      }
       console.error("Failed to hydrate added project in home cache", error);
+    } finally {
+      if (projectHydrationControllersRef.current.get(projectId) === controller) {
+        projectHydrationControllersRef.current.delete(projectId);
+      }
     }
   });
 
   const hydrateAddedIssueInProject = useEffectEvent(async (projectId: number, issueId: number) => {
+    issueHydrationControllersRef.current.get(issueId)?.abort();
+    const controller = new AbortController();
+    issueHydrationControllersRef.current.set(issueId, controller);
+
     try {
-      const issue = await getIssueApi(issueId);
+      const issue = await getIssueApi(issueId, { signal: controller.signal });
 
       queryClient.setQueriesData<Issue[]>(
         {
@@ -244,7 +262,14 @@ export function NotificationsRealtimeListener() {
       queryClient.setQueryData(["issue", issueId], issue);
       queryClient.setQueryData(["issue", String(issueId)], issue);
     } catch (error) {
+      if (isRequestAbortError(error)) {
+        return;
+      }
       console.error("Failed to hydrate added issue in project cache", error);
+    } finally {
+      if (issueHydrationControllersRef.current.get(issueId) === controller) {
+        issueHydrationControllersRef.current.delete(issueId);
+      }
     }
   });
 
@@ -475,6 +500,10 @@ export function NotificationsRealtimeListener() {
       stopped = true;
       clearReconnectTimer();
       abortController?.abort();
+      projectHydrationControllersRef.current.forEach((controller) => controller.abort());
+      issueHydrationControllersRef.current.forEach((controller) => controller.abort());
+      projectHydrationControllersRef.current.clear();
+      issueHydrationControllersRef.current.clear();
     };
   }, [isSuccess, navigate, queryClient, refreshUser, routeProjectId, user]);
 

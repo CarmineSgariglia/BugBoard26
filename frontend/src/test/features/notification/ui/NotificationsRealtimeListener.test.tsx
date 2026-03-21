@@ -117,7 +117,7 @@ describe("NotificationsRealtimeListener", () => {
       return <div data-testid="pathname-probe">{location.pathname}</div>;
     }
 
-    render(
+    return render(
       <MemoryRouter initialEntries={[route]}>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
@@ -290,7 +290,9 @@ describe("NotificationsRealtimeListener", () => {
     renderListener(queryClient, "/projects");
 
     await waitFor(() => {
-      expect(getProjectApiMock).toHaveBeenCalledWith(9);
+      expect(getProjectApiMock).toHaveBeenCalledWith(9, expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }));
       expect(queryClient.getQueryData<Project[]>(["projects"])).toEqual([
         expect.objectContaining({ projectId: 9, name: "Realtime Project" }),
         expect.objectContaining({ projectId: 2, name: "Existing Project" }),
@@ -340,7 +342,9 @@ describe("NotificationsRealtimeListener", () => {
     renderListener(queryClient, "/projects/9/issues");
 
     await waitFor(() => {
-      expect(getIssueApiMock).toHaveBeenCalledWith(101);
+      expect(getIssueApiMock).toHaveBeenCalledWith(101, expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }));
       expect(queryClient.getQueryData<Issue[]>(["project", "9", "issues"])).toEqual([
         expect.objectContaining({ issueId: 88, title: "Existing Issue" }),
         expect.objectContaining({ issueId: 101, title: "Realtime Issue" }),
@@ -350,6 +354,62 @@ describe("NotificationsRealtimeListener", () => {
     expect(queryClient.getQueryData<Issue>(["issue", 101])).toEqual(
       expect.objectContaining({ issueId: 101, title: "Realtime Issue" }),
     );
+  });
+
+  it("aborts in-flight project hydration on unmount", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 140,
+      notificationId: 25,
+      type: "PROJECT_ADDED",
+      createdAt: "2026-03-19T10:20:00Z",
+      issueId: null,
+      projectId: 9,
+      isRead: false,
+      readAt: null,
+    };
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    let aborted = false;
+    getProjectApiMock.mockImplementation(
+      (_projectId: number, options?: { signal?: AbortSignal }) =>
+        new Promise<Project>((_resolve, reject) => {
+          options?.signal?.addEventListener("abort", () => {
+            aborted = true;
+            reject({ name: "AbortError" });
+          });
+        }),
+    );
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    const view = renderListener(queryClient, "/projects");
+
+    await waitFor(() => {
+      expect(getProjectApiMock).toHaveBeenCalled();
+    });
+
+    view.unmount();
+
+    await waitFor(() => {
+      expect(aborted).toBe(true);
+    });
   });
 
   it("does not show a toast for already loaded read notifications during stream bootstrap", async () => {

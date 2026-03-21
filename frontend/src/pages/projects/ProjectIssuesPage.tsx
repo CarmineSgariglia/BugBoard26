@@ -73,7 +73,7 @@ export function ProjectIssuesPage() {
     error: issuesError,
   } = useQuery({
     queryKey: ["project", projectId, "issues"],
-    queryFn: () => listProjectIssuesApi(projectId!),
+    queryFn: ({ signal }) => listProjectIssuesApi(projectId!, { signal }),
     enabled: !!projectId,
     staleTime: 0,
   });
@@ -85,7 +85,7 @@ export function ProjectIssuesPage() {
     error: membersError,
   } = useQuery({
     queryKey: ["project", projectId, "members"],
-    queryFn: () => listProjectMembersApi(projectId!),
+    queryFn: ({ signal }) => listProjectMembersApi(projectId!, { signal }),
     enabled: !!projectId,
     staleTime: 0,
   });
@@ -97,7 +97,7 @@ export function ProjectIssuesPage() {
     error: projectError,
   } = useQuery({
     queryKey: ["project", projectId],
-    queryFn: () => getProjectApi(projectId!),
+    queryFn: ({ signal }) => getProjectApi(projectId!, { signal }),
     enabled: !!projectId,
     staleTime: 0,
   });
@@ -108,7 +108,7 @@ export function ProjectIssuesPage() {
     error: subscriptionQueryError,
   } = useQuery({
     queryKey: subscriptionQueryKey,
-    queryFn: () => getProjectSubscriptionApi(projectId!),
+    queryFn: ({ signal }) => getProjectSubscriptionApi(projectId!, { signal }),
     enabled: !!projectId && isAdmin,
     staleTime: 0,
   });
@@ -413,7 +413,6 @@ export function ProjectIssuesPage() {
     </div>
   );
 }
-
 
 
 

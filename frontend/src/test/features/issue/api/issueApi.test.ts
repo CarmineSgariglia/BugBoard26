@@ -49,14 +49,14 @@ describe("feature issues api module", () => {
     getMock.mockResolvedValue({ data: { issueId: 6 } });
 
     await expect(getIssueApi(6)).resolves.toEqual({ issueId: 6 });
-    expect(getMock).toHaveBeenCalledWith("/issues/6");
+    expect(getMock).toHaveBeenCalledWith("/issues/6", {});
   });
 
   it("gets the current issue subscription state", async () => {
     getMock.mockResolvedValue({ data: { subscribed: false } });
 
     await expect(getIssueSubscriptionApi(6)).resolves.toEqual({ subscribed: false });
-    expect(getMock).toHaveBeenCalledWith("/issues/6/subscription");
+    expect(getMock).toHaveBeenCalledWith("/issues/6/subscription", {});
   });
 
   it("creates issue updates as JSON when there are no files", async () => {
@@ -117,7 +117,7 @@ describe("feature issues api module", () => {
     getMock.mockResolvedValue({ data: [{ updateId: 1 }] });
 
     await expect(listIssueUpdatesApi(6)).resolves.toEqual([{ updateId: 1 }]);
-    expect(getMock).toHaveBeenCalledWith("/issues/6/updates");
+    expect(getMock).toHaveBeenCalledWith("/issues/6/updates", {});
   });
 
   it("assigns users to an issue", async () => {
@@ -152,7 +152,16 @@ describe("feature issues api module", () => {
     getMock.mockResolvedValue({ data: [{ userId: 9 }] });
 
     await expect(listIssueSuggestionsApi(6)).resolves.toEqual([{ userId: 9 }]);
-    expect(getMock).toHaveBeenCalledWith("/issues/6/suggestions");
+    expect(getMock).toHaveBeenCalledWith("/issues/6/suggestions", {});
+  });
+
+  it("passes AbortSignal to issue read requests", async () => {
+    const controller = new AbortController();
+    getMock.mockResolvedValue({ data: { issueId: 6 } });
+
+    await getIssueApi(6, { signal: controller.signal });
+
+    expect(getMock).toHaveBeenCalledWith("/issues/6", { signal: controller.signal });
   });
 
   it("propagates API errors", async () => {

@@ -45,7 +45,7 @@ export function IssueAssigneesModal({
     error: membersError,
   } = useQuery({
     queryKey: ["project", issue.projectId, "members"],
-    queryFn: () => listProjectMembersApi(issue.projectId),
+    queryFn: ({ signal }) => listProjectMembersApi(issue.projectId, { signal }),
     enabled: isOpen,
     staleTime: 0,
   });
@@ -55,7 +55,7 @@ export function IssueAssigneesModal({
     isLoading: isSuggestionsLoading,
   } = useQuery<IssueSuggestion[]>({
     queryKey: ["issue", issue.issueId, "suggestions"],
-    queryFn: () => listIssueSuggestionsApi(issue.issueId),
+    queryFn: ({ signal }) => listIssueSuggestionsApi(issue.issueId, { signal }),
     enabled: isOpen,
     staleTime: 0,
   });

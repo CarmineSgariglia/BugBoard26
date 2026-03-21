@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { isRequestAbortError } from "@shared/api/request";
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
@@ -135,6 +136,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
+    if (isRequestAbortError(error) || originalRequest?.signal?.aborted) {
+      return Promise.reject(error);
+    }
+
     const statusCode = error.response?.status;
     const requestUrl = originalRequest?.url ?? "";
 

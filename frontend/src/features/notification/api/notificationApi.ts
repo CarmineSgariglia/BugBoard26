@@ -1,4 +1,6 @@
 import apiClient, { apiBaseUrl } from "@shared/api/core/client";
+import { withRequestOptions } from "@shared/api/core/config";
+import type { RequestOptions } from "@shared/api";
 import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
 
 export const notificationsQueryKey = ["notifications"] as const;
@@ -7,12 +9,17 @@ export const notificationsPageSize = 20;
 export async function listNotificationsApi(params?: {
   limit?: number;
   before?: number | null;
-}): Promise<NotificationsPage> {
+}, options?: RequestOptions): Promise<NotificationsPage> {
   const { data } = await apiClient.get<NotificationsPage>("/notifications", {
-    params: {
-      ...(params?.limit != null ? { limit: params.limit } : {}),
-      ...(params?.before != null ? { before: params.before } : {}),
-    },
+    ...withRequestOptions(
+      {
+        params: {
+          ...(params?.limit != null ? { limit: params.limit } : {}),
+          ...(params?.before != null ? { before: params.before } : {}),
+        },
+      },
+      options,
+    ),
   });
   return data;
 }

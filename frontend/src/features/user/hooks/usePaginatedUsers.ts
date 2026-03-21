@@ -164,7 +164,7 @@ export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
 
   const query = useQuery({
     queryKey: ["users", queryParams],
-    queryFn: () => listUsersApi(queryParams),
+    queryFn: ({ signal }) => listUsersApi(queryParams, { signal }),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });

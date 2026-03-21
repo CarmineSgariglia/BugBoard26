@@ -98,7 +98,7 @@ export function IssueActivityPanel({
 
     const { data: updates = [], isLoading, isSuccess } = useQuery({
         queryKey: ["issue", issueId, "updates"],
-        queryFn: () => listIssueUpdatesApi(issueId),
+        queryFn: ({ signal }) => listIssueUpdatesApi(issueId, { signal }),
         staleTime: 0,
         enabled: Boolean(issueId),
     });
@@ -341,4 +341,3 @@ export function IssueActivityPanel({
         </div>
     );
 }
-
