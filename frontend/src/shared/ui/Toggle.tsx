@@ -13,7 +13,7 @@ export function Toggle({ checked, onChange, label, className = "", ...props }: T
             role="switch"
             aria-checked={checked}
             onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-[#1A1D24] ${checked ? 'bg-[#3DD66A]' : 'bg-white/10'
+            className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-[#1A1D24] disabled:cursor-not-allowed disabled:opacity-55 ${checked ? 'bg-[#3DD66A]' : 'bg-white/10'
                 } ${className}`}
             {...props}
         >

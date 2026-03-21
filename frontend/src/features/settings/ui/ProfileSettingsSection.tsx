@@ -16,9 +16,11 @@ import {
   updateSettingsUserApi,
   uploadSettingsProfileImageApi,
 } from "@features/settings/api";
+import { AvatarCropModal } from "./AvatarCropModal";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
+import { useAvatarCropFlow } from "./useAvatarCropFlow";
 
 export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const navigate = useNavigate();
@@ -37,9 +39,18 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
   const [identityError, setIdentityError] = useState("");
   const [usernameError, setUsernameError] = useState("");
 
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const {
+    avatarUrl,
+    selectedImageFile,
+    cropSourceFile,
+    cropSourceUrl,
+    isCropModalOpen,
+    handleImageSelect,
+    handleCropConfirm,
+    handleCropCancel,
+    completeUpload,
+  } = useAvatarCropFlow();
 
   useEffect(() => {
     if (!user) return;
@@ -55,10 +66,8 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       email: user.email || "",
     });
 
-    if (user.profileImg) {
-      setAvatarUrl(resolveMediaUrl(user.profileImg));
-    }
-  }, [user]);
+    completeUpload(user.profileImg ? resolveMediaUrl(user.profileImg) : undefined);
+  }, [completeUpload, user]);
 
   const hasIdentityChanged =
     username !== initialData.username ||
@@ -83,11 +92,6 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
     navigate(-1);
   }, [navigate]);
 
-  const handleImageSelect = useCallback((file: File) => {
-    setSelectedImageFile(file);
-    setAvatarUrl(URL.createObjectURL(file));
-  }, []);
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!user) return;
@@ -100,10 +104,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
         setIsUploading(true);
         try {
           const updatedUser = await uploadSettingsProfileImageApi(selectedImageFile);
-          if (updatedUser.profileImg) {
-            setAvatarUrl(resolveMediaUrl(updatedUser.profileImg));
-          }
-          setSelectedImageFile(null);
+          completeUpload(updatedUser.profileImg ? resolveMediaUrl(updatedUser.profileImg) : undefined);
         } finally {
           setIsUploading(false);
         }
@@ -172,6 +173,14 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
         onImageSelect={handleImageSelect}
         isUploading={isUploading}
         className="text-sm text-neutral-400 text-center max-w-sm mx-auto"
+      />
+
+      <AvatarCropModal
+        isOpen={isCropModalOpen}
+        imageFile={cropSourceFile}
+        imageSrc={cropSourceUrl}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
       />
 
       <IdentityFields

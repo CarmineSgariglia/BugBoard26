@@ -70,6 +70,12 @@ const NON_MEDIA_MIME_TYPES = new Set([
 ]);
 
 export type AttachmentPreviewKind = "image" | "video" | "pdf" | "text" | "file" | "unsupported";
+export type CropAreaPixels = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 
 type AttachmentDescriptor = {
   attachmentId?: number;
@@ -105,6 +111,18 @@ function replaceExtension(name: string, extension: string): string {
   return `${baseName}${trimmedExtension}`;
 }
 
+function getRadianAngle(rotation: number): number {
+  return (rotation * Math.PI) / 180;
+}
+
+function getRotatedSize(width: number, height: number, rotation: number) {
+  const angle = getRadianAngle(rotation);
+  return {
+    width: Math.abs(Math.cos(angle) * width) + Math.abs(Math.sin(angle) * height),
+    height: Math.abs(Math.sin(angle) * width) + Math.abs(Math.cos(angle) * height),
+  };
+}
+
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -131,6 +149,15 @@ function loadImage(file: File): Promise<HTMLImageElement> {
       reject(new Error("Unable to read image"));
     };
     image.src = objectUrl;
+  });
+}
+
+function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Unable to read image"));
+    image.src = src;
   });
 }
 
@@ -390,6 +417,57 @@ export async function prepareProfileImageUpload(file: File): Promise<File> {
     maxWidth: 1024,
     maxHeight: 1024,
     targetMaxBytes: PROFILE_IMAGE_MAX_BYTES,
+  });
+}
+
+export async function cropProfileImage(
+  file: File,
+  imageSrc: string,
+  cropAreaPixels: CropAreaPixels,
+  rotation: number,
+): Promise<File> {
+  const width = Math.max(1, Math.round(cropAreaPixels.width));
+  const height = Math.max(1, Math.round(cropAreaPixels.height));
+  const x = Math.max(0, Math.round(cropAreaPixels.x));
+  const y = Math.max(0, Math.round(cropAreaPixels.y));
+  const image = await loadImageFromUrl(imageSrc);
+  const rotatedSize = getRotatedSize(image.naturalWidth, image.naturalHeight, rotation);
+  const rotationInRadians = getRadianAngle(rotation);
+  const safeMimeType = IMAGE_MIME_TYPES.has(getEffectiveMimeType(file))
+    ? getEffectiveMimeType(file)
+    : "image/png";
+  const safeExtension =
+    safeMimeType === "image/jpeg" ? ".jpg" : safeMimeType === "image/webp" ? ".webp" : ".png";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(rotatedSize.width);
+  canvas.height = Math.ceil(rotatedSize.height);
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Canvas is not available");
+  }
+
+  context.translate(canvas.width / 2, canvas.height / 2);
+  context.rotate(rotationInRadians);
+  context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+
+  const imageData = context.getImageData(x, y, width, height);
+  const croppedCanvas = document.createElement("canvas");
+  croppedCanvas.width = width;
+  croppedCanvas.height = height;
+
+  const croppedContext = croppedCanvas.getContext("2d");
+  if (!croppedContext) {
+    throw new Error("Canvas is not available");
+  }
+
+  croppedContext.putImageData(imageData, 0, 0);
+  const blob = await canvasToBlob(croppedCanvas, safeMimeType, 0.92);
+
+  return new File([blob], replaceExtension(file.name, safeExtension), {
+    type: safeMimeType,
+    lastModified: file.lastModified,
   });
 }
 
