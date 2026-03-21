@@ -39,7 +39,7 @@ export function ProfileHeader({
         </div>
       ) : (
         <div
-          className="relative h-[72px] w-[72px] rounded-full bg-[#fca5a5] flex items-center justify-center overflow-hidden mb-5 shadow-lg border-[3px] border-[#fca5a5] group cursor-pointer transition-transform hover:scale-105"
+          className="relative h-[72px] w-[72px] rounded-full bg-[#fca5a5] flex items-center justify-center overflow-hidden mb-5 shadow-lg border-[2px]  group cursor-pointer transition-transform hover:scale-105"
           onClick={() => !isUploading && fileInputRef.current?.click()}
           title="Change profile picture"
         >
