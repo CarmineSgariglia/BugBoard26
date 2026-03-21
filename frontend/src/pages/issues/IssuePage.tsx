@@ -62,6 +62,8 @@ export function IssuePage() {
     staleTime: 0,
   });
 
+  const isProjectSubscriptionEnabled = !isAdmin || projectSubscription?.subscribed !== false;
+
   const {
     data: subscription = null,
     isLoading: isSubscriptionLoading,
@@ -69,7 +71,11 @@ export function IssuePage() {
   } = useQuery({
     queryKey: subscriptionQueryKey,
     queryFn: () => getIssueSubscriptionApi(issueId!),
-    enabled: !!issueId && isAdmin,
+    enabled:
+      !!issueId &&
+      isAdmin &&
+      !isProjectSubscriptionLoading &&
+      isProjectSubscriptionEnabled,
     staleTime: 0,
   });
 
@@ -164,6 +170,8 @@ export function IssuePage() {
     Boolean(safeIssue) &&
     !isProjectSubscriptionLoading &&
     projectSubscription?.subscribed === false;
+  const shouldShowSubscriptionLoadError =
+    Boolean(subscriptionQueryError) && !issueSubscriptionBlockedByProject;
 
   if (isLoading || !safeIssue) {
     return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
@@ -195,7 +203,7 @@ export function IssuePage() {
             }
             subscriptionError={
               subscriptionError ||
-              (subscriptionQueryError ? "Unable to load notification preference." : "")
+              (shouldShowSubscriptionLoadError ? "Unable to load notification preference." : "")
             }
             onSubscriptionChange={(checked) => {
               void subscriptionMutation.mutateAsync(checked).catch(() => {
@@ -243,4 +251,3 @@ export function IssuePage() {
     </div>
   );
 }
-

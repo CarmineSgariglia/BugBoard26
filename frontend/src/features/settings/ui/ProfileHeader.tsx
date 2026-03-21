@@ -39,7 +39,7 @@ export function ProfileHeader({
         </div>
       ) : (
         <div
-          className="relative h-[72px] w-[72px] rounded-full bg-[#fca5a5] flex items-center justify-center overflow-hidden mb-5 shadow-lg border-[3px] border-[#1A1D24]/80 group cursor-pointer transition-transform hover:scale-105"
+          className="relative h-[72px] w-[72px] rounded-full bg-[#fca5a5] flex items-center justify-center overflow-hidden mb-5 shadow-lg border-[3px] border-[#fca5a5] group cursor-pointer transition-transform hover:scale-105"
           onClick={() => !isUploading && fileInputRef.current?.click()}
           title="Change profile picture"
         >
@@ -50,9 +50,8 @@ export function ProfileHeader({
           )}
 
           <div
-            className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${
-              isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
+            className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              }`}
           >
             {isUploading ? (
               <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
