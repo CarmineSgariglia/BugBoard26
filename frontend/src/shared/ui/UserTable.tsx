@@ -84,7 +84,7 @@ export function UserTable({
                         return (
                             <div key={user.userId} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-8 py-2.5 border-b border-white/5 items-center hover:bg-white/[0.02] transition-colors group">
                                 <div className={`${profileCol} flex items-center gap-4`}>
-                                    <div className="h-10 w-10 shrink-0 rounded-full bg-[#fca5a5] flex flex-col items-center justify-center overflow-hidden border border-white/10">
+                                    <div className="h-10 w-10 shrink-0 rounded-full bg-[#fca5a5] flex flex-col items-center justify-center overflow-hidden">
                                         {user.profileImg ? (
                                             <img src={resolveMediaUrl(user.profileImg)} alt={displayName} className="h-full w-full object-cover" />
                                         ) : (

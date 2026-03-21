@@ -339,18 +339,102 @@ describe("IssuePage", () => {
     );
 
     expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
-    expect(screen.getByText("subscription:true")).toBeInTheDocument();
     await waitFor(() => {
+      expect(issuePageState.getIssueSubscriptionApi).not.toHaveBeenCalled();
+      expect(screen.getByText("subscription:false")).toBeInTheDocument();
       expect(screen.getByText("subscriptionDisabled:true")).toBeInTheDocument();
       expect(
         screen.getByText("subscriptionDisabledReason:Project notifications disabled")
       ).toBeInTheDocument();
+      expect(screen.getByText("subscriptionError:")).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /toggle subscription/i }));
 
     expect(issuePageState.unsubscribeFromIssueApi).not.toHaveBeenCalled();
     expect(issuePageState.subscribeToIssueApi).not.toHaveBeenCalled();
+  });
+
+  it("supports the on-off combination with project enabled and issue disabled", async () => {
+    issuePageState.currentUser = {
+      userId: 1,
+      username: "admin",
+      email: "admin@example.com",
+      isAdmin: true,
+    };
+    issuePageState.getProjectSubscriptionApi.mockResolvedValue({ subscribed: true });
+    issuePageState.getIssueSubscriptionApi.mockResolvedValue({ subscribed: false });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
+      expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12");
+      expect(screen.getByText("subscription:false")).toBeInTheDocument();
+      expect(screen.getByText("subscriptionDisabled:false")).toBeInTheDocument();
+      expect(screen.getByText("subscriptionDisabledReason:")).toBeInTheDocument();
+    });
+  });
+
+  it("supports the on-on combination with both project and issue enabled", async () => {
+    issuePageState.currentUser = {
+      userId: 1,
+      username: "admin",
+      email: "admin@example.com",
+      isAdmin: true,
+    };
+    issuePageState.getProjectSubscriptionApi.mockResolvedValue({ subscribed: true });
+    issuePageState.getIssueSubscriptionApi.mockResolvedValue({ subscribed: true });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
+      expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12");
+      expect(screen.getByText("subscription:true")).toBeInTheDocument();
+      expect(screen.getByText("subscriptionDisabled:false")).toBeInTheDocument();
+    });
+  });
+
+  it("supports the off-off combination with project disabled and issue not loaded", async () => {
+    issuePageState.currentUser = {
+      userId: 1,
+      username: "admin",
+      email: "admin@example.com",
+      isAdmin: true,
+    };
+    issuePageState.getProjectSubscriptionApi.mockResolvedValue({ subscribed: false });
+    issuePageState.getIssueSubscriptionApi.mockResolvedValue({ subscribed: false });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
+      expect(issuePageState.getIssueSubscriptionApi).not.toHaveBeenCalled();
+      expect(screen.getByText("subscription:false")).toBeInTheDocument();
+      expect(screen.getByText("subscriptionDisabled:true")).toBeInTheDocument();
+      expect(
+        screen.getByText("subscriptionDisabledReason:Project notifications disabled")
+      ).toBeInTheDocument();
+    });
   });
 
   it("redirects to /projects when the issue becomes inaccessible with a 404 response", async () => {
