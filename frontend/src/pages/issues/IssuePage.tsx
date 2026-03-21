@@ -62,7 +62,12 @@ export function IssuePage() {
     staleTime: 0,
   });
 
-  const isProjectSubscriptionEnabled = !isAdmin || projectSubscription?.subscribed !== false;
+  const canLoadIssueSubscription =
+    isAdmin &&
+    Boolean(issueId) &&
+    Boolean(safeIssue?.projectId) &&
+    !isProjectSubscriptionLoading &&
+    projectSubscription?.subscribed === true;
 
   const {
     data: subscription = null,
@@ -71,11 +76,7 @@ export function IssuePage() {
   } = useQuery({
     queryKey: subscriptionQueryKey,
     queryFn: () => getIssueSubscriptionApi(issueId!),
-    enabled:
-      !!issueId &&
-      isAdmin &&
-      !isProjectSubscriptionLoading &&
-      isProjectSubscriptionEnabled,
+    enabled: canLoadIssueSubscription,
     staleTime: 0,
   });
 
@@ -172,8 +173,11 @@ export function IssuePage() {
     projectSubscription?.subscribed === false;
   const shouldShowSubscriptionLoadError =
     Boolean(subscriptionQueryError) && !issueSubscriptionBlockedByProject;
+  const isAdminSubscriptionStateLoading =
+    isAdmin &&
+    (isProjectSubscriptionLoading || (canLoadIssueSubscription && isSubscriptionLoading));
 
-  if (isLoading || !safeIssue) {
+  if (isLoading || !safeIssue || isAdminSubscriptionStateLoading) {
     return <div className="pt-24 px-6 text-white text-center">Loading issue...</div>;
   }
 
