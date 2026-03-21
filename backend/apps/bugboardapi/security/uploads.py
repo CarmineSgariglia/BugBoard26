@@ -1,15 +1,19 @@
 """Centralized upload validation and storage helpers."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from PIL import Image, ImageOps
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
+
+logger = logging.getLogger(__name__)
 
 IMAGE_JPEG_MIME_TYPE = "image/jpeg"
 IMAGE_PNG_MIME_TYPE = "image/png"
@@ -65,6 +69,12 @@ class PreparedImageUpload:
     mime_type: str
     size: int
     extension: str
+
+
+class MediaStorageUnavailable(APIException):
+    status_code = 503
+    default_detail = "Media storage is temporarily unavailable. Retry later."
+    default_code = "media_storage_unavailable"
 
 
 COMPRESSED_IMAGE_MIME_TYPE = IMAGE_WEBP_MIME_TYPE
@@ -250,7 +260,16 @@ def validate_issue_attachment(
 def store_upload(*, uploaded_file, storage_dir: str, filename_suffix: str) -> StoredUpload:
     filename = f"{uuid4().hex}{filename_suffix}"
     storage_path = f"{storage_dir}/{filename}"
-    saved_path = default_storage.save(storage_path, uploaded_file)
+    try:
+        saved_path = default_storage.save(storage_path, uploaded_file)
+    except Exception as exc:
+        logger.exception(
+            "media_storage_save_failed backend=%s bucket=%s path=%s",
+            getattr(settings, "MEDIA_STORAGE_BACKEND", "unknown"),
+            getattr(settings, "GS_BUCKET_NAME", ""),
+            storage_path,
+        )
+        raise MediaStorageUnavailable() from exc
     mime_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower()
     size = int(getattr(uploaded_file, "size", 0) or 0)
     return StoredUpload(path=saved_path, mime_type=mime_type, size=size)

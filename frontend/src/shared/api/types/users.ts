@@ -17,7 +17,6 @@ export type UpdateUserPayload = {
 export type CreateUserPayload = {
   username: string;
   email: string;
-  password: string;
   firstName?: string;
   lastName?: string;
   isAdmin?: boolean;

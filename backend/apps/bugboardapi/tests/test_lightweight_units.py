@@ -131,6 +131,19 @@ class UserMutationSerializerContractsTests(TestCase):
         self.assertEqual(serializer.validated_data["group"], DEVELOPER_GROUP_NAME)
         mock_ensure_valid_password.assert_called_once()
 
+    @patch("apps.bugboardapi.modules.users.serializers.ensure_valid_password")
+    def test_new_user_password_is_optional(self, mock_ensure_valid_password):
+        serializer = UserMutationSerializer(
+            data={
+                "username": "serializer_optional_password",
+                "email": "serializer_optional_password@example.com",
+            }
+        )
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data["group"], DEVELOPER_GROUP_NAME)
+        mock_ensure_valid_password.assert_not_called()
+
     def test_rejects_mismatched_group_and_is_admin_alias(self):
         serializer = UserMutationSerializer(
             data={

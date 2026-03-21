@@ -29,6 +29,7 @@ from apps.bugboardapi.modules.issues.activity import delete_media_path
 from apps.bugboardapi.modules.users.commands import _delete_stored_file
 from apps.bugboardapi.security.uploads import (
     compress_image_upload,
+    MediaStorageUnavailable,
     store_upload,
     validate_profile_image,
 )
@@ -185,6 +186,19 @@ class UploadStorageContractsTests(SimpleTestCase):
         self.assertEqual(stored.path, "profile-images/1/saved.jpg")
         self.assertEqual(stored.mime_type, "image/jpeg")
         self.assertEqual(stored.size, len(b"jpeg-content"))
+
+    @patch("apps.bugboardapi.security.uploads.default_storage.save", side_effect=RuntimeError("gcs down"))
+    def test_store_upload_wraps_storage_failures_with_service_unavailable(self, mocked_save):
+        uploaded = SimpleUploadedFile("avatar.jpg", b"jpeg-content", content_type="image/jpeg")
+
+        with self.assertRaises(MediaStorageUnavailable):
+            store_upload(
+                uploaded_file=uploaded,
+                storage_dir="profile-images/1",
+                filename_suffix=".jpg",
+            )
+
+        self.assertEqual(mocked_save.call_count, 1)
 
     def test_validate_profile_image_accepts_jpeg_extension_alias(self):
         image = SimpleUploadedFile(

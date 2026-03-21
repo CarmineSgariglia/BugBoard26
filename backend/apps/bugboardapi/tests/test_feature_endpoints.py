@@ -620,6 +620,28 @@ class UserManagementEndpointTests(APITestCase):
         self.assertLess(getattr(stored_file, "size", 0), len(raw_bytes))
         self.assertEqual(self.member.profile.profile_img, f"profile-images/{self.member.id}/compressed.webp")
 
+    def test_profile_image_upload_returns_503_when_storage_backend_fails(self):
+        self.client.force_authenticate(user=self.member)
+        self.client.raise_request_exception = False
+        image = SimpleUploadedFile(
+            "avatar.png", make_png_bytes(size=(1600, 1200)), content_type="image/png"
+        )
+
+        with patch(
+            "apps.bugboardapi.security.uploads.default_storage.save",
+            side_effect=RuntimeError("gcs unavailable"),
+        ):
+            response = self.client.post(
+                "/api/users/me/upload_profile_image",
+                {"profile_img": image},
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["detail"], "Media storage is temporarily unavailable. Retry later.")
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.profile.profile_img, "")
+
     def test_change_password_success(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
@@ -2453,6 +2475,31 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.assertEqual(response.data["mimeType"], "image/webp")
         self.assertEqual(response.data["originalName"], "photo.webp")
         self.assertTrue(response.data["url"].endswith("/issue-attachments/%s/compressed.webp" % self.issue.issue_id))
+
+    def test_attachments_api_returns_503_when_storage_backend_fails(self):
+        self.client.force_authenticate(user=self.member)
+        self.client.raise_request_exception = False
+        uploaded = SimpleUploadedFile(
+            "notes.txt", b"hello attachment", content_type="text/plain"
+        )
+
+        with patch(
+            "apps.bugboardapi.security.uploads.default_storage.save",
+            side_effect=RuntimeError("gcs unavailable"),
+        ):
+            response = self.client.post(
+                "/api/attachments",
+                {
+                    "issueId": self.issue.issue_id,
+                    "message": "file upload",
+                    "file": uploaded,
+                },
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["detail"], "Media storage is temporarily unavailable. Retry later.")
+        self.assertFalse(Attachment.objects.filter(update__issue=self.issue).exists())
 
     def test_attachments_api_transcodes_video_to_mp4(self):
         self.client.force_authenticate(user=self.member)

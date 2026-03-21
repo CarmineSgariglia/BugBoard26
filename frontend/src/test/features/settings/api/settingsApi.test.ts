@@ -90,7 +90,7 @@ describe("feature settings api module", () => {
   });
 
   it("creates a user", async () => {
-    const payload = { email: "new@example.com", password: "123", name: "New" };
+    const payload = { email: "new@example.com", firstName: "New" };
     postMock.mockResolvedValue({ data: { id: 2, ...payload } });
 
     await expect(createSettingsUserApi(payload as any)).resolves.toEqual({ id: 2, ...payload });
