@@ -1,4 +1,6 @@
 import apiClient from "@shared/api/core/client";
+import { withRequestOptions } from "@shared/api/core/config";
+import type { RequestOptions } from "@shared/api";
 import type { CreateIssuePayload, Issue } from "@shared/api/types/issues";
 import type {
   CreateProjectPayload,
@@ -8,14 +10,23 @@ import type {
   UpdateProjectPayload,
 } from "@shared/api/types/projects";
 
-export async function listProjectsApi(search?: string): Promise<Project[]> {
+export async function listProjectsApi(search?: string, options?: RequestOptions): Promise<Project[]> {
   const params = search ? { q: search } : undefined;
-  const { data } = await apiClient.get<Project[]>("/projects", { params });
+  const { data } = await apiClient.get<Project[]>(
+    "/projects",
+    withRequestOptions({ params }, options),
+  );
   return data;
 }
 
-export async function getProjectApi(projectId: string | number): Promise<Project> {
-  const { data } = await apiClient.get<Project>(`/projects/${projectId}`);
+export async function getProjectApi(
+  projectId: string | number,
+  options?: RequestOptions,
+): Promise<Project> {
+  const { data } = await apiClient.get<Project>(
+    `/projects/${projectId}`,
+    withRequestOptions({}, options),
+  );
   return data;
 }
 
@@ -36,16 +47,24 @@ export async function deleteProjectApi(projectId: number | string): Promise<void
   await apiClient.delete(`/projects/${projectId}`);
 }
 
-export async function listProjectMembersApi(projectId: string | number): Promise<ProjectMembership[]> {
-  const { data } = await apiClient.get<ProjectMembership[]>(`/projects/${projectId}/members`);
+export async function listProjectMembersApi(
+  projectId: string | number,
+  options?: RequestOptions,
+): Promise<ProjectMembership[]> {
+  const { data } = await apiClient.get<ProjectMembership[]>(
+    `/projects/${projectId}/members`,
+    withRequestOptions({}, options),
+  );
   return data;
 }
 
 export async function getProjectSubscriptionApi(
-  projectId: string | number
+  projectId: string | number,
+  options?: RequestOptions,
 ): Promise<ProjectSubscriptionState> {
   const { data } = await apiClient.get<ProjectSubscriptionState>(
-    `/projects/${projectId}/subscription`
+    `/projects/${projectId}/subscription`,
+    withRequestOptions({}, options),
   );
   return data;
 }
@@ -58,8 +77,14 @@ export async function unsubscribeFromProjectApi(projectId: string | number): Pro
   await apiClient.delete(`/projects/${projectId}/subscription`);
 }
 
-export async function listProjectIssuesApi(projectId: string | number): Promise<Issue[]> {
-  const { data } = await apiClient.get<Issue[]>(`/projects/${projectId}/issues`);
+export async function listProjectIssuesApi(
+  projectId: string | number,
+  options?: RequestOptions,
+): Promise<Issue[]> {
+  const { data } = await apiClient.get<Issue[]>(
+    `/projects/${projectId}/issues`,
+    withRequestOptions({}, options),
+  );
   return data;
 }
 

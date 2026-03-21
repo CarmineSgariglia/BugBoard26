@@ -131,6 +131,24 @@ describe("apiClient", () => {
     expect(config.headers["X-CSRFToken"]).toBe("csrf-ready");
   });
 
+  it("does not try to refresh aborted requests", async () => {
+    await importClientModule();
+    const apiClient = axiosHarness.instances[0];
+    const refreshClient = axiosHarness.instances[1];
+    const responseInterceptor = apiClient.__responseHandlers[0].onRejected;
+    const controller = new AbortController();
+    controller.abort();
+
+    const abortedError = {
+      code: "ERR_CANCELED",
+      name: "CanceledError",
+      config: { url: "/issues/9", signal: controller.signal },
+    };
+
+    await expect(responseInterceptor(abortedError)).rejects.toBe(abortedError);
+    expect(refreshClient.post).not.toHaveBeenCalled();
+  });
+
   it("refreshes the access token and retries the original request after a 401", async () => {
     const clientModule = await importClientModule();
     const apiClient = axiosHarness.instances[0];

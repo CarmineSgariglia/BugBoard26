@@ -49,7 +49,9 @@ describe("DynamicBreadcrumbs", () => {
     renderBreadcrumbs("/projects/7/issues");
 
     expect(await screen.findByText("Apollo")).toBeInTheDocument();
-    expect(getProjectApiMock).toHaveBeenCalledWith("7");
+    expect(getProjectApiMock).toHaveBeenCalledWith("7", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
     expect(getIssueApiMock).not.toHaveBeenCalled();
   });
 
@@ -83,7 +85,11 @@ describe("DynamicBreadcrumbs", () => {
 
     expect(await screen.findByText("Apollo")).toBeInTheDocument();
     expect(await screen.findByText("Cannot save issue")).toBeInTheDocument();
-    expect(getProjectApiMock).toHaveBeenCalledWith("7");
-    expect(getIssueApiMock).toHaveBeenCalledWith("42");
+    expect(getProjectApiMock).toHaveBeenCalledWith("7", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
+    expect(getIssueApiMock).toHaveBeenCalledWith("42", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
   });
 });

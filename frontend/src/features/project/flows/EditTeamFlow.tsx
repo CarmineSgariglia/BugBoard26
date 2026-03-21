@@ -32,7 +32,7 @@ export function EditTeamFlow({
     error: membersError,
   } = useQuery({
     queryKey: ["project", project.projectId, "members"],
-    queryFn: () => listProjectMembersApi(project.projectId),
+    queryFn: ({ signal }) => listProjectMembersApi(project.projectId, { signal }),
     staleTime: 0,
   });
 

@@ -67,7 +67,7 @@ describe("feature project api module", () => {
     getMock.mockResolvedValue({ data: dummyProject });
 
     await expect(getProjectApi(1)).resolves.toEqual(dummyProject);
-    expect(getMock).toHaveBeenCalledWith("/projects/1");
+    expect(getMock).toHaveBeenCalledWith("/projects/1", {});
   });
 
   it("creates a project with payload", async () => {
@@ -98,7 +98,7 @@ describe("feature project api module", () => {
     getMock.mockResolvedValue({ data: dummyMembers });
 
     await expect(listProjectMembersApi(1)).resolves.toEqual(dummyMembers);
-    expect(getMock).toHaveBeenCalledWith("/projects/1/members");
+    expect(getMock).toHaveBeenCalledWith("/projects/1/members", {});
   });
 
   it("gets the current project subscription state", async () => {
@@ -106,7 +106,7 @@ describe("feature project api module", () => {
     getMock.mockResolvedValue({ data: subscription });
 
     await expect(getProjectSubscriptionApi(1)).resolves.toEqual(subscription);
-    expect(getMock).toHaveBeenCalledWith("/projects/1/subscription");
+    expect(getMock).toHaveBeenCalledWith("/projects/1/subscription", {});
   });
 
   it("subscribes the current admin to a project", async () => {
@@ -128,7 +128,16 @@ describe("feature project api module", () => {
     getMock.mockResolvedValue({ data: dummyIssues });
 
     await expect(listProjectIssuesApi(1)).resolves.toEqual(dummyIssues);
-    expect(getMock).toHaveBeenCalledWith("/projects/1/issues");
+    expect(getMock).toHaveBeenCalledWith("/projects/1/issues", {});
+  });
+
+  it("passes AbortSignal to read requests", async () => {
+    const controller = new AbortController();
+    getMock.mockResolvedValue({ data: dummyProject });
+
+    await getProjectApi(1, { signal: controller.signal });
+
+    expect(getMock).toHaveBeenCalledWith("/projects/1", { signal: controller.signal });
   });
 
   it("creates a project issue", async () => {

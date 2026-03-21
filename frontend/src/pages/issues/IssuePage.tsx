@@ -35,7 +35,7 @@ export function IssuePage() {
 
   const { data: issue, isLoading, error: issueError, refetch } = useQuery({
     queryKey: ["issue", issueId],
-    queryFn: () => getIssueApi(issueId!),
+    queryFn: ({ signal }) => getIssueApi(issueId!, { signal }),
     enabled: !!issueId,
     staleTime: 0,
   });
@@ -46,7 +46,7 @@ export function IssuePage() {
 
   const { data: projectMembers = [], error: projectMembersError } = useQuery({
     queryKey: ["project", safeIssue?.projectId, "members"],
-    queryFn: () => listProjectMembersApi(safeIssue!.projectId),
+    queryFn: ({ signal }) => listProjectMembersApi(safeIssue!.projectId, { signal }),
     enabled: Boolean(safeIssue?.projectId),
     staleTime: 0,
   });
@@ -57,7 +57,7 @@ export function IssuePage() {
     error: projectSubscriptionError,
   } = useQuery({
     queryKey: ["project", safeIssue?.projectId, "subscription"],
-    queryFn: () => getProjectSubscriptionApi(safeIssue!.projectId),
+    queryFn: ({ signal }) => getProjectSubscriptionApi(safeIssue!.projectId, { signal }),
     enabled: Boolean(safeIssue?.projectId) && isAdmin,
     staleTime: 0,
   });
@@ -75,7 +75,7 @@ export function IssuePage() {
     error: subscriptionQueryError,
   } = useQuery({
     queryKey: subscriptionQueryKey,
-    queryFn: () => getIssueSubscriptionApi(issueId!),
+    queryFn: ({ signal }) => getIssueSubscriptionApi(issueId!, { signal }),
     enabled: canLoadIssueSubscription,
     staleTime: 0,
   });

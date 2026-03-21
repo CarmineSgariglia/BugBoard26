@@ -57,8 +57,8 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         fetchNextPage,
     } = useInfiniteQuery({
         queryKey: notificationsQueryKey,
-        queryFn: ({ pageParam }) =>
-            listNotificationsApi({ limit: notificationsPageSize, before: pageParam }),
+        queryFn: ({ pageParam, signal }) =>
+            listNotificationsApi({ limit: notificationsPageSize, before: pageParam }, { signal }),
         initialPageParam: null as number | null,
         getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
         enabled: isOpen,

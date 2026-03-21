@@ -1,4 +1,6 @@
 import apiClient, { apiBaseUrl } from "@shared/api/core/client";
+import { withRequestOptions } from "@shared/api/core/config";
+import type { RequestOptions } from "@shared/api";
 import type {
   Issue,
   IssueSubscriptionState,
@@ -20,20 +22,36 @@ export async function updateIssueApi(issueId: number | string, payload: UpdateIs
   return data;
 }
 
-export async function getIssueApi(issueId: string | number): Promise<Issue> {
-  const { data } = await apiClient.get<Issue>(`/issues/${issueId}`);
+export async function getIssueApi(
+  issueId: string | number,
+  options?: RequestOptions,
+): Promise<Issue> {
+  const { data } = await apiClient.get<Issue>(
+    `/issues/${issueId}`,
+    withRequestOptions({}, options),
+  );
   return data;
 }
 
 export async function getIssueSubscriptionApi(
-  issueId: string | number
+  issueId: string | number,
+  options?: RequestOptions,
 ): Promise<IssueSubscriptionState> {
-  const { data } = await apiClient.get<IssueSubscriptionState>(`/issues/${issueId}/subscription`);
+  const { data } = await apiClient.get<IssueSubscriptionState>(
+    `/issues/${issueId}/subscription`,
+    withRequestOptions({}, options),
+  );
   return data;
 }
 
-export async function listIssueUpdatesApi(issueId: string | number): Promise<IssueUpdate[]> {
-  const { data } = await apiClient.get<IssueUpdate[]>(`/issues/${issueId}/updates`);
+export async function listIssueUpdatesApi(
+  issueId: string | number,
+  options?: RequestOptions,
+): Promise<IssueUpdate[]> {
+  const { data } = await apiClient.get<IssueUpdate[]>(
+    `/issues/${issueId}/updates`,
+    withRequestOptions({}, options),
+  );
   return data;
 }
 
@@ -85,7 +103,13 @@ export async function unsubscribeFromIssueApi(issueId: number | string): Promise
   await apiClient.delete(`/issues/${issueId}/subscription`);
 }
 
-export async function listIssueSuggestionsApi(issueId: number | string): Promise<IssueSuggestion[]> {
-  const { data } = await apiClient.get<IssueSuggestion[]>(`/issues/${issueId}/suggestions`);
+export async function listIssueSuggestionsApi(
+  issueId: number | string,
+  options?: RequestOptions,
+): Promise<IssueSuggestion[]> {
+  const { data } = await apiClient.get<IssueSuggestion[]>(
+    `/issues/${issueId}/suggestions`,
+    withRequestOptions({}, options),
+  );
   return data;
 }
