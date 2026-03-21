@@ -17,15 +17,9 @@ function buildUsernameFromEmail(email: string): string {
   return `${base}${suffix}`;
 }
 
-function generateTemporaryPassword(): string {
-  const suffix = Math.floor(100000 + Math.random() * 900000);
-  return `Temp!${suffix}`;
-}
-
 type CreateUserFormPayload = {
   normalizedEmail: string;
   username: string;
-  temporaryPassword: string;
   firstName: string;
   lastName: string;
   isAdmin: boolean;
@@ -60,7 +54,6 @@ export function AddUsersSection() {
       await createSettingsUserApi({
         username: payload.username,
         email: payload.normalizedEmail,
-        password: payload.temporaryPassword,
         firstName: payload.firstName,
         lastName: payload.lastName,
         isAdmin: payload.isAdmin,
@@ -73,9 +66,7 @@ export function AddUsersSection() {
       setSurname("");
       setEmail("");
       setIsAdmin(false);
-      setSuccess(
-        `User created. \n Username: ${payload.username} \n Temporary password: ${payload.temporaryPassword}`
-      );
+      setSuccess(`User created. Temporary password email sent to ${payload.normalizedEmail}.`);
       void queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (err) => {
@@ -92,12 +83,10 @@ export function AddUsersSection() {
 
     const normalizedEmail = email.trim().toLowerCase();
     const username = buildUsernameFromEmail(normalizedEmail);
-    const temporaryPassword = generateTemporaryPassword();
 
     createUserMutation.mutate({
       normalizedEmail,
       username,
-      temporaryPassword,
       firstName: name.trim(),
       lastName: surname.trim(),
       isAdmin,
@@ -139,7 +128,6 @@ export function AddUsersSection() {
 
         <FooterActions
           isSaveEnabled={isFormValid && !createUserMutation.isPending}
-          onSave={() => handleSubmit()}
           isSaving={createUserMutation.isPending}
           saveLabel="Add User"
           links={[]}

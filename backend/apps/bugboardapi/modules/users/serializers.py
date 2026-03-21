@@ -152,9 +152,6 @@ def _resolve_requested_group(
 
 
 def _validate_user_mutation_password(*, instance, attrs: dict, password: str | None) -> None:
-    if instance is None and not password:
-        raise serializers.ValidationError({"password": "Password is required"})
-
     if instance is not None and password is not None:
         raise serializers.ValidationError({"password": "Use the dedicated password endpoint"})
 
