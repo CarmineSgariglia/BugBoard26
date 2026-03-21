@@ -178,10 +178,10 @@ export function IssuePage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col pt-24 pb-6 px-6">
+    <div className="min-h-screen flex flex-col pt-24 pb-6 px-6 lg:min-h-dvh">
       <SidebarLayout
         className="flex-1 min-h-0"
-        gridClassName="items-stretch h-full"
+        gridClassName="items-stretch"
         sidebar={
           <IssueDetailsSidebar
             issue={safeIssue}
@@ -213,7 +213,7 @@ export function IssuePage() {
           />
         }
       >
-        <div className="h-full">
+        <div className="min-h-[40rem] lg:h-[calc(100dvh-8.5rem)]">
           <IssueActivityPanel
             issueId={safeIssue.issueId}
             issueTitle={safeIssue.title}
