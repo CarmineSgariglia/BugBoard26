@@ -20,6 +20,20 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
   });
 }
 
+if (typeof URL.createObjectURL !== "function") {
+  Object.defineProperty(URL, "createObjectURL", {
+    writable: true,
+    value: () => "blob:mock-url",
+  });
+}
+
+if (typeof URL.revokeObjectURL !== "function") {
+  Object.defineProperty(URL, "revokeObjectURL", {
+    writable: true,
+    value: () => {},
+  });
+}
+
 if (typeof globalThis.IntersectionObserver !== "function") {
   class MockIntersectionObserver implements IntersectionObserver {
     readonly root = null;

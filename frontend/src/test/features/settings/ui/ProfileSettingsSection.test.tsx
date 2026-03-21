@@ -11,12 +11,14 @@ const {
   changeSettingsPasswordApiMock,
   uploadSettingsProfileImageApiMock,
   handleGetHelpMock,
+  cropProfileImageMock,
 } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   updateSettingsUserApiMock: vi.fn(),
   changeSettingsPasswordApiMock: vi.fn(),
   uploadSettingsProfileImageApiMock: vi.fn(),
   handleGetHelpMock: vi.fn(),
+  cropProfileImageMock: vi.fn(),
 }));
 
 vi.mock("@features/auth", () => ({
@@ -32,6 +34,35 @@ vi.mock("@features/settings/api", () => ({
 vi.mock("@shared/lib/help", () => ({
   handleGetHelp: handleGetHelpMock,
 }));
+
+vi.mock("react-easy-crop", async () => {
+  const React = await vi.importActual<typeof import("react")>("react");
+  return {
+    __esModule: true,
+    default: ({ onCropComplete }: { onCropComplete?: (_area: unknown, pixels: { x: number; y: number; width: number; height: number }) => void }) => {
+      React.useEffect(() => {
+        onCropComplete?.(
+          {},
+          {
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 120,
+          }
+        );
+      }, [onCropComplete]);
+      return <div data-testid="avatar-cropper" />;
+    },
+  };
+});
+
+vi.mock("@shared/lib/media", async () => {
+  const actual = await vi.importActual<typeof import("@shared/lib/media")>("@shared/lib/media");
+  return {
+    ...actual,
+    cropProfileImage: cropProfileImageMock,
+  };
+});
 
 function createAxiosFieldError(field: string, message: string) {
   return {
@@ -51,6 +82,7 @@ describe("ProfileSettingsSection", () => {
     changeSettingsPasswordApiMock.mockReset();
     uploadSettingsProfileImageApiMock.mockReset();
     handleGetHelpMock.mockReset();
+    cropProfileImageMock.mockReset();
 
     useAuthMock.mockReturnValue({
       user: {
@@ -73,6 +105,7 @@ describe("ProfileSettingsSection", () => {
       lastName: "Rossi",
       profileImg: null,
     });
+    cropProfileImageMock.mockImplementation(async (file: File) => file);
   });
 
   it("sends the updated username in profile settings", async () => {
@@ -125,6 +158,35 @@ describe("ProfileSettingsSection", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("A user with that username already exists.")).not.toBeInTheDocument();
+    });
+  });
+
+  it("opens the crop modal and uploads the cropped avatar file", async () => {
+    const user = userEvent.setup();
+    const croppedFile = new File(["cropped"], "avatar-cropped.png", { type: "image/png" });
+    cropProfileImageMock.mockResolvedValue(croppedFile);
+
+    renderWithProviders(<ProfileSettingsSection />);
+
+    const avatar = screen.getByTitle("Change profile picture");
+    const fileInput = avatar.querySelector('input[type="file"]') as HTMLInputElement;
+    const originalFile = new File(["original"], "avatar.png", { type: "image/png" });
+
+    await user.upload(fileInput, originalFile);
+
+    expect(await screen.findByText("Adjust profile picture")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Apply crop" })).not.toHaveAttribute("disabled");
+    });
+    await user.click(screen.getByRole("button", { name: "Apply crop" }));
+    await waitFor(() => {
+      expect(screen.queryByText("Adjust profile picture")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() => {
+      expect(uploadSettingsProfileImageApiMock).toHaveBeenCalledWith(croppedFile);
     });
   });
 });

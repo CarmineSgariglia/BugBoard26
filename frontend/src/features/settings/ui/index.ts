@@ -1,5 +1,6 @@
 export { AddUsersSection } from "./AddUsersSection";
 export { AdminUserEditSection } from "./AdminUserEditSection";
+export { AvatarCropModal } from "./AvatarCropModal";
 export { ChangePasswordSection } from "./ChangePasswordSection";
 export { IdentityFields } from "./IdentityFields";
 export { ManageAccountSettingsScreen } from "./ManageAccountSettingsScreen";

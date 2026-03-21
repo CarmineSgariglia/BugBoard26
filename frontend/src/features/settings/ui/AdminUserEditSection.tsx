@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { RiArrowGoBackLine } from "react-icons/ri";
 
@@ -13,9 +13,11 @@ import {
   adminUploadSettingsProfileImageApi,
   updateSettingsUserApi,
 } from "@features/settings/api";
+import { AvatarCropModal } from "./AvatarCropModal";
 import { ProfileHeader } from "./ProfileHeader";
 import { IdentityFields } from "./IdentityFields";
 import { ChangePasswordSection } from "./ChangePasswordSection";
+import { useAvatarCropFlow } from "./useAvatarCropFlow";
 
 interface AdminUserEditSectionProps {
   user: AuthUser;
@@ -42,11 +44,18 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
   const [globalError, setGlobalError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
-    user.profileImg ? resolveMediaUrl(user.profileImg) : undefined
-  );
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const {
+    avatarUrl,
+    selectedImageFile,
+    cropSourceFile,
+    cropSourceUrl,
+    isCropModalOpen,
+    handleImageSelect,
+    handleCropConfirm,
+    handleCropCancel,
+    completeUpload,
+  } = useAvatarCropFlow(user.profileImg ? resolveMediaUrl(user.profileImg) : undefined);
 
   const hasIdentityChanged =
     username !== initialData.username ||
@@ -61,11 +70,6 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
   const isSaveEnabled =
     (hasIdentityChanged || hasPasswordInput || hasImageChanged) && isIdentityValid && isPasswordValid;
 
-  const handleImageSelect = useCallback((file: File) => {
-    setSelectedImageFile(file);
-    setAvatarUrl(URL.createObjectURL(file));
-  }, []);
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       let updatedUserObj = { ...user };
@@ -74,10 +78,7 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
         setIsUploading(true);
         try {
           updatedUserObj = await adminUploadSettingsProfileImageApi(user.userId, selectedImageFile);
-          if (updatedUserObj.profileImg) {
-            setAvatarUrl(resolveMediaUrl(updatedUserObj.profileImg));
-          }
-          setSelectedImageFile(null);
+          completeUpload(updatedUserObj.profileImg ? resolveMediaUrl(updatedUserObj.profileImg) : undefined);
         } finally {
           setIsUploading(false);
         }
@@ -144,6 +145,14 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
         subtitle={`Managing user ID: ${user.userId}`}
         onImageSelect={handleImageSelect}
         isUploading={isUploading}
+      />
+
+      <AvatarCropModal
+        isOpen={isCropModalOpen}
+        imageFile={cropSourceFile}
+        imageSrc={cropSourceUrl}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
       />
 
       <IdentityFields
