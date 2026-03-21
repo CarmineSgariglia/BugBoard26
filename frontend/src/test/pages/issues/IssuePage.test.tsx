@@ -211,8 +211,12 @@ describe("IssuePage", () => {
     );
 
     expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
-    expect(issuePageState.getIssueApi).toHaveBeenCalledWith("12");
-    expect(issuePageState.listProjectMembersApi).toHaveBeenCalledWith(7);
+    expect(issuePageState.getIssueApi).toHaveBeenCalledWith("12", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
+    expect(issuePageState.listProjectMembersApi).toHaveBeenCalledWith(7, expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
     expect(issuePageState.setLabel).toHaveBeenCalledWith(
       "issue:12",
       "Broken login flow"
@@ -288,8 +292,12 @@ describe("IssuePage", () => {
     );
 
     expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
-    expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12");
-    expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
+    expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
+    expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7, expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
     expect(screen.getByText("isAdmin:true")).toBeInTheDocument();
     expect(screen.getByText("subscription:false")).toBeInTheDocument();
     await waitFor(() => {
@@ -374,8 +382,12 @@ describe("IssuePage", () => {
 
     expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
     await waitFor(() => {
-      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
-      expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12");
+      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7, expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }));
+      expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12", expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }));
       expect(screen.getByText("subscription:false")).toBeInTheDocument();
       expect(screen.getByText("subscriptionDisabled:false")).toBeInTheDocument();
       expect(screen.getByText("subscriptionDisabledReason:")).toBeInTheDocument();
@@ -401,8 +413,12 @@ describe("IssuePage", () => {
 
     expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
     await waitFor(() => {
-      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
-      expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12");
+      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7, expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }));
+      expect(issuePageState.getIssueSubscriptionApi).toHaveBeenCalledWith("12", expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }));
       expect(screen.getByText("subscription:true")).toBeInTheDocument();
       expect(screen.getByText("subscriptionDisabled:false")).toBeInTheDocument();
     });
@@ -427,7 +443,9 @@ describe("IssuePage", () => {
 
     expect(await screen.findByTestId("issue-details-sidebar")).toBeInTheDocument();
     await waitFor(() => {
-      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7);
+      expect(issuePageState.getProjectSubscriptionApi).toHaveBeenCalledWith(7, expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }));
       expect(issuePageState.getIssueSubscriptionApi).not.toHaveBeenCalled();
       expect(screen.getByText("subscription:false")).toBeInTheDocument();
       expect(screen.getByText("subscriptionDisabled:true")).toBeInTheDocument();

@@ -240,10 +240,18 @@ describe("ProjectIssuesPage", () => {
     );
 
     expect(await screen.findByTestId("project-sidebar")).toBeInTheDocument();
-    expect(projectIssuesPageState.getProjectApi).toHaveBeenCalledWith("7");
-    expect(projectIssuesPageState.listProjectIssuesApi).toHaveBeenCalledWith("7");
-    expect(projectIssuesPageState.listProjectMembersApi).toHaveBeenCalledWith("7");
-    expect(projectIssuesPageState.getProjectSubscriptionApi).toHaveBeenCalledWith("7");
+    expect(projectIssuesPageState.getProjectApi).toHaveBeenCalledWith("7", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
+    expect(projectIssuesPageState.listProjectIssuesApi).toHaveBeenCalledWith("7", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
+    expect(projectIssuesPageState.listProjectMembersApi).toHaveBeenCalledWith("7", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
+    expect(projectIssuesPageState.getProjectSubscriptionApi).toHaveBeenCalledWith("7", expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
     expect(projectIssuesPageState.setLabel).toHaveBeenCalledWith("project:7", "Orbit");
     expect(screen.getByText("subscription:false")).toBeInTheDocument();
 
