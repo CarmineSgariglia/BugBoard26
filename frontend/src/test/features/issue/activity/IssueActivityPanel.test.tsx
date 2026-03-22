@@ -244,6 +244,48 @@ describe("IssueActivityPanel", () => {
     });
   });
 
+  it("shows the unavailable message instead of the composer when composing is disabled", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(1)]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose={false}
+        composeUnavailableMessage="This issue is setted as DONE"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+    expect(screen.getByText("This issue is setted as DONE")).toBeInTheDocument();
+  });
+
+  it("shows a cancelled message instead of the composer when the issue is cancelled", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(1)]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose={false}
+        composeUnavailableMessage="This issue is cancelled"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+    expect(screen.getByText("This issue is cancelled")).toBeInTheDocument();
+  });
+
   it("shows the loading state before the initial history is available", () => {
     listIssueUpdatesApiMock.mockReturnValue(new Promise(() => {}));
 

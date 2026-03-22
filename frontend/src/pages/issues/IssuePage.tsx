@@ -165,7 +165,17 @@ export function IssuePage() {
     return safeIssue.assignees.filter((assignee) => !adminIds.has(assignee.userId));
   }, [safeIssue, projectMembers]);
 
-  const canCompose = isAssigned || Boolean(currentUser?.isAdmin);
+  const isIssueClosedForComments =
+    safeIssue?.status === "DONE" || safeIssue?.status === "CANCELLED";
+  const canCompose = !isIssueClosedForComments && (isAssigned || Boolean(currentUser?.isAdmin));
+  const composeUnavailableMessage =
+    safeIssue?.status === "DONE"
+      ? "This issue is setted as DONE"
+      : safeIssue?.status === "CANCELLED"
+        ? "This issue is cancelled"
+      : canCompose
+        ? null
+        : "You are not assigned to this issue";
   const issueSubscriptionBlockedByProject =
     isAdmin &&
     Boolean(safeIssue) &&
@@ -224,6 +234,7 @@ export function IssuePage() {
             currentUser={currentUser}
             projectMembers={projectMembers}
             canCompose={canCompose}
+            composeUnavailableMessage={composeUnavailableMessage}
             className="h-full"
           />
         </div>

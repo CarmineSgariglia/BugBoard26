@@ -8,6 +8,7 @@ export * from "./FileAttachment";
 export * from "./FooterActions";
 export * from "./FormField";
 export * from "./GlassCard";
+export * from "./InfoBanner";
 export * from "./Input";
 export * from "./Pagination";
 export * from "./ScrollComponent";
