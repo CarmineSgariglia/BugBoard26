@@ -1,7 +1,7 @@
 from io import BytesIO
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -20,9 +20,7 @@ from apps.bugboardapi.roles import (
     ADMIN_GROUP_NAME,
     DEVELOPER_GROUP_NAME,
     assign_global_role,
-    ensure_global_role_groups,
     get_global_role,
-    has_global_role,
     is_admin_user,
 )
 from apps.bugboardapi.modules.issues.activity import delete_media_path
@@ -43,13 +41,6 @@ def make_test_image_bytes(*, size: tuple[int, int], image_format: str = "PNG", c
 
 
 class RoleContractsTests(TestCase):
-    def test_ensure_global_role_groups_returns_expected_mapping(self):
-        groups = ensure_global_role_groups()
-
-        self.assertEqual(set(groups), {ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME})
-        self.assertEqual(groups[ADMIN_GROUP_NAME].name, ADMIN_GROUP_NAME)
-        self.assertEqual(groups[DEVELOPER_GROUP_NAME].name, DEVELOPER_GROUP_NAME)
-
     def test_get_global_role_prefers_superuser_over_group_membership(self):
         user = User.objects.create_user(
             username="roles_superuser",
@@ -79,7 +70,21 @@ class RoleContractsTests(TestCase):
         self.assertFalse(user.is_staff)
         self.assertEqual(list(user.groups.values_list("name", flat=True)), [DEVELOPER_GROUP_NAME])
 
-    def test_has_global_role_treats_admin_as_having_any_requested_role(self):
+    def test_assign_global_role_creates_missing_group_on_demand(self):
+        Group.objects.filter(name__in=[ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME]).delete()
+        user = User.objects.create_user(
+            username="roles_dynamic_group",
+            email="roles_dynamic_group@example.com",
+            password="StrongPass123!",
+        )
+
+        assign_global_role(user, ADMIN_GROUP_NAME)
+
+        self.assertTrue(Group.objects.filter(name=ADMIN_GROUP_NAME).exists())
+        self.assertEqual(list(user.groups.values_list("name", flat=True)), [ADMIN_GROUP_NAME])
+        self.assertTrue(user.is_staff)
+
+    def test_is_admin_user_returns_true_for_admin_role(self):
         user = User.objects.create_user(
             username="roles_admin",
             email="roles_admin@example.com",
@@ -87,7 +92,6 @@ class RoleContractsTests(TestCase):
         )
         assign_global_role(user, ADMIN_GROUP_NAME)
 
-        self.assertTrue(has_global_role(user, DEVELOPER_GROUP_NAME))
         self.assertTrue(is_admin_user(user))
 
 
