@@ -50,15 +50,18 @@ vi.mock("@features/issue", () => ({
     issueId,
     issueTitle,
     canCompose,
+    composeUnavailableMessage,
     projectMembers = [],
   }: {
     issueId: number;
     issueTitle: string;
     canCompose: boolean;
+    composeUnavailableMessage?: string | null;
     projectMembers?: Array<{ firstName?: string; lastName?: string; username: string }>;
   }) => (
     <div data-testid="issue-activity-panel">
       {issueId}:{issueTitle}:{String(canCompose)}
+      <span>composeUnavailableMessage:{composeUnavailableMessage || ""}</span>
       <span>
         members:
         {projectMembers
@@ -231,8 +234,77 @@ describe("IssuePage", () => {
     expect(
       screen.getByText("12:Broken login flow:true")
     ).toBeInTheDocument();
+    expect(screen.getByText("composeUnavailableMessage:")).toBeInTheDocument();
     expect(
       screen.getByText("members:Admin User (admin),Dev User (devuser),Quality Analyst (qa)")
+    ).toBeInTheDocument();
+  });
+
+  it("shows a not assigned message instead of the chat bar for non-assigned users", async () => {
+    issuePageState.currentUser = {
+      userId: 99,
+      username: "outsider",
+      email: "outsider@example.com",
+      isAdmin: false,
+    };
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-activity-panel")).toBeInTheDocument();
+    expect(screen.getByText("12:Broken login flow:false")).toBeInTheDocument();
+    expect(
+      screen.getByText("composeUnavailableMessage:You are not assigned to this issue")
+    ).toBeInTheDocument();
+  });
+
+  it("shows the done message instead of the chat bar for done issues", async () => {
+    issuePageState.currentUser = {
+      userId: 99,
+      username: "outsider",
+      email: "outsider@example.com",
+      isAdmin: false,
+    };
+    issuePageState.getIssueApi.mockResolvedValue({
+      ...issue,
+      status: "DONE",
+    });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-activity-panel")).toBeInTheDocument();
+    expect(screen.getByText("12:Broken login flow:false")).toBeInTheDocument();
+    expect(
+      screen.getByText("composeUnavailableMessage:This issue is setted as DONE")
+    ).toBeInTheDocument();
+  });
+
+  it("shows the cancelled message instead of the chat bar for cancelled issues", async () => {
+    issuePageState.getIssueApi.mockResolvedValue({
+      ...issue,
+      status: "CANCELLED",
+    });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/issues/:issueId" element={<IssuePage />} />
+      </Routes>,
+      { route: "/issues/12" }
+    );
+
+    expect(await screen.findByTestId("issue-activity-panel")).toBeInTheDocument();
+    expect(screen.getByText("12:Broken login flow:false")).toBeInTheDocument();
+    expect(
+      screen.getByText("composeUnavailableMessage:This issue is cancelled")
     ).toBeInTheDocument();
   });
 

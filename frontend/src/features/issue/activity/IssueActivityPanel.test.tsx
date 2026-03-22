@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
-import { renderWithProviders } from "../../../test/render";
-import { IssueActivityPanel } from "./IssueActivityPanel";
+import { renderWithProviders } from "../../../render";
+import { IssueActivityPanel } from "@features/issue/activity/IssueActivityPanel";
 
 const {
   createIssueUpdateApiMock,
@@ -23,11 +23,43 @@ vi.mock("@features/issue/api", () => ({
   listIssueUpdatesApi: listIssueUpdatesApiMock,
 }));
 
-vi.mock("./IssueActivityComposer", () => ({
-  IssueActivityComposer: () => null,
+vi.mock("@features/issue/activity/IssueActivityComposer", () => ({
+  IssueActivityComposer: ({
+    message,
+    files,
+    onMessageChange,
+    onFilesChange,
+    onSubmit,
+    isSubmitting,
+  }: {
+    message: string;
+    files: File[];
+    onMessageChange: (message: string) => void;
+    onFilesChange: (files: File[]) => void;
+    onSubmit: () => void;
+    isSubmitting: boolean;
+  }) => (
+    <div data-testid="composer">
+      <input
+        aria-label="composer-message"
+        value={message}
+        onChange={(event) => onMessageChange(event.target.value)}
+      />
+      <button
+        type="button"
+        onClick={() => onFilesChange([new File(["proof"], "proof.txt", { type: "text/plain" })])}
+      >
+        Attach file
+      </button>
+      <span data-testid="composer-file-count">{String(files.length)}</span>
+      <button type="button" onClick={onSubmit} disabled={isSubmitting}>
+        Submit activity
+      </button>
+    </div>
+  ),
 }));
 
-vi.mock("./IssueActivityFilters", () => ({
+vi.mock("@features/issue/activity/IssueActivityFilters", () => ({
   IssueActivityFilters: ({
     scope,
     sort,
@@ -58,7 +90,7 @@ vi.mock("./IssueActivityFilters", () => ({
   ),
 }));
 
-vi.mock("./IssueActivityTimeline", () => ({
+vi.mock("@features/issue/activity/IssueActivityTimeline", () => ({
   IssueActivityTimeline: (props: {
     items: Array<{ id: number }>;
     sort: "NEWEST" | "OLDEST";
@@ -107,7 +139,7 @@ vi.mock("./IssueActivityTimeline", () => ({
   },
 }));
 
-vi.mock("./IssueActivityRealtimeListener", () => ({
+vi.mock("@features/issue/activity/IssueActivityRealtimeListener", () => ({
   IssueActivityRealtimeListener: (props: {
     issueId: number;
     latestUpdateId?: number;
@@ -128,6 +160,13 @@ function buildUpdate(updateId: number, actorId = 1, message = `message-${updateI
     at: `2026-03-15T10:${String(updateId).padStart(2, "0")}:00Z`,
     message,
     attachments: [],
+  };
+}
+
+function buildCreateUpdate(updateId: number): IssueUpdate {
+  return {
+    ...buildUpdate(updateId),
+    eventType: "CREATE",
   };
 }
 
@@ -203,6 +242,64 @@ describe("IssueActivityPanel", () => {
         latestUpdateId: 9,
       });
     });
+  });
+
+  it("shows the unavailable message instead of the composer when composing is disabled", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(1)]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose={false}
+        composeUnavailableMessage="This issue is setted as DONE"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+    expect(screen.getByText("This issue is setted as DONE")).toBeInTheDocument();
+  });
+
+  it("shows a cancelled message instead of the composer when the issue is cancelled", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(1)]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose={false}
+        composeUnavailableMessage="This issue is cancelled"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+    expect(screen.getByText("This issue is cancelled")).toBeInTheDocument();
+  });
+
+  it("shows the loading state before the initial history is available", () => {
+    listIssueUpdatesApiMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose
+      />,
+    );
+
+    expect(screen.getByText("Loading activity...")).toBeInTheDocument();
+    expect(screen.queryByTestId("timeline-rendered")).not.toBeInTheDocument();
   });
 
   it("auto-scrolls to a new realtime update when the user is already at the latest edge", async () => {
@@ -337,5 +434,69 @@ describe("IssueActivityPanel", () => {
     });
 
     expect(screen.getByTestId("timeline-marker-target")).toHaveTextContent("none");
+  });
+
+  it("filters out CREATE events and reorders items when sort changes", async () => {
+    await renderPanel([buildUpdate(5, 2, "older"), buildCreateUpdate(6), buildUpdate(7, 1, "newer")]);
+
+    expect(screen.getByTestId("timeline-item-ids")).toHaveTextContent("5,7");
+
+    fireEvent.click(screen.getByRole("button", { name: "Newest sort" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("sort-value")).toHaveTextContent("NEWEST");
+      expect(screen.getByTestId("timeline-item-ids")).toHaveTextContent("7,5");
+      expect(screen.getByTestId("timeline-sort")).toHaveTextContent("NEWEST");
+    });
+  });
+
+  it("hides the composer when composing is not allowed", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(1)]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={currentUser}
+        canCompose={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+  });
+
+  it("renders the composer when composing is allowed", async () => {
+    await renderPanel();
+
+    expect(screen.getByTestId("composer")).toBeInTheDocument();
+    expect(screen.getByLabelText("composer-message")).toHaveValue("");
+  });
+
+  it("keeps all items visible when YOURS is selected without a current user", async () => {
+    listIssueUpdatesApiMock.mockResolvedValue([buildUpdate(5, 2, "other"), buildUpdate(7, 3, "another")]);
+
+    renderWithProviders(
+      <IssueActivityPanel
+        issueId={77}
+        issueTitle="Realtime issue"
+        currentUser={null}
+        canCompose
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-rendered")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Yours filter" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("scope-value")).toHaveTextContent("YOURS");
+      expect(screen.getByTestId("timeline-item-ids")).toHaveTextContent("5,7");
+    });
   });
 });

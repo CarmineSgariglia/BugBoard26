@@ -5,6 +5,7 @@ import { createIssueUpdateApi, listIssueUpdatesApi } from "@features/issue/api";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { IssueUpdate } from "@shared/api/types/issues";
 import type { ProjectMembership } from "@shared/api/types/projects";
+import { InfoBanner } from "@shared/ui";
 import { getLatestIssueUpdateId, upsertIssueUpdates } from "@features/issue/lib/issueUpdatesRealtime";
 import { formatIssueActivityEvent } from "@features/issue/lib/formatIssueActivityEvent";
 import { IssueActivityFilters } from "./IssueActivityFilters";
@@ -18,6 +19,7 @@ type Props = {
     currentUser: AuthUser | null;
     projectMembers?: ProjectMembership[];
     canCompose: boolean;
+    composeUnavailableMessage?: string | null;
     className?: string;
 };
 
@@ -80,6 +82,7 @@ export function IssueActivityPanel({
     currentUser,
     projectMembers = [],
     canCompose,
+    composeUnavailableMessage = null,
     className = "h-full",
 }: Props) {
     const qc = useQueryClient();
@@ -306,9 +309,8 @@ export function IssueActivityPanel({
 
                 {!isLoading && pendingUpdateIds.length > 0 ? (
                     <div
-                        className={`pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4 ${
-                            sort === "NEWEST" ? "top-4" : "bottom-4"
-                        }`}
+                        className={`pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4 ${sort === "NEWEST" ? "top-4" : "bottom-4"
+                            }`}
                     >
                         <button
                             type="button"
@@ -337,6 +339,8 @@ export function IssueActivityPanel({
                         isSubmitting={sendMutation.isPending}
                     />
                 </>
+            ) : composeUnavailableMessage ? (
+                <InfoBanner message={composeUnavailableMessage} />
             ) : null}
         </div>
     );
