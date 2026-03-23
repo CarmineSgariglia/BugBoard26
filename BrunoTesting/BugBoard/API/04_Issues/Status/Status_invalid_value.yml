@@ -4,10 +4,10 @@ info:
   seq: 1
 
 http:
-  method: POST
-  url: "{{baseURL}}/issues/{{issue_id}}/status"
+  method: PATCH
+  url: "{{baseURL}}/issues/{{issue_id}}"
   body:
-    type: multipart-form
+    type: json
     data:
       - name: status
         type: text

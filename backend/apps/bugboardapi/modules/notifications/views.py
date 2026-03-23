@@ -25,7 +25,7 @@ from .services import (
     mark_notification_as_read,
 )
 from .serializers import NotifyUserSerializer
-from .serializers import NotificationReadAllResponseSerializer, NotificationsPageSerializer
+from .serializers import NotificationPatchSerializer, NotificationReadAllResponseSerializer, NotificationsPageSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +44,18 @@ MAX_NOTIFICATIONS_PAGE_SIZE = 50
         responses=NotificationsPageSerializer,
     ),
     retrieve=extend_schema(tags=["Notifications"], responses=NotifyUserSerializer),
+    partial_update=extend_schema(
+        tags=["Notifications"],
+        summary="Update notification state",
+        request=NotificationPatchSerializer,
+        responses=NotifyUserSerializer,
+    ),
     destroy=extend_schema(tags=["Notifications"], responses={204: OpenApiResponse(description="Notification deleted")}),
 )
 class NotificationViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
@@ -57,6 +64,11 @@ class NotificationViewSet(
     queryset = NotifyUser.objects.select_related("notification", "notification__issue", "notification__project")
     lookup_field = "notify_user_id"
     lookup_url_kwarg = "notificationId"
+
+    def get_renderers(self):
+        if getattr(self, "action", None) == "stream":
+            return [ServerSentEventsRenderer()]
+        return super().get_renderers()
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user).order_by("-notify_user_id")
@@ -107,27 +119,24 @@ class NotificationViewSet(
         notifications = self._load_notifications_from_db(limit=limit, before=before)
         return Response(self._serialize_notifications_page(notifications, limit=limit))
 
-    @action(detail=True, methods=["post"], url_path="read")
-    @extend_schema(
-        tags=["Notifications"],
-        summary="Mark notification as read",
-        request=None,
-        responses=NotifyUserSerializer,
-    )
-    def read(self, request, notificationId=None):
+    def partial_update(self, request, *args, **kwargs):
+        serializer = NotificationPatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         notify_user = self.get_object()
         notify_user = mark_notification_as_read(notify_user=notify_user)
         return Response(NotifyUserSerializer(notify_user).data)
 
-    @action(detail=False, methods=["post"], url_path="read-all")
     @extend_schema(
         tags=["Notifications"],
-        summary="Mark all notifications as read",
-        description="Phase 1 accepted bulk action endpoint for the current user.",
-        request=None,
+        operation_id="notifications_bulk_update",
+        summary="Bulk update notifications",
+        description="Bulk update notification state for the current user.",
+        request=NotificationPatchSerializer,
         responses=NotificationReadAllResponseSerializer,
     )
-    def read_all(self, request):
+    def partial_update_all(self, request):
+        serializer = NotificationPatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         updated = mark_all_notifications_as_read(user=request.user)
         return Response({"updated": updated})
 

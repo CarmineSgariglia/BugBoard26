@@ -4,8 +4,14 @@ info:
   seq: 2
 
 http:
-  method: POST
-  url: "{{baseURL}}/notifications/read-all"
+  method: PATCH
+  url: "{{baseURL}}/notifications"
+  body:
+    type: json
+    data:
+      - name: isRead
+        type: boolean
+        value: true
   auth: inherit
 
 runtime:

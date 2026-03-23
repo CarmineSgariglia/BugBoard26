@@ -46,7 +46,7 @@ describe("NotificationDropdown", () => {
       http.get("/api/notifications", () =>
         HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: true }),
       ),
-      http.post("/api/notifications/:notifyUserId/read", async () => {
+      http.patch("/api/notifications/:notifyUserId", async () => {
         readCalled = true;
         notifications = notifications.map((notification) =>
           notification.notifyUserId === 101
@@ -124,7 +124,7 @@ describe("NotificationDropdown", () => {
       http.get("/api/notifications", () =>
         HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: true }),
       ),
-      http.post("/api/notifications/:notifyUserId/read", async () => {
+      http.patch("/api/notifications/:notifyUserId", async () => {
         notifications = notifications.map((notification) =>
           notification.notifyUserId === 103
             ? { ...notification, isRead: true, readAt: "2026-03-13T12:01:00Z" }
@@ -185,7 +185,7 @@ describe("NotificationDropdown", () => {
       http.get("/api/notifications", () =>
         HttpResponse.json({ results: notifications, nextCursor: null, hasMore: false, hasUnread: true }),
       ),
-      http.post("/api/notifications/:notifyUserId/read", async () => {
+      http.patch("/api/notifications/:notifyUserId", async () => {
         notifications = notifications.map((notification) =>
           notification.notifyUserId === 104
             ? { ...notification, isRead: true, readAt: "2026-03-13T13:01:00Z" }

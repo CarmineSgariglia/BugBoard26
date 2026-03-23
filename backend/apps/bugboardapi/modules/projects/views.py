@@ -119,11 +119,11 @@ class ProjectViewSet(
         memberships = list_project_memberships(project=project, include_admins=include_admins)
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
-    @action(detail=True, methods=["get", "post", "delete"], url_path="subscription")
+    @action(detail=True, methods=["get", "put", "delete"], url_path="subscriptions/me")
     @extend_schema(
         tags=["Projects"],
         summary="Project subscription",
-        description="Phase 1 accepted admin subscription endpoint.",
+        description="Admin subscription state for the authenticated user on the project.",
         request=None,
         responses={
             200: subscription_state_serializer,
@@ -139,7 +139,7 @@ class ProjectViewSet(
                 "subscribed": is_admin_project_subscribed(project=project, user=request.user),
             })
 
-        if request.method == "POST":
+        if request.method == "PUT":
             subscribe_admin_to_project(project=project, user=request.user)
             return Response(status=status.HTTP_204_NO_CONTENT)
 

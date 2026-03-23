@@ -7,9 +7,9 @@ import {
   readNotificationApi,
 } from "@features/notification/api";
 
-const { getMock, postMock, deleteMock } = vi.hoisted(() => ({
+const { getMock, patchMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
-  postMock: vi.fn(),
+  patchMock: vi.fn(),
   deleteMock: vi.fn(),
 }));
 
@@ -17,7 +17,7 @@ vi.mock("@shared/api/core/client", () => ({
   __esModule: true,
   default: {
     get: getMock,
-    post: postMock,
+    patch: patchMock,
     delete: deleteMock,
   },
   apiBaseUrl: "/api",
@@ -26,7 +26,7 @@ vi.mock("@shared/api/core/client", () => ({
 describe("feature notifications api module", () => {
   beforeEach(() => {
     getMock.mockReset();
-    postMock.mockReset();
+    patchMock.mockReset();
     deleteMock.mockReset();
   });
 
@@ -70,10 +70,10 @@ describe("feature notifications api module", () => {
   });
 
   it("reads a notification", async () => {
-    postMock.mockResolvedValue({ data: { notifyUserId: 1, isRead: true } });
+    patchMock.mockResolvedValue({ data: { notifyUserId: 1, isRead: true } });
 
     await expect(readNotificationApi(1)).resolves.toEqual({ notifyUserId: 1, isRead: true });
-    expect(postMock).toHaveBeenCalledWith("/notifications/1/read");
+    expect(patchMock).toHaveBeenCalledWith("/notifications/1", { isRead: true });
   });
 
   it("deletes a notification", async () => {

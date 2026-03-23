@@ -313,23 +313,23 @@ class AuthCsrfTests(APITestCase):
 
     def test_csrf_endpoint_sets_cookie(self):
         client = APIClient(enforce_csrf_checks=True)
-        response = client.get("/api/auth/csrf")
+        response = client.get("/api/security/csrf-token")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("csrftoken", response.cookies)
 
     def test_login_requires_csrf_and_succeeds_with_token(self):
         client = APIClient(enforce_csrf_checks=True)
         blocked_response = client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
         )
         self.assertEqual(blocked_response.status_code, status.HTTP_403_FORBIDDEN)
 
-        csrf_response = client.get("/api/auth/csrf")
+        csrf_response = client.get("/api/security/csrf-token")
         csrf_token = csrf_response.cookies["csrftoken"].value
         login_response = client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
             HTTP_X_CSRFTOKEN=csrf_token,
@@ -339,10 +339,10 @@ class AuthCsrfTests(APITestCase):
     def test_otp_endpoints_require_csrf(self):
         client = APIClient(enforce_csrf_checks=True)
         otp_calls = [
-            ("/api/auth/password/otp/request", {"email": self.user.email}),
-            ("/api/auth/password/otp/verify", {"email": self.user.email, "code": "123456"}),
+            ("/api/password-reset-requests", {"email": self.user.email}),
+            ("/api/password-reset-verifications", {"email": self.user.email, "code": "123456"}),
             (
-                "/api/auth/password/reset",
+                "/api/password-resets",
                 {"email": self.user.email, "code": "123456", "newPassword": "NewStrongPass123!"},
             ),
         ]
@@ -365,7 +365,7 @@ class JwtAuthFlowTests(APITestCase):
 
     def test_login_me_refresh_logout_flow(self):
         login_response = self.client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
         )
@@ -376,35 +376,35 @@ class JwtAuthFlowTests(APITestCase):
 
         access_token = login_response.data["accessToken"]
 
-        me_response = self.client.get("/api/auth/me", **self._auth_headers(access_token))
+        me_response = self.client.get("/api/users/me", **self._auth_headers(access_token))
         self.assertEqual(me_response.status_code, status.HTTP_200_OK)
         self.assertEqual(me_response.data["email"], self.user.email)
 
-        refresh_response = self.client.post("/api/auth/refresh", {}, format="json")
+        refresh_response = self.client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
         self.assertIn("accessToken", refresh_response.data)
 
         refresh_cookie = login_response.cookies[settings.AUTH_REFRESH_COOKIE_NAME].value
 
-        logout_response = self.client.post(
-            "/api/auth/logout",
+        logout_response = self.client.delete(
+            "/api/sessions/current",
             {},
             format="json",
             **self._auth_headers(refresh_response.data["accessToken"]),
         )
         self.assertEqual(logout_response.status_code, status.HTTP_204_NO_CONTENT)
 
-        me_after_logout = self.client.get("/api/auth/me", **self._auth_headers(access_token))
+        me_after_logout = self.client.get("/api/users/me", **self._auth_headers(access_token))
         self.assertIn(me_after_logout.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
 
         stale_refresh_client = self.client_class()
         stale_refresh_client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = refresh_cookie
-        stale_refresh = stale_refresh_client.post("/api/auth/refresh", {}, format="json")
+        stale_refresh = stale_refresh_client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(stale_refresh.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_private_endpoints_require_authentication(self):
         protected_calls = [
-            ("get", "/api/auth/me"),
+            ("get", "/api/users/me"),
             ("get", "/api/projects"),
             ("get", "/api/notifications"),
             ("get", "/api/projects/999/issues"),
@@ -420,5 +420,5 @@ class JwtAuthFlowTests(APITestCase):
             )
 
     def test_refresh_requires_cookie(self):
-        response = self.client.post("/api/auth/refresh", {}, format="json")
+        response = self.client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

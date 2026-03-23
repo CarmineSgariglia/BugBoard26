@@ -5,9 +5,9 @@ info:
 
 http:
   method: POST
-  url: "{{baseURL}}/issues/{{issue_id}}/updates"
+  url: "{{baseURL}}/issues/{{issue_id}}/events"
   body:
-    type: multipart-form
+    type: json
     data:
       - name: message
         type: text
@@ -18,7 +18,7 @@ runtime:
   scripts:
     - type: tests
       code: |-
-        test("Issue update comment requires message", function () {
+        test("Issue event comment requires message", function () {
           const email = bru.getEnvVar("email") || "";
           if (email.includes("admin")) {
             expect(res.getStatus()).to.equal(400);

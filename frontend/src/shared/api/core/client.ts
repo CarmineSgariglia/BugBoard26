@@ -53,7 +53,7 @@ async function ensureCsrfCookie(): Promise<void> {
   if (readCookie("csrftoken")) return;
 
   if (!csrfBootstrapPromise) {
-    csrfBootstrapPromise = refreshClient.get("/auth/csrf").finally(() => {
+    csrfBootstrapPromise = refreshClient.get("/security/csrf-token").finally(() => {
       csrfBootstrapPromise = null;
     });
   }
@@ -74,7 +74,7 @@ function methodRequiresCsrf(method?: string): boolean {
 async function refreshAccessTokenSingleFlight(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = refreshClient
-      .post<{ accessToken: string }>("/auth/refresh", {})
+      .post<{ accessToken: string }>("/sessions/current/access-token", {})
       .then(({ data }) => {
         setAccessToken(data.accessToken);
         return data.accessToken;
@@ -144,9 +144,8 @@ apiClient.interceptors.response.use(
     const requestUrl = originalRequest?.url ?? "";
 
     const isAuthRequest =
-      requestUrl.includes("/auth/login") ||
-      requestUrl.includes("/auth/refresh") ||
-      requestUrl.includes("/auth/csrf");
+      requestUrl.includes("/sessions") ||
+      requestUrl.includes("/security/csrf-token");
 
     if (statusCode !== 401 || !originalRequest || originalRequest._retry || isAuthRequest) {
       return Promise.reject(error);

@@ -5,18 +5,18 @@ info:
 
 http:
   method: GET
-  url: "{{baseURL}}/issues/{{issue_id}}/updates"
+  url: "{{baseURL}}/issues/{{issue_id}}/events"
   auth: inherit
 
 runtime:
   scripts:
     - type: tests
       code: |-
-        test("Issue updates get status", function () {
+        test("Issue events get status", function () {
           expect(res.getStatus()).to.equal(200);
         });
 
-        test("Issue updates get returns array", function () {
+        test("Issue events get returns array", function () {
           expect(res.getBody()).to.be.an("array");
         });
 

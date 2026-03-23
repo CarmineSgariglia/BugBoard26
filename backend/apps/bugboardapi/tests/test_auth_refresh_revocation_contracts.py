@@ -17,7 +17,7 @@ class RefreshRevocationContractsTests(APITestCase):
 
     def test_refresh_rejects_cookie_for_sid_revoked_session(self):
         login_response = self.client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
         )
@@ -31,7 +31,7 @@ class RefreshRevocationContractsTests(APITestCase):
             expires_at_unix=refresh_token.get("exp"),
         )
 
-        response = self.client.post("/api/auth/refresh", {}, format="json")
+        response = self.client.post("/api/sessions/current/access-token", {}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(response.data["detail"], "Invalid refresh token")

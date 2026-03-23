@@ -5,13 +5,13 @@ Questa cartella contiene una suite Bruno rifattorizzata e organizzata per route 
 ## Struttura
 
 - `00_Setup`: bootstrap globale (health, csrf, login)
-- `API/01_Auth`: `/auth/*`
+- `API/01_Auth`: security, session e password reset
 - `API/02_Users`: `/users/*`
 - `API/03_Projects`: `/projects/*` e `/projects/{projectId}/issues`
 - `API/04_Issues`: `/issues/*`
 - `API/05_Notifications`: `/notifications/*`
 - `API/07_Tags`: `/tags/*`
-- `API/08_Attachments`: `/attachments/*` e upload collegati
+- `API/08_Attachments`: attachment nested sotto `/issues/{issueId}`
 
 Ogni area include test `auth`, `no_auth`, `not_found` e casi di validazione/permesso.
 
@@ -20,7 +20,10 @@ Nota Fase 1 REST cleanup:
 - l'attivazione utente usa `PATCH /users/{userId}` con body `{ "active": boolean }`
 - l'update issue canonico usa solo `PATCH /issues/{issueId}`
 - `DELETE /issues/{issueId}` non richiede body
-- l'upload profilo self-service usa solo `POST /users/me/upload-profile-image`
+- l'upload profilo self-service usa solo `PUT /users/me/profile-image`
+- i commenti issue usano `/issues/{issueId}/events`
+- assign/unassign usano `/issues/{issueId}/assignees/{userId}`
+- read all notifications usa `PATCH /notifications` con body `{ "isRead": true }`
 
 ## Environment
 

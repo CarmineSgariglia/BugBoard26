@@ -63,18 +63,18 @@ export async function getProjectSubscriptionApi(
   options?: RequestOptions,
 ): Promise<ProjectSubscriptionState> {
   const { data } = await apiClient.get<ProjectSubscriptionState>(
-    `/projects/${projectId}/subscription`,
+    `/projects/${projectId}/subscriptions/me`,
     withRequestOptions({}, options),
   );
   return data;
 }
 
 export async function subscribeToProjectApi(projectId: string | number): Promise<void> {
-  await apiClient.post(`/projects/${projectId}/subscription`);
+  await apiClient.put(`/projects/${projectId}/subscriptions/me`);
 }
 
 export async function unsubscribeFromProjectApi(projectId: string | number): Promise<void> {
-  await apiClient.delete(`/projects/${projectId}/subscription`);
+  await apiClient.delete(`/projects/${projectId}/subscriptions/me`);
 }
 
 export async function listProjectIssuesApi(

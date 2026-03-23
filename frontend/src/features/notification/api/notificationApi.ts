@@ -25,7 +25,9 @@ export async function listNotificationsApi(params?: {
 }
 
 export async function readNotificationApi(notificationId: number): Promise<NotificationItem> {
-  const { data } = await apiClient.post<NotificationItem>(`/notifications/${notificationId}/read`);
+  const { data } = await apiClient.patch<NotificationItem>(`/notifications/${notificationId}`, {
+    isRead: true,
+  });
   return data;
 }
 

@@ -6,11 +6,11 @@ import logging
 from django.contrib.auth.models import User
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import mixins, permissions, status, viewsets
-from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework import serializers
+from rest_framework.views import APIView
 
 from ...permissions import check_admin
 from ...roles import is_admin_user
@@ -129,71 +129,88 @@ class UserViewSet(
         self._validate_user_update_permissions(request, user)
         return super().update(request, *args, **kwargs)
 
-    @action(detail=True, methods=["post"], url_path="admin-upload-image")
-    @extend_schema(
-        tags=["Users"],
-        summary="Upload profile image for another user",
-        description="Phase 1 accepted multipart endpoint. Admin-only until Phase 2 converges to a resource-oriented path.",
-        request={"multipart/form-data": profile_image_upload_request},
-        responses=UserSerializer,
-    )
-    def admin_upload_profile_image(self, request, *args, **kwargs):
-        check_admin(request.user)
-        user = self.get_object()
-        return self._profile_image_response(request=request, user=user)
 
-    @action(detail=False, methods=["post"], url_path="me/upload-profile-image")
-    @extend_schema(
-        tags=["Users"],
-        summary="Upload current user profile image",
-        description="Phase 1 accepted multipart endpoint. Canonical path uses kebab-case.",
-        request={"multipart/form-data": profile_image_upload_request},
-        responses=UserSerializer,
-    )
-    def upload_profile_image_me(self, request):
-        return self._profile_image_response(request=request, user=request.user)
+password_response_serializer = inline_serializer(
+    name="UserPasswordUpdateResponse",
+    fields={"detail": serializers.CharField()},
+)
 
-    @action(detail=True, methods=["post"], url_path="change-password")
+
+class CurrentUserPasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     @extend_schema(
         tags=["Users"],
-        summary="Change own password",
-        description="Self-service password change. Requires currentPassword and newPassword.",
+        summary="Change current user password",
+        description="Self-service password change for the authenticated user.",
         request=ChangePasswordSerializer,
-        responses=inline_serializer(
-            name="ChangePasswordResponse",
-            fields={"detail": serializers.CharField()},
-        ),
+        responses=password_response_serializer,
     )
-    def change_password(self, request, *args, **kwargs):
+    def put(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload = change_user_password(
             actor=request.user,
-            target_user_id=self.kwargs.get(self.lookup_url_kwarg),
+            target_user_id=request.user.id,
             payload=serializer.validated_data,
             mode="self-service",
         )
         return Response(payload)
 
-    @action(detail=True, methods=["post"], url_path="admin-reset-password")
+
+class UserPasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     @extend_schema(
         tags=["Users"],
-        summary="Admin reset user password",
-        description="Admin-only password reset for another user. Accepts only newPassword.",
+        summary="Reset user password",
+        description="Admin-only password reset for another user.",
         request=AdminResetPasswordSerializer,
-        responses=inline_serializer(
-            name="AdminResetPasswordResponse",
-            fields={"detail": serializers.CharField()},
-        ),
+        responses=password_response_serializer,
     )
-    def admin_reset_password(self, request, *args, **kwargs):
+    def put(self, request, userId):
         check_admin(request.user)
         serializer = AdminResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload = change_user_password(
             actor=request.user,
-            target_user_id=self.kwargs.get(self.lookup_url_kwarg),
+            target_user_id=userId,
             payload=serializer.validated_data,
             mode="admin-reset",
         )
         return Response(payload)
+
+
+class CurrentUserProfileImageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        tags=["Users"],
+        summary="Upload current user profile image",
+        request={"multipart/form-data": profile_image_upload_request},
+        responses=UserSerializer,
+    )
+    def put(self, request):
+        updated_user = save_profile_image_for_user(request=request, user=request.user)
+        return Response(UserSerializer(updated_user, context={"request": request}).data)
+
+
+class UserProfileImageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        tags=["Users"],
+        summary="Upload profile image for another user",
+        description="Admin-only profile image upload for another user.",
+        request={"multipart/form-data": profile_image_upload_request},
+        responses=UserSerializer,
+    )
+    def put(self, request, userId):
+        check_admin(request.user)
+        user = User.objects.filter(pk=userId).first()
+        if user is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        updated_user = save_profile_image_for_user(request=request, user=user)
+        return Response(UserSerializer(updated_user, context={"request": request}).data)

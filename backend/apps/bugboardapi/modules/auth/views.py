@@ -75,9 +75,9 @@ class CSRFTokenView(APIView):
     authentication_classes = []
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Security"],
         summary="Get CSRF token",
-        description="Phase 1 compatibility endpoint for CSRF bootstrap.",
+        description="Bootstraps the CSRF cookie used by cookie-backed session mutations.",
         responses=CSRFTokenResponseSerializer,
     )
     def get(self, request):
@@ -91,9 +91,9 @@ class LoginView(APIView):
     throttle_scope = "login"
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Sessions"],
         summary="Create session",
-        description="Phase 1 compatibility endpoint. Returns an access token and sets the refresh token in an HTTP-only cookie.",
+        description="Authenticates the user, returns an access token, and sets the refresh token in an HTTP-only cookie.",
         request=LoginRequestSerializer,
         responses={200: LoginResponseSerializer, 401: DetailResponseSerializer},
     )
@@ -124,9 +124,9 @@ class RefreshView(APIView):
     authentication_classes = [CSRFAwareSessionAuthentication]
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Sessions"],
         summary="Refresh access token",
-        description="Phase 1 compatibility endpoint. Reads the refresh token from the HTTP-only cookie.",
+        description="Reads the refresh token from the HTTP-only cookie and returns a new access token.",
         request=None,
         responses={200: RefreshResponseSerializer, 401: DetailResponseSerializer},
     )
@@ -159,13 +159,13 @@ class LogoutView(APIView):
     authentication_classes = [CSRFAwareSessionAuthentication]
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Sessions"],
         summary="Logout",
-        description="Phase 1 compatibility endpoint. Revokes the current server-side JWT session and clears the refresh cookie.",
+        description="Revokes the current server-side JWT session and clears the refresh cookie.",
         request=None,
         responses={204: OpenApiResponse(description="Logged out")},
     )
-    def post(self, request):
+    def delete(self, request):
         refresh_token = request.COOKIES.get(_refresh_cookie_name())
         if refresh_token:
             revoke_session_from_refresh(refresh_token)
@@ -184,9 +184,9 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Users"],
         summary="Get current user",
-        description="Phase 1 compatibility endpoint for the authenticated user profile.",
+        description="Returns the authenticated user profile.",
         responses=UserReadSerializer,
     )
     def get(self, request):
@@ -201,9 +201,9 @@ class PasswordOTPRequestView(APIView):
     throttle_scope = "otp"
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Passwords"],
         summary="Request password reset OTP",
-        description="Phase 1 compatibility endpoint for OTP-based password reset.",
+        description="Starts the OTP-based password reset flow.",
         request=PasswordOTPRequestSerializer,
         responses=DetailResponseSerializer,
     )
@@ -222,9 +222,9 @@ class PasswordOTPVerifyView(APIView):
     throttle_scope = "otp"
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Passwords"],
         summary="Verify password reset OTP",
-        description="Phase 1 compatibility endpoint for OTP verification.",
+        description="Validates a password reset OTP.",
         request=PasswordOTPVerifySerializer,
         responses=PasswordOTPVerifyResponseSerializer,
     )
@@ -246,9 +246,9 @@ class PasswordResetView(APIView):
     throttle_scope = "otp"
 
     @extend_schema(
-        tags=["Auth"],
+        tags=["Passwords"],
         summary="Reset password with OTP",
-        description="Phase 1 compatibility endpoint for OTP-based password reset.",
+        description="Completes the OTP-based password reset flow.",
         request=PasswordResetSerializer,
         responses={200: DetailResponseSerializer, 400: DetailResponseSerializer},
     )

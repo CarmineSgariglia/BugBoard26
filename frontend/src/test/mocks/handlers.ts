@@ -12,9 +12,9 @@ const defaultUser = {
 };
 
 export const handlers = [
-  http.get("/api/auth/csrf", () => HttpResponse.json({ ok: true })),
-  http.get("/api/auth/me", () => HttpResponse.json(defaultUser)),
-  http.post("/api/auth/refresh", () =>
+  http.get("/api/security/csrf-token", () => HttpResponse.json({ ok: true })),
+  http.get("/api/users/me", () => HttpResponse.json(defaultUser)),
+  http.post("/api/sessions/current/access-token", () =>
     HttpResponse.json({ detail: "Unauthorized" }, { status: 401 }),
   ),
   http.get("/api/notifications", () =>
@@ -25,7 +25,7 @@ export const handlers = [
       hasUnread: false,
     }),
   ),
-  http.post("/api/notifications/:notifyUserId/read", async ({ params }) =>
+  http.patch("/api/notifications/:notifyUserId", async ({ params }) =>
     HttpResponse.json({
       notifyUserId: Number(params.notifyUserId),
       isRead: true,

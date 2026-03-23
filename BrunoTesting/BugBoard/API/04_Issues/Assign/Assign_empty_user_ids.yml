@@ -1,24 +1,18 @@
 info:
-  name: Assign_empty_user_ids
+  name: Assign_invalid_user
   type: http
   seq: 1
 
 http:
-  method: POST
-  url: "{{baseURL}}/issues/{{issue_id}}/assign"
-  body:
-    type: multipart-form
-    data:
-      - name: userIds
-        type: text
-        value: ""
+  method: PUT
+  url: "{{baseURL}}/issues/{{issue_id}}/assignees/{{invalid_id}}"
   auth: inherit
 
 runtime:
   scripts:
     - type: tests
       code: |-
-        test("Assign empty users rejected", function () {
+        test("Assign invalid user rejected for admin and forbidden for developer", function () {
           const email = bru.getEnvVar("email") || "";
           if (email.includes("admin")) {
             expect(res.getStatus()).to.equal(400);

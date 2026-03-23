@@ -33,7 +33,7 @@ class OtpDeliveryContractsTests(APITestCase):
             "apps.bugboardapi.modules.auth.password_reset", level="ERROR"
         ) as logs:
             request_response = self.client.post(
-                "/api/auth/password/otp/request",
+                "/api/password-reset-requests",
                 {"email": self.user.email},
                 format="json",
             )
@@ -52,7 +52,7 @@ class OtpDeliveryContractsTests(APITestCase):
         self.assertTrue(latest_otp.is_used)
 
         verify_response = self.client.post(
-            "/api/auth/password/otp/verify",
+            "/api/password-reset-verifications",
             {"email": self.user.email, "code": "111111"},
             format="json",
         )

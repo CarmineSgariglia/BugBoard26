@@ -86,7 +86,7 @@ class UserTransactionBoundariesTests(TestCase):
 
     def test_save_profile_image_deletes_new_upload_when_db_update_fails(self):
         request = self.factory.post(
-            "/api/users/me/upload-profile-image",
+            "/api/users/me/profile-image",
             {
                 "profile_img": SimpleUploadedFile(
                     "avatar.png",
