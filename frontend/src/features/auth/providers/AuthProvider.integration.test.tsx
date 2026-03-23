@@ -1,9 +1,10 @@
 import { http, HttpResponse } from "msw";
 import { screen } from "@testing-library/react";
 
-import { server } from "../../../test/mocks/server";
-import { renderWithProviders } from "../../../test/render";
-import { AuthProvider, useAuth } from "./AuthProvider";
+import { server } from "../../../mocks/server";
+import { renderWithProviders } from "../../../render";
+import { AuthProvider } from "../../../../features/auth/providers/AuthProvider";
+import { useAuth } from "../../../../features/auth/providers/useAuth";
 
 function AuthProbe() {
   const { user, isLoading } = useAuth();

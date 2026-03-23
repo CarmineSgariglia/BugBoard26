@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { RiCloseLine } from "react-icons/ri";
@@ -19,17 +19,28 @@ interface DeleteProjectFlowProps {
 }
 
 export function DeleteProjectFlow({ isOpen, onClose, projectId, projectName }: DeleteProjectFlowProps) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <DeleteProjectDialog
+      onClose={onClose}
+      projectId={projectId}
+      projectName={projectName}
+    />
+  );
+}
+
+function DeleteProjectDialog({
+  onClose,
+  projectId,
+  projectName,
+}: Omit<DeleteProjectFlowProps, "isOpen">) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [confirmationCode, setConfirmationCode] = useState("");
+  const [confirmationCode] = useState(() => generateConfirmationCode(10));
   const [userInput, setUserInput] = useState("");
-
-  useEffect(() => {
-    if (isOpen) {
-      setConfirmationCode(generateConfirmationCode(10));
-      setUserInput("");
-    }
-  }, [isOpen]);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteProjectApi(projectId),
@@ -39,7 +50,7 @@ export function DeleteProjectFlow({ isOpen, onClose, projectId, projectName }: D
         currentProjects.filter((project) => project.projectId !== projectId)
       );
       onClose();
-      navigate("/dashboard");
+      navigate("/projects", { replace: true });
     },
     onError: (error) => {
       console.error("Failed to delete project:", error);
@@ -54,7 +65,7 @@ export function DeleteProjectFlow({ isOpen, onClose, projectId, projectName }: D
   const isMatch = userInput === confirmationCode;
 
   return (
-    <ModalOverlay isOpen={isOpen} onClose={onClose} maxWidth="max-w-xl">
+    <ModalOverlay isOpen={true} onClose={onClose} maxWidth="max-w-xl">
       <div className="bg-[#121620] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
         <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-red-500/5">
           <div className="flex items-center gap-3">

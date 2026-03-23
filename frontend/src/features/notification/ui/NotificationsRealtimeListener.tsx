@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useMemo, useRef } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from "react";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
@@ -213,7 +213,7 @@ export function NotificationsRealtimeListener() {
     readMutation.mutate(notification.notifyUserId);
   });
 
-  const hydrateAddedProjectInHome = useEffectEvent(async (projectId: number) => {
+  const hydrateAddedProjectInHome = useCallback(async (projectId: number) => {
     projectHydrationControllersRef.current.get(projectId)?.abort();
     const controller = new AbortController();
     projectHydrationControllersRef.current.set(projectId, controller);
@@ -238,9 +238,9 @@ export function NotificationsRealtimeListener() {
         projectHydrationControllersRef.current.delete(projectId);
       }
     }
-  });
+  }, [queryClient]);
 
-  const hydrateAddedIssueInProject = useEffectEvent(async (projectId: number, issueId: number) => {
+  const hydrateAddedIssueInProject = useCallback(async (projectId: number, issueId: number) => {
     issueHydrationControllersRef.current.get(issueId)?.abort();
     const controller = new AbortController();
     issueHydrationControllersRef.current.set(issueId, controller);
@@ -270,9 +270,9 @@ export function NotificationsRealtimeListener() {
         issueHydrationControllersRef.current.delete(issueId);
       }
     }
-  });
+  }, [queryClient]);
 
-  const handleNotificationCreated = useEffectEvent((notification: NotificationItem) => {
+  const handleNotificationCreated = useCallback((notification: NotificationItem) => {
     if (notification.projectId != null) {
       if (notification.type === "PROJECT_ADDED") {
         void hydrateAddedProjectInHome(notification.projectId);
@@ -334,7 +334,16 @@ export function NotificationsRealtimeListener() {
       title: getNotificationTitle(notification.type),
       description: getNotificationDescription(notification),
     });
-  });
+  }, [
+    deleteMutation,
+    hydrateAddedIssueInProject,
+    hydrateAddedProjectInHome,
+    navigate,
+    pushToast,
+    queryClient,
+    routeProjectId,
+    routeTarget,
+  ]);
 
   useEffect(() => {
     notifications.forEach((notification) => {
@@ -347,11 +356,14 @@ export function NotificationsRealtimeListener() {
       queryClient.removeQueries({ queryKey: notificationsQueryKey });
     }
 
+    const projectHydrationControllers = projectHydrationControllersRef.current;
+    const issueHydrationControllers = issueHydrationControllersRef.current;
+
     return () => {
-      projectHydrationControllersRef.current.forEach((controller) => controller.abort());
-      issueHydrationControllersRef.current.forEach((controller) => controller.abort());
-      projectHydrationControllersRef.current.clear();
-      issueHydrationControllersRef.current.clear();
+      projectHydrationControllers.forEach((controller) => controller.abort());
+      issueHydrationControllers.forEach((controller) => controller.abort());
+      projectHydrationControllers.clear();
+      issueHydrationControllers.clear();
     };
   }, [queryClient, user]);
 

@@ -11,13 +11,14 @@ import { getIssueApi } from "@features/issue/api";
 import { listProjectMembersApi } from "@features/project/api";
 import type { AuthUser } from "@shared/api/types/auth";
 import type { Issue, IssueSuggestion } from "@shared/api/types/issues";
+import type { ProjectMembership } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { UserSelectorTable } from "@shared/ui/UserSelectorTable";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 import { ProjectFormLayout } from "@widgets/layout/ProjectFormLayout";
 
-const EMPTY_PROJECT_MEMBERS: Array<{ userId: number; role?: string | null }> = [];
+const EMPTY_PROJECT_MEMBERS: ProjectMembership[] = [];
 const EMPTY_SUGGESTIONS: IssueSuggestion[] = [];
 
 interface IssueAssigneesModalProps {
@@ -65,17 +66,21 @@ export function IssueAssigneesModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    const allowedIds = new Set(
-      projectMembers
-        .filter((m) => !isAdminLike({ role: m.role }))
-        .map((m) => m.userId)
-    );
-    const initialIds = issue.assignees
-      .map((a) => a.userId)
-      .filter((id) => (allowedIds.size ? allowedIds.has(id) : true));
+    const frameId = window.requestAnimationFrame(() => {
+      const allowedIds = new Set(
+        projectMembers
+          .filter((member) => !isAdminLike({ role: member.role }))
+          .map((member) => member.userId)
+      );
+      const initialIds = issue.assignees
+        .map((assignee) => assignee.userId)
+        .filter((id) => (allowedIds.size ? allowedIds.has(id) : true));
 
-    setSelectedUserIds(initialIds);
-    setError("");
+      setSelectedUserIds(initialIds);
+      setError("");
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [isOpen, issue, projectMembers]);
 
   const members = useMemo<AuthUser[]>(() => {

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import brandLogo from "@shared/assets/images/LogoBugBoard26.webp";
 import { getProjectApi } from "@features/project/api";
 import { getIssueApi } from "@features/issue/api";
-import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
+import { useBreadcrumbs } from "@shared/providers/useBreadcrumbs";
 
 export function DynamicBreadcrumbs() {
   const location = useLocation();

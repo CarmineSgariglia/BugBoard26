@@ -95,25 +95,44 @@ export const IssueActivityItem = forwardRef<HTMLDivElement, Props>(function Issu
     const fadeTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
+        let mountFrameId: number | null = null;
+        let visibleFrameId: number | null = null;
+
         if (showNewMessageMarker) {
-            // Mount first, then make visible on next frame for CSS transition
-            setMarkerMounted(true);
             if (fadeTimerRef.current != null) {
                 window.clearTimeout(fadeTimerRef.current);
                 fadeTimerRef.current = null;
             }
-            const raf = requestAnimationFrame(() => setMarkerVisible(true));
-            return () => cancelAnimationFrame(raf);
+            mountFrameId = requestAnimationFrame(() => {
+                setMarkerMounted(true);
+                visibleFrameId = requestAnimationFrame(() => setMarkerVisible(true));
+            });
+            return () => {
+                if (mountFrameId != null) {
+                    cancelAnimationFrame(mountFrameId);
+                }
+                if (visibleFrameId != null) {
+                    cancelAnimationFrame(visibleFrameId);
+                }
+            };
         }
 
         // Fade out: set invisible, then unmount after transition
-        setMarkerVisible(false);
+        mountFrameId = requestAnimationFrame(() => {
+            setMarkerVisible(false);
+        });
         fadeTimerRef.current = window.setTimeout(() => {
             setMarkerMounted(false);
             fadeTimerRef.current = null;
         }, MARKER_FADE_MS);
 
         return () => {
+            if (mountFrameId != null) {
+                cancelAnimationFrame(mountFrameId);
+            }
+            if (visibleFrameId != null) {
+                cancelAnimationFrame(visibleFrameId);
+            }
             if (fadeTimerRef.current != null) {
                 window.clearTimeout(fadeTimerRef.current);
                 fadeTimerRef.current = null;
