@@ -4,12 +4,14 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import serializers
 
 from ...common.sse import (
     ServerSentEventsRenderer,
@@ -35,6 +37,7 @@ from ..projects.serializers import ProjectMembershipSerializer
 from .serializers import (
     AttachmentSerializer,
     IssueEventSerializer,
+    IssueSuggestionSerializer,
     IssueSerializer,
 )
 from .activity import delete_media_path
@@ -58,6 +61,52 @@ from .queries import list_issue_suggestion_memberships, list_project_issues_quer
 from .realtime import open_issue_subscription
 
 logger = logging.getLogger(__name__)
+
+issue_subscription_state_serializer = inline_serializer(
+    name="IssueSubscriptionState",
+    fields={"subscribed": serializers.BooleanField()},
+)
+
+issue_assignment_request_serializer = inline_serializer(
+    name="IssueAssignmentRequest",
+    fields={"userIds": serializers.ListField(child=serializers.IntegerField(min_value=1))},
+)
+
+issue_status_request_serializer = inline_serializer(
+    name="IssueStatusRequest",
+    fields={
+        "status": serializers.CharField(),
+        "message": serializers.CharField(required=False, allow_blank=True),
+    },
+)
+
+issue_update_json_request_serializer = inline_serializer(
+    name="IssueUpdateJsonRequest",
+    fields={"message": serializers.CharField()},
+)
+
+issue_update_multipart_request_serializer = inline_serializer(
+    name="IssueUpdateMultipartRequest",
+    fields={
+        "message": serializers.CharField(),
+        "file": serializers.ListField(child=serializers.FileField(), required=False),
+    },
+)
+
+attachment_upload_request_serializer = inline_serializer(
+    name="IssueEventAttachmentUploadRequest",
+    fields={"file": serializers.FileField()},
+)
+
+attachment_create_request_serializer = inline_serializer(
+    name="AttachmentCreateRequest",
+    fields={
+        "issueId": serializers.IntegerField(required=False),
+        "updateId": serializers.IntegerField(required=False),
+        "message": serializers.CharField(required=False, allow_blank=True),
+        "file": serializers.FileField(),
+    },
+)
 
 
 def _get_project_or_none(*, user, project_id: int):
@@ -92,16 +141,18 @@ def _scoped_issue_event_or_none(*, user, update_id):
 class ProjectIssueListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, project_id):
-        project = _get_project_or_none(user=request.user, project_id=project_id)
+    @extend_schema(tags=["Issues"], responses=IssueSerializer(many=True))
+    def get(self, request, projectId):
+        project = _get_project_or_none(user=request.user, project_id=projectId)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
         queryset = list_project_issues_queryset(project=project, request=request)
         return Response(IssueSerializer(queryset, many=True, context={"request": request}).data)
 
-    def post(self, request, project_id):
-        project = _get_project_or_none(user=request.user, project_id=project_id)
+    @extend_schema(tags=["Issues"], request=IssueSerializer, responses={201: IssueSerializer})
+    def post(self, request, projectId):
+        project = _get_project_or_none(user=request.user, project_id=projectId)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_project_access(request.user, project)
@@ -111,6 +162,17 @@ class ProjectIssueListCreateView(APIView):
         return Response(IssueSerializer(issue, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    retrieve=extend_schema(tags=["Issues"], responses=IssueSerializer),
+    partial_update=extend_schema(tags=["Issues"], responses=IssueSerializer),
+    update=extend_schema(tags=["Issues"], responses=IssueSerializer),
+    destroy=extend_schema(
+        tags=["Issues"],
+        description="Deletes the issue. No request body is required or documented in Phase 1.",
+        request=None,
+        responses={204: OpenApiResponse(description="Issue deleted")},
+    ),
+)
 class IssueViewSet(
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
@@ -121,7 +183,7 @@ class IssueViewSet(
     permission_classes = [permissions.IsAuthenticated]
     queryset = _issue_queryset()
     lookup_field = "issue_id"
-    lookup_url_kwarg = "issue_id"
+    lookup_url_kwarg = "issueId"
 
     def get_queryset(self):
         return filter_by_project_access(queryset=_issue_queryset(), user=self.request.user)
@@ -129,7 +191,7 @@ class IssueViewSet(
     def perform_destroy(self, instance):
         check_admin(self.request.user)
         ensure_issue_access(self.request.user, instance)
-        delete_issue(instance=instance, title_confirmation=self.request.data.get("title"))
+        delete_issue(instance=instance)
 
     def perform_update(self, serializer):
         update_issue_from_serializer(
@@ -139,7 +201,15 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["post"], url_path="assign")
-    def assign(self, request, issue_id=None):
+    @extend_schema(
+        tags=["Issues"],
+        request=issue_assignment_request_serializer,
+        responses=inline_serializer(
+            name="IssueAssignResponse",
+            fields={"detail": serializers.CharField()},
+        ),
+    )
+    def assign(self, request, issueId=None):
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
@@ -147,7 +217,15 @@ class IssueViewSet(
         return Response({"detail": "Issue assigned"})
 
     @action(detail=True, methods=["post"], url_path="unassign")
-    def unassign(self, request, issue_id=None):
+    @extend_schema(
+        tags=["Issues"],
+        request=issue_assignment_request_serializer,
+        responses=inline_serializer(
+            name="IssueUnassignResponse",
+            fields={"detail": serializers.CharField()},
+        ),
+    )
+    def unassign(self, request, issueId=None):
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
@@ -155,7 +233,13 @@ class IssueViewSet(
         return Response({"detail": "Issue unassigned"})
 
     @action(detail=True, methods=["post"], url_path="status")
-    def update_status(self, request, issue_id=None):
+    @extend_schema(
+        tags=["Issues"],
+        description="Phase 1 accepted action endpoint for status changes until Phase 2 converges into PATCH /issues/{issueId}.",
+        request=issue_status_request_serializer,
+        responses=IssueSerializer,
+    )
+    def update_status(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
         check_assignee_or_admin(request.user, issue)
@@ -169,7 +253,16 @@ class IssueViewSet(
         return Response(IssueSerializer(updated_issue, context={"request": request}).data)
 
     @action(detail=True, methods=["get", "post", "delete"], url_path="subscription")
-    def subscription(self, request, issue_id=None):
+    @extend_schema(
+        tags=["Issues"],
+        description="Phase 1 accepted admin subscription endpoint.",
+        request=None,
+        responses={
+            200: issue_subscription_state_serializer,
+            204: OpenApiResponse(description="Subscription updated"),
+        },
+    )
+    def subscription(self, request, issueId=None):
         check_admin(request.user)
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
@@ -187,7 +280,16 @@ class IssueViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get", "post"], url_path="updates")
-    def updates(self, request, issue_id=None):
+    @extend_schema(
+        tags=["Issues"],
+        description="Phase 1 accepted issue activity endpoint.",
+        request={
+            "application/json": issue_update_json_request_serializer,
+            "multipart/form-data": issue_update_multipart_request_serializer,
+        },
+        responses={200: IssueEventSerializer(many=True), 201: IssueEventSerializer},
+    )
+    def updates(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
 
@@ -225,7 +327,12 @@ class IssueViewSet(
         url_path="updates/stream",
         renderer_classes=[ServerSentEventsRenderer],
     )
-    def updates_stream(self, request, issue_id=None):
+    @extend_schema(
+        tags=["Issues"],
+        description="Server-Sent Events activity stream for the issue. Phase 1 accepted non-REST endpoint.",
+        responses={(200, "text/event-stream"): OpenApiTypes.STR},
+    )
+    def updates_stream(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
 
@@ -256,7 +363,8 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["get"], url_path="suggestions")
-    def suggestions(self, request, issue_id=None):
+    @extend_schema(tags=["Issues"], responses=IssueSuggestionSerializer(many=True))
+    def suggestions(self, request, issueId=None):
         issue = self.get_object()
         ensure_issue_access(request.user, issue)
         memberships = list_issue_suggestion_memberships(issue=issue)
@@ -265,11 +373,6 @@ class IssueViewSet(
         for item in payload:
             item["openCount"] = open_count_by_user_id.get(item["userId"], 0)
         return Response(payload)
-
-    @action(detail=True, methods=["patch"], url_path="details")
-    def details(self, request, issue_id=None):
-        """Dedicated endpoint for issue edit pages to patch full issue details."""
-        return self.partial_update(request, issue_id=issue_id)
 
     def partial_update(self, request, *args, **kwargs):
         issue = self.get_object()
@@ -288,8 +391,14 @@ class AttachmentUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
-    def post(self, request, update_id):
-        event = _scoped_issue_event_or_none(user=request.user, update_id=update_id)
+    @extend_schema(
+        tags=["Attachments"],
+        description="Phase 1 accepted multipart upload endpoint bound to an issue event.",
+        request={"multipart/form-data": attachment_upload_request_serializer},
+        responses={201: AttachmentSerializer},
+    )
+    def post(self, request, updateId):
+        event = _scoped_issue_event_or_none(user=request.user, update_id=updateId)
         if not event:
             return Response(status=status.HTTP_404_NOT_FOUND)
         ensure_issue_access(request.user, event.issue)
@@ -298,6 +407,23 @@ class AttachmentUploadView(APIView):
         return Response(AttachmentSerializer(attachment, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Attachments"],
+        parameters=[
+            OpenApiParameter("issueId", int, OpenApiParameter.QUERY),
+            OpenApiParameter("updateId", int, OpenApiParameter.QUERY),
+        ],
+        responses=AttachmentSerializer(many=True),
+    ),
+    create=extend_schema(
+        tags=["Attachments"],
+        description="Phase 1 accepted multipart endpoint for issue-level or event-level attachment uploads.",
+        request={"multipart/form-data": attachment_create_request_serializer},
+        responses={201: AttachmentSerializer},
+    ),
+    destroy=extend_schema(tags=["Attachments"], responses={204: OpenApiResponse(description="Attachment deleted")}),
+)
 class AttachmentViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,

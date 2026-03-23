@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from ...common.media import build_media_url
@@ -40,14 +41,17 @@ class UserReadSerializer(serializers.ModelSerializer):
             "active",
         ]
 
-    def get_group(self, instance):
+    @extend_schema_field(serializers.CharField())
+    def get_group(self, instance) -> str:
         role = get_global_role(instance) or DEVELOPER_GROUP_NAME
         return role
 
-    def get_isAdmin(self, instance):
+    @extend_schema_field(serializers.BooleanField())
+    def get_isAdmin(self, instance) -> bool:
         return self.get_group(instance) == ADMIN_GROUP_NAME
 
-    def get_profileImg(self, instance):
+    @extend_schema_field(serializers.CharField(allow_blank=True, allow_null=True))
+    def get_profileImg(self, instance) -> str:
         profile = getattr(instance, "profile", None)
         profile_img = getattr(profile, "profile_img", "") if profile is not None else ""
         return build_media_url(profile_img)
@@ -104,6 +108,8 @@ class UserMutationSerializer(UserReadSerializer):
             raise serializers.ValidationError(
                 {"profileImg": "Use the dedicated upload endpoint"}
             )
+        if "active" in self.initial_data and not isinstance(self.initial_data.get("active"), bool):
+            raise serializers.ValidationError({"active": "Boolean value is required"})
         password = attrs.get("password")
         attrs["group"] = _resolve_requested_group(
             requested_group=attrs.get("group"),
@@ -129,8 +135,16 @@ class UserSerializer(UserReadSerializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    currentPassword = serializers.CharField(required=False, allow_blank=True)
+    currentPassword = serializers.CharField()
     newPassword = serializers.CharField(min_length=8)
+
+
+class AdminResetPasswordSerializer(serializers.Serializer):
+    newPassword = serializers.CharField(min_length=8)
+
+
+class UserStatusPatchSerializer(serializers.Serializer):
+    active = serializers.BooleanField()
 
 
 def _resolve_requested_group(

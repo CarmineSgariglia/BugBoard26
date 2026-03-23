@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import NotifyUser
@@ -17,10 +18,23 @@ class NotifyUserSerializer(serializers.ModelSerializer):
         model = NotifyUser
         fields = ["notifyUserId", "notificationId", "type", "createdAt", "issueId", "projectId", "isRead", "readAt"]
 
-    def get_issueId(self, obj):
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_issueId(self, obj) -> int | None:
         issue = getattr(obj.notification, "issue", None)
         return getattr(issue, "issue_id", None)
 
-    def get_projectId(self, obj):
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_projectId(self, obj) -> int | None:
         project = getattr(obj.notification, "project", None)
         return getattr(project, "project_id", None)
+
+
+class NotificationsPageSerializer(serializers.Serializer):
+    results = NotifyUserSerializer(many=True)
+    nextCursor = serializers.IntegerField(allow_null=True)
+    hasMore = serializers.BooleanField()
+    hasUnread = serializers.BooleanField()
+
+
+class NotificationReadAllResponseSerializer(serializers.Serializer):
+    updated = serializers.IntegerField()

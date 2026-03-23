@@ -143,12 +143,7 @@ def update_issue_from_serializer(*, serializer, actor, raw_message):
     return issue
 
 
-def delete_issue(*, instance: Issue, title_confirmation: str | None):
-    if not title_confirmation:
-        raise ValidationError({"title": "Issue title confirmation is required"})
-    if title_confirmation != instance.title:
-        raise ValidationError({"title": "Issue title confirmation mismatch"})
-
+def delete_issue(*, instance: Issue):
     attachment_paths = _issue_attachment_paths(issue=instance)
 
     with transaction.atomic():

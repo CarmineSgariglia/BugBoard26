@@ -4,8 +4,8 @@ info:
   seq: 1
 
 http:
-  method: POST
-  url: "{{baseURL}}/users/3/status"
+  method: PATCH
+  url: "{{baseURL}}/users/3"
   body:
     type: json
     data: '{"active" : true}'
@@ -15,7 +15,7 @@ runtime:
   scripts:
     - type: tests
       code: |-
-        test("Set user status role aware", function () {
+        test("Patch user active flag role aware", function () {
           const email = bru.getEnvVar("email") || "";
           if (email.includes("admin")) {
             expect(res.getStatus()).to.equal(200);

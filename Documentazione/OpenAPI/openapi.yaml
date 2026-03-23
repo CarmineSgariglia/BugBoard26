@@ -1,0 +1,2183 @@
+openapi: 3.0.3
+info:
+  title: BugBoard26 API
+  version: 1.0.0-phase1
+  description: Canonical Phase 1 API surface for BugBoard26. JWT session revocation
+    remains enabled as an intentional security exception.
+paths:
+  /api/attachments:
+    get:
+      operationId: attachments_list
+      parameters:
+      - in: query
+        name: issueId
+        schema:
+          type: integer
+      - in: query
+        name: updateId
+        schema:
+          type: integer
+      tags:
+      - Attachments
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attachment'
+          description: ''
+    post:
+      operationId: attachments_create
+      description: Phase 1 accepted multipart endpoint for issue-level or event-level
+        attachment uploads.
+      tags:
+      - Attachments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttachmentCreateRequestRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+          description: ''
+  /api/attachments/{attachmentId}:
+    delete:
+      operationId: attachments_destroy
+      parameters:
+      - in: path
+        name: attachmentId
+        schema:
+          type: integer
+        description: A unique integer value identifying this attachment.
+        required: true
+      tags:
+      - Attachments
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Attachment deleted
+  /api/auth/csrf:
+    get:
+      operationId: auth_csrf_retrieve
+      description: Phase 1 compatibility endpoint for CSRF bootstrap.
+      summary: Get CSRF token
+      tags:
+      - Auth
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CSRFTokenResponse'
+          description: ''
+  /api/auth/login:
+    post:
+      operationId: auth_login_create
+      description: Phase 1 compatibility endpoint. Returns an access token and sets
+        the refresh token in an HTTP-only cookie.
+      summary: Create session
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/logout:
+    post:
+      operationId: auth_logout_create
+      description: Phase 1 compatibility endpoint. Revokes the current server-side
+        JWT session and clears the refresh cookie.
+      summary: Logout
+      tags:
+      - Auth
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '204':
+          description: Logged out
+  /api/auth/me:
+    get:
+      operationId: auth_me_retrieve
+      description: Phase 1 compatibility endpoint for the authenticated user profile.
+      summary: Get current user
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+          description: ''
+  /api/auth/password/otp/request:
+    post:
+      operationId: auth_password_otp_request_create
+      description: Phase 1 compatibility endpoint for OTP-based password reset.
+      summary: Request password reset OTP
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPRequestRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/password/otp/verify:
+    post:
+      operationId: auth_password_otp_verify_create
+      description: Phase 1 compatibility endpoint for OTP verification.
+      summary: Verify password reset OTP
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordOTPVerifyResponse'
+          description: ''
+  /api/auth/password/reset:
+    post:
+      operationId: auth_password_reset_create
+      description: Phase 1 compatibility endpoint for OTP-based password reset.
+      summary: Reset password with OTP
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/refresh:
+    post:
+      operationId: auth_refresh_create
+      description: Phase 1 compatibility endpoint. Reads the refresh token from the
+        HTTP-only cookie.
+      summary: Refresh access token
+      tags:
+      - Auth
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/health:
+    get:
+      operationId: health_retrieve
+      tags:
+      - Meta
+      security:
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+          description: ''
+  /api/issue-events/{updateId}/attachments:
+    post:
+      operationId: issue_events_attachments_create
+      description: Phase 1 accepted multipart upload endpoint bound to an issue event.
+      parameters:
+      - in: path
+        name: updateId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Attachments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueEventAttachmentUploadRequestRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+          description: ''
+  /api/issues/{issueId}:
+    get:
+      operationId: issues_retrieve
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - Issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    put:
+      operationId: issues_update
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - Issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    patch:
+      operationId: issues_partial_update
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - Issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedIssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedIssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedIssueRequest'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    delete:
+      operationId: issues_destroy
+      description: Deletes the issue. No request body is required or documented in
+        Phase 1.
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - Issues
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Issue deleted
+  /api/issues/{issueId}/assign:
+    post:
+      operationId: issues_assign_create
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/issues/{issueId}/status:
+    post:
+      operationId: issues_status_create
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/issues/{issueId}/subscription:
+    get:
+      operationId: issues_subscription_retrieve
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    post:
+      operationId: issues_subscription_create
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    delete:
+      operationId: issues_subscription_destroy
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/issues/{issueId}/suggestions:
+    get:
+      operationId: issues_suggestions_retrieve
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/issues/{issueId}/unassign:
+    post:
+      operationId: issues_unassign_create
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/issues/{issueId}/updates:
+    get:
+      operationId: issues_updates_retrieve
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    post:
+      operationId: issues_updates_create
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/issues/{issueId}/updates/stream:
+    get:
+      operationId: issues_updates_stream_retrieve
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/notifications:
+    get:
+      operationId: notifications_list
+      description: Cursor-based notification feed for the authenticated user.
+      parameters:
+      - in: query
+        name: before
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationsPage'
+          description: ''
+  /api/notifications/{notificationId}:
+    get:
+      operationId: notifications_retrieve
+      parameters:
+      - in: path
+        name: notificationId
+        schema:
+          type: integer
+        description: A unique integer value identifying this notify user.
+        required: true
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyUser'
+          description: ''
+    delete:
+      operationId: notifications_destroy
+      parameters:
+      - in: path
+        name: notificationId
+        schema:
+          type: integer
+        description: A unique integer value identifying this notify user.
+        required: true
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Notification deleted
+  /api/notifications/{notificationId}/read:
+    post:
+      operationId: notifications_read_create
+      parameters:
+      - in: path
+        name: notificationId
+        schema:
+          type: integer
+        description: A unique integer value identifying this notify user.
+        required: true
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyUser'
+          description: ''
+  /api/notifications/read-all:
+    post:
+      operationId: notifications_read_all_create
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyUser'
+          description: ''
+  /api/notifications/stream:
+    get:
+      operationId: notifications_stream_retrieve
+      tags:
+      - notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/NotifyUser'
+          description: ''
+  /api/projects:
+    get:
+      operationId: projects_list
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - Projects
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+          description: ''
+    post:
+      operationId: projects_create
+      tags:
+      - Projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/projects/{projectId}:
+    get:
+      operationId: projects_retrieve
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - Projects
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    put:
+      operationId: projects_update
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - Projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    patch:
+      operationId: projects_partial_update
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - Projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectRequest'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    delete:
+      operationId: projects_destroy
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - Projects
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Project deleted
+  /api/projects/{projectId}/issues:
+    get:
+      operationId: projects_issues_list
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+          description: ''
+    post:
+      operationId: projects_issues_create
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/projects/{projectId}/members:
+    get:
+      operationId: projects_members_retrieve
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/projects/{projectId}/subscription:
+    get:
+      operationId: projects_subscription_retrieve
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    post:
+      operationId: projects_subscription_create
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    delete:
+      operationId: projects_subscription_destroy
+      parameters:
+      - in: path
+        name: projectId
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/tags:
+    get:
+      operationId: tags_list
+      tags:
+      - tags
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+          description: ''
+    post:
+      operationId: tags_create
+      tags:
+      - tags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TagRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TagRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+  /api/tags/{tagId}:
+    delete:
+      operationId: tags_destroy
+      parameters:
+      - in: path
+        name: tagId
+        schema:
+          type: integer
+        description: A unique integer value identifying this tag.
+        required: true
+      tags:
+      - tags
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/users:
+    get:
+      operationId: users_list
+      parameters:
+      - in: query
+        name: excludeUserIds
+        schema:
+          type: string
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: role
+        schema:
+          type: string
+      - in: query
+        name: search
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: userIds
+        schema:
+          type: string
+      tags:
+      - Users
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+    post:
+      operationId: users_create
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserMutationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserMutationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserMutationRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMutation'
+          description: ''
+  /api/users/{userId}:
+    get:
+      operationId: users_retrieve
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: users_update
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserMutationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserMutationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserMutationRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMutation'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserMutationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserMutationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserMutationRequest'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMutation'
+          description: ''
+  /api/users/{userId}/admin-reset-password:
+    post:
+      operationId: users_admin_reset_password_create
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{userId}/admin-upload-image:
+    post:
+      operationId: users_admin_upload_image_create
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{userId}/change-password:
+    post:
+      operationId: users_change_password_create
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/me/upload-profile-image:
+    post:
+      operationId: users_me_upload_profile_image_create
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    Attachment:
+      type: object
+      properties:
+        attachmentId:
+          type: integer
+          readOnly: true
+        updateId:
+          type: integer
+          readOnly: true
+        originalName:
+          type: string
+          readOnly: true
+        path:
+          type: string
+          maxLength: 256
+        url:
+          type: string
+          readOnly: true
+        mimeType:
+          type: string
+        size:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        uploadedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - attachmentId
+      - mimeType
+      - originalName
+      - path
+      - size
+      - updateId
+      - uploadedAt
+      - url
+    AttachmentCreateRequestRequest:
+      type: object
+      properties:
+        issueId:
+          type: integer
+        updateId:
+          type: integer
+        message:
+          type: string
+        file:
+          type: string
+          format: binary
+      required:
+      - file
+    CSRFTokenResponse:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+      required:
+      - csrfToken
+    DetailResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    GroupEnum:
+      enum:
+      - admin
+      - developer
+      type: string
+      description: |-
+        * `admin` - Admin
+        * `developer` - Developer
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    Issue:
+      type: object
+      properties:
+        issueId:
+          type: integer
+          readOnly: true
+        projectId:
+          type: integer
+          readOnly: true
+        reporterId:
+          type: integer
+          readOnly: true
+        reporter:
+          allOf:
+          - $ref: '#/components/schemas/UserRead'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 30
+        description:
+          type: string
+          maxLength: 1000
+        type:
+          type: string
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        assignees:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueAssignee'
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          readOnly: true
+      required:
+      - assignees
+      - createdAt
+      - description
+      - issueId
+      - projectId
+      - reporter
+      - reporterId
+      - tags
+      - title
+      - type
+    IssueAssignee:
+      type: object
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        profileImg:
+          type: string
+          nullable: true
+      required:
+      - profileImg
+      - userId
+      - username
+    IssueEventAttachmentUploadRequestRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
+    IssueRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 30
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        type:
+          type: string
+          minLength: 1
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        assigneeIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          writeOnly: true
+        tagIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          writeOnly: true
+        tagNames:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 16
+          writeOnly: true
+      required:
+      - description
+      - title
+      - type
+    LoginRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+      - email
+      - password
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserRead'
+      required:
+      - accessToken
+      - user
+    NotificationsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotifyUser'
+        nextCursor:
+          type: integer
+          nullable: true
+        hasMore:
+          type: boolean
+        hasUnread:
+          type: boolean
+      required:
+      - hasMore
+      - hasUnread
+      - nextCursor
+      - results
+    NotifyUser:
+      type: object
+      properties:
+        notifyUserId:
+          type: integer
+          readOnly: true
+        notificationId:
+          type: integer
+          readOnly: true
+        type:
+          type: string
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        issueId:
+          type: integer
+          nullable: true
+          readOnly: true
+        projectId:
+          type: integer
+          nullable: true
+          readOnly: true
+        isRead:
+          type: boolean
+        readAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - isRead
+      - issueId
+      - notificationId
+      - notifyUserId
+      - projectId
+      - readAt
+      - type
+    NotifyUserRequest:
+      type: object
+      properties:
+        isRead:
+          type: boolean
+      required:
+      - isRead
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    PasswordOTPRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    PasswordOTPVerifyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+          pattern: ^\d{6}$
+      required:
+      - code
+      - email
+    PasswordOTPVerifyResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - valid
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+          pattern: ^\d{6}$
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+      - code
+      - email
+      - newPassword
+    PatchedIssueRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 30
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        type:
+          type: string
+          minLength: 1
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        assigneeIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          writeOnly: true
+        tagIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          writeOnly: true
+        tagNames:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 16
+          writeOnly: true
+    PatchedProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        description:
+          type: string
+          minLength: 1
+          maxLength: 256
+        color:
+          type: string
+          maxLength: 9
+        icon:
+          type: string
+          maxLength: 256
+    PatchedUserMutationRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        firstName:
+          type: string
+        lastName:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        group:
+          allOf:
+          - $ref: '#/components/schemas/GroupEnum'
+          writeOnly: true
+        isAdmin:
+          type: boolean
+          writeOnly: true
+        active:
+          type: boolean
+    PriorityEnum:
+      enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+      - URGENT
+      type: string
+      description: |-
+        * `LOW` - Low
+        * `MEDIUM` - Medium
+        * `HIGH` - High
+        * `URGENT` - Urgent
+    Project:
+      type: object
+      properties:
+        projectId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 30
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        description:
+          type: string
+          maxLength: 256
+        color:
+          type: string
+          maxLength: 9
+        icon:
+          type: string
+          maxLength: 256
+        createdBy:
+          type: integer
+          readOnly: true
+        authorProfileImg:
+          type: string
+          readOnly: true
+      required:
+      - authorProfileImg
+      - createdAt
+      - createdBy
+      - description
+      - name
+      - projectId
+    ProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        description:
+          type: string
+          minLength: 1
+          maxLength: 256
+        color:
+          type: string
+          maxLength: 9
+        icon:
+          type: string
+          maxLength: 256
+      required:
+      - description
+      - name
+    RefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+      required:
+      - accessToken
+    StatusEnum:
+      enum:
+      - TODO
+      - IN_PROGRESS
+      - DONE
+      - CANCELLED
+      type: string
+      description: |-
+        * `TODO` - To Do
+        * `IN_PROGRESS` - In Progress
+        * `DONE` - Done
+        * `CANCELLED` - Cancelled
+    Tag:
+      type: object
+      properties:
+        tagId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 16
+      required:
+      - name
+      - tagId
+    TagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 16
+      required:
+      - name
+    User:
+      type: object
+      properties:
+        userId:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        firstName:
+          type: string
+          readOnly: true
+        lastName:
+          type: string
+          readOnly: true
+        group:
+          type: string
+          readOnly: true
+        isAdmin:
+          type: boolean
+          readOnly: true
+        profileImg:
+          type: string
+          nullable: true
+          readOnly: true
+        active:
+          type: boolean
+          readOnly: true
+      required:
+      - active
+      - firstName
+      - group
+      - isAdmin
+      - lastName
+      - profileImg
+      - userId
+      - username
+    UserMutation:
+      type: object
+      properties:
+        userId:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        firstName:
+          type: string
+        lastName:
+          type: string
+        profileImg:
+          type: string
+          readOnly: true
+        active:
+          type: boolean
+      required:
+      - profileImg
+      - userId
+      - username
+    UserMutationRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        firstName:
+          type: string
+        lastName:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        group:
+          allOf:
+          - $ref: '#/components/schemas/GroupEnum'
+          writeOnly: true
+        isAdmin:
+          type: boolean
+          writeOnly: true
+        active:
+          type: boolean
+      required:
+      - username
+    UserRead:
+      type: object
+      properties:
+        userId:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        firstName:
+          type: string
+          readOnly: true
+        lastName:
+          type: string
+          readOnly: true
+        group:
+          type: string
+          readOnly: true
+        isAdmin:
+          type: boolean
+          readOnly: true
+        profileImg:
+          type: string
+          nullable: true
+          readOnly: true
+        active:
+          type: boolean
+          readOnly: true
+      required:
+      - active
+      - firstName
+      - group
+      - isAdmin
+      - lastName
+      - profileImg
+      - userId
+      - username
+    UserReadRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+      required:
+      - username
+    UserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+      required:
+      - username
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRFToken

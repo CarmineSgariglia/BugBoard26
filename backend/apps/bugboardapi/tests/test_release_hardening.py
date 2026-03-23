@@ -57,9 +57,9 @@ class UserListQueryParamTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("userIds", response.data)
 
-    def test_status_endpoint_requires_boolean_active_payload(self):
-        response = self.client.post(
-            f"/api/users/{self.member_one.id}/status",
+    def test_user_patch_requires_boolean_active_payload(self):
+        response = self.client.patch(
+            f"/api/users/{self.member_one.id}",
             {"active": "false"},
             format="json",
         )

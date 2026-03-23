@@ -15,6 +15,13 @@ Questa cartella contiene una suite Bruno rifattorizzata e organizzata per route 
 
 Ogni area include test `auth`, `no_auth`, `not_found` e casi di validazione/permesso.
 
+Nota Fase 1 REST cleanup:
+
+- l'attivazione utente usa `PATCH /users/{userId}` con body `{ "active": boolean }`
+- l'update issue canonico usa solo `PATCH /issues/{issueId}`
+- `DELETE /issues/{issueId}` non richiede body
+- l'upload profilo self-service usa solo `POST /users/me/upload-profile-image`
+
 ## Environment
 
 Disponibili:

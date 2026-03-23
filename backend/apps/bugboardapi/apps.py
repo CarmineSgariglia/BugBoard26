@@ -6,3 +6,6 @@ class BugBoardAPIConfig(AppConfig):
     name = "apps.bugboardapi"
     label = "bugboardapi"
     verbose_name = "BugBoardAPI"
+
+    def ready(self):
+        from .api import openapi  # noqa: F401

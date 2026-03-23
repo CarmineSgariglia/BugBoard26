@@ -5,7 +5,7 @@ info:
 
 http:
   method: PATCH
-  url: "{{baseURL}}/issues/{{issue_id}}/details"
+  url: "{{baseURL}}/issues/{{issue_id}}"
   body:
     type: multipart-form
     data:
@@ -21,7 +21,7 @@ runtime:
   scripts:
     - type: tests
       code: |-
-        test("Invalid issue details payload rejected", function () {
+        test("Invalid issue patch payload rejected", function () {
           const email = bru.getEnvVar("email") || "";
           if (email.includes("admin")) {
             expect(res.getStatus()).to.equal(400);
