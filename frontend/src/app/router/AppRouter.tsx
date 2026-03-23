@@ -41,13 +41,13 @@ const ManageAccountSettingsPage = lazy(() =>
 );
 
 function PublicRouteFallback() {
-  return <div className="min-h-screen bg-[#0D0D12]" />;
+  return <div className="min-h-screen bg-[#11131A]" />;
 }
 
 function PrivateRouteFallback() {
   return (
-    <div className="min-h-screen bg-[#0D0D12]">
-      <div className="h-20 border-b border-white/5 bg-[#0D0F14]/60" />
+    <div className="min-h-screen bg-[#11131A]">
+      <div className="h-20 border-b border-white/5 bg-[#11141C]/60" />
     </div>
   );
 }

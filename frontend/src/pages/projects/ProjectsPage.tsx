@@ -52,7 +52,7 @@ export function ProjectsPage() {
   }, [projects, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#11131A] text-white flex flex-col relative overflow-hidden">
       <div className="flex-1 w-full max-w-7xl mx-auto px-6 pt-24 pb-8 relative z-10 flex mt-8 flex-col">
         <div className="mb-10 w-full max-w-xl mx-auto text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">

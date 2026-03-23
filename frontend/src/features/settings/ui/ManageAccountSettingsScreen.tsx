@@ -21,7 +21,7 @@ export function ManageAccountSettingsScreen() {
   const useWideLayout = activeTab === "manage_users" && !isEditingUser;
 
   return (
-    <div className="min-h-screen bg-[#0D0D12] text-white flex flex-col relative">
+    <div className="min-h-screen bg-[#11131A] text-white flex flex-col relative">
       <div className="flex-1 w-full max-w-7xl mx-auto flex flex-col md:flex-row items-start relative z-10 px-6 pt-28 pb-10">
         {isAdmin && (
           <div className="w-full md:w-72 flex justify-center md:block flex-shrink-0 relative z-20 md:sticky md:top-28">

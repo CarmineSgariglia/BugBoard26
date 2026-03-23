@@ -26,11 +26,11 @@ export function AuthLayout() {
     const footerLabel = isLoginPage ? "Forgot password?" : "Back to login";
 
     return (
-        <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#0D0D12] lg:min-h-dvh">
+        <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#11131A] lg:min-h-dvh">
             <div
                 className="pointer-events-none absolute inset-0 z-0"
                 style={{
-                    background: "radial-gradient(circle at center, #1b1e2a 0%, #0d0d12 60%)",
+                    background: "radial-gradient(circle at center, #252A3B 0%, #11131A 62%)",
                 }}
             />
 

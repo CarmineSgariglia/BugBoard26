@@ -5,9 +5,9 @@
 export function AppBackground() {
     return (
         <div
-            className="pointer-events-none fixed inset-0 z-0 bg-[#0D0D12]"
+            className="pointer-events-none fixed inset-0 z-0 bg-[#11131A]"
             style={{
-                background: "radial-gradient(circle at center, #2b3044ff 0%, #0d0d12 60%)"
+                background: "radial-gradient(circle at center, #343B54 0%, #11131A 62%)"
             }}
         />
     );

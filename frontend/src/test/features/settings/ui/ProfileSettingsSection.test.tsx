@@ -12,6 +12,7 @@ const {
   uploadSettingsProfileImageApiMock,
   handleGetHelpMock,
   cropProfileImageMock,
+  resolveMediaUrlMock,
 } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   updateSettingsUserApiMock: vi.fn(),
@@ -19,6 +20,7 @@ const {
   uploadSettingsProfileImageApiMock: vi.fn(),
   handleGetHelpMock: vi.fn(),
   cropProfileImageMock: vi.fn(),
+  resolveMediaUrlMock: vi.fn((value?: string) => `resolved:${value ?? ""}`),
 }));
 
 vi.mock("@features/auth", () => ({
@@ -33,6 +35,10 @@ vi.mock("@features/settings/api", () => ({
 
 vi.mock("@shared/lib/help", () => ({
   handleGetHelp: handleGetHelpMock,
+}));
+
+vi.mock("@shared/api/core/media", () => ({
+  resolveMediaUrl: resolveMediaUrlMock,
 }));
 
 vi.mock("react-easy-crop", async () => {
@@ -93,6 +99,7 @@ describe("ProfileSettingsSection", () => {
     uploadSettingsProfileImageApiMock.mockReset();
     handleGetHelpMock.mockReset();
     cropProfileImageMock.mockReset();
+    resolveMediaUrlMock.mockClear();
 
     useAuthMock.mockReturnValue({
       user: {
@@ -147,6 +154,28 @@ describe("ProfileSettingsSection", () => {
     });
   });
 
+  it("renders the current profile image when the authenticated user already has one", () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        userId: 7,
+        username: "dev",
+        email: "dev@example.com",
+        firstName: "Mario",
+        lastName: "Rossi",
+        profileImg: "/media/existing-avatar.png",
+      },
+      refreshUser: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderWithProviders(<ProfileSettingsSection />);
+
+    expect(resolveMediaUrlMock).toHaveBeenCalledWith("/media/existing-avatar.png");
+    expect(screen.getByAltText("Profile")).toHaveAttribute(
+      "src",
+      "resolved:/media/existing-avatar.png"
+    );
+  });
+
   it("shows and clears the backend username uniqueness error", async () => {
     const user = userEvent.setup();
     updateSettingsUserApiMock.mockRejectedValue(
@@ -174,6 +203,14 @@ describe("ProfileSettingsSection", () => {
   it("opens the crop modal and uploads the cropped avatar file", async () => {
     const user = userEvent.setup();
     const croppedFile = new File(["cropped"], "avatar-cropped.png", { type: "image/png" });
+    uploadSettingsProfileImageApiMock.mockResolvedValue({
+      userId: 7,
+      username: "dev",
+      email: "dev@example.com",
+      firstName: "Mario",
+      lastName: "Rossi",
+      profileImg: "/media/uploaded-avatar.png",
+    });
     cropProfileImageMock.mockResolvedValue(croppedFile);
 
     renderWithProviders(<ProfileSettingsSection />);
@@ -197,6 +234,13 @@ describe("ProfileSettingsSection", () => {
 
     await waitFor(() => {
       expect(uploadSettingsProfileImageApiMock).toHaveBeenCalledWith(croppedFile);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText("Profile")).toHaveAttribute(
+        "src",
+        "resolved:/media/uploaded-avatar.png"
+      );
     });
   });
 });
