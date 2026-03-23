@@ -31,7 +31,6 @@ interface ProjectDetailsStepProps {
 
 export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, onExit, headerAction }: ProjectDetailsStepProps) {
 
-    // 1. STATI
     const [title, setTitle] = useState(initialData?.title || "");
     const [description, setDescription] = useState(initialData?.description || "");
     const [selectedIcon, setSelectedIcon] = useState(initialData?.icon || "folder");
@@ -39,7 +38,6 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
     const [isOpen, toggle] = useState(false);
     const popover = useRef(null);
 
-    // 2. LOGICA E VALIDAZIONI
     const isSaveEnabled = title.trim().length >= 3 && description.trim().length >= 5;
 
     const handleNextClick = () => {

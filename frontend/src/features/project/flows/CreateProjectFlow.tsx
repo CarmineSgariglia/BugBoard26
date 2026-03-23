@@ -33,7 +33,7 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
       onClose();
     },
     onError: () => {
-      setError("Errore durante la creazione del progetto");
+      setError("Error during project creation");
     },
   });
 

@@ -1,3 +1,11 @@
+/*
+  This function calculates the contrast color of a given hex color.
+  
+  @param hexColor - The hex color to calculate the contrast color of.
+  @param opacity - The opacity of the contrast color.
+  @returns The contrast color of the given hex color.
+*/
+
 export function getContrastColor(hexColor: string, opacity: number = 1): string {
   const hex = hexColor.replace("#", "");
 
