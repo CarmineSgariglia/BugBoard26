@@ -155,11 +155,12 @@ csrf_origins.update(_csv_env("CSRF_TRUSTED_ORIGINS_EXTRA", ""))
 # Keep this block debug-only to avoid weakening production posture.
 if DEBUG:
     csrf_origins.update(
-        _origins("http", ["localhost", "127.0.0.1", "frontend", "172.21.160.1"], port="5173")
+        _origins("http", ["localhost", "127.0.0.1", "frontend"], port="5173")
     )
     csrf_origins.update(
         _origins("https", ["localhost", "127.0.0.1"])
     )
+    csrf_origins.update(_csv_env("DEV_EXTRA_CSRF_ORIGINS", ""))
 
 CSRF_TRUSTED_ORIGINS = sorted(csrf_origins)
 

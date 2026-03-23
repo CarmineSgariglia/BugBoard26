@@ -61,7 +61,9 @@ def _build_temporary_password_candidate() -> str:
     candidate_chars = required_chars + [
         secrets.choice(TEMP_PASSWORD_ALPHABET) for _ in range(remaining_length)
     ]
-    secrets.SystemRandom().shuffle(candidate_chars)
+    for i in range(len(candidate_chars) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        candidate_chars[i], candidate_chars[j] = candidate_chars[j], candidate_chars[i]
     return "".join(candidate_chars)
 
 
