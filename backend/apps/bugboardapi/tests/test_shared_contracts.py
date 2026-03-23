@@ -153,6 +153,7 @@ class MediaUrlContractsTests(SimpleTestCase):
 
     def test_build_media_url_rejects_non_https_absolute_values(self):
         self.assertEqual(build_media_url("http://cdn.example.com/avatar.png"), "")
+        self.assertEqual(build_media_url("ftp://cdn.example.com/avatar.png"), "")
 
     @override_settings(MEDIA_URL="/files")
     def test_build_media_url_normalizes_relative_media_paths(self):
