@@ -50,7 +50,7 @@ class FrontendContractTests(APITestCase):
 
     def test_auth_me_payload_matches_frontend_contract(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.get("/api/auth/me")
+        response = self.client.get("/api/users/me")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         expected_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
         self.assertTrue(expected_keys.issubset(set(response.data.keys())))
@@ -114,7 +114,11 @@ class FrontendContractTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         list_response = self.client.get("/api/notifications")
         notify_user_id = list_response.data["results"][0]["notifyUserId"]
-        read_response = self.client.post(f"/api/notifications/{notify_user_id}/read", {}, format="json")
+        read_response = self.client.patch(
+            f"/api/notifications/{notify_user_id}",
+            {"isRead": True},
+            format="json",
+        )
         self.assertEqual(read_response.status_code, status.HTTP_200_OK)
         self.assertTrue(read_response.data["isRead"])
 
@@ -134,7 +138,7 @@ class FrontendContractTests(APITestCase):
         )
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates")
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/events")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
         self.assertIn("attachments", response.data[0])
@@ -165,8 +169,8 @@ class FrontendContractTests(APITestCase):
         self.assertEqual(patch_response.data["firstName"], "Contract")
         self.assertEqual(patch_response.data["lastName"], "User")
 
-        change_password_response = self.client.post(
-            f"/api/users/{self.member.id}/change-password",
+        change_password_response = self.client.put(
+            "/api/users/me/password",
             {"currentPassword": "StrongPass123!", "newPassword": "NewStrongPass123!"},
             format="json",
         )
@@ -180,8 +184,8 @@ class FrontendContractTests(APITestCase):
         image = SimpleUploadedFile(
             "avatar.png", make_png_bytes(size=(1200, 1600)), content_type="image/png"
         )
-        response = self.client.post(
-            "/api/users/me/upload-profile-image",
+        response = self.client.put(
+            "/api/users/me/profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -190,8 +194,8 @@ class FrontendContractTests(APITestCase):
 
     def test_admin_reset_other_user_password_contract(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/admin-reset-password",
+        response = self.client.put(
+            f"/api/users/{self.member.id}/password",
             {"newPassword": "AdminResetPass123!"},
             format="json",
         )

@@ -128,14 +128,14 @@ Notes:
   - `users`: `list`, `retrieve`, `create`, `update`
   - `projects`: `list`, `retrieve`, `create`, `update`, `destroy`
   - `issues`: router-backed resource with explicit mixins plus custom actions
-  - `attachments`: router-backed resource with explicit mixins
   - `notifications`: router-backed resource with explicit mixins
   - `tags`: `list`, `create`, `destroy`
 - Current flow/custom endpoints stay on `APIView`:
-  - auth endpoints under `/api/auth/*`
-  - nested project issue flow `/api/projects/{id}/issues`
-  - upload flow `/api/issue-events/{id}/attachments`
-- Public path params use camelCase names such as `userId`, `projectId`, `issueId`, `updateId`, `attachmentId`, `notificationId`, and `tagId`.
+  - session/auth flows under `/api/security/csrf-token`, `/api/sessions`, `/api/sessions/current`, `/api/sessions/current/access-token`, `/api/users/me`, and `/api/password-reset-*`
+  - user password/profile image flows under `/api/users/me/password`, `/api/users/{userId}/password`, `/api/users/me/profile-image`, and `/api/users/{userId}/profile-image`
+  - nested project issue flow `/api/projects/{projectId}/issues`
+  - nested issue attachment/event resources under `/api/issues/{issueId}/attachments` and `/api/issues/{issueId}/events/{eventId}/attachments`
+- Public path params use camelCase names such as `userId`, `projectId`, `issueId`, `eventId`, `attachmentId`, `notificationId`, and `tagId`.
 - Multiword custom action paths use kebab-case. Phase 1 removes legacy aliases such as `/users/{userId}/status`, `/issues/{issueId}/details`, `/users/me/upload_profile_image`, and router-generated `.json` paths.
 - `DELETE /api/issues/{issueId}` is bodyless; any UI confirmation stays in the frontend only.
 - Server-side JWT revocation remains enabled intentionally as a documented security exception to pure statelessness.

@@ -108,7 +108,7 @@ describe("apiClient", () => {
       url: "/issues/8",
     });
 
-    expect(refreshClient.get).toHaveBeenCalledWith("/auth/csrf");
+    expect(refreshClient.get).toHaveBeenCalledWith("/security/csrf-token");
     expect(config.headers["X-CSRFToken"]).toBe("csrf-from-bootstrap");
   });
 
@@ -124,7 +124,7 @@ describe("apiClient", () => {
       method: "post",
       headers: {},
       data: formData,
-      url: "/attachments",
+      url: "/issues/1/attachments",
     });
 
     expect(config.headers["Content-Type"]).toBeUndefined();
@@ -163,7 +163,7 @@ describe("apiClient", () => {
       response: { status: 401 },
     });
 
-    expect(refreshClient.post).toHaveBeenCalledWith("/auth/refresh", {});
+    expect(refreshClient.post).toHaveBeenCalledWith("/sessions/current/access-token", {});
     expect(apiClient).toHaveBeenCalledWith(
       expect.objectContaining({ url: "/issues/9", _retry: true })
     );
@@ -182,7 +182,7 @@ describe("apiClient", () => {
       response: { status: 401 },
     };
     const authError = {
-      config: { url: "/auth/login" },
+      config: { url: "/sessions" },
       response: { status: 401 },
     };
 

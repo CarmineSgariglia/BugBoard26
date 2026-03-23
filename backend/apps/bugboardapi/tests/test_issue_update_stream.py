@@ -192,12 +192,12 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         )
 
     def test_issue_update_stream_requires_authentication(self):
-        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates/stream", HTTP_ACCEPT="text/event-stream")
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/events/stream", HTTP_ACCEPT="text/event-stream")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_issue_update_stream_denies_users_without_access(self):
         self.client.force_authenticate(user=self.outsider)
-        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates/stream", HTTP_ACCEPT="text/event-stream")
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/events/stream", HTTP_ACCEPT="text/event-stream")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_issue_update_stream_emits_only_events_for_the_requested_issue(self):
@@ -218,7 +218,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.get(
-            f"/api/issues/{self.issue.issue_id}/updates/stream",
+            f"/api/issues/{self.issue.issue_id}/events/stream",
             HTTP_ACCEPT="text/event-stream",
         )
 
@@ -253,7 +253,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.get(
-            f"/api/issues/{self.issue.issue_id}/updates/stream",
+            f"/api/issues/{self.issue.issue_id}/events/stream",
             HTTP_ACCEPT="text/event-stream",
             HTTP_LAST_EVENT_ID=str(first_event.update_id),
         )
@@ -277,7 +277,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.get(
-            f"/api/issues/{self.issue.issue_id}/updates/stream",
+            f"/api/issues/{self.issue.issue_id}/events/stream",
             HTTP_ACCEPT="text/event-stream",
             HTTP_LAST_EVENT_ID="not-a-number",
         )
@@ -300,7 +300,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         self.client.force_authenticate(user=self.member)
 
         response = self.client.get(
-            f"/api/issues/{self.issue.issue_id}/updates/stream",
+            f"/api/issues/{self.issue.issue_id}/events/stream",
             HTTP_ACCEPT="text/event-stream",
         )
 
@@ -318,7 +318,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
     def test_issue_update_stream_returns_service_unavailable_when_backend_fails(self, _mock_subscription):
         self.client.force_authenticate(user=self.member)
         response = self.client.get(
-            f"/api/issues/{self.issue.issue_id}/updates/stream",
+            f"/api/issues/{self.issue.issue_id}/events/stream",
             HTTP_ACCEPT="text/event-stream",
         )
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)

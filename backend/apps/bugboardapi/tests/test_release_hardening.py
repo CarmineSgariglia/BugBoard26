@@ -172,7 +172,7 @@ class AuthSessionCookieTests(APITestCase):
     )
     def test_login_sets_refresh_cookie_flags_and_path(self):
         response = self.client.post(
-            "/api/auth/login",
+            "/api/sessions",
             {"email": self.user.email, "password": "StrongPass123!"},
             format="json",
         )
@@ -185,13 +185,13 @@ class AuthSessionCookieTests(APITestCase):
 
     def test_refresh_rejects_invalid_refresh_cookie(self):
         self.client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = "invalid.refresh.token"
-        response = self.client.post("/api/auth/refresh", {}, format="json")
+        response = self.client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(response.data["detail"], "Invalid refresh token")
 
     def test_logout_with_invalid_refresh_cookie_returns_success_and_clears_cookie(self):
         self.client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = "invalid.refresh.token"
-        response = self.client.post("/api/auth/logout", {}, format="json")
+        response = self.client.delete("/api/sessions/current", {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertIn(settings.AUTH_REFRESH_COOKIE_NAME, response.cookies)
         cleared_cookie = response.cookies[settings.AUTH_REFRESH_COOKIE_NAME]

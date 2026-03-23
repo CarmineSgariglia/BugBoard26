@@ -14,10 +14,11 @@ import {
   unsubscribeFromProjectApi,
 } from "@features/project/api/projectApi";
 
-const { getMock, postMock, patchMock, deleteMock } = vi.hoisted(() => ({
+const { getMock, postMock, patchMock, putMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
   patchMock: vi.fn(),
+  putMock: vi.fn(),
   deleteMock: vi.fn(),
 }));
 
@@ -27,6 +28,7 @@ vi.mock("@shared/api/core/client", () => ({
     get: getMock,
     post: postMock,
     patch: patchMock,
+    put: putMock,
     delete: deleteMock,
   },
 }));
@@ -36,6 +38,7 @@ describe("feature project api module", () => {
     getMock.mockReset();
     postMock.mockReset();
     patchMock.mockReset();
+    putMock.mockReset();
     deleteMock.mockReset();
   });
 
@@ -106,21 +109,21 @@ describe("feature project api module", () => {
     getMock.mockResolvedValue({ data: subscription });
 
     await expect(getProjectSubscriptionApi(1)).resolves.toEqual(subscription);
-    expect(getMock).toHaveBeenCalledWith("/projects/1/subscription", {});
+    expect(getMock).toHaveBeenCalledWith("/projects/1/subscriptions/me", {});
   });
 
   it("subscribes the current admin to a project", async () => {
-    postMock.mockResolvedValue({ data: {} });
+    putMock.mockResolvedValue({ data: {} });
 
     await expect(subscribeToProjectApi(1)).resolves.toBeUndefined();
-    expect(postMock).toHaveBeenCalledWith("/projects/1/subscription");
+    expect(putMock).toHaveBeenCalledWith("/projects/1/subscriptions/me");
   });
 
   it("unsubscribes the current admin from a project", async () => {
     deleteMock.mockResolvedValue({ data: {} });
 
     await expect(unsubscribeFromProjectApi(1)).resolves.toBeUndefined();
-    expect(deleteMock).toHaveBeenCalledWith("/projects/1/subscription");
+    expect(deleteMock).toHaveBeenCalledWith("/projects/1/subscriptions/me");
   });
 
   it("lists project issues", async () => {

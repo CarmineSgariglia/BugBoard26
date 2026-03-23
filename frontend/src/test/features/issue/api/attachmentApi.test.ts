@@ -22,7 +22,7 @@ describe("attachmentApi", () => {
   });
 
   describe("uploadAttachmentApi", () => {
-    it("POSTs to /attachments with issueId in FormData", async () => {
+    it("POSTs to the issue attachments collection", async () => {
       const fakeAttachment = { attachmentId: 1, url: "/files/test.png" };
       mockedClient.post.mockResolvedValue({ data: fakeAttachment });
 
@@ -30,25 +30,24 @@ describe("attachmentApi", () => {
       const result = await uploadAttachmentApi(file, { issueId: 42 });
 
       expect(mockedClient.post).toHaveBeenCalledWith(
-        "/attachments",
+        "/issues/42/attachments",
         expect.any(FormData)
       );
       expect(result).toEqual(fakeAttachment);
 
-      // Verify FormData contains the right fields
       const formData = mockedClient.post.mock.calls[0][1] as FormData;
-      expect(formData.get("issueId")).toBe("42");
       expect(formData.get("file")).toBe(file);
     });
 
-    it("POSTs to /attachments with updateId in FormData", async () => {
+    it("POSTs to the issue event attachments collection", async () => {
       mockedClient.post.mockResolvedValue({ data: {} });
       const file = new File(["x"], "x.txt", { type: "text/plain" });
-      await uploadAttachmentApi(file, { updateId: 99 });
+      await uploadAttachmentApi(file, { issueId: 42, eventId: 99 });
 
-      const formData = mockedClient.post.mock.calls[0][1] as FormData;
-      expect(formData.get("updateId")).toBe("99");
-      expect(formData.get("issueId")).toBeNull();
+      expect(mockedClient.post).toHaveBeenCalledWith(
+        "/issues/42/events/99/attachments",
+        expect.any(FormData)
+      );
     });
 
     it("includes message in FormData when provided", async () => {
@@ -71,32 +70,22 @@ describe("attachmentApi", () => {
   });
 
   describe("listAttachmentsApi", () => {
-    it("GETs /attachments with issueId param", async () => {
+    it("GETs the issue attachments collection", async () => {
       const list = [{ attachmentId: 1 }, { attachmentId: 2 }];
       mockedClient.get.mockResolvedValue({ data: list });
 
-      const result = await listAttachmentsApi({ issueId: 5 });
+      const result = await listAttachmentsApi(5);
 
-      expect(mockedClient.get).toHaveBeenCalledWith("/attachments", {
-        params: { issueId: 5 },
-      });
+      expect(mockedClient.get).toHaveBeenCalledWith("/issues/5/attachments");
       expect(result).toEqual(list);
-    });
-
-    it("GETs /attachments with updateId param", async () => {
-      mockedClient.get.mockResolvedValue({ data: [] });
-      await listAttachmentsApi({ updateId: 10 });
-      expect(mockedClient.get).toHaveBeenCalledWith("/attachments", {
-        params: { updateId: 10 },
-      });
     });
   });
 
   describe("deleteAttachmentApi", () => {
-    it("DELETEs /attachments/:id", async () => {
+    it("DELETEs /issues/:issueId/attachments/:id", async () => {
       mockedClient.delete.mockResolvedValue({});
-      await deleteAttachmentApi(7);
-      expect(mockedClient.delete).toHaveBeenCalledWith("/attachments/7");
+      await deleteAttachmentApi(5, 7);
+      expect(mockedClient.delete).toHaveBeenCalledWith("/issues/5/attachments/7");
     });
   });
 });

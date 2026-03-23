@@ -58,7 +58,7 @@ class AuthOtpEndpointTests(APITestCase):
 
     def test_otp_request_existing_user_creates_code(self):
         response = self.client.post(
-            "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
+            "/api/password-reset-requests", {"email": self.user.email}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(PasswordResetOTP.objects.filter(user=self.user).count(), 1)
@@ -75,7 +75,7 @@ class AuthOtpEndpointTests(APITestCase):
             is_used=False,
         )
         response = self.client.post(
-            "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
+            "/api/password-reset-requests", {"email": self.user.email}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         old.refresh_from_db()
@@ -84,7 +84,7 @@ class AuthOtpEndpointTests(APITestCase):
 
     def test_otp_request_unknown_user_returns_generic_message(self):
         response = self.client.post(
-            "/api/auth/password/otp/request",
+            "/api/password-reset-requests",
             {"email": "missing@example.com"},
             format="json",
         )
@@ -99,7 +99,7 @@ class AuthOtpEndpointTests(APITestCase):
             expires_at=timezone.now() + timedelta(minutes=5),
         )
         verify_response = self.client.post(
-            "/api/auth/password/otp/verify",
+            "/api/password-reset-verifications",
             {"email": self.user.email, "code": raw_code},
             format="json",
         )
@@ -107,7 +107,7 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertTrue(verify_response.data["valid"])
 
         reset_response = self.client.post(
-            "/api/auth/password/reset",
+            "/api/password-resets",
             {
                 "email": self.user.email,
                 "code": raw_code,
@@ -130,7 +130,7 @@ class AuthOtpEndpointTests(APITestCase):
             expires_at=timezone.now() - timedelta(minutes=1),
         )
         response = self.client.post(
-            "/api/auth/password/otp/verify",
+            "/api/password-reset-verifications",
             {"email": self.user.email, "code": "654321"},
             format="json",
         )
@@ -144,7 +144,7 @@ class AuthOtpEndpointTests(APITestCase):
             expires_at=timezone.now() + timedelta(minutes=5),
         )
         response = self.client.post(
-            "/api/auth/password/otp/verify",
+            "/api/password-reset-verifications",
             {"email": self.user.email, "code": "999999"},
             format="json",
         )
@@ -163,7 +163,7 @@ class AuthOtpEndpointTests(APITestCase):
         )
         for _ in range(5):
             response = self.client.post(
-                "/api/auth/password/otp/verify",
+                "/api/password-reset-verifications",
                 {"email": self.user.email, "code": "000000"},
                 format="json",
             )
@@ -181,7 +181,7 @@ class AuthOtpEndpointTests(APITestCase):
             expires_at=timezone.now() - timedelta(minutes=1),
         )
         expired_response = self.client.post(
-            "/api/auth/password/reset",
+            "/api/password-resets",
             {
                 "email": self.user.email,
                 "code": expired_code,
@@ -200,7 +200,7 @@ class AuthOtpEndpointTests(APITestCase):
             is_used=True,
         )
         locked_response = self.client.post(
-            "/api/auth/password/reset",
+            "/api/password-resets",
             {
                 "email": self.user.email,
                 "code": locked_code,
@@ -222,7 +222,7 @@ class AuthOtpEndpointTests(APITestCase):
             "apps.bugboardapi.modules.auth.password_reset", level="ERROR"
         ) as logs:
             response = self.client.post(
-                "/api/auth/password/otp/request",
+                "/api/password-reset-requests",
                 {"email": self.user.email},
                 format="json",
             )
@@ -236,7 +236,7 @@ class AuthOtpEndpointTests(APITestCase):
     @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
     def test_email_provider_console_default_in_dev(self, mock_send_mail):
         response = self.client.post(
-            "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
+            "/api/password-reset-requests", {"email": self.user.email}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(mock_send_mail.called)
@@ -245,7 +245,7 @@ class AuthOtpEndpointTests(APITestCase):
     @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
     def test_otp_request_email_contains_raw_six_digit_code_not_hash(self, mock_send_mail):
         response = self.client.post(
-            "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
+            "/api/password-reset-requests", {"email": self.user.email}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         message = mock_send_mail.call_args.kwargs["message"]
@@ -260,7 +260,7 @@ class AuthOtpEndpointTests(APITestCase):
             expires_at=timezone.now() + timedelta(minutes=5),
         )
         response = self.client.post(
-            "/api/auth/password/reset",
+            "/api/password-resets",
             {
                 "email": self.user.email,
                 "code": raw_code,
@@ -285,7 +285,7 @@ class AuthOtpEndpointTests(APITestCase):
         self, mock_send_mail, _mock_email_send
     ):
         response = self.client.post(
-            "/api/auth/password/otp/request", {"email": self.user.email}, format="json"
+            "/api/password-reset-requests", {"email": self.user.email}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(mock_send_mail.called)
@@ -493,8 +493,8 @@ class UserManagementEndpointTests(APITestCase):
         image = SimpleUploadedFile(
             "avatar.png", make_png_bytes(size=(1800, 1800)), content_type="image/png"
         )
-        response = self.client.post(
-            "/api/users/me/upload-profile-image",
+        response = self.client.put(
+            "/api/users/me/profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -512,8 +512,8 @@ class UserManagementEndpointTests(APITestCase):
         image = SimpleUploadedFile(
             "avatar.txt", b"not-image", content_type="text/plain"
         )
-        response = self.client.post(
-            "/api/users/me/upload-profile-image",
+        response = self.client.put(
+            "/api/users/me/profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -524,8 +524,8 @@ class UserManagementEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         big_bytes = b"a" * (2 * 1024 * 1024 + 1)
         image = SimpleUploadedFile("big.png", big_bytes, content_type="image/png")
-        response = self.client.post(
-            "/api/users/me/upload-profile-image",
+        response = self.client.put(
+            "/api/users/me/profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -537,8 +537,8 @@ class UserManagementEndpointTests(APITestCase):
         image = SimpleUploadedFile(
             "avatar.png", make_png_bytes(size=(1600, 1200)), content_type="image/png"
         )
-        response = self.client.post(
-            "/api/users/me/upload-profile-image",
+        response = self.client.put(
+            "/api/users/me/profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -567,8 +567,8 @@ class UserManagementEndpointTests(APITestCase):
         image = SimpleUploadedFile(
             "avatar.png", make_png_bytes(size=(1400, 1400)), content_type="image/png"
         )
-        response = self.client.post(
-            f"/api/users/{self.member.id}/admin-upload-image",
+        response = self.client.put(
+            f"/api/users/{self.member.id}/profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -585,8 +585,8 @@ class UserManagementEndpointTests(APITestCase):
         image = SimpleUploadedFile(
             "avatar.png", make_png_bytes(size=(1000, 1000)), content_type="image/png"
         )
-        response = self.client.post(
-            f"/api/users/{self.admin.id}/admin-upload-image",
+        response = self.client.put(
+            f"/api/users/{self.admin.id}/profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -601,8 +601,8 @@ class UserManagementEndpointTests(APITestCase):
             "apps.bugboardapi.security.uploads.default_storage.save",
             return_value=f"profile-images/{self.member.id}/compressed.webp",
         ) as save_mock:
-            response = self.client.post(
-                "/api/users/me/upload-profile-image",
+            response = self.client.put(
+                "/api/users/me/profile-image",
                 {"profile_img": image},
                 format="multipart",
             )
@@ -625,8 +625,8 @@ class UserManagementEndpointTests(APITestCase):
             "apps.bugboardapi.security.uploads.default_storage.save",
             side_effect=RuntimeError("gcs unavailable"),
         ):
-            response = self.client.post(
-                "/api/users/me/upload-profile-image",
+            response = self.client.put(
+                "/api/users/me/profile-image",
                 {"profile_img": image},
                 format="multipart",
             )
@@ -638,8 +638,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_change_password_success(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/change-password",
+        response = self.client.put(
+            "/api/users/me/password",
             {"currentPassword": "StrongPass123!", "newPassword": "NewStrongPass123!"},
             format="json",
         )
@@ -649,8 +649,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_change_password_rejects_wrong_current(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/change-password",
+        response = self.client.put(
+            "/api/users/me/password",
             {"currentPassword": "wrong-pass", "newPassword": "NewStrongPass123!"},
             format="json",
         )
@@ -659,8 +659,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_change_password_rejects_weak_password(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/change-password",
+        response = self.client.put(
+            "/api/users/me/password",
             {"currentPassword": "StrongPass123!", "newPassword": "12345678"},
             format="json",
         )
@@ -679,8 +679,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_admin_can_reset_password_for_other_user_without_current(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/admin-reset-password",
+        response = self.client.put(
+            f"/api/users/{self.member.id}/password",
             {"newPassword": "NewStrongPass123!"},
             format="json",
         )
@@ -690,8 +690,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_admin_can_reset_password_for_other_user_via_admin_endpoint(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/admin-reset-password",
+        response = self.client.put(
+            f"/api/users/{self.member.id}/password",
             {"newPassword": "AdminEndpointPass123!"},
             format="json",
         )
@@ -701,8 +701,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_non_admin_cannot_use_admin_reset_password_endpoint(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/users/{self.admin.id}/admin-reset-password",
+        response = self.client.put(
+            f"/api/users/{self.admin.id}/password",
             {"newPassword": "AdminEndpointPass123!"},
             format="json",
         )
@@ -710,8 +710,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_admin_can_reset_password_for_other_admin_without_current(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.other_admin.id}/admin-reset-password",
+        response = self.client.put(
+            f"/api/users/{self.other_admin.id}/password",
             {"newPassword": "AnotherStrongPass123!"},
             format="json",
         )
@@ -721,17 +721,17 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_non_admin_cannot_change_other_user_password(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/users/{self.admin.id}/change-password",
-            {"currentPassword": "StrongPass123!", "newPassword": "AnotherStrongPass123!"},
+        response = self.client.put(
+            f"/api/users/{self.admin.id}/password",
+            {"newPassword": "AnotherStrongPass123!"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_self_change_requires_current_password(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.admin.id}/change-password",
+        response = self.client.put(
+            "/api/users/me/password",
             {"newPassword": "AnotherStrongPass123!"},
             format="json",
         )
@@ -740,8 +740,8 @@ class UserManagementEndpointTests(APITestCase):
 
     def test_admin_reset_rejects_same_password_as_current_target_password(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/users/{self.member.id}/admin-reset-password",
+        response = self.client.put(
+            f"/api/users/{self.member.id}/password",
             {"newPassword": "StrongPass123!"},
             format="json",
         )
@@ -895,7 +895,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
 
     def test_project_subscription_get_returns_current_admin_state(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get(f"/api/projects/{self.project.project_id}/subscription")
+        response = self.client.get(f"/api/projects/{self.project.project_id}/subscriptions/me")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {"subscribed": True})
 
@@ -907,7 +907,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
             is_admin=True,
         )
         self.client.force_authenticate(user=other_admin)
-        response = self.client.get(f"/api/projects/{self.project.project_id}/subscription")
+        response = self.client.get(f"/api/projects/{self.project.project_id}/subscriptions/me")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {"subscribed": False})
 
@@ -920,12 +920,12 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         )
         self.client.force_authenticate(user=other_admin)
 
-        first_response = self.client.post(
-            f"/api/projects/{self.project.project_id}/subscription",
+        first_response = self.client.put(
+            f"/api/projects/{self.project.project_id}/subscriptions/me",
             format="json",
         )
-        second_response = self.client.post(
-            f"/api/projects/{self.project.project_id}/subscription",
+        second_response = self.client.put(
+            f"/api/projects/{self.project.project_id}/subscriptions/me",
             format="json",
         )
 
@@ -940,11 +940,11 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
 
         first_response = self.client.delete(
-            f"/api/projects/{self.project.project_id}/subscription",
+            f"/api/projects/{self.project.project_id}/subscriptions/me",
             format="json",
         )
         second_response = self.client.delete(
-            f"/api/projects/{self.project.project_id}/subscription",
+            f"/api/projects/{self.project.project_id}/subscriptions/me",
             format="json",
         )
 
@@ -956,8 +956,8 @@ class ProjectAndMembershipEndpointTests(APITestCase):
 
     def test_project_subscription_forbidden_for_developer(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/projects/{self.project.project_id}/subscription",
+        response = self.client.put(
+            f"/api/projects/{self.project.project_id}/subscriptions/me",
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -1374,7 +1374,7 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_issue_subscription_get_returns_false_for_unsubscribed_admin(self):
         self.client.force_authenticate(user=self.admin)
 
-        response = self.client.get(f"/api/issues/{self.issue.issue_id}/subscription")
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/subscriptions/me")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {"subscribed": False})
@@ -1382,12 +1382,12 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_issue_subscription_post_is_idempotent(self):
         self.client.force_authenticate(user=self.admin)
 
-        first_response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/subscription",
+        first_response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/subscriptions/me",
             format="json",
         )
-        second_response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/subscription",
+        second_response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/subscriptions/me",
             format="json",
         )
 
@@ -1403,11 +1403,11 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
 
         first_response = self.client.delete(
-            f"/api/issues/{self.issue.issue_id}/subscription",
+            f"/api/issues/{self.issue.issue_id}/subscriptions/me",
             format="json",
         )
         second_response = self.client.delete(
-            f"/api/issues/{self.issue.issue_id}/subscription",
+            f"/api/issues/{self.issue.issue_id}/subscriptions/me",
             format="json",
         )
 
@@ -1420,8 +1420,8 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_issue_subscription_forbidden_for_developer(self):
         self.client.force_authenticate(user=self.member)
 
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/subscription",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/subscriptions/me",
             format="json",
         )
 
@@ -1594,29 +1594,23 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_assign_requires_admin(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [self.member.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_assign_rejects_non_member_assignee(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [self.outsider.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.outsider.id}"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("userIds", response.data)
 
     def test_assign_rejects_admin_assignee(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [self.admin.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.admin.id}"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
@@ -1629,10 +1623,8 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.member.save(update_fields=["is_active"])
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [self.member.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
@@ -1657,13 +1649,11 @@ class IssueWorkflowEndpointTests(APITestCase):
         IssueAssignee.objects.create(issue=self.issue, user=observer_admin)
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [another_member.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{another_member.id}"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=observer_admin,
@@ -1688,13 +1678,11 @@ class IssueWorkflowEndpointTests(APITestCase):
         IssueAssignee.objects.create(issue=self.issue, user=observer_admin)
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [another_member.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{another_member.id}"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(
             NotifyUser.objects.filter(
                 user=observer_admin,
@@ -1809,8 +1797,8 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_assignee_can_change_status_to_done(self):
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": "DONE", "message": "done now"},
             format="json",
         )
@@ -1828,8 +1816,8 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_status_update_does_not_notify_actor_when_actor_is_reporter(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": "DONE", "message": "done by reporter"},
             format="json",
         )
@@ -1859,8 +1847,8 @@ class IssueWorkflowEndpointTests(APITestCase):
         ProjectMembership.objects.create(project=self.project, user=subscribed_admin)
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": "DONE", "message": "done with subscriptions"},
             format="json",
         )
@@ -1889,12 +1877,10 @@ class IssueWorkflowEndpointTests(APITestCase):
         ProjectMembership.objects.create(project=self.project, user=another_member)
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [another_member.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{another_member.id}"
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=another_member,
@@ -1937,12 +1923,10 @@ class IssueWorkflowEndpointTests(APITestCase):
         ProjectMembership.objects.create(project=self.project, user=another_member)
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [another_member.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{another_member.id}"
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(
             IssueEvent.objects.filter(
                 issue=self.issue,
@@ -1953,12 +1937,10 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_unassign_creates_notification_with_project(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/unassign",
-            {"userIds": [self.member.id]},
-            format="json",
+        response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=self.member,
@@ -1970,12 +1952,10 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_unassign_creates_unassign_event(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/unassign",
-            {"userIds": [self.member.id]},
-            format="json",
+        response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(
             IssueEvent.objects.filter(
                 issue=self.issue,
@@ -1990,19 +1970,17 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.member.save(update_fields=["is_active"])
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/unassign",
-            {"userIds": [self.member.id]},
-            format="json",
+        response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         mock_notify_issue_unassigned.assert_not_called()
 
     def test_status_update_rejects_message_longer_than_1000(self):
         self.client.force_authenticate(user=self.member)
         too_long_message = "x" * 1001
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": "DONE", "message": too_long_message},
             format="json",
         )
@@ -2020,7 +1998,7 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_add_update_requires_message(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {"message": ""},
             format="json",
         )
@@ -2030,7 +2008,7 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_add_update_rejects_whitespace_only_message(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {"message": "   "},
             format="json",
         )
@@ -2041,7 +2019,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         too_long_message = "x" * 1001
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {"message": too_long_message},
             format="json",
         )
@@ -2072,7 +2050,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates")
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/events")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
         self.assertIn("actorUsername", response.data[0])
@@ -2083,13 +2061,13 @@ class IssueWorkflowEndpointTests(APITestCase):
 
     def test_issue_updates_list_forbidden_for_outsider(self):
         self.client.force_authenticate(user=self.outsider)
-        response = self.client.get(f"/api/issues/{self.issue.issue_id}/updates")
+        response = self.client.get(f"/api/issues/{self.issue.issue_id}/events")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_issue_update_invalid_attachment_rolls_back_comment(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {
                 "message": "comment with invalid file",
                 "file": "uploads/file.txt",
@@ -2119,7 +2097,7 @@ class IssueWorkflowEndpointTests(APITestCase):
             "notes.txt", b"hello outsider", content_type="text/plain"
         )
         response = self.client.post(
-            f"/api/issue-events/{event.update_id}/attachments",
+            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
             {"file": uploaded},
             format="multipart",
         )
@@ -2137,7 +2115,7 @@ class IssueWorkflowEndpointTests(APITestCase):
             "notes.txt", b"hello assignee", content_type="text/plain"
         )
         response = self.client.post(
-            f"/api/issue-events/{event.update_id}/attachments",
+            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
             {"file": uploaded},
             format="multipart",
         )
@@ -2156,7 +2134,7 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issue-events/{event.update_id}/attachments",
+            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
             {"path": "uploads/file.txt", "mimeType": "text/plain", "size": 12},
             format="json",
         )
@@ -2198,13 +2176,11 @@ class IssueWorkflowEndpointTests(APITestCase):
         IssueAssignee.objects.create(issue=self.issue, user=observer_admin)
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/unassign",
-            {"userIds": [self.member.id]},
-            format="json",
+        response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=observer_admin,
@@ -2224,7 +2200,7 @@ class IssueWorkflowEndpointTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {"message": "new comment"},
             format="json",
         )
@@ -2262,7 +2238,7 @@ class IssueWorkflowEndpointTests(APITestCase):
     def test_issue_comment_does_not_notify_unsubscribed_admin(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {"message": "new comment"},
             format="json",
         )
@@ -2281,7 +2257,7 @@ class IssueWorkflowEndpointTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {"message": "new comment"},
             format="json",
         )
@@ -2300,8 +2276,8 @@ class IssueWorkflowEndpointTests(APITestCase):
         IssueAssignee.objects.create(issue=self.issue, user=self.admin)
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": "IN_PROGRESS", "message": "progressing"},
             format="json",
         )
@@ -2324,12 +2300,8 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
 
         response = self.client.post(
-            "/api/attachments",
-            {
-                "issueId": self.issue.issue_id,
-                "message": "file attached",
-                "file": uploaded,
-            },
+            f"/api/issues/{self.issue.issue_id}/attachments",
+            {"message": "file attached", "file": uploaded},
             format="multipart",
         )
 
@@ -2369,21 +2341,15 @@ class IssueWorkflowEndpointTests(APITestCase):
             "manual.txt", b"manual upload", content_type="text/plain"
         )
         create_response = self.client.post(
-            "/api/attachments",
-            {
-                "issueId": self.issue.issue_id,
-                "message": "file attached",
-                "file": uploaded,
-            },
+            f"/api/issues/{self.issue.issue_id}/attachments",
+            {"message": "file attached", "file": uploaded},
             format="multipart",
         )
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
         attachment_id = create_response.data["attachmentId"]
         self.assertEqual(create_response.data["originalName"], "manual.txt")
 
-        list_response = self.client.get(
-            f"/api/attachments?issueId={self.issue.issue_id}"
-        )
+        list_response = self.client.get(f"/api/issues/{self.issue.issue_id}/attachments")
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertTrue(
             any(item["attachmentId"] == attachment_id for item in list_response.data)
@@ -2396,7 +2362,9 @@ class IssueWorkflowEndpointTests(APITestCase):
             )
         )
 
-        delete_response = self.client.delete(f"/api/attachments/{attachment_id}")
+        delete_response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/attachments/{attachment_id}"
+        )
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(
             Attachment.objects.filter(attachment_id=attachment_id).exists()
@@ -2411,12 +2379,8 @@ class IssueWorkflowEndpointTests(APITestCase):
         with TemporaryDirectory() as tmp_dir:
             with override_settings(MEDIA_ROOT=tmp_dir):
                 response = self.client.post(
-                    "/api/attachments",
-                    {
-                        "issueId": self.issue.issue_id,
-                        "message": "file upload",
-                        "file": uploaded,
-                    },
+                    f"/api/issues/{self.issue.issue_id}/attachments",
+                    {"message": "file upload", "file": uploaded},
                     format="multipart",
                 )
                 self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -2436,7 +2400,7 @@ class IssueWorkflowEndpointTests(APITestCase):
                 self.assertTrue(response.data["url"].startswith("/media/"))
 
                 delete_response = self.client.delete(
-                    f"/api/attachments/{attachment.attachment_id}"
+                    f"/api/issues/{self.issue.issue_id}/attachments/{attachment.attachment_id}"
                 )
                 self.assertEqual(
                     delete_response.status_code, status.HTTP_204_NO_CONTENT
@@ -2453,12 +2417,8 @@ class IssueWorkflowEndpointTests(APITestCase):
             return_value=f"issue-attachments/{self.issue.issue_id}/compressed.webp",
         ) as save_mock:
             response = self.client.post(
-                "/api/attachments",
-                {
-                    "issueId": self.issue.issue_id,
-                    "message": "image upload",
-                    "file": uploaded,
-                },
+                f"/api/issues/{self.issue.issue_id}/attachments",
+                {"message": "image upload", "file": uploaded},
                 format="multipart",
             )
 
@@ -2482,12 +2442,8 @@ class IssueWorkflowEndpointTests(APITestCase):
             side_effect=RuntimeError("gcs unavailable"),
         ):
             response = self.client.post(
-                "/api/attachments",
-                {
-                    "issueId": self.issue.issue_id,
-                    "message": "file upload",
-                    "file": uploaded,
-                },
+                f"/api/issues/{self.issue.issue_id}/attachments",
+                {"message": "file upload", "file": uploaded},
                 format="multipart",
             )
 
@@ -2514,12 +2470,8 @@ class IssueWorkflowEndpointTests(APITestCase):
                     side_effect=fake_ffmpeg_run,
                 ) as run_mock:
                     response = self.client.post(
-                        "/api/attachments",
-                        {
-                            "issueId": self.issue.issue_id,
-                            "message": "video upload",
-                            "file": uploaded,
-                        },
+                        f"/api/issues/{self.issue.issue_id}/attachments",
+                        {"message": "video upload", "file": uploaded},
                         format="multipart",
                     )
 
@@ -2542,12 +2494,8 @@ class IssueWorkflowEndpointTests(APITestCase):
             "notes.txt", b"hello attachment", content_type="text/plain"
         )
         response = self.client.post(
-            "/api/attachments",
-            {
-                "issueId": self.issue.issue_id,
-                "message": "file upload",
-                "file": uploaded,
-            },
+            f"/api/issues/{self.issue.issue_id}/attachments",
+            {"message": "file upload", "file": uploaded},
             format="multipart",
         )
 
@@ -2569,12 +2517,8 @@ class IssueWorkflowEndpointTests(APITestCase):
             side_effect=subprocess.CalledProcessError(1, ["ffmpeg"]),
         ):
             response = self.client.post(
-                "/api/attachments",
-                {
-                    "issueId": self.issue.issue_id,
-                    "message": "broken video",
-                    "file": uploaded,
-                },
+                f"/api/issues/{self.issue.issue_id}/attachments",
+                {"message": "broken video", "file": uploaded},
                 format="multipart",
             )
 
@@ -2590,18 +2534,17 @@ class IssueWorkflowEndpointTests(APITestCase):
             "manual.txt", b"manual upload", content_type="text/plain"
         )
         response = self.client.post(
-            "/api/attachments",
+            f"/api/issues/{self.issue.issue_id}/attachments",
             {"file": uploaded},
             format="multipart",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_attachments_api_rejects_json_path_payload(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            "/api/attachments",
+            f"/api/issues/{self.issue.issue_id}/attachments",
             {
-                "issueId": self.issue.issue_id,
                 "path": "uploads/manual.txt",
                 "mimeType": "text/plain",
                 "size": 33,
@@ -2720,8 +2663,10 @@ class NotificationTagMetaEndpointTests(APITestCase):
     def test_read_single_notification_and_read_all(self):
         self.client.force_authenticate(user=self.member)
         notify_user = NotifyUser.objects.filter(user=self.member).first()
-        single_response = self.client.post(
-            f"/api/notifications/{notify_user.notify_user_id}/read", {}, format="json"
+        single_response = self.client.patch(
+            f"/api/notifications/{notify_user.notify_user_id}",
+            {"isRead": True},
+            format="json",
         )
         self.assertEqual(single_response.status_code, status.HTTP_200_OK)
         notify_user.refresh_from_db()
@@ -2729,8 +2674,8 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.assertIsNotNone(notify_user.read_at)
 
         NotifyUser.objects.filter(user=self.member).update(is_read=False, read_at=None)
-        all_response = self.client.post(
-            "/api/notifications/read-all", {}, format="json"
+        all_response = self.client.patch(
+            "/api/notifications", {"isRead": True}, format="json"
         )
         self.assertEqual(all_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(all_response.data["updated"], 1)

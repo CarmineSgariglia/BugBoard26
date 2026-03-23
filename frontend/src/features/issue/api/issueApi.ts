@@ -37,7 +37,7 @@ export async function getIssueSubscriptionApi(
   options?: RequestOptions,
 ): Promise<IssueSubscriptionState> {
   const { data } = await apiClient.get<IssueSubscriptionState>(
-    `/issues/${issueId}/subscription`,
+    `/issues/${issueId}/subscriptions/me`,
     withRequestOptions({}, options),
   );
   return data;
@@ -48,14 +48,14 @@ export async function listIssueUpdatesApi(
   options?: RequestOptions,
 ): Promise<IssueUpdate[]> {
   const { data } = await apiClient.get<IssueUpdate[]>(
-    `/issues/${issueId}/updates`,
+    `/issues/${issueId}/events`,
     withRequestOptions({}, options),
   );
   return data;
 }
 
 export function getIssueUpdatesStreamUrl(issueId: string | number): string {
-  return `${apiBaseUrl}/issues/${issueId}/updates/stream`;
+  return `${apiBaseUrl}/issues/${issueId}/events/stream`;
 }
 
 export async function createIssueUpdateApi(
@@ -74,32 +74,34 @@ export async function createIssueUpdateApi(
       }
     }
 
-    const { data } = await apiClient.post<IssueUpdate>(`/issues/${issueId}/updates`, formData);
+    const { data } = await apiClient.post<IssueUpdate>(`/issues/${issueId}/events`, formData);
     return data;
   }
 
-  const { data } = await apiClient.post<IssueUpdate>(`/issues/${issueId}/updates`, {
+  const { data } = await apiClient.post<IssueUpdate>(`/issues/${issueId}/events`, {
     message: payload.message,
   });
   return data;
 }
 
-export async function assignIssueUsersApi(issueId: number | string, userIds: number[]): Promise<{ detail: string }> {
-  const { data } = await apiClient.post<{ detail: string }>(`/issues/${issueId}/assign`, { userIds });
-  return data;
+export async function assignIssueUsersApi(issueId: number | string, userIds: number[]): Promise<void> {
+  for (const userId of userIds) {
+    await apiClient.put(`/issues/${issueId}/assignees/${userId}`);
+  }
 }
 
-export async function unassignIssueUsersApi(issueId: number | string, userIds: number[]): Promise<{ detail: string }> {
-  const { data } = await apiClient.post<{ detail: string }>(`/issues/${issueId}/unassign`, { userIds });
-  return data;
+export async function unassignIssueUsersApi(issueId: number | string, userIds: number[]): Promise<void> {
+  for (const userId of userIds) {
+    await apiClient.delete(`/issues/${issueId}/assignees/${userId}`);
+  }
 }
 
 export async function subscribeToIssueApi(issueId: number | string): Promise<void> {
-  await apiClient.post(`/issues/${issueId}/subscription`);
+  await apiClient.put(`/issues/${issueId}/subscriptions/me`);
 }
 
 export async function unsubscribeFromIssueApi(issueId: number | string): Promise<void> {
-  await apiClient.delete(`/issues/${issueId}/subscription`);
+  await apiClient.delete(`/issues/${issueId}/subscriptions/me`);
 }
 
 export async function listIssueSuggestionsApi(

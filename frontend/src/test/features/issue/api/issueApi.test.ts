@@ -15,10 +15,11 @@ import {
   updateIssueDetailsApi,
 } from "@features/issue/api";
 
-const { getMock, postMock, patchMock, deleteMock } = vi.hoisted(() => ({
+const { getMock, postMock, patchMock, putMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
   patchMock: vi.fn(),
+  putMock: vi.fn(),
   deleteMock: vi.fn(),
 }));
 
@@ -28,6 +29,7 @@ vi.mock("@shared/api/core/client", () => ({
     get: getMock,
     post: postMock,
     patch: patchMock,
+    put: putMock,
     delete: deleteMock,
   },
   apiBaseUrl: "/api",
@@ -38,11 +40,12 @@ describe("feature issues api module", () => {
     getMock.mockReset();
     postMock.mockReset();
     patchMock.mockReset();
+    putMock.mockReset();
     deleteMock.mockReset();
   });
 
   it("builds the issue stream URL from the shared api base url", () => {
-    expect(getIssueUpdatesStreamUrl(44)).toBe("/api/issues/44/updates/stream");
+    expect(getIssueUpdatesStreamUrl(44)).toBe("/api/issues/44/events/stream");
   });
 
   it("fetches an issue by id", async () => {
@@ -56,7 +59,7 @@ describe("feature issues api module", () => {
     getMock.mockResolvedValue({ data: { subscribed: false } });
 
     await expect(getIssueSubscriptionApi(6)).resolves.toEqual({ subscribed: false });
-    expect(getMock).toHaveBeenCalledWith("/issues/6/subscription", {});
+    expect(getMock).toHaveBeenCalledWith("/issues/6/subscriptions/me", {});
   });
 
   it("creates issue updates as JSON when there are no files", async () => {
@@ -64,7 +67,7 @@ describe("feature issues api module", () => {
     postMock.mockResolvedValue({ data: payload });
 
     await expect(createIssueUpdateApi(4, { message: "hello" })).resolves.toEqual(payload);
-    expect(postMock).toHaveBeenCalledWith("/issues/4/updates", { message: "hello" });
+    expect(postMock).toHaveBeenCalledWith("/issues/4/events", { message: "hello" });
   });
 
   it("creates issue updates as FormData when files are attached", async () => {
@@ -117,35 +120,36 @@ describe("feature issues api module", () => {
     getMock.mockResolvedValue({ data: [{ updateId: 1 }] });
 
     await expect(listIssueUpdatesApi(6)).resolves.toEqual([{ updateId: 1 }]);
-    expect(getMock).toHaveBeenCalledWith("/issues/6/updates", {});
+    expect(getMock).toHaveBeenCalledWith("/issues/6/events", {});
   });
 
   it("assigns users to an issue", async () => {
-    postMock.mockResolvedValue({ data: { detail: "assigned" } });
+    putMock.mockResolvedValue({ data: undefined });
 
-    await expect(assignIssueUsersApi(6, [1, 2])).resolves.toEqual({ detail: "assigned" });
-    expect(postMock).toHaveBeenCalledWith("/issues/6/assign", { userIds: [1, 2] });
+    await expect(assignIssueUsersApi(6, [1, 2])).resolves.toBeUndefined();
+    expect(putMock).toHaveBeenNthCalledWith(1, "/issues/6/assignees/1");
+    expect(putMock).toHaveBeenNthCalledWith(2, "/issues/6/assignees/2");
   });
 
   it("unassigns users from an issue", async () => {
-    postMock.mockResolvedValue({ data: { detail: "unassigned" } });
+    deleteMock.mockResolvedValue({ data: undefined });
 
-    await expect(unassignIssueUsersApi(6, [1])).resolves.toEqual({ detail: "unassigned" });
-    expect(postMock).toHaveBeenCalledWith("/issues/6/unassign", { userIds: [1] });
+    await expect(unassignIssueUsersApi(6, [1])).resolves.toBeUndefined();
+    expect(deleteMock).toHaveBeenCalledWith("/issues/6/assignees/1");
   });
 
   it("subscribes the current admin to an issue", async () => {
-    postMock.mockResolvedValue({ data: {} });
+    putMock.mockResolvedValue({ data: {} });
 
     await expect(subscribeToIssueApi(6)).resolves.toBeUndefined();
-    expect(postMock).toHaveBeenCalledWith("/issues/6/subscription");
+    expect(putMock).toHaveBeenCalledWith("/issues/6/subscriptions/me");
   });
 
   it("unsubscribes the current admin from an issue", async () => {
     deleteMock.mockResolvedValue({ data: {} });
 
     await expect(unsubscribeFromIssueApi(6)).resolves.toBeUndefined();
-    expect(deleteMock).toHaveBeenCalledWith("/issues/6/subscription");
+    expect(deleteMock).toHaveBeenCalledWith("/issues/6/subscriptions/me");
   });
 
   it("lists issue suggestions", async () => {

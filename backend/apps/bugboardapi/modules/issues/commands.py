@@ -129,17 +129,41 @@ def create_issue_for_project(*, serializer, reporter, project):
 
 
 def update_issue_from_serializer(*, serializer, actor, raw_message):
+    issue = serializer.instance
+    old_status = issue.status
+    requested_status = serializer.validated_data.get("status", old_status)
+    normalized_message = validate_issue_event_message(raw_message, strip=True)
+    _validate_issue_status_transition(issue=issue, new_status=requested_status)
+
     with transaction.atomic():
         issue = serializer.save()
-        message = (raw_message or "").strip() or "Issue updated"
-        _dispatch_issue_side_effects(
-            issue=issue,
-            actor=actor,
-            event_type=EventType.EDIT,
-            message=message,
-            notification_sender=notify_issue_updated,
-            notification_users=_issue_update_recipients(issue=issue, actor=actor),
-        )
+
+        if issue.status != old_status:
+            _dispatch_issue_side_effects(
+                issue=issue,
+                actor=actor,
+                event_type=EventType.STATUS_CHANGE,
+                message=normalized_message,
+                old_status=old_status,
+                new_status=issue.status,
+                notification_sender=notify_issue_closed if issue.status == IssueStatus.DONE else notify_issue_updated,
+                notification_users=(
+                    _issue_closed_recipients(issue=issue)
+                    if issue.status == IssueStatus.DONE
+                    else _issue_update_recipients(issue=issue, actor=actor)
+                ),
+                notification_actor=actor if issue.status == IssueStatus.DONE else _UNSET,
+            )
+        else:
+            message = normalized_message or "Issue updated"
+            _dispatch_issue_side_effects(
+                issue=issue,
+                actor=actor,
+                event_type=EventType.EDIT,
+                message=message,
+                notification_sender=notify_issue_updated,
+                notification_users=_issue_update_recipients(issue=issue, actor=actor),
+            )
     return issue
 
 

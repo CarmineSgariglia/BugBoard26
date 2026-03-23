@@ -78,8 +78,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
     def test_issue_status_action_ignores_listing_filters_for_object_resolution(self):
         self.client.force_authenticate(user=self.member)
 
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status?projectId={self.other_project.project_id}&tag={self.frontend_tag.name}",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}?projectId={self.other_project.project_id}&tag={self.frontend_tag.name}",
             {"status": "IN_PROGRESS", "message": "work started"},
             format="json",
         )
@@ -102,8 +102,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": IssueStatus.DONE, "message": "still done"},
             format="json",
         )
@@ -136,8 +136,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": IssueStatus.IN_PROGRESS, "message": "resume work"},
             format="json",
         )
@@ -165,13 +165,11 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/assign",
-            {"userIds": [self.member.id]},
-            format="json",
+        response = self.client.put(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.member.id}"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(
             IssueAssignee.objects.filter(issue=self.issue, user=self.member).count(),
             1,
@@ -204,13 +202,11 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/unassign",
-            {"userIds": [self.another_member.id]},
-            format="json",
+        response = self.client.delete(
+            f"/api/issues/{self.issue.issue_id}/assignees/{self.another_member.id}"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(
             IssueAssignee.objects.filter(issue=self.issue, user=self.another_member).exists()
         )
@@ -235,11 +231,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            "/api/attachments",
-            {
-                "issueId": self.issue.issue_id,
-                "message": "attachment without file",
-            },
+            f"/api/issues/{self.issue.issue_id}/attachments",
+            {"message": "attachment without file"},
             format="multipart",
         )
 
@@ -259,7 +252,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/updates",
+            f"/api/issues/{self.issue.issue_id}/events",
             {"message": "Safety net comment"},
             format="json",
         )
@@ -305,8 +298,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
         ).count()
 
         self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/status",
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
             {"status": IssueStatus.DONE, "message": "Done once"},
             format="json",
         )
@@ -346,9 +339,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            "/api/attachments",
+            f"/api/issues/{self.issue.issue_id}/attachments",
             {
-                "issueId": self.issue.issue_id,
                 "message": "too many files",
                 "file": [
                     SimpleUploadedFile("one.txt", b"one", content_type="text/plain"),
@@ -371,11 +363,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
         )
 
         response = self.client.post(
-            "/api/attachments",
-            {
-                "issueId": self.issue.issue_id,
-                "file": uploaded,
-            },
+            f"/api/issues/{self.issue.issue_id}/attachments",
+            {"file": uploaded},
             format="multipart",
         )
 
@@ -393,11 +382,8 @@ class IssueRefactorSafetyNetTests(APITestCase):
             content_type="text/plain",
         )
         response = self.client.post(
-            "/api/attachments",
-            {
-                "issueId": self.issue.issue_id,
-                "file": uploaded,
-            },
+            f"/api/issues/{self.issue.issue_id}/attachments",
+            {"file": uploaded},
             format="multipart",
         )
 
@@ -418,7 +404,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
             content_type="text/plain",
         )
         response = self.client.post(
-            f"/api/issue-events/{event.update_id}/attachments",
+            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
             {"file": uploaded},
             format="multipart",
         )
@@ -436,7 +422,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
             content_type="text/plain",
         )
         response = self.client.post(
-            f"/api/issue-events/{event.update_id}/attachments",
+            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
             {"file": uploaded},
             format="multipart",
         )
@@ -452,7 +438,7 @@ class IssueRefactorSafetyNetTests(APITestCase):
 
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
-            f"/api/issue-events/{event.update_id}/attachments",
+            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
             {
                 "file": [
                     SimpleUploadedFile("one.txt", b"one", content_type="text/plain"),

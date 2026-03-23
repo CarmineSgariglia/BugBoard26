@@ -126,7 +126,11 @@ class NotificationRealtimeBackendTests(APITestCase):
         notify_user = NotifyUser.objects.get(notification=notification, user=self.member)
 
         self.client.get("/api/notifications")
-        read_response = self.client.post(f"/api/notifications/{notify_user.notify_user_id}/read", {}, format="json")
+        read_response = self.client.patch(
+            f"/api/notifications/{notify_user.notify_user_id}",
+            {"isRead": True},
+            format="json",
+        )
         self.assertEqual(read_response.status_code, status.HTTP_200_OK)
         list_response = self.client.get("/api/notifications")
 

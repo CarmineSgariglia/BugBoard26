@@ -2,8 +2,8 @@ import apiClient from "@shared/api/core/client";
 import type { IssueAttachment } from "@shared/api/types/issues";
 
 type AttachmentTarget =
-  | { issueId: number; updateId?: never }
-  | { updateId: number; issueId?: never };
+  | { issueId: number; eventId?: never }
+  | { issueId: number; eventId: number };
 
 export async function uploadAttachmentApi(
   file: File,
@@ -12,21 +12,20 @@ export async function uploadAttachmentApi(
 ): Promise<IssueAttachment> {
   const formData = new FormData();
   formData.append("file", file);
-  if ("issueId" in target) formData.append("issueId", String(target.issueId));
-  if ("updateId" in target) formData.append("updateId", String(target.updateId));
   if (message) formData.append("message", message);
-  const { data } = await apiClient.post<IssueAttachment>("/attachments", formData);
+  const endpoint =
+    "eventId" in target
+      ? `/issues/${target.issueId}/events/${target.eventId}/attachments`
+      : `/issues/${target.issueId}/attachments`;
+  const { data } = await apiClient.post<IssueAttachment>(endpoint, formData);
   return data;
 }
 
-export async function listAttachmentsApi(params: {
-  issueId?: number;
-  updateId?: number;
-}): Promise<IssueAttachment[]> {
-  const { data } = await apiClient.get<IssueAttachment[]>("/attachments", { params });
+export async function listAttachmentsApi(issueId: number): Promise<IssueAttachment[]> {
+  const { data } = await apiClient.get<IssueAttachment[]>(`/issues/${issueId}/attachments`);
   return data;
 }
 
-export async function deleteAttachmentApi(attachmentId: number): Promise<void> {
-  await apiClient.delete(`/attachments/${attachmentId}`);
+export async function deleteAttachmentApi(issueId: number, attachmentId: number): Promise<void> {
+  await apiClient.delete(`/issues/${issueId}/attachments/${attachmentId}`);
 }
