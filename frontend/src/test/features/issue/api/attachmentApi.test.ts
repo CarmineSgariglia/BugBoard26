@@ -14,7 +14,7 @@ vi.mock("@shared/api/core/client", () => ({
   },
 }));
 
-const mockedClient = vi.mocked(apiClient);
+const mockedClient = vi.mocked(apiClient) as any;
 
 describe("attachmentApi", () => {
   beforeEach(() => {

@@ -40,7 +40,7 @@ vi.mock("@features/auth/api", () => ({
 }));
 
 vi.mock("@features/issue/api", () => ({
-  getIssueUpdatesStreamUrl: (issueId: number) => `/api/issues/${issueId}/events/stream`,
+  getIssueUpdatesStreamUrl: (issueId: number) => `/api/issues/${issueId}/updates/stream`,
 }));
 
 describe("IssueActivityRealtimeListener", () => {
@@ -117,7 +117,7 @@ describe("IssueActivityRealtimeListener", () => {
       expect(onUpdate).toHaveBeenCalledWith(streamedUpdate);
     });
 
-    expect(global.fetch).toHaveBeenCalledWith("/api/issues/42/events/stream", expect.objectContaining({
+    expect(global.fetch).toHaveBeenCalledWith("/api/issues/42/updates/stream", expect.objectContaining({
       method: "GET",
       credentials: "include",
       headers: expect.any(Headers),

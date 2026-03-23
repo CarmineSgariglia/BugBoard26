@@ -4,7 +4,6 @@ import type { RequestOptions } from "@shared/api";
 import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
 
 export const notificationsQueryKey = ["notifications"] as const;
-export const notificationsPollingIntervalMs = 15000;
 export const notificationsPageSize = 20;
 
 export async function listNotificationsApi(params?: {
