@@ -13,8 +13,7 @@ export async function updateIssueDetailsApi(
   issueId: number | string,
   payload: UpdateIssuePayload
 ): Promise<Issue> {
-  const { data } = await apiClient.patch<Issue>(`/issues/${issueId}/details`, payload);
-  return data;
+  return updateIssueApi(issueId, payload);
 }
 
 export async function updateIssueApi(issueId: number | string, payload: UpdateIssuePayload): Promise<Issue> {

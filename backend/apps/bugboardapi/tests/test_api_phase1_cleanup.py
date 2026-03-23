@@ -14,23 +14,18 @@ class ApiPhase1RoutingTests(TestCase):
         self.assertEqual(match.kwargs["issueId"], "42")
 
     def test_notification_route_uses_notification_id_camel_case_kwarg(self):
-        match = resolve("/api/notifications/42")
-        self.assertEqual(match.kwargs["notificationId"], 42)
+        match = resolve("/api/notifications/42/read")
+        self.assertEqual(match.kwargs["notificationId"], "42")
 
-    def test_issue_event_attachment_route_uses_event_id_camel_case_kwarg(self):
-        match = resolve("/api/issues/7/events/42/attachments")
-        self.assertEqual(match.kwargs["issueId"], 7)
-        self.assertEqual(match.kwargs["eventId"], 42)
+    def test_issue_event_attachment_route_uses_update_id_camel_case_kwarg(self):
+        match = resolve("/api/issue-events/42/attachments")
+        self.assertEqual(match.kwargs["updateId"], 42)
 
 
 class ApiPhase1CleanupTests(APITestCase):
     def test_removed_legacy_routes_return_not_found(self):
         for path in (
             "/api",
-            "/api/auth/login",
-            "/api/auth/me",
-            "/api/auth/refresh",
-            "/api/auth/logout",
             "/api/users/1/status",
             "/api/users/me/upload_profile_image",
             "/api/issues/1/details",

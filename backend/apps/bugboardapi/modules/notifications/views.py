@@ -4,10 +4,12 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework import serializers
 
 from ...common.sse import (
     ServerSentEventsRenderer,
@@ -23,6 +25,7 @@ from .services import (
     mark_notification_as_read,
 )
 from .serializers import NotifyUserSerializer
+from .serializers import NotificationReadAllResponseSerializer, NotificationsPageSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,19 @@ DEFAULT_NOTIFICATIONS_PAGE_SIZE = 20
 MAX_NOTIFICATIONS_PAGE_SIZE = 50
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Notifications"],
+        description="Cursor-based notification feed for the authenticated user.",
+        parameters=[
+            OpenApiParameter("limit", int, OpenApiParameter.QUERY),
+            OpenApiParameter("before", int, OpenApiParameter.QUERY),
+        ],
+        responses=NotificationsPageSerializer,
+    ),
+    retrieve=extend_schema(tags=["Notifications"], responses=NotifyUserSerializer),
+    destroy=extend_schema(tags=["Notifications"], responses={204: OpenApiResponse(description="Notification deleted")}),
+)
 class NotificationViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -40,7 +56,7 @@ class NotificationViewSet(
     permission_classes = [permissions.IsAuthenticated]
     queryset = NotifyUser.objects.select_related("notification", "notification__issue", "notification__project")
     lookup_field = "notify_user_id"
-    lookup_url_kwarg = "notification_id"
+    lookup_url_kwarg = "notificationId"
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user).order_by("-notify_user_id")
@@ -92,12 +108,25 @@ class NotificationViewSet(
         return Response(self._serialize_notifications_page(notifications, limit=limit))
 
     @action(detail=True, methods=["post"], url_path="read")
-    def read(self, request, notification_id=None):
+    @extend_schema(
+        tags=["Notifications"],
+        summary="Mark notification as read",
+        request=None,
+        responses=NotifyUserSerializer,
+    )
+    def read(self, request, notificationId=None):
         notify_user = self.get_object()
         notify_user = mark_notification_as_read(notify_user=notify_user)
         return Response(NotifyUserSerializer(notify_user).data)
 
     @action(detail=False, methods=["post"], url_path="read-all")
+    @extend_schema(
+        tags=["Notifications"],
+        summary="Mark all notifications as read",
+        description="Phase 1 accepted bulk action endpoint for the current user.",
+        request=None,
+        responses=NotificationReadAllResponseSerializer,
+    )
     def read_all(self, request):
         updated = mark_all_notifications_as_read(user=request.user)
         return Response({"updated": updated})
@@ -130,6 +159,12 @@ class NotificationViewSet(
         methods=["get"],
         url_path="stream",
         renderer_classes=[ServerSentEventsRenderer],
+    )
+    @extend_schema(
+        tags=["Notifications"],
+        summary="Stream notifications",
+        description="Server-Sent Events stream for the authenticated user. Phase 1 accepted non-REST endpoint.",
+        responses={(200, "text/event-stream"): OpenApiTypes.STR},
     )
     def stream(self, request):
         try:

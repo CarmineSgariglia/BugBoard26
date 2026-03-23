@@ -5,6 +5,268 @@ info:
   description: Canonical Phase 1 API surface for BugBoard26. JWT session revocation
     remains enabled as an intentional security exception.
 paths:
+  /api/attachments:
+    get:
+      operationId: attachments_list
+      parameters:
+      - in: query
+        name: issueId
+        schema:
+          type: integer
+      - in: query
+        name: updateId
+        schema:
+          type: integer
+      tags:
+      - Attachments
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attachment'
+          description: ''
+    post:
+      operationId: attachments_create
+      description: Phase 1 accepted multipart endpoint for issue-level or event-level
+        attachment uploads.
+      tags:
+      - Attachments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttachmentCreateRequestRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+          description: ''
+  /api/attachments/{attachmentId}:
+    delete:
+      operationId: attachments_destroy
+      parameters:
+      - in: path
+        name: attachmentId
+        schema:
+          type: integer
+        description: A unique integer value identifying this attachment.
+        required: true
+      tags:
+      - Attachments
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Attachment deleted
+  /api/auth/csrf:
+    get:
+      operationId: auth_csrf_retrieve
+      description: Phase 1 compatibility endpoint for CSRF bootstrap.
+      summary: Get CSRF token
+      tags:
+      - Auth
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CSRFTokenResponse'
+          description: ''
+  /api/auth/login:
+    post:
+      operationId: auth_login_create
+      description: Phase 1 compatibility endpoint. Returns an access token and sets
+        the refresh token in an HTTP-only cookie.
+      summary: Create session
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/logout:
+    post:
+      operationId: auth_logout_create
+      description: Phase 1 compatibility endpoint. Revokes the current server-side
+        JWT session and clears the refresh cookie.
+      summary: Logout
+      tags:
+      - Auth
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '204':
+          description: Logged out
+  /api/auth/me:
+    get:
+      operationId: auth_me_retrieve
+      description: Phase 1 compatibility endpoint for the authenticated user profile.
+      summary: Get current user
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+          description: ''
+  /api/auth/password/otp/request:
+    post:
+      operationId: auth_password_otp_request_create
+      description: Phase 1 compatibility endpoint for OTP-based password reset.
+      summary: Request password reset OTP
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPRequestRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/password/otp/verify:
+    post:
+      operationId: auth_password_otp_verify_create
+      description: Phase 1 compatibility endpoint for OTP verification.
+      summary: Verify password reset OTP
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordOTPVerifyResponse'
+          description: ''
+  /api/auth/password/reset:
+    post:
+      operationId: auth_password_reset_create
+      description: Phase 1 compatibility endpoint for OTP-based password reset.
+      summary: Reset password with OTP
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+        required: true
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/refresh:
+    post:
+      operationId: auth_refresh_create
+      description: Phase 1 compatibility endpoint. Reads the refresh token from the
+        HTTP-only cookie.
+      summary: Refresh access token
+      tags:
+      - Auth
+      security:
+      - csrfToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
   /api/health:
     get:
       operationId: health_retrieve
@@ -19,6 +281,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthCheckResponse'
+          description: ''
+  /api/issue-events/{updateId}/attachments:
+    post:
+      operationId: issue_events_attachments_create
+      description: Phase 1 accepted multipart upload endpoint bound to an issue event.
+      parameters:
+      - in: path
+        name: updateId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Attachments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueEventAttachmentUploadRequestRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
           description: ''
   /api/issues/{issueId}:
     get:
@@ -122,140 +411,9 @@ paths:
       responses:
         '204':
           description: Issue deleted
-  /api/issues/{issueId}/assignees/{userId}:
-    put:
-      operationId: issues_assignees_update
-      summary: Assign issue user
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      - in: path
-        name: userId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Issues
-      security:
-      - bearerAuth: []
-      responses:
-        '204':
-          description: Assignee added
-    delete:
-      operationId: issues_assignees_destroy
-      summary: Unassign issue user
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      - in: path
-        name: userId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Issues
-      security:
-      - bearerAuth: []
-      responses:
-        '204':
-          description: Assignee removed
-  /api/issues/{issueId}/attachments:
-    get:
-      operationId: issues_attachments_list
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Attachments
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Attachment'
-          description: ''
+  /api/issues/{issueId}/assign:
     post:
-      operationId: issues_attachments_create
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Attachments
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/IssueAttachmentCreateRequestRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Attachment'
-          description: ''
-  /api/issues/{issueId}/attachments/{attachmentId}:
-    delete:
-      operationId: issues_attachments_destroy
-      parameters:
-      - in: path
-        name: attachmentId
-        schema:
-          type: integer
-        required: true
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Attachments
-      security:
-      - bearerAuth: []
-      responses:
-        '204':
-          description: Attachment deleted
-  /api/issues/{issueId}/events:
-    get:
-      operationId: issues_events_retrieve
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        description: A unique integer value identifying this issue.
-        required: true
-      tags:
-      - issues
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Issue'
-          description: ''
-    post:
-      operationId: issues_events_create
+      operationId: issues_assign_create
       parameters:
       - in: path
         name: issueId
@@ -286,61 +444,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/Issue'
           description: ''
-  /api/issues/{issueId}/events/{eventId}/attachments:
+  /api/issues/{issueId}/status:
     post:
-      operationId: issues_events_attachments_create
+      operationId: issues_status_create
       parameters:
-      - in: path
-        name: eventId
-        schema:
-          type: integer
-        required: true
       - in: path
         name: issueId
         schema:
           type: integer
+        description: A unique integer value identifying this issue.
         required: true
       tags:
-      - Attachments
+      - issues
       requestBody:
         content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/IssueEventAttachmentUploadRequestRequest'
+              $ref: '#/components/schemas/IssueRequest'
         required: true
-      security:
-      - bearerAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Attachment'
-          description: ''
-  /api/issues/{issueId}/events/stream:
-    get:
-      operationId: issues_events_stream_retrieve
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        description: A unique integer value identifying this issue.
-        required: true
-      tags:
-      - issues
       security:
       - bearerAuth: []
       responses:
         '200':
           content:
-            text/event-stream:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
           description: ''
-  /api/issues/{issueId}/subscriptions/me:
+  /api/issues/{issueId}/subscription:
     get:
-      operationId: issues_subscriptions_me_retrieve
+      operationId: issues_subscription_retrieve
       parameters:
       - in: path
         name: issueId
@@ -359,8 +498,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Issue'
           description: ''
-    put:
-      operationId: issues_subscriptions_me_update
+    post:
+      operationId: issues_subscription_create
       parameters:
       - in: path
         name: issueId
@@ -392,7 +531,7 @@ paths:
                 $ref: '#/components/schemas/Issue'
           description: ''
     delete:
-      operationId: issues_subscriptions_me_destroy
+      operationId: issues_subscription_destroy
       parameters:
       - in: path
         name: issueId
@@ -428,6 +567,113 @@ paths:
               schema:
                 $ref: '#/components/schemas/Issue'
           description: ''
+  /api/issues/{issueId}/unassign:
+    post:
+      operationId: issues_unassign_create
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/issues/{issueId}/updates:
+    get:
+      operationId: issues_updates_retrieve
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    post:
+      operationId: issues_updates_create
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+  /api/issues/{issueId}/updates/stream:
+    get:
+      operationId: issues_updates_stream_retrieve
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
   /api/notifications:
     get:
       operationId: notifications_list
@@ -454,32 +700,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/NotificationsPage'
           description: ''
-    patch:
-      operationId: notifications_bulk_update
-      description: Bulk update notification state for the current user.
-      summary: Bulk update notifications
-      tags:
-      - Notifications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationReadAllResponse'
-          description: ''
   /api/notifications/{notificationId}:
     get:
       operationId: notifications_retrieve
@@ -488,40 +708,10 @@ paths:
         name: notificationId
         schema:
           type: integer
+        description: A unique integer value identifying this notify user.
         required: true
       tags:
       - Notifications
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotifyUser'
-          description: ''
-    patch:
-      operationId: notifications_partial_update
-      summary: Update notification state
-      parameters:
-      - in: path
-        name: notificationId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Notifications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
       security:
       - bearerAuth: []
       responses:
@@ -538,6 +728,7 @@ paths:
         name: notificationId
         schema:
           type: integer
+        description: A unique integer value identifying this notify user.
         required: true
       tags:
       - Notifications
@@ -546,6 +737,65 @@ paths:
       responses:
         '204':
           description: Notification deleted
+  /api/notifications/{notificationId}/read:
+    post:
+      operationId: notifications_read_create
+      parameters:
+      - in: path
+        name: notificationId
+        schema:
+          type: integer
+        description: A unique integer value identifying this notify user.
+        required: true
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyUser'
+          description: ''
+  /api/notifications/read-all:
+    post:
+      operationId: notifications_read_all_create
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifyUserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyUser'
+          description: ''
   /api/notifications/stream:
     get:
       operationId: notifications_stream_retrieve
@@ -556,102 +806,9 @@ paths:
       responses:
         '200':
           content:
-            application/json:
+            text/event-stream:
               schema:
                 $ref: '#/components/schemas/NotifyUser'
-          description: ''
-  /api/password-reset-requests:
-    post:
-      operationId: password_reset_requests_create
-      description: Starts the OTP-based password reset flow.
-      summary: Request password reset OTP
-      tags:
-      - Passwords
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordOTPRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PasswordOTPRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PasswordOTPRequestRequest'
-        required: true
-      security:
-      - csrfToken: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DetailResponse'
-          description: ''
-  /api/password-reset-verifications:
-    post:
-      operationId: password_reset_verifications_create
-      description: Validates a password reset OTP.
-      summary: Verify password reset OTP
-      tags:
-      - Passwords
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PasswordOTPVerifyRequest'
-        required: true
-      security:
-      - csrfToken: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PasswordOTPVerifyResponse'
-          description: ''
-  /api/password-resets:
-    post:
-      operationId: password_resets_create
-      description: Completes the OTP-based password reset flow.
-      summary: Reset password with OTP
-      tags:
-      - Passwords
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordResetRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PasswordResetRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PasswordResetRequest'
-        required: true
-      security:
-      - csrfToken: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DetailResponse'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DetailResponse'
           description: ''
   /api/projects:
     get:
@@ -873,9 +1030,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
           description: ''
-  /api/projects/{projectId}/subscriptions/me:
+  /api/projects/{projectId}/subscription:
     get:
-      operationId: projects_subscriptions_me_retrieve
+      operationId: projects_subscription_retrieve
       parameters:
       - in: path
         name: projectId
@@ -894,8 +1051,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
           description: ''
-    put:
-      operationId: projects_subscriptions_me_update
+    post:
+      operationId: projects_subscription_create
       parameters:
       - in: path
         name: projectId
@@ -927,7 +1084,7 @@ paths:
                 $ref: '#/components/schemas/Project'
           description: ''
     delete:
-      operationId: projects_subscriptions_me_destroy
+      operationId: projects_subscription_destroy
       parameters:
       - in: path
         name: projectId
@@ -942,96 +1099,6 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/security/csrf-token:
-    get:
-      operationId: security_csrf_token_retrieve
-      description: Bootstraps the CSRF cookie used by cookie-backed session mutations.
-      summary: Get CSRF token
-      tags:
-      - Security
-      security:
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CSRFTokenResponse'
-          description: ''
-  /api/sessions:
-    post:
-      operationId: sessions_create
-      description: Authenticates the user, returns an access token, and sets the refresh
-        token in an HTTP-only cookie.
-      summary: Create session
-      tags:
-      - Sessions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/LoginRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/LoginRequestRequest'
-        required: true
-      security:
-      - csrfToken: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-          description: ''
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DetailResponse'
-          description: ''
-  /api/sessions/current:
-    delete:
-      operationId: sessions_current_destroy
-      description: Revokes the current server-side JWT session and clears the refresh
-        cookie.
-      summary: Logout
-      tags:
-      - Sessions
-      security:
-      - csrfToken: []
-      - {}
-      responses:
-        '204':
-          description: Logged out
-  /api/sessions/current/access-token:
-    post:
-      operationId: sessions_current_access_token_create
-      description: Reads the refresh token from the HTTP-only cookie and returns a
-        new access token.
-      summary: Refresh access token
-      tags:
-      - Sessions
-      security:
-      - csrfToken: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RefreshResponse'
-          description: ''
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DetailResponse'
-          description: ''
   /api/tags:
     get:
       operationId: tags_list
@@ -1238,58 +1305,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserMutation'
           description: ''
-  /api/users/{userId}/password:
-    put:
-      operationId: users_password_update
-      description: Admin-only password reset for another user.
-      summary: Reset user password
+  /api/users/{userId}/admin-reset-password:
+    post:
+      operationId: users_admin_reset_password_create
       parameters:
       - in: path
         name: userId
         schema:
           type: integer
+        description: A unique integer value identifying this user.
         required: true
       tags:
-      - Users
+      - users
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AdminResetPasswordRequest'
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AdminResetPasswordRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/AdminResetPasswordRequest'
+              $ref: '#/components/schemas/UserRequest'
         required: true
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserPasswordUpdateResponse'
-          description: ''
-  /api/users/{userId}/profile-image:
-    put:
-      operationId: users_profile_image_update
-      description: Admin-only profile image upload for another user.
-      summary: Upload profile image for another user
-      parameters:
-      - in: path
-        name: userId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Users
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProfileImageUploadRequestRequest'
       security:
       - bearerAuth: []
       responses:
@@ -1299,40 +1338,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
-  /api/users/me:
-    get:
-      operationId: users_me_retrieve
-      description: Returns the authenticated user profile.
-      summary: Get current user
+  /api/users/{userId}/admin-upload-image:
+    post:
+      operationId: users_admin_upload_image_create
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
       tags:
-      - Users
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserRead'
-          description: ''
-  /api/users/me/password:
-    put:
-      operationId: users_me_password_update
-      description: Self-service password change for the authenticated user.
-      summary: Change current user password
-      tags:
-      - Users
+      - users
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ChangePasswordRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ChangePasswordRequest'
+              $ref: '#/components/schemas/UserRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ChangePasswordRequest'
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
         required: true
       security:
       - bearerAuth: []
@@ -1341,19 +1369,58 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserPasswordUpdateResponse'
+                $ref: '#/components/schemas/User'
           description: ''
-  /api/users/me/profile-image:
-    put:
-      operationId: users_me_profile_image_update
-      summary: Upload current user profile image
+  /api/users/{userId}/change-password:
+    post:
+      operationId: users_change_password_create
+      parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
       tags:
-      - Users
+      - users
       requestBody:
         content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProfileImageUploadRequestRequest'
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/me/upload-profile-image:
+    post:
+      operationId: users_me_upload_profile_image_create
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
       security:
       - bearerAuth: []
       responses:
@@ -1365,14 +1432,6 @@ paths:
           description: ''
 components:
   schemas:
-    AdminResetPasswordRequest:
-      type: object
-      properties:
-        newPassword:
-          type: string
-          minLength: 8
-      required:
-      - newPassword
     Attachment:
       type: object
       properties:
@@ -1410,6 +1469,20 @@ components:
       - updateId
       - uploadedAt
       - url
+    AttachmentCreateRequestRequest:
+      type: object
+      properties:
+        issueId:
+          type: integer
+        updateId:
+          type: integer
+        message:
+          type: string
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     CSRFTokenResponse:
       type: object
       properties:
@@ -1417,18 +1490,6 @@ components:
           type: string
       required:
       - csrfToken
-    ChangePasswordRequest:
-      type: object
-      properties:
-        currentPassword:
-          type: string
-          minLength: 1
-        newPassword:
-          type: string
-          minLength: 8
-      required:
-      - currentPassword
-      - newPassword
     DetailResponse:
       type: object
       properties:
@@ -1518,16 +1579,6 @@ components:
       - profileImg
       - userId
       - username
-    IssueAttachmentCreateRequestRequest:
-      type: object
-      properties:
-        message:
-          type: string
-        file:
-          type: string
-          format: binary
-      required:
-      - file
     IssueEventAttachmentUploadRequestRequest:
       type: object
       properties:
@@ -1600,13 +1651,6 @@ components:
       required:
       - accessToken
       - user
-    NotificationReadAllResponse:
-      type: object
-      properties:
-        updated:
-          type: integer
-      required:
-      - updated
     NotificationsPage:
       type: object
       properties:
@@ -1665,6 +1709,13 @@ components:
       - projectId
       - readAt
       - type
+    NotifyUserRequest:
+      type: object
+      properties:
+        isRead:
+          type: boolean
+      required:
+      - isRead
     PaginatedUserList:
       type: object
       required:
@@ -1777,11 +1828,6 @@ components:
             minLength: 1
             maxLength: 16
           writeOnly: true
-    PatchedNotificationPatchRequest:
-      type: object
-      properties:
-        isRead:
-          type: boolean
     PatchedProjectRequest:
       type: object
       properties:
@@ -1843,15 +1889,6 @@ components:
         * `MEDIUM` - Medium
         * `HIGH` - High
         * `URGENT` - Urgent
-    ProfileImageUploadRequestRequest:
-      type: object
-      properties:
-        image:
-          type: string
-          format: binary
-        profile_img:
-          type: string
-          format: binary
     Project:
       type: object
       properties:
@@ -2056,13 +2093,6 @@ components:
           type: boolean
       required:
       - username
-    UserPasswordUpdateResponse:
-      type: object
-      properties:
-        detail:
-          type: string
-      required:
-      - detail
     UserRead:
       type: object
       properties:
@@ -2109,6 +2139,23 @@ components:
       - userId
       - username
     UserReadRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+      required:
+      - username
+    UserRequest:
       type: object
       properties:
         username:

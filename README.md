@@ -107,17 +107,21 @@ Notes:
 ## API Endpoints
 
 - `GET /api/health`: health check
+- `GET /api/schema`: OpenAPI 3.0.3 schema
+- `GET /api/docs`: Swagger UI
+- `GET /api/redoc`: Redoc
 - `GET /api/projects`: list visible projects
-- `GET /api/projects/{id}`: retrieve a project
-- `GET /api/projects/{id}/issues`: list issues for a project
-- `POST /api/projects/{id}/issues`: create an issue inside a project
-- `GET /api/issues/{id}`: retrieve issue
-- `PUT/PATCH /api/issues/{id}`: update issue
-- `DELETE /api/issues/{id}`: delete issue
+- `GET /api/projects/{projectId}`: retrieve a project
+- `GET /api/projects/{projectId}/issues`: list issues for a project
+- `POST /api/projects/{projectId}/issues`: create an issue inside a project
+- `GET /api/issues/{issueId}`: retrieve issue
+- `PUT/PATCH /api/issues/{issueId}`: update issue
+- `DELETE /api/issues/{issueId}`: delete issue
 
 ## Backend API Conventions
 
 - Router-backed resource roots use `GenericViewSet + mixins`, not `ModelViewSet`.
+- Router registration uses `SimpleRouter(trailing_slash=False)` so the API does not expose an API root or format suffix routes such as `.json`.
 - `APIView` is reserved for flow-oriented or custom endpoints that are not a resource root.
 - Resource roots registered in the router should expose only the HTTP methods the product actually supports.
 - Current resource roots follow this rule:
@@ -131,7 +135,10 @@ Notes:
   - auth endpoints under `/api/auth/*`
   - nested project issue flow `/api/projects/{id}/issues`
   - upload flow `/api/issue-events/{id}/attachments`
-- Multiword custom action paths should use kebab-case. Legacy aliases may exist temporarily for compatibility.
+- Public path params use camelCase names such as `userId`, `projectId`, `issueId`, `updateId`, `attachmentId`, `notificationId`, and `tagId`.
+- Multiword custom action paths use kebab-case. Phase 1 removes legacy aliases such as `/users/{userId}/status`, `/issues/{issueId}/details`, `/users/me/upload_profile_image`, and router-generated `.json` paths.
+- `DELETE /api/issues/{issueId}` is bodyless; any UI confirmation stays in the frontend only.
+- Server-side JWT revocation remains enabled intentionally as a documented security exception to pure statelessness.
 
 ## Notes
 

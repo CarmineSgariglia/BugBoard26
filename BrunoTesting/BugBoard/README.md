@@ -5,14 +5,13 @@ Questa cartella contiene una suite Bruno rifattorizzata e organizzata per route 
 ## Struttura
 
 - `00_Setup`: bootstrap globale (health, csrf, login)
-- `API/01_Sessions`: `/sessions/*`
+- `API/01_Auth`: `/auth/*`
 - `API/02_Users`: `/users/*`
 - `API/03_Projects`: `/projects/*` e `/projects/{projectId}/issues`
 - `API/04_Issues`: `/issues/*`
 - `API/05_Notifications`: `/notifications/*`
-- `API/06_Passwords`: `/password-reset-*`
 - `API/07_Tags`: `/tags/*`
-- `API/08_Attachments`: attachment nested sotto `/issues/{issueId}`
+- `API/08_Attachments`: `/attachments/*` e upload collegati
 
 Ogni area include test `auth`, `no_auth`, `not_found` e casi di validazione/permesso.
 
@@ -21,12 +20,7 @@ Nota Fase 1 REST cleanup:
 - l'attivazione utente usa `PATCH /users/{userId}` con body `{ "active": boolean }`
 - l'update issue canonico usa solo `PATCH /issues/{issueId}`
 - `DELETE /issues/{issueId}` non richiede body
-- l'upload profilo self-service usa solo `PUT /users/me/profile-image`
-- i commenti issue usano `/issues/{issueId}/events`
-- assign/unassign usano `/issues/{issueId}/assignees/{userId}`
-- read all notifications usa `PATCH /notifications` con body `{ "isRead": true }`
-- update singola notification usa `PATCH /notifications/{notificationId}`
-- le subscription admin usano `/projects/{projectId}/subscriptions/me` e `/issues/{issueId}/subscriptions/me`
+- l'upload profilo self-service usa solo `POST /users/me/upload-profile-image`
 
 ## Environment
 
@@ -93,8 +87,8 @@ Nota: in questo repository il login CLI e la suite safe sono stati verificati co
 
 Workflow consigliato:
 
-- suite `safe`: `00_Setup`, `02_Users/Me`, `02_Users/00_Setup`, `03_Projects/00_Setup`, `03_Projects/ProjectIssues/Issues_list_auth`, `04_Issues/00_Setup`, `04_Issues/Events/Events_get`, `05_Notifications/00_Setup`, `05_Notifications/List`
-- suite `full`: superset della `safe` con sessioni, password reset, subscription, stream auth-gates, profile image, attachments, create, update e delete; da eseguire solo manualmente
+- suite `safe`: `00_Setup`, `01_Auth/Me`, `02_Users/00_Setup`, `03_Projects/00_Setup`, `03_Projects/ProjectIssues/Issues_list_auth`, `04_Issues/00_Setup`, `05_Notifications/00_Setup`, `05_Notifications/List`
+- suite `full`: superset della `safe` con test di validazione, read, create, update e delete; da eseguire solo manualmente
 
 Best practice per pipeline:
 

@@ -467,21 +467,21 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertTrue(User.objects.filter(id=self.member.id).exists())
 
-    def test_admin_can_toggle_user_status_with_status_endpoint(self):
+    def test_admin_can_toggle_user_status_with_patch_endpoint(self):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])
 
         self.client.force_authenticate(user=self.admin)
-        activate = self.client.post(
-            f"/api/users/{self.member.id}/status",
+        activate = self.client.patch(
+            f"/api/users/{self.member.id}",
             {"active": True},
             format="json",
         )
         self.assertEqual(activate.status_code, status.HTTP_200_OK)
         self.assertTrue(activate.data["active"])
 
-        deactivate = self.client.post(
-            f"/api/users/{self.member.id}/status",
+        deactivate = self.client.patch(
+            f"/api/users/{self.member.id}",
             {"active": False},
             format="json",
         )
@@ -494,7 +494,7 @@ class UserManagementEndpointTests(APITestCase):
             "avatar.png", make_png_bytes(size=(1800, 1800)), content_type="image/png"
         )
         response = self.client.post(
-            "/api/users/me/upload_profile_image",
+            "/api/users/me/upload-profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -513,7 +513,7 @@ class UserManagementEndpointTests(APITestCase):
             "avatar.txt", b"not-image", content_type="text/plain"
         )
         response = self.client.post(
-            "/api/users/me/upload_profile_image",
+            "/api/users/me/upload-profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -525,7 +525,7 @@ class UserManagementEndpointTests(APITestCase):
         big_bytes = b"a" * (2 * 1024 * 1024 + 1)
         image = SimpleUploadedFile("big.png", big_bytes, content_type="image/png")
         response = self.client.post(
-            "/api/users/me/upload_profile_image",
+            "/api/users/me/upload-profile-image",
             {"profile_img": image},
             format="multipart",
         )
@@ -536,24 +536,6 @@ class UserManagementEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(
             "avatar.png", make_png_bytes(size=(1600, 1200)), content_type="image/png"
-        )
-        response = self.client.post(
-            "/api/users/me/upload_profile_image",
-            {"profile_img": image},
-            format="multipart",
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.member.refresh_from_db()
-        self.assertTrue(
-            self.member.profile.profile_img.startswith(
-                f"profile-images/{self.member.id}/"
-            )
-        )
-
-    def test_profile_image_upload_me_endpoint_kebab_case_alias(self):
-        self.client.force_authenticate(user=self.member)
-        image = SimpleUploadedFile(
-            "avatar.png", make_png_bytes(size=(1200, 1600)), content_type="image/png"
         )
         response = self.client.post(
             "/api/users/me/upload-profile-image",
@@ -567,6 +549,18 @@ class UserManagementEndpointTests(APITestCase):
                 f"profile-images/{self.member.id}/"
             )
         )
+
+    def test_profile_image_upload_me_legacy_underscore_alias_is_removed(self):
+        self.client.force_authenticate(user=self.member)
+        image = SimpleUploadedFile(
+            "avatar.png", make_png_bytes(size=(1200, 1600)), content_type="image/png"
+        )
+        response = self.client.post(
+            "/api/users/me/upload_profile_image",
+            {"profile_img": image},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_admin_upload_profile_image_for_other_user_via_admin_endpoint(self):
         self.client.force_authenticate(user=self.admin)
@@ -608,7 +602,7 @@ class UserManagementEndpointTests(APITestCase):
             return_value=f"profile-images/{self.member.id}/compressed.webp",
         ) as save_mock:
             response = self.client.post(
-                "/api/users/me/upload_profile_image",
+                "/api/users/me/upload-profile-image",
                 {"profile_img": image},
                 format="multipart",
             )
@@ -632,7 +626,7 @@ class UserManagementEndpointTests(APITestCase):
             side_effect=RuntimeError("gcs unavailable"),
         ):
             response = self.client.post(
-                "/api/users/me/upload_profile_image",
+                "/api/users/me/upload-profile-image",
                 {"profile_img": image},
                 format="multipart",
             )
@@ -686,7 +680,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_admin_can_reset_password_for_other_user_without_current(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
-            f"/api/users/{self.member.id}/change-password",
+            f"/api/users/{self.member.id}/admin-reset-password",
             {"newPassword": "NewStrongPass123!"},
             format="json",
         )
@@ -717,7 +711,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_admin_can_reset_password_for_other_admin_without_current(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
-            f"/api/users/{self.other_admin.id}/change-password",
+            f"/api/users/{self.other_admin.id}/admin-reset-password",
             {"newPassword": "AnotherStrongPass123!"},
             format="json",
         )
@@ -729,7 +723,7 @@ class UserManagementEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.post(
             f"/api/users/{self.admin.id}/change-password",
-            {"newPassword": "AnotherStrongPass123!"},
+            {"currentPassword": "StrongPass123!", "newPassword": "AnotherStrongPass123!"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -747,7 +741,7 @@ class UserManagementEndpointTests(APITestCase):
     def test_admin_reset_rejects_same_password_as_current_target_password(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
-            f"/api/users/{self.member.id}/change-password",
+            f"/api/users/{self.member.id}/admin-reset-password",
             {"newPassword": "StrongPass123!"},
             format="json",
         )
@@ -2348,10 +2342,10 @@ class IssueWorkflowEndpointTests(APITestCase):
             ).exists()
         )
 
-    def test_issue_details_endpoint_updates_tags_and_fields(self):
+    def test_issue_patch_endpoint_updates_tags_and_fields(self):
         self.client.force_authenticate(user=self.member)
         response = self.client.patch(
-            f"/api/issues/{self.issue.issue_id}/details",
+            f"/api/issues/{self.issue.issue_id}",
             {
                 "title": "Details endpoint title",
                 "description": "Updated via details endpoint",
@@ -2624,26 +2618,31 @@ class IssueWorkflowEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_issue_delete_requires_title_confirmation(self):
+    def test_issue_delete_does_not_require_request_body(self):
         self.client.force_authenticate(user=self.admin)
-        no_confirm = self.client.delete(
+        no_body = self.client.delete(
             f"/api/issues/{self.issue.issue_id}", format="json"
         )
-        self.assertEqual(no_confirm.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(no_body.status_code, status.HTTP_204_NO_CONTENT)
 
-        wrong_confirm = self.client.delete(
-            f"/api/issues/{self.issue.issue_id}",
+    def test_issue_delete_ignores_legacy_request_body_if_sent(self):
+        extra_issue = Issue.objects.create(
+            project=self.project,
+            reporter=self.admin,
+            title="Legacy delete body ignored",
+            description="desc",
+            issue_type="BUG",
+            status=IssueStatus.TODO,
+            priority="MEDIUM",
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(
+            f"/api/issues/{extra_issue.issue_id}",
             {"title": "wrong"},
             format="json",
         )
-        self.assertEqual(wrong_confirm.status_code, status.HTTP_400_BAD_REQUEST)
-
-        ok_confirm = self.client.delete(
-            f"/api/issues/{self.issue.issue_id}",
-            {"title": self.issue.title},
-            format="json",
-        )
-        self.assertEqual(ok_confirm.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     @patch("apps.bugboardapi.modules.issues.commands.notify_issue_updated")
     def test_issue_delete_does_not_emit_issue_updated_notification(self, mock_notify_issue_updated):
@@ -2667,7 +2666,6 @@ class IssueWorkflowEndpointTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.delete(
             f"/api/issues/{self.issue.issue_id}",
-            {"title": self.issue.title},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)

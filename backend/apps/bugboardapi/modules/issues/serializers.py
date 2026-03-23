@@ -1,9 +1,11 @@
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
 from ...common.media import build_media_url
 from ...roles import is_admin_user
 from ..tags.serializers import TagSerializer
 from ..tags.services import validate_existing_tag_ids
+from ..projects.serializers import ProjectMembershipSerializer
 from ..users.serializers import UserReadSerializer
 from .mutations import (
     create_issue_from_validated_data,
@@ -51,6 +53,17 @@ class IssueSerializer(serializers.ModelSerializer):
             "tags",
         ]
 
+    @extend_schema_field(
+        inline_serializer(
+            name="IssueAssignee",
+            fields={
+                "userId": serializers.IntegerField(),
+                "username": serializers.CharField(),
+                "profileImg": serializers.CharField(allow_blank=True, allow_null=True),
+            },
+            many=True,
+        )
+    )
     def get_assignees(self, obj):
         return [
             {
@@ -110,5 +123,10 @@ class AttachmentSerializer(serializers.ModelSerializer):
         model = Attachment
         fields = ["attachmentId", "updateId", "originalName", "path", "url", "mimeType", "size", "uploadedAt"]
 
-    def get_url(self, obj):
+    @extend_schema_field(serializers.CharField())
+    def get_url(self, obj) -> str:
         return build_media_url(obj.path)
+
+
+class IssueSuggestionSerializer(ProjectMembershipSerializer):
+    openCount = serializers.IntegerField()

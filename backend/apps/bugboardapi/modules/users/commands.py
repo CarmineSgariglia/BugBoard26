@@ -13,8 +13,9 @@ from ...security.passwords import ensure_valid_password
 from ...security.token_sessions import set_password_and_invalidate_sessions
 from ...security.uploads import compress_image_upload, store_upload, validate_profile_image
 from .policies import (
+    validate_admin_password_reset_request,
+    validate_self_password_change_request,
     ensure_can_upload_profile_image,
-    validate_password_change_request,
     validate_status_change_request,
 )
 from .profile_models import UserProfileImage
@@ -77,19 +78,27 @@ def set_user_status(*, actor: User, target_user: User, active):
     return User.objects.get(id=target_user.id)
 
 
-def change_user_password(*, actor: User, target_user_id, payload: dict):
+def change_user_password(*, actor: User, target_user_id, payload: dict, mode: str):
     user = User.objects.filter(id=target_user_id).first()
     if user is None:
         raise NotFound("User not found")
 
-    current_password = payload.get("currentPassword", "") or ""
     new_password = payload["newPassword"]
-    validate_password_change_request(
-        actor=actor,
-        target_user=user,
-        current_password=current_password,
-        new_password=new_password,
-    )
+    if mode == "self-service":
+        validate_self_password_change_request(
+            actor=actor,
+            target_user=user,
+            current_password=payload.get("currentPassword", "") or "",
+            new_password=new_password,
+        )
+    elif mode == "admin-reset":
+        validate_admin_password_reset_request(
+            actor=actor,
+            target_user=user,
+            new_password=new_password,
+        )
+    else:
+        raise ValueError(f"Unsupported password change mode: {mode}")
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
     with transaction.atomic():

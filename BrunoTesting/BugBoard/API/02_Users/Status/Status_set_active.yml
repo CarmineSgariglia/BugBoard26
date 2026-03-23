@@ -5,7 +5,7 @@ info:
 
 http:
   method: PATCH
-  url: "{{baseURL}}/users/{{target_user_id}}"
+  url: "{{baseURL}}/users/3"
   body:
     type: json
     data: '{"active" : true}'

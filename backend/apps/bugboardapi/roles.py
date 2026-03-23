@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.contrib.auth.models import Group, User
+# This module defines global role management for the BugBoard application, including role definitions, assignment, and retrieval based on Django's built-in Group model and user permissions.
 
 __all__ = (
     "ADMIN_GROUP_NAME",
@@ -12,6 +13,7 @@ __all__ = (
 )
 
 # Global roles are implemented as Django groups, and the staff flag is used to allow access to the admin site for users with the admin role.
+
 ADMIN_GROUP_NAME = "admin"
 DEVELOPER_GROUP_NAME = "developer"
 GLOBAL_ROLE_NAMES = frozenset({ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME})
@@ -22,6 +24,7 @@ GLOBAL_ROLE_CHOICES = (
 )
 
 # returns the set of group names that the user belongs to. This is used to determine the user's global role based on their group memberships.
+
 def _user_group_names(user: User) -> set[str]:
     prefetched_groups = getattr(user, "_prefetched_objects_cache", {}).get("groups")
     if prefetched_groups is not None:
@@ -38,6 +41,10 @@ def _group_role_for_names(group_names: set[str]) -> str | None:
             return role_name
     return None
 
+'''
+returns the global role name for the user, or None if the user doesn't have a global role. This is used to determine the user's global role based on their group memberships and superuser status
+'''
+
 def get_global_role(user: User | None) -> str | None:
     if user is None:
         return None
@@ -48,6 +55,9 @@ def get_global_role(user: User | None) -> str | None:
 
     return _group_role_for_names(_user_group_names(user))
 
+'''
+Assigns the specified global role to the user by adding them to the corresponding group and updating their staff status if necessary. This is used to manage the user's global role and permissions.
+'''
 
 def assign_global_role(user: User, role_name: str) -> None:
     if role_name not in GLOBAL_ROLE_NAMES:
@@ -61,6 +71,6 @@ def assign_global_role(user: User, role_name: str) -> None:
         user.is_staff = desired_is_staff
         user.save(update_fields=["is_staff"])
 
-
+# Returns True if the user has the admin global role, False otherwise. This is used to check if the user has admin permissions based on their global role.
 def is_admin_user(user: User | None) -> bool:
     return get_global_role(user) == ADMIN_GROUP_NAME

@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import logging
 
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework import serializers
 
 from ...permissions import check_admin, ensure_project_access, filter_by_project_access
 from .membership import (
@@ -25,6 +27,12 @@ from .serializers import ProjectMembershipSerializer, ProjectSerializer
 logger = logging.getLogger(__name__)
 
 
+subscription_state_serializer = inline_serializer(
+    name="ProjectSubscriptionState",
+    fields={"subscribed": serializers.BooleanField()},
+)
+
+
 def _extract_team_payload(data):
     payload = data.copy()
     has_team_payload = "team" in payload or "userIds" in payload
@@ -34,6 +42,17 @@ def _extract_team_payload(data):
     return payload, raw_user_ids, has_team_payload
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Projects"],
+        parameters=[OpenApiParameter("q", str, OpenApiParameter.QUERY)],
+    ),
+    retrieve=extend_schema(tags=["Projects"]),
+    create=extend_schema(tags=["Projects"]),
+    partial_update=extend_schema(tags=["Projects"]),
+    update=extend_schema(tags=["Projects"]),
+    destroy=extend_schema(tags=["Projects"], responses={204: OpenApiResponse(description="Project deleted")}),
+)
 class ProjectViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -88,6 +107,11 @@ class ProjectViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get"], url_path="members")
+    @extend_schema(
+        tags=["Projects"],
+        parameters=[OpenApiParameter("includeAdmins", bool, OpenApiParameter.QUERY)],
+        responses=ProjectMembershipSerializer(many=True),
+    )
     def members(self, request, *args, **kwargs):
         project = self.get_object()
         ensure_project_access(request.user, project)
@@ -96,6 +120,16 @@ class ProjectViewSet(
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
     @action(detail=True, methods=["get", "post", "delete"], url_path="subscription")
+    @extend_schema(
+        tags=["Projects"],
+        summary="Project subscription",
+        description="Phase 1 accepted admin subscription endpoint.",
+        request=None,
+        responses={
+            200: subscription_state_serializer,
+            204: OpenApiResponse(description="Subscription updated"),
+        },
+    )
     def subscription(self, request, *args, **kwargs):
         check_admin(request.user)
         project = self.get_object()

@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -26,9 +27,15 @@ from ...security.token_sessions import (
 from ..auth.password_reset import issue_otp_for_email, reset_password_with_otp, verify_otp
 from ..users.serializers import UserReadSerializer
 from .serializers import (
+    CSRFTokenResponseSerializer,
+    DetailResponseSerializer,
+    LoginRequestSerializer,
+    LoginResponseSerializer,
     PasswordOTPRequestSerializer,
+    PasswordOTPVerifyResponseSerializer,
     PasswordOTPVerifySerializer,
     PasswordResetSerializer,
+    RefreshResponseSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,6 +74,12 @@ class CSRFTokenView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Get CSRF token",
+        description="Phase 1 compatibility endpoint for CSRF bootstrap.",
+        responses=CSRFTokenResponseSerializer,
+    )
     def get(self, request):
         return Response({"csrfToken": get_token(request)})
 
@@ -77,6 +90,13 @@ class LoginView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "login"
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Create session",
+        description="Phase 1 compatibility endpoint. Returns an access token and sets the refresh token in an HTTP-only cookie.",
+        request=LoginRequestSerializer,
+        responses={200: LoginResponseSerializer, 401: DetailResponseSerializer},
+    )
     def post(self, request):
         email = request.data.get("email", "").strip()
         password = request.data.get("password", "")
@@ -103,6 +123,13 @@ class RefreshView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = [CSRFAwareSessionAuthentication]
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Refresh access token",
+        description="Phase 1 compatibility endpoint. Reads the refresh token from the HTTP-only cookie.",
+        request=None,
+        responses={200: RefreshResponseSerializer, 401: DetailResponseSerializer},
+    )
     def post(self, request):
         refresh_token = request.COOKIES.get(_refresh_cookie_name())
         if not refresh_token:
@@ -131,6 +158,13 @@ class LogoutView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = [CSRFAwareSessionAuthentication]
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Logout",
+        description="Phase 1 compatibility endpoint. Revokes the current server-side JWT session and clears the refresh cookie.",
+        request=None,
+        responses={204: OpenApiResponse(description="Logged out")},
+    )
     def post(self, request):
         refresh_token = request.COOKIES.get(_refresh_cookie_name())
         if refresh_token:
@@ -149,6 +183,12 @@ class LogoutView(APIView):
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Get current user",
+        description="Phase 1 compatibility endpoint for the authenticated user profile.",
+        responses=UserReadSerializer,
+    )
     def get(self, request):
         get_token(request)
         return Response(UserReadSerializer(request.user, context={"request": request}).data)
@@ -160,6 +200,13 @@ class PasswordOTPRequestView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "otp"
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Request password reset OTP",
+        description="Phase 1 compatibility endpoint for OTP-based password reset.",
+        request=PasswordOTPRequestSerializer,
+        responses=DetailResponseSerializer,
+    )
     def post(self, request):
         serializer = PasswordOTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -174,6 +221,13 @@ class PasswordOTPVerifyView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "otp"
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Verify password reset OTP",
+        description="Phase 1 compatibility endpoint for OTP verification.",
+        request=PasswordOTPVerifySerializer,
+        responses=PasswordOTPVerifyResponseSerializer,
+    )
     def post(self, request):
         serializer = PasswordOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -191,6 +245,13 @@ class PasswordResetView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "otp"
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Reset password with OTP",
+        description="Phase 1 compatibility endpoint for OTP-based password reset.",
+        request=PasswordResetSerializer,
+        responses={200: DetailResponseSerializer, 400: DetailResponseSerializer},
+    )
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

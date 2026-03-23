@@ -100,7 +100,7 @@ describe("feature issues api module", () => {
       issueId: 6,
       title: "details",
     });
-    expect(patchMock).toHaveBeenCalledWith("/issues/6/details", { title: "details" });
+    expect(patchMock).toHaveBeenCalledWith("/issues/6", { title: "details" });
   });
 
   it("updates issue basic fields", async () => {

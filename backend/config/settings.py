@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
     "apps.bugboardapi",
 ]
 
@@ -217,6 +218,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.bugboardapi.security.authentication.RevocableJWTAuthentication",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -231,6 +233,19 @@ REST_FRAMEWORK = {
         "login": "20/min",
         "otp": "10/min",
     },
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "BugBoard26 API",
+    "DESCRIPTION": (
+        "Canonical Phase 1 API surface for BugBoard26. "
+        "JWT session revocation remains enabled as an intentional security exception."
+    ),
+    "VERSION": "1.0.0-phase1",
+    "OAS_VERSION": "3.0.3",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": r"/api",
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 AUTH_REFRESH_COOKIE_NAME = os.getenv("AUTH_REFRESH_COOKIE_NAME", "bugboard_refresh")

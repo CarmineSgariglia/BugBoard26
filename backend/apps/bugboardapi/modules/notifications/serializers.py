@@ -38,12 +38,3 @@ class NotificationsPageSerializer(serializers.Serializer):
 
 class NotificationReadAllResponseSerializer(serializers.Serializer):
     updated = serializers.IntegerField()
-
-
-class NotificationPatchSerializer(serializers.Serializer):
-    isRead = serializers.BooleanField()
-
-    def validate_isRead(self, value: bool) -> bool:
-        if value is not True:
-            raise serializers.ValidationError("Only `true` is supported")
-        return value

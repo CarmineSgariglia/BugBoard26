@@ -191,7 +191,7 @@ class FrontendContractTests(APITestCase):
     def test_admin_reset_other_user_password_contract(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
-            f"/api/users/{self.member.id}/change-password",
+            f"/api/users/{self.member.id}/admin-reset-password",
             {"newPassword": "AdminResetPass123!"},
             format="json",
         )
