@@ -132,7 +132,7 @@ jobs:
           key: ${{ secrets.PROD_VM_SSH_PRIVATE_KEY }}
           port: ${{ vars.PROD_VM_PORT || 22 }}
           target: ${{ env.PROD_VM_APP_DIR }}
-          source: "docker-compose.release.yml,nginx,scripts/deploy_prod.sh"
+          source: "docker-compose.prod.yml,nginx,scripts/deploy_prod.sh"
           overwrite: true
 
       - name: Run deployment on VM
