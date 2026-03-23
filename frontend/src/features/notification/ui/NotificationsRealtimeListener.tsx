@@ -3,11 +3,8 @@ import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 
-import { getAccessToken } from "@shared/api/core/client";
-import { refreshApi } from "@features/auth/api";
 import {
   deleteNotificationApi,
-  getNotificationsStreamUrl,
   listNotificationsApi,
   notificationsPollingIntervalMs,
   notificationsPageSize,
@@ -22,9 +19,7 @@ import {
   prependNotificationToInfiniteData,
   updateNotificationsInfiniteData,
 } from "@features/notification/lib/notifications";
-import { getLatestNotificationId } from "@features/notification/lib/notificationsRealtime";
 import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
-import { createSseParser } from "@shared/lib/sse";
 import { useAuth } from "@features/auth";
 import { useToast } from "@shared/providers";
 import { consumeOwnProjectRemovalNotificationSuppression } from "@features/project/lib/notificationSuppression";
@@ -38,8 +33,7 @@ import { resolveMediaUrl } from "@shared/api/core/media";
 import { isRequestAbortError } from "@shared/api";
 import type { Project } from "@shared/api/types/projects";
 import type { Issue } from "@shared/api/types/issues";
-
-const STREAM_RETRY_DELAYS_MS = [1000, 2000, 5000, 10000, 20000];
+import { useNotificationsStream } from "@features/notification/lib/useNotificationsStream";
 
 type RouteTarget =
   | { kind: "issue"; issueId: number }
@@ -52,38 +46,36 @@ function parsePositiveInt(value: string | undefined): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function getRouteTarget(pathname: string): RouteTarget {
+function getRouteContext(pathname: string): {
+  routeProjectId: number | null;
+  routeTarget: RouteTarget;
+} {
   const issueMatch = matchPath("/projects/:projectId/issues/:issueId", pathname);
   if (issueMatch) {
+    const routeProjectId = parsePositiveInt(issueMatch.params.projectId);
     const issueId = parsePositiveInt(issueMatch.params.issueId);
-    if (issueId != null) {
-      return { kind: "issue", issueId };
-    }
+
+    return {
+      routeProjectId,
+      routeTarget: issueId != null ? { kind: "issue", issueId } : { kind: "none" },
+    };
   }
 
   const projectMatch = matchPath("/projects/:projectId/issues", pathname);
   if (projectMatch) {
-    const projectId = parsePositiveInt(projectMatch.params.projectId);
-    if (projectId != null) {
-      return { kind: "project", projectId };
-    }
+    const routeProjectId = parsePositiveInt(projectMatch.params.projectId);
+
+    return {
+      routeProjectId,
+      routeTarget:
+        routeProjectId != null ? { kind: "project", projectId: routeProjectId } : { kind: "none" },
+    };
   }
 
-  return { kind: "none" };
-}
-
-function getRouteProjectId(pathname: string): number | null {
-  const issueMatch = matchPath("/projects/:projectId/issues/:issueId", pathname);
-  if (issueMatch) {
-    return parsePositiveInt(issueMatch.params.projectId);
-  }
-
-  const projectMatch = matchPath("/projects/:projectId/issues", pathname);
-  if (projectMatch) {
-    return parsePositiveInt(projectMatch.params.projectId);
-  }
-
-  return null;
+  return {
+    routeProjectId: null,
+    routeTarget: { kind: "none" },
+  };
 }
 
 function matchesRouteTarget(notification: NotificationItem, routeTarget: RouteTarget): boolean {
@@ -124,7 +116,10 @@ function mergeIssueIntoProjectIssues(
   currentIssues: Issue[] | undefined,
   nextIssue: Issue,
 ): Issue[] {
-  return [...(currentIssues ?? []).filter((issue) => issue.issueId !== nextIssue.issueId), nextIssue];
+  return [
+    ...(currentIssues ?? []).filter((issue) => issue.issueId !== nextIssue.issueId),
+    nextIssue,
+  ];
 }
 
 export function NotificationsRealtimeListener() {
@@ -137,8 +132,10 @@ export function NotificationsRealtimeListener() {
   const projectHydrationControllersRef = useRef(new Map<number, AbortController>());
   const issueHydrationControllersRef = useRef(new Map<number, AbortController>());
 
-  const routeTarget = useMemo(() => getRouteTarget(location.pathname), [location.pathname]);
-  const routeProjectId = useMemo(() => getRouteProjectId(location.pathname), [location.pathname]);
+  const { routeProjectId, routeTarget } = useMemo(
+    () => getRouteContext(location.pathname),
+    [location.pathname],
+  );
 
   const { data, isSuccess } = useInfiniteQuery({
     queryKey: notificationsQueryKey,
@@ -348,166 +345,23 @@ export function NotificationsRealtimeListener() {
   useEffect(() => {
     if (!user) {
       queryClient.removeQueries({ queryKey: notificationsQueryKey });
-      return;
     }
-
-    if (!isSuccess) {
-      return;
-    }
-
-    let stopped = false;
-    let retryIndex = 0;
-    let reconnectTimer: number | null = null;
-    let abortController: AbortController | null = null;
-
-    const clearReconnectTimer = () => {
-      if (reconnectTimer !== null) {
-        window.clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
-    };
-
-    const resolveStreamToken = async (): Promise<string | null> => {
-      const currentToken = getAccessToken();
-      if (currentToken) {
-        return currentToken;
-      }
-
-      try {
-        return await refreshApi();
-      } catch {
-        await refreshUser();
-        return null;
-      }
-    };
-
-    const scheduleReconnect = (connect: () => Promise<void>) => {
-      if (stopped) {
-        return;
-      }
-
-      const delayIndex = Math.min(retryIndex, STREAM_RETRY_DELAYS_MS.length - 1);
-      const baseDelay = STREAM_RETRY_DELAYS_MS[delayIndex];
-      retryIndex = Math.min(retryIndex + 1, STREAM_RETRY_DELAYS_MS.length - 1);
-      const jitter = Math.floor(Math.random() * 250);
-      reconnectTimer = window.setTimeout(() => {
-        void connect();
-      }, baseDelay + jitter);
-    };
-
-    const connect = async (allowAuthRetry = true) => {
-      if (stopped) {
-        return;
-      }
-
-      clearReconnectTimer();
-
-      const token = await resolveStreamToken();
-      if (!token || stopped) {
-        return;
-      }
-
-      const latestNotificationId = getLatestNotificationId(
-        flattenNotificationsPages(
-          queryClient.getQueryData<InfiniteData<NotificationsPage>>(notificationsQueryKey),
-        ),
-      );
-
-      const headers = new Headers({
-        Authorization: `Bearer ${token}`,
-      });
-
-      if (latestNotificationId > 0) {
-        headers.set("Last-Event-ID", String(latestNotificationId));
-      }
-
-      abortController?.abort();
-      abortController = new AbortController();
-
-      let response: Response;
-
-      try {
-        response = await fetch(getNotificationsStreamUrl(), {
-          method: "GET",
-          headers,
-          cache: "no-store",
-          credentials: "include",
-          signal: abortController.signal,
-        });
-      } catch {
-        if (!stopped && !abortController.signal.aborted) {
-          scheduleReconnect(() => connect());
-        }
-        return;
-      }
-
-      if (response.status === 401 && allowAuthRetry) {
-        try {
-          await refreshApi();
-        } catch {
-          await refreshUser();
-          return;
-        }
-        await connect(false);
-        return;
-      }
-
-      if (!response.ok || !response.body) {
-        scheduleReconnect(() => connect());
-        return;
-      }
-
-      retryIndex = 0;
-
-      const parser = createSseParser((message) => {
-        if (message.event !== "notification.created") {
-          return;
-        }
-
-        try {
-          handleNotificationCreated(JSON.parse(message.data) as NotificationItem);
-        } catch (error) {
-          console.error("Failed to parse notification stream message", error);
-        }
-      });
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      try {
-        while (!stopped) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          if (value) {
-            parser(decoder.decode(value, { stream: true }));
-          }
-        }
-        parser(decoder.decode());
-      } catch {
-        if (stopped || abortController.signal.aborted) {
-          return;
-        }
-      }
-
-      if (!stopped && !abortController.signal.aborted) {
-        scheduleReconnect(() => connect());
-      }
-    };
-
-    void connect();
 
     return () => {
-      stopped = true;
-      clearReconnectTimer();
-      abortController?.abort();
       projectHydrationControllersRef.current.forEach((controller) => controller.abort());
       issueHydrationControllersRef.current.forEach((controller) => controller.abort());
       projectHydrationControllersRef.current.clear();
       issueHydrationControllersRef.current.clear();
     };
-  }, [isSuccess, navigate, queryClient, refreshUser, routeProjectId, user]);
+  }, [queryClient, user]);
+
+  useNotificationsStream({
+    enabled: Boolean(user) && isSuccess,
+    userId: user?.userId ?? null,
+    queryClient,
+    refreshUser,
+    onNotificationCreated: handleNotificationCreated,
+  });
 
   return null;
 }
