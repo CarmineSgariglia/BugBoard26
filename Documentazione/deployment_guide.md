@@ -68,15 +68,15 @@ sudo certbot certonly \
 Una volta emesso il certificato:
 1. verifica che i file esistano in `/opt/bugboard26/certs/live/tuo-dominio.com/`
 2. imposta `NGINX_SERVER_NAME`, `NGINX_SSL_CERT_PATH` e `NGINX_SSL_KEY_PATH` nel `.env`
-3. avvia o aggiorna lo stack con `docker-compose.release.yml`
+3. avvia o aggiorna lo stack con `docker-compose.prod.yml`
 
 ### Rinnovo automatico
 Configura il rinnovo sulla VM host con `systemd timer` o `cron`. Con `certbot renew` in modalità standalone devi liberare temporaneamente la porta `80`, quindi il modo più semplice è fermare solo `web`, rinnovare e poi ricaricare Nginx:
 
 ```bash
 sudo certbot renew \
-  --pre-hook "cd /opt/bugboard26 && docker compose -f docker-compose.release.yml stop web" \
-  --post-hook "cd /opt/bugboard26 && docker compose -f docker-compose.release.yml up -d web && docker compose -f docker-compose.release.yml exec -T web nginx -s reload"
+  --pre-hook "cd /opt/bugboard26 && docker compose -f docker-compose.prod.yml stop web" \
+  --post-hook "cd /opt/bugboard26 && docker compose -f docker-compose.prod.yml up -d web && docker compose -f docker-compose.prod.yml exec -T web nginx -s reload"
 ```
 
 Verifica il flusso senza consumare il rate limit con:
@@ -100,7 +100,7 @@ make prod-up
 ```
 Questo target:
 - builda localmente le immagini `backend` e `web`
-- avvia lo stack con `docker-compose.release.yml`
+- avvia lo stack con `docker-compose.prod.yml`
 - usa lo stesso modello a immagini immutable del deploy reale
 
 Questa modalità usa il realtime in memoria del processo backend ed è quindi compatibile con il contratto di deploy supportato: singola istanza backend e `GUNICORN_WORKERS=1`.
@@ -115,7 +115,7 @@ Per l'ambiente reale la strategia raccomandata non è `git pull` sulla VM:
 
 File principali:
 - `.github/workflows/deploy-prod.yml`
-- `docker-compose.release.yml`
+- `docker-compose.prod.yml`
 - `scripts/deploy_prod.sh`
 
 Segreti/variabili GitHub richiesti:

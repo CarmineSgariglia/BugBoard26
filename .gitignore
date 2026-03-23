@@ -35,4 +35,4 @@ scripts/dev_https_down.sh
 # Media (Uploads)
 backend/media/
 backend/coverage/
-.vscode/settings.json
+.vscode

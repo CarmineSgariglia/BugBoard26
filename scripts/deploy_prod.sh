@@ -11,11 +11,11 @@ cd "${APP_DIR}"
 
 gcloud auth configure-docker "${ARTIFACT_REGISTRY_REGION}-docker.pkg.dev" --quiet
 
-BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.release.yml pull
+BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.prod.yml pull
 
-BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.release.yml up -d --remove-orphans
+BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.release.yml exec -T backend python manage.py migrate --noinput
-BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.release.yml exec -T backend python manage.py collectstatic --noinput
+BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+BACKEND_IMAGE="${BACKEND_IMAGE}" WEB_IMAGE="${WEB_IMAGE}" docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
 
 docker image prune -af

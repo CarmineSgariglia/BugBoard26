@@ -10,7 +10,7 @@ Containerized three-tier architecture:
 - `frontend/`: React + TypeScript + Tailwind app
 - `backend/`: Django REST API app
 - `docker-compose.yml`: Orchestrates all tiers
-- `docker-compose.release.yml`: Immutable-image production release definition for VM deploys
+- `docker-compose.prod.yml`: Immutable-image production definition for VM deploys
 - `env/dev.example`: Local development environment template
 - `BrunoTesting/env/bruno-safe.ci.env`: Safe CI environment for Bruno and CI workflows
 - `env/production.example`: Production environment template
@@ -85,8 +85,8 @@ Notes:
   - production must never rely on `git pull` or local `docker compose build`
 - Start a production-like stack locally with:
   - `make prod-up`
-- Validate the release compose with sample production values:
-  - `make release-config`
+- Validate the production compose with sample production values:
+  - `make prod-config`
 - Exposed ports in production:
   - `80` and `443` on the `web` service only
 - TLS certificates are managed on the VM host with Let's Encrypt / `certbot` and mounted into `web` from `${SSL_CERTS_HOST_PATH}`.

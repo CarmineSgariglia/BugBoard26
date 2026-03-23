@@ -5,7 +5,7 @@ COMPOSE_PROXY := docker compose --profile proxy
 PROD_BACKEND_IMAGE ?= bugboard26/backend:local-prod
 PROD_WEB_IMAGE ?= bugboard26/web:local-prod
 
-.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend prod-up prod-down backend-test backend-coverage frontend-test frontend-coverage release-config
+.PHONY: backend frontend all https https-down stop logs shell-backend shell-frontend prod-up prod-down backend-test backend-coverage frontend-test frontend-coverage prod-config
 
 # Start just the backend service (also brings up database dependency)
 backend:
@@ -59,16 +59,16 @@ frontend-test:
 frontend-coverage:
 	$(COMPOSE) -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage
 
-# Start production-like stack using the immutable-image release compose
+# Start production-like stack using the immutable-image production compose
 prod-up:
 	docker build -t $(PROD_BACKEND_IMAGE) ./backend
 	docker build -t $(PROD_WEB_IMAGE) -f nginx/Dockerfile .
-	BACKEND_IMAGE=$(PROD_BACKEND_IMAGE) WEB_IMAGE=$(PROD_WEB_IMAGE) $(COMPOSE) -f docker-compose.release.yml up -d
+	BACKEND_IMAGE=$(PROD_BACKEND_IMAGE) WEB_IMAGE=$(PROD_WEB_IMAGE) $(COMPOSE) -f docker-compose.prod.yml up -d
 
 # Stop production-like stack
 prod-down:
-	BACKEND_IMAGE=$(PROD_BACKEND_IMAGE) WEB_IMAGE=$(PROD_WEB_IMAGE) $(COMPOSE) -f docker-compose.release.yml down
+	BACKEND_IMAGE=$(PROD_BACKEND_IMAGE) WEB_IMAGE=$(PROD_WEB_IMAGE) $(COMPOSE) -f docker-compose.prod.yml down
 
-# Validate the release compose definition with sample production env values
-release-config:
-	BACKEND_IMAGE=example.com/bugboard/backend:local WEB_IMAGE=example.com/bugboard/web:local $(COMPOSE) --env-file env/production.example -f docker-compose.release.yml config >/dev/null
+# Validate the production compose definition with sample production env values
+prod-config:
+	BACKEND_IMAGE=example.com/bugboard/backend:local WEB_IMAGE=example.com/bugboard/web:local $(COMPOSE) --env-file env/production.example -f docker-compose.prod.yml config >/dev/null
