@@ -12,6 +12,6 @@ describe("help helpers", () => {
 
     handleGetHelp();
 
-    expect(locationMock.href).toBe("mailto:admin@bugboard.com");
+    expect(locationMock.href).toBe("mailto:support@bugboard.it");
   });
 });
