@@ -1,0 +1,45 @@
+info:
+  name: Get_auth
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/notifications/{{notify_user_id}}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Get notification returns 200", function () {
+          const notifyUserId = String(bru.getEnvVar("notify_user_id") || "");
+          const invalidId = String(bru.getEnvVar("invalid_id") || "999999");
+          if (notifyUserId === invalidId) {
+            expect(res.getStatus()).to.equal(404);
+          } else {
+            expect(res.getStatus()).to.equal(200);
+          }
+        });
+
+        test("Get notification payload has expected shape", function () {
+          const notifyUserId = String(bru.getEnvVar("notify_user_id") || "");
+          const invalidId = String(bru.getEnvVar("invalid_id") || "999999");
+          if (notifyUserId === invalidId) {
+            return;
+          }
+          const body = res.getBody();
+          expect(body.notifyUserId).to.equal(Number(bru.getEnvVar("notify_user_id")));
+          expect(body).to.have.property("notificationId");
+          expect(body).to.have.property("type");
+          expect(body).to.have.property("createdAt");
+          expect(body).to.have.property("issueId");
+          expect(body).to.have.property("projectId");
+          expect(body).to.have.property("isRead");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

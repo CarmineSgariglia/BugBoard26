@@ -1,0 +1,26 @@
+info:
+  name: Events_post_missing_message
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseURL}}/issues/{{issue_id}}/events"
+  body:
+    type: json
+    data: '{"message":""}'
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Issue event comment requires message", function () {
+          expect([400, 403]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

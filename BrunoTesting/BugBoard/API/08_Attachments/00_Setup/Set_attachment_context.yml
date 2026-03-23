@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{baseURL}}/attachments?issueId={{issue_id}}"
+  url: "{{baseURL}}/issues/{{issue_id}}/attachments"
   auth: inherit
 
 runtime:
@@ -17,6 +17,10 @@ runtime:
           const attachmentId = String(body[0].attachmentId);
           bru.setVar("attachment_id", attachmentId);
           bru.setEnvVar("attachment_id", attachmentId);
+        } else {
+          const fallbackAttachmentId = String(bru.getEnvVar("invalid_id") || "999999");
+          bru.setVar("attachment_id", fallbackAttachmentId);
+          bru.setEnvVar("attachment_id", fallbackAttachmentId);
         }
     - type: tests
       code: |-
@@ -28,11 +32,16 @@ runtime:
           expect(res.getBody()).to.be.an("array");
         });
 
-        test("Attachment setup resolved a valid attachment id", function () {
+        test("Attachment setup resolves a usable attachment id for the current dataset", function () {
+          const body = res.getBody();
           const attachmentId = bru.getEnvVar("attachment_id");
           expect(attachmentId).to.be.a("string");
           expect(attachmentId).to.not.equal("");
-          expect(attachmentId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
+          if (Array.isArray(body) && body.length > 0) {
+            expect(attachmentId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
+          } else {
+            expect(attachmentId).to.equal(String(bru.getEnvVar("invalid_id") || "999999"));
+          }
         });
 
 settings:

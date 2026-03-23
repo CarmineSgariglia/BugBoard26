@@ -1,0 +1,31 @@
+info:
+  name: Refresh_no_cookie
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseURL}}/sessions/current/access-token"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        req.setHeader("Cookie", "");
+        req.setHeader("cookie", "");
+        req.setHeader("Authorization", "");
+        req.setHeader("X-CSRFToken", "");
+    - type: tests
+      code: |-
+        test("Refresh without cookie rejected", function () {
+          expect([401, 403]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

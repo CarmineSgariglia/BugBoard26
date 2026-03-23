@@ -19,7 +19,7 @@ request:
 
         if (methodsRequiringCsrf.includes(method)) {
           const jar = bru.cookies.jar();
-          const csrfCookie = await jar.getCookie("{{baseURL}}/auth/csrf", "csrftoken");
+          const csrfCookie = await jar.getCookie("{{baseURL}}/security/csrf-token", "csrftoken");
 
           if (csrfCookie?.value) {
             req.setHeader("X-CSRFToken", csrfCookie.value);

@@ -1,0 +1,30 @@
+info:
+  name: Delete_current_no_auth
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/sessions/current"
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        req.setHeader("Authorization", "");
+        req.setHeader("X-CSRFToken", "");
+        req.setHeader("cookie", "");
+    - type: tests
+      code: |-
+        test("Logout without session is rejected or no-op", function () {
+          expect([204, 403]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

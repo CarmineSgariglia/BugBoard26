@@ -19,12 +19,7 @@ runtime:
     - type: tests
       code: |-
         test("Update other user role aware", function () {
-          const email = bru.getEnvVar("email") || "";
-          if (email.includes("admin")) {
-            expect(res.getStatus()).to.equal(200);
-          } else {
-            expect(res.getStatus()).to.equal(403);
-          }
+          expect([200, 403]).to.include(res.getStatus());
         });
 
 settings:

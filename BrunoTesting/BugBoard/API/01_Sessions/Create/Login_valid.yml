@@ -1,0 +1,44 @@
+info:
+  name: Create_valid
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseURL}}/sessions"
+  body:
+    type: json
+    data: '{"email":"{{email}}","password":"{{password}}"}'
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const body = res.getBody();
+        if (body?.accessToken) {
+          bru.setEnvVar("access_token", body.accessToken, { persist: true });
+        }
+        if (body?.user?.userId) {
+          const currentUserId = String(body.user.userId);
+          bru.setVar("current_user_id", currentUserId);
+          bru.setEnvVar("current_user_id", currentUserId);
+        }
+    - type: tests
+      code: |-
+        test("Login status is 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Login returns accessToken", function () {
+          const body = res.getBody();
+          expect(body).to.have.property("accessToken");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

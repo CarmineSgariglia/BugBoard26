@@ -1,0 +1,23 @@
+info:
+  name: Delete_current_auth
+  type: http
+  seq: 1
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/sessions/current"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Logout returns 204", function () {
+          expect(res.getStatus()).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

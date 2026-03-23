@@ -5,16 +5,10 @@ info:
 
 http:
   method: POST
-  url: "{{baseURL}}/auth/login"
+  url: "{{baseURL}}/sessions"
   body:
-    type: multipart-form
-    data:
-      - name: email
-        type: text
-        value: "{{email}}"
-      - name: password
-        type: text
-        value: "{{password}}"
+    type: json
+    data: '{"email":"{{email}}","password":"{{password}}"}'
   auth:
     type: bearer
     token: ""
@@ -24,19 +18,36 @@ runtime:
     - type: before-request
       code: |-
         const jar = bru.cookies.jar();
-          const csrfCookie = await jar.getCookie("{{baseURL}}/auth/csrf", "csrftoken");
+        const csrfCookie = await jar.getCookie("{{baseURL}}/security/csrf-token", "csrftoken");
 
-          if (csrfCookie?.value) {
-            req.setHeader("X-CSRFToken", csrfCookie.value);
-          }
+        if (csrfCookie?.value) {
+          req.setHeader("X-CSRFToken", csrfCookie.value);
+        }
     - type: after-response
       code: |-
         const body = res.getBody();
 
         if (body?.accessToken) {
           bru.setEnvVar("access_token", body.accessToken, { persist: true });
-          console.log(body.accessToken);
         }
+
+        if (body?.user?.userId) {
+          const currentUserId = String(body.user.userId);
+          bru.setVar("current_user_id", currentUserId);
+          bru.setEnvVar("current_user_id", currentUserId);
+        }
+    - type: tests
+      code: |-
+        test("Login returns 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Login returns access token and user payload", function () {
+          const body = res.getBody();
+          expect(body).to.have.property("accessToken");
+          expect(body).to.have.property("user");
+          expect(body.user).to.have.property("userId");
+        });
 
 settings:
   encodeUrl: true

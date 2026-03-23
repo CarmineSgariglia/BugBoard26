@@ -64,13 +64,13 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm bruno run \
             00_Setup/GetCSRF.yml \
             00_Setup/Login.yml \
-            API/01_Auth/Me/Me_auth.yml \
+            API/02_Users/Me/Me_auth.yml \
             API/02_Users/00_Setup/Set_target_user.yml \
             API/03_Projects/00_Setup/Set_project_context.yml \
             API/03_Projects/ProjectIssues/Issues_list_auth.yml \
             API/04_Issues/00_Setup/Set_issue_context.yml \
             API/04_Issues/Get/Get_auth.yml \
-            API/04_Issues/Updates/Updates_get.yml \
+            API/04_Issues/Events/Updates_get.yml \
             API/04_Issues/Suggestions/Suggestions_get.yml \
             API/05_Notifications/00_Setup/Set_notification_context.yml \
             API/05_Notifications/List/List_auth.yml \

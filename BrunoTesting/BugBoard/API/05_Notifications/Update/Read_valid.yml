@@ -1,0 +1,58 @@
+info:
+  name: Update_valid
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: "{{baseURL}}/notifications/{{notify_user_id}}"
+  body:
+    type: json
+    data: '{"isRead":true}'
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Read single notification status", function () {
+          const notifyUserId = String(bru.getEnvVar("notify_user_id") || "");
+          const invalidId = String(bru.getEnvVar("invalid_id") || "999999");
+          if (notifyUserId === invalidId) {
+            expect(res.getStatus()).to.equal(404);
+          } else {
+            expect(res.getStatus()).to.equal(200);
+          }
+        });
+
+        test("Read single notification marks as read", function () {
+          const notifyUserId = String(bru.getEnvVar("notify_user_id") || "");
+          const invalidId = String(bru.getEnvVar("invalid_id") || "999999");
+          if (notifyUserId === invalidId) {
+            return;
+          }
+          const body = res.getBody();
+          expect(body.notifyUserId).to.equal(Number(bru.getEnvVar("notify_user_id")));
+          expect(body.isRead).to.equal(true);
+        });
+
+        test("Read single notification response shape", function () {
+          const notifyUserId = String(bru.getEnvVar("notify_user_id") || "");
+          const invalidId = String(bru.getEnvVar("invalid_id") || "999999");
+          if (notifyUserId === invalidId) {
+            return;
+          }
+          const body = res.getBody();
+          expect(body).to.have.property("notificationId");
+          expect(body).to.have.property("type");
+          expect(body).to.have.property("createdAt");
+          expect(body).to.have.property("issueId");
+          expect(body).to.have.property("projectId");
+          expect(body).to.have.property("readAt");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

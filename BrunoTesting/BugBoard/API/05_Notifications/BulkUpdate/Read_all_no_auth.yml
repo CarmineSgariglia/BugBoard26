@@ -1,0 +1,30 @@
+info:
+  name: Bulk_update_no_auth
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: "{{baseURL}}/notifications"
+  body:
+    type: json
+    data: '{"isRead":true}'
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        req.setHeader("Authorization", "");
+        req.setHeader("X-CSRFToken", "");
+    - type: tests
+      code: |-
+        test("Read all without auth rejected", function () {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

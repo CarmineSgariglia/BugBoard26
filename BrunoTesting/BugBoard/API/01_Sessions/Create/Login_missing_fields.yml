@@ -1,0 +1,28 @@
+info:
+  name: Create_missing_fields
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseURL}}/sessions"
+  body:
+    type: json
+    data: '{"email":"","password":""}'
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Missing login fields rejected", function () {
+          expect([400, 401]).to.include(res.getStatus());
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

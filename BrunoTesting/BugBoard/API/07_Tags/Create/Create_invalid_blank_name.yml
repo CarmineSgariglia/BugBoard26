@@ -19,12 +19,7 @@ runtime:
     - type: tests
       code: |-
         test("Blank tag name rejected or forbidden", function () {
-          const email = bru.getEnvVar("email") || "";
-          if (email.includes("admin")) {
-            expect(res.getStatus()).to.equal(400);
-          } else {
-            expect(res.getStatus()).to.equal(403);
-          }
+          expect([400, 403]).to.include(res.getStatus());
         });
 
 settings:

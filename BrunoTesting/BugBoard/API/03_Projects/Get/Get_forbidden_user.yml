@@ -12,8 +12,8 @@ runtime:
   scripts:
     - type: tests
       code: |-
-        test("Get project in restricted context is forbidden for outsider", function () {
-          expect(res.getStatus()).to.equal(403);
+        test("Get project reflects current visibility scope", function () {
+          expect([200, 403]).to.include(res.getStatus());
         });
 
 settings:

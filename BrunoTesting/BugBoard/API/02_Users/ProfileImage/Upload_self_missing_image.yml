@@ -1,0 +1,31 @@
+info:
+  name: Upload_self_missing_image
+  type: http
+  seq: 1
+
+http:
+  method: PUT
+  url: "{{baseURL}}/users/me/profile-image"
+  body:
+    type: multipart-form
+    data: []
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Self profile image upload requires a file", function () {
+          expect(res.getStatus()).to.equal(400);
+        });
+
+        test("Self profile image upload returns image validation error", function () {
+          const body = res.getBody();
+          expect(body).to.have.property("image");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

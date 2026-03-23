@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{baseURL}}/auth/csrf"
+  url: "{{baseURL}}/security/csrf-token"
   auth: inherit
 
 runtime:
@@ -13,7 +13,12 @@ runtime:
     - type: tests
       code: |-
         test("csrf endpoint returns success", function () {
-          expect([200, 204]).to.include(res.getStatus());
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("csrf endpoint returns token payload", function () {
+          const body = res.getBody();
+          expect(body).to.have.property("csrfToken");
         });
 
 settings:

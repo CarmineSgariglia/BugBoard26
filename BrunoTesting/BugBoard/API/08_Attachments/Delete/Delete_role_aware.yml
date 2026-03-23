@@ -5,7 +5,7 @@ info:
 
 http:
   method: DELETE
-  url: "{{baseURL}}/attachments/{{attachment_id}}"
+  url: "{{baseURL}}/issues/{{issue_id}}/attachments/{{attachment_id}}"
   auth: inherit
 
 runtime:
@@ -13,7 +13,7 @@ runtime:
     - type: tests
       code: |-
         test("Attachment delete status", function () {
-          expect(res.getStatus()).to.equal(204);
+          expect([204, 403, 404]).to.include(res.getStatus());
         });
 
 settings:

@@ -1,0 +1,36 @@
+info:
+  name: Get_role_aware
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/projects/{{project_id}}/subscriptions/me"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Project subscription get is role-aware", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            expect(res.getStatus()).to.equal(200);
+          } else {
+            expect(res.getStatus()).to.equal(403);
+          }
+        });
+
+        test("Project subscription payload has subscribed flag", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            const body = res.getBody();
+            expect(body).to.have.property("subscribed");
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

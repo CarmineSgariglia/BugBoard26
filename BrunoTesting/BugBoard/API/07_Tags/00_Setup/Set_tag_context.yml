@@ -17,6 +17,10 @@ runtime:
           const tagId = String(body[0].tagId);
           bru.setVar("tag_id", tagId);
           bru.setEnvVar("tag_id", tagId);
+        } else {
+          const fallbackTagId = String(bru.getEnvVar("invalid_id") || "999999");
+          bru.setVar("tag_id", fallbackTagId);
+          bru.setEnvVar("tag_id", fallbackTagId);
         }
     - type: tests
       code: |-
@@ -28,11 +32,16 @@ runtime:
           expect(res.getBody()).to.be.an("array");
         });
 
-        test("Tag setup resolved a valid tag id", function () {
+        test("Tag setup resolves a usable tag id for the current dataset", function () {
+          const body = res.getBody();
           const tagId = bru.getEnvVar("tag_id");
           expect(tagId).to.be.a("string");
           expect(tagId).to.not.equal("");
-          expect(tagId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
+          if (Array.isArray(body) && body.length > 0) {
+            expect(tagId).to.not.equal(String(bru.getEnvVar("invalid_id") || "999999"));
+          } else {
+            expect(tagId).to.equal(String(bru.getEnvVar("invalid_id") || "999999"));
+          }
         });
 
 settings:

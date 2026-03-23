@@ -1,0 +1,7 @@
+info:
+  name: 01_Sessions
+  type: folder
+  seq: 1
+
+request:
+  auth: inherit

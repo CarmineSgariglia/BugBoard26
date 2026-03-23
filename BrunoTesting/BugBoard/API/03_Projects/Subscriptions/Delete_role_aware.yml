@@ -1,0 +1,28 @@
+info:
+  name: Delete_role_aware
+  type: http
+  seq: 3
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/projects/{{project_id}}/subscriptions/me"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Project subscription delete is role-aware", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            expect(res.getStatus()).to.equal(204);
+          } else {
+            expect(res.getStatus()).to.equal(403);
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

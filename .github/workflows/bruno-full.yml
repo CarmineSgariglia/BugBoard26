@@ -55,20 +55,15 @@ jobs:
             00_Setup/Health.yml \
             00_Setup/GetCSRF.yml \
             00_Setup/Login.yml \
-            API/01_Auth/Login/Login_invalid_credentials.yml \
-            API/01_Auth/Login/Login_missing_fields.yml \
-            API/01_Auth/Login/Login_valid.yml \
-            API/01_Auth/Me/Me_auth.yml \
-            API/01_Auth/Me/Me_invalid_token.yml \
-            API/01_Auth/Me/Me_no_auth.yml \
-            API/01_Auth/Refresh/Refresh_valid.yml \
-            API/01_Auth/Refresh/Refresh_no_cookie.yml \
-            API/01_Auth/Logout/Logout_no_auth.yml \
-            API/01_Auth/Logout/Logout_auth.yml \
-            API/01_Auth/PasswordOTP/Otp_request_valid_email.yml \
-            API/01_Auth/PasswordOTP/Otp_verify_invalid_code.yml \
-            API/01_Auth/PasswordOTP/Password_reset_invalid_otp.yml \
+            API/01_Sessions/Create/Login_invalid_credentials.yml \
+            API/01_Sessions/Create/Login_missing_fields.yml \
+            API/01_Sessions/Create/Login_valid.yml \
+            API/01_Sessions/Refresh/Refresh_valid.yml \
+            API/01_Sessions/Refresh/Refresh_no_cookie.yml \
             API/02_Users/00_Setup/Set_target_user.yml \
+            API/02_Users/Me/Me_auth.yml \
+            API/02_Users/Me/Me_invalid_token.yml \
+            API/02_Users/Me/Me_no_auth.yml \
             API/02_Users/List/List_auth.yml \
             API/02_Users/List/List_no_auth.yml \
             API/02_Users/Get/Get_auth.yml \
@@ -80,6 +75,9 @@ jobs:
             API/02_Users/ChangePassword/Change_password_wrong_current.yml \
             API/02_Users/ChangePassword/Change_password_weak.yml \
             API/02_Users/Status/Status_set_active.yml \
+            API/02_Users/AdminPassword/Reset_other_role_aware.yml \
+            API/02_Users/ProfileImage/Upload_self_missing_image.yml \
+            API/02_Users/ProfileImage/Upload_other_role_aware.yml \
             API/03_Projects/00_Setup/Set_project_context.yml \
             API/03_Projects/List/List_auth.yml \
             API/03_Projects/List/List_no_auth.yml \
@@ -90,6 +88,9 @@ jobs:
             API/03_Projects/Members/Members_auth.yml \
             API/03_Projects/Members/Members_no_auth.yml \
             API/03_Projects/Members/Members_not_found.yml \
+            API/03_Projects/Subscriptions/Get_role_aware.yml \
+            API/03_Projects/Subscriptions/Subscribe_role_aware.yml \
+            API/03_Projects/Subscriptions/Delete_role_aware.yml \
             API/03_Projects/Create/Create_valid_admin.yml \
             API/03_Projects/Create/Create_invalid_body.yml \
             API/03_Projects/Create/Create_no_auth.yml \
@@ -107,24 +108,34 @@ jobs:
             API/04_Issues/00_Setup/Set_issue_context.yml \
             API/04_Issues/Get/Get_auth.yml \
             API/04_Issues/Get/Get_no_auth.yml \
-            API/04_Issues/Updates/Updates_get.yml \
-            API/04_Issues/Updates/Updates_post_missing_message.yml \
+            API/04_Issues/Events/Updates_get.yml \
+            API/04_Issues/Events/Updates_post_missing_message.yml \
             API/04_Issues/Suggestions/Suggestions_get.yml \
             API/04_Issues/Update/Update_details_invalid_status.yml \
             API/04_Issues/Status/Status_invalid_value.yml \
             API/04_Issues/Assign/Assign_empty_user_ids.yml \
             API/04_Issues/Unassign/Unassign_empty_user_ids.yml \
+            API/04_Issues/Subscriptions/Get_role_aware.yml \
+            API/04_Issues/Subscriptions/Subscribe_role_aware.yml \
+            API/04_Issues/Subscriptions/Delete_role_aware.yml \
+            API/04_Issues/Stream/Stream_no_auth.yml \
+            API/04_Issues/EventAttachments/Create_not_found.yml \
             API/05_Notifications/00_Setup/Set_notification_context.yml \
             API/05_Notifications/List/List_auth.yml \
             API/05_Notifications/List/List_no_auth.yml \
-            API/05_Notifications/Read/Read_valid.yml \
-            API/05_Notifications/Read/Read_no_auth.yml \
-            API/05_Notifications/Read/Read_not_found.yml \
-            API/05_Notifications/ReadAll/Read_all_auth.yml \
-            API/05_Notifications/ReadAll/Read_all_no_auth.yml \
+            API/05_Notifications/Get/Get_auth.yml \
+            API/05_Notifications/Update/Read_valid.yml \
+            API/05_Notifications/Update/Read_no_auth.yml \
+            API/05_Notifications/Update/Read_not_found.yml \
+            API/05_Notifications/BulkUpdate/Read_all_auth.yml \
+            API/05_Notifications/BulkUpdate/Read_all_no_auth.yml \
             API/05_Notifications/Delete/Delete_no_auth.yml \
             API/05_Notifications/Delete/Delete_not_found.yml \
             API/05_Notifications/Delete/Delete_valid.yml \
+            API/05_Notifications/Stream/Stream_no_auth.yml \
+            API/06_Passwords/ResetFlow/Otp_request_valid_email.yml \
+            API/06_Passwords/ResetFlow/Otp_verify_invalid_code.yml \
+            API/06_Passwords/ResetFlow/Password_reset_invalid_otp.yml \
             API/07_Tags/00_Setup/Set_tag_context.yml \
             API/07_Tags/List/List_auth.yml \
             API/07_Tags/Create/Create_invalid_blank_name.yml \
@@ -139,6 +150,8 @@ jobs:
             API/03_Projects/Delete/Delete_not_found.yml \
             API/03_Projects/Delete/Delete_forbidden_user.yml \
             API/03_Projects/Delete/Delete_valid_admin.yml \
+            API/01_Sessions/DeleteCurrent/Logout_no_auth.yml \
+            API/01_Sessions/DeleteCurrent/Logout_auth.yml \
             --env-file /workspace/BrunoTesting/.tmp/bruno/local_dev_ci.json \
             --reporter-junit /workspace/BrunoTesting/.tmp/bruno-reports/bruno-full.junit.xml \
             --reporter-html /workspace/BrunoTesting/.tmp/bruno-reports/bruno-full.html

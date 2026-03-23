@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{baseURL}}/attachments?issueId={{issue_id}}"
+  url: "{{baseURL}}/issues/{{issue_id}}/attachments"
   auth: inherit
 
 runtime:

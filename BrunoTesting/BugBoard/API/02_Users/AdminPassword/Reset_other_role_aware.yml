@@ -1,0 +1,39 @@
+info:
+  name: Reset_other_role_aware
+  type: http
+  seq: 1
+
+http:
+  method: PUT
+  url: "{{baseURL}}/users/{{target_user_id}}/password"
+  body:
+    type: json
+    data: '{"newPassword":"ResetPass123!"}'
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Admin password reset is role-aware", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            expect(res.getStatus()).to.equal(200);
+          } else {
+            expect(res.getStatus()).to.equal(403);
+          }
+        });
+
+        test("Admin password reset response shape", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            const body = res.getBody();
+            expect(body).to.have.property("detail");
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

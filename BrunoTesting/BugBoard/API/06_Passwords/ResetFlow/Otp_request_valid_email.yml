@@ -1,0 +1,28 @@
+info:
+  name: Request_valid_email
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseURL}}/password-reset-requests"
+  body:
+    type: json
+    data: '{"email":"{{email}}"}'
+  auth:
+    type: bearer
+    token: ""
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("OTP request returns 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

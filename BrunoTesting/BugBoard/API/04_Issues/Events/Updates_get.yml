@@ -1,0 +1,27 @@
+info:
+  name: Events_get
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseURL}}/issues/{{issue_id}}/events"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Issue events get status", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("Issue events get returns array", function () {
+          expect(res.getBody()).to.be.an("array");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

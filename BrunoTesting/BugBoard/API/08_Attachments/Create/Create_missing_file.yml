@@ -5,13 +5,10 @@ info:
 
 http:
   method: POST
-  url: "{{baseURL}}/attachments"
+  url: "{{baseURL}}/issues/{{issue_id}}/attachments"
   body:
     type: multipart-form
-    data:
-      - name: issueId
-        type: text
-        value: "{{issue_id}}"
+    data: []
   auth: inherit
 
 runtime:

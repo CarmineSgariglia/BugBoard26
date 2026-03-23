@@ -1,0 +1,31 @@
+info:
+  name: Upload_other_role_aware
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{baseURL}}/users/{{target_user_id}}/profile-image"
+  body:
+    type: multipart-form
+    data: []
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Admin profile image upload for another user is role-aware", function () {
+          const email = bru.getEnvVar("email") || "";
+          if (email.includes("admin")) {
+            expect(res.getStatus()).to.equal(400);
+          } else {
+            expect(res.getStatus()).to.equal(403);
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
