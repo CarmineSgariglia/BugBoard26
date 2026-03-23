@@ -1,16 +1,9 @@
-import { useCallback, createContext, useContext, type ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { meApi } from "@features/auth/api";
 import type { AuthUser } from "@shared/api/types/auth";
-
-interface AuthContextType {
-  user: AuthUser | null;
-  refreshUser: () => Promise<void>;
-  isLoading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from "./AuthContext";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user = null, isLoading, refetch } = useQuery<AuthUser | null>({
@@ -30,12 +23,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
 
   return <AuthContext.Provider value={{ user, refreshUser, isLoading }}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }

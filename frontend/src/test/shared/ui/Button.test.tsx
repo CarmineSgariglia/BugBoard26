@@ -34,9 +34,7 @@ describe("Button", () => {
     expect(screen.getByText("Loading...")).toBeInTheDocument();
 
     // Try clicking just in case, shouldn't fire
-    try {
-        await user.click(button);
-    } catch {}
+    await user.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });
 
@@ -49,9 +47,7 @@ describe("Button", () => {
     const button = screen.getByRole("button", { name: "Click me" });
     expect(button.hasAttribute("disabled")).toBe(true);
 
-    try {
-        await user.click(button);
-    } catch {}
+    await user.click(button);
     
     expect(onClick).not.toHaveBeenCalled();
   });

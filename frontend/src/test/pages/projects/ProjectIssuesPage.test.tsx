@@ -32,7 +32,7 @@ vi.mock("@features/auth", () => ({
   }),
 }));
 
-vi.mock("@shared/providers/BreadcrumbContext", () => ({
+vi.mock("@shared/providers/useBreadcrumbs", () => ({
   useBreadcrumbs: () => ({
     setLabel: projectIssuesPageState.setLabel,
   }),

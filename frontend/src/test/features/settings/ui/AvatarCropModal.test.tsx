@@ -11,22 +11,32 @@ const { cropProfileImageMock } = vi.hoisted(() => ({
 
 vi.mock("react-easy-crop", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
+  function MockCropper({
+    onCropComplete,
+  }: {
+    onCropComplete?: (
+      _area: unknown,
+      pixels: { x: number; y: number; width: number; height: number }
+    ) => void;
+  }) {
+    React.useEffect(() => {
+      onCropComplete?.(
+        {},
+        {
+          x: 0,
+          y: 0,
+          width: 128,
+          height: 128,
+        }
+      );
+    }, [onCropComplete]);
+
+    return <div data-testid="avatar-cropper" />;
+  }
+
   return {
     __esModule: true,
-    default: ({ onCropComplete }: { onCropComplete?: (_area: unknown, pixels: { x: number; y: number; width: number; height: number }) => void }) => {
-      React.useEffect(() => {
-        onCropComplete?.(
-          {},
-          {
-            x: 0,
-            y: 0,
-            width: 128,
-            height: 128,
-          }
-        );
-      }, [onCropComplete]);
-      return <div data-testid="avatar-cropper" />;
-    },
+    default: MockCropper,
   };
 });
 

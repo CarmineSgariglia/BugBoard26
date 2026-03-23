@@ -4,7 +4,7 @@ import { HexColorPicker } from "react-colorful";
 import { IoColorPalette } from "react-icons/io5";
 
 import { PREDEFINED_COLORS } from "@features/project/model/constants";
-import { PREDEFINED_ICONS } from "@features/project/ui/projectIcons";
+import { PREDEFINED_ICONS } from "@features/project/ui/projectIconRegistry";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { FormField } from "@shared/ui/FormField";
 import { ScrollComponent } from "@shared/ui/ScrollComponent";
@@ -176,4 +176,3 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
         </ProjectFormLayout>
     );
 }
-

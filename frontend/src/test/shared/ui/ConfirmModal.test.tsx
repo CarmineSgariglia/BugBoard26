@@ -75,9 +75,7 @@ describe("ConfirmModal", () => {
     const confirmButton = screen.getByRole("button", { name: "Loading..." });
     expect(confirmButton.hasAttribute("disabled")).toBe(true); // Button disabled state mapped to isLoading
 
-    try {
-        await user.click(confirmButton);
-    } catch {}
+    await user.click(confirmButton);
     
     expect(onConfirm).not.toHaveBeenCalled();
   });

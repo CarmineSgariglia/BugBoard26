@@ -1,2 +1,3 @@
 export * from "./api";
-export { AuthProvider, useAuth } from "./providers/AuthProvider";
+export { AuthProvider } from "./providers/AuthProvider";
+export { useAuth } from "./providers/useAuth";

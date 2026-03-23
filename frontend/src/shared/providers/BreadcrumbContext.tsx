@@ -1,11 +1,6 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 
-interface BreadcrumbContextType {
-    labels: Record<string, string>;
-    setLabel: (key: string, label: string) => void;
-}
-
-const BreadcrumbContext = createContext<BreadcrumbContextType | undefined>(undefined);
+import { BreadcrumbContext } from "./BreadcrumbStore";
 
 export function BreadcrumbProvider({ children }: { children: ReactNode }) {
     const [labels, setLabels] = useState<Record<string, string>>({});
@@ -22,12 +17,4 @@ export function BreadcrumbProvider({ children }: { children: ReactNode }) {
             {children}
         </BreadcrumbContext.Provider>
     );
-}
-
-export function useBreadcrumbs() {
-    const context = useContext(BreadcrumbContext);
-    if (!context) {
-        throw new Error("useBreadcrumbs must be used within a BreadcrumbProvider");
-    }
-    return context;
 }

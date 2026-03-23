@@ -4,7 +4,6 @@ export * from "./AttachmentUploadInfoPopover";
 export * from "./Button";
 export * from "./ConfirmModal";
 export * from "./DescriptionFieldWithLength";
-export * from "./FileAttachment";
 export * from "./FooterActions";
 export * from "./FormField";
 export * from "./GlassCard";

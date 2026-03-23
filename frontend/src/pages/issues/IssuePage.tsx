@@ -17,7 +17,7 @@ import type { IssueSubscriptionState } from "@shared/api/types/issues";
 import type { ProjectMembership } from "@shared/api/types/projects";
 import { isAdminLike } from "@shared/lib";
 import { useAuth } from "@features/auth";
-import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
+import { useBreadcrumbs } from "@shared/providers/useBreadcrumbs";
 import { SidebarLayout } from "@widgets/layout/SidebarLayout";
 import { isProjectAccessRevokedError, revokeProjectAccess } from "@features/project/lib/accessRevocation";
 

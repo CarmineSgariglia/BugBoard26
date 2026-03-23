@@ -41,9 +41,12 @@ if (typeof globalThis.IntersectionObserver !== "function") {
     readonly thresholds = [0];
 
     constructor(
-      _callback: IntersectionObserverCallback,
-      _options?: IntersectionObserverInit,
-    ) {}
+      callback: IntersectionObserverCallback,
+      options?: IntersectionObserverInit,
+    ) {
+      void callback;
+      void options;
+    }
 
     disconnect() {}
     observe() {}

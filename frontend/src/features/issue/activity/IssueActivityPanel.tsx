@@ -175,12 +175,6 @@ export function IssueActivityPanel({
         };
     }, [clearMarkerRemovalTimer, newMessageMarkerId, resetMarkerVisibilityTracking]);
 
-    useEffect(() => {
-        if (scope === "ALL" && isAtLatestEdge && pendingUpdateIds.length > 0) {
-            setPendingUpdateIds([]);
-        }
-    }, [isAtLatestEdge, pendingUpdateIds.length, scope]);
-
     function handleRealtimeUpdate(newUpdate: IssueUpdate) {
         let alreadyPresent = false;
 
@@ -302,7 +296,12 @@ export function IssueActivityPanel({
                         onScrollToItemDone={(itemId) => {
                             setScrollToItemId((current) => (current === itemId ? null : current));
                         }}
-                        onLatestEdgeChange={setIsAtLatestEdge}
+                        onLatestEdgeChange={(nextIsAtLatestEdge) => {
+                            setIsAtLatestEdge(nextIsAtLatestEdge);
+                            if (scope === "ALL" && nextIsAtLatestEdge && pendingUpdateIds.length > 0) {
+                                setPendingUpdateIds([]);
+                            }
+                        }}
                         onNewMessageMarkerVisibilityChange={handleNewMessageMarkerVisibilityChange}
                     />
                 )}

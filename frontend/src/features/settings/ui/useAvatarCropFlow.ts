@@ -67,7 +67,11 @@ export function useAvatarCropFlow(initialAvatarUrl?: string) {
   );
 
   useEffect(() => {
-    updateAvatarPreview(initialAvatarUrl);
+    const frameId = window.requestAnimationFrame(() => {
+      updateAvatarPreview(initialAvatarUrl);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [initialAvatarUrl, updateAvatarPreview]);
 
   useEffect(() => () => {

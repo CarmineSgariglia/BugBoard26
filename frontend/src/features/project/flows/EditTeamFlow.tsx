@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { ProjectTeamStep } from "./ProjectTeamStep";
@@ -22,8 +22,7 @@ export function EditTeamFlow({
   onUpdated,
   readOnly = false,
 }: EditTeamFlowProps) {
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
-  const [adminIds, setAdminIds] = useState<number[]>([]);
+  const [selectedUserIdsOverride, setSelectedUserIdsOverride] = useState<number[] | null>(null);
   const [error, setError] = useState("");
 
   const {
@@ -37,13 +36,15 @@ export function EditTeamFlow({
   });
 
   const members = membersData ?? EMPTY_MEMBERS;
-
-  useEffect(() => {
-    const admins = members.filter((m) => isAdminLike({ role: m.role })).map((m) => m.userId);
-    const devs = members.filter((m) => !isAdminLike({ role: m.role })).map((m) => m.userId);
-    setAdminIds(admins);
-    setSelectedUserIds(devs);
-  }, [members]);
+  const adminIds = useMemo(
+    () => members.filter((member) => isAdminLike({ role: member.role })).map((member) => member.userId),
+    [members],
+  );
+  const derivedSelectedUserIds = useMemo(
+    () => members.filter((member) => !isAdminLike({ role: member.role })).map((member) => member.userId),
+    [members],
+  );
+  const selectedUserIds = selectedUserIdsOverride ?? derivedSelectedUserIds;
 
   const updateTeamMutation = useMutation({
     mutationFn: () =>
@@ -60,9 +61,12 @@ export function EditTeamFlow({
   });
 
   const toggleUser = (userId: number) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
+    setSelectedUserIdsOverride((prev) => {
+      const nextSelection = prev ?? derivedSelectedUserIds;
+      return nextSelection.includes(userId)
+        ? nextSelection.filter((id) => id !== userId)
+        : [...nextSelection, userId];
+    });
   };
 
   const handleUpdateTeam = async () => {

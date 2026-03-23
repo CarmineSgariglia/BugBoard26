@@ -129,10 +129,10 @@ export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">(
+  const [statusFilter, setStatusFilterState] = useState<"All" | "Active" | "Inactive">(
     options.initialStatus || "All"
   );
-  const [roleFilter, setRoleFilter] = useState<"All" | "Admin" | "User">(
+  const [roleFilter, setRoleFilterState] = useState<"All" | "Admin" | "User">(
     options.initialRole || "All"
   );
   const [currentPage, setCurrentPage] = useState(1);
@@ -140,14 +140,21 @@ export function usePaginatedUsers(options: UsePaginatedUsersOptions = {}) {
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setDebouncedSearch(search);
+      setCurrentPage(1);
     }, 300);
 
     return () => window.clearTimeout(timeoutId);
   }, [search]);
 
-  useEffect(() => {
+  const setStatusFilter = useCallback((nextStatus: "All" | "Active" | "Inactive") => {
     setCurrentPage(1);
-  }, [debouncedSearch, roleFilter, statusFilter]);
+    setStatusFilterState(nextStatus);
+  }, []);
+
+  const setRoleFilter = useCallback((nextRole: "All" | "Admin" | "User") => {
+    setCurrentPage(1);
+    setRoleFilterState(nextRole);
+  }, []);
 
   const queryParams = useMemo<ListUsersParams>(() => {
     const params: ListUsersParams = { page: currentPage };

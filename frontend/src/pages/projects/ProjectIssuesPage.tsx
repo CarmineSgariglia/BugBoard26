@@ -25,7 +25,7 @@ import type { Issue } from "@shared/api/types/issues";
 import type { ProjectMembership, ProjectSubscriptionState } from "@shared/api/types/projects";
 import { CATEGORIES, PRIORITIES, STATUSES } from "@features/issue/model/constants";
 import { useAuth } from "@features/auth";
-import { useBreadcrumbs } from "@shared/providers/BreadcrumbContext";
+import { useBreadcrumbs } from "@shared/providers/useBreadcrumbs";
 import { isAdminLike } from "@shared/lib";
 import { useFluidWheelContainer } from "@shared/hooks";
 import { Button } from "@shared/ui/Button";
@@ -413,7 +413,6 @@ export function ProjectIssuesPage() {
     </div>
   );
 }
-
 
 
 
