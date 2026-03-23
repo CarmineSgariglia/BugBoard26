@@ -67,6 +67,10 @@ export function useAvatarCropFlow(initialAvatarUrl?: string) {
   );
 
   useEffect(() => {
+    if (initialAvatarUrl === undefined) {
+      return;
+    }
+
     const frameId = window.requestAnimationFrame(() => {
       updateAvatarPreview(initialAvatarUrl);
     });

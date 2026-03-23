@@ -50,7 +50,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
     handleCropConfirm,
     handleCropCancel,
     completeUpload,
-  } = useAvatarCropFlow();
+  } = useAvatarCropFlow(user?.profileImg ? resolveMediaUrl(user.profileImg) : undefined);
 
   useEffect(() => {
     if (!user) return;
