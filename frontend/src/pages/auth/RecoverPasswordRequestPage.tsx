@@ -26,7 +26,7 @@ export function RecoverPasswordRequestPage() {
       navigate(`/forgot-password/verify?email=${encodeURIComponent(emailValue)}`);
     },
     onError: () => {
-      setError("Impossibile inviare il codice OTP");
+      setError("Impossible to send the OTP code");
     },
   });
 

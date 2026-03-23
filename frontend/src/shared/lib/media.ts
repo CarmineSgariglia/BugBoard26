@@ -1,3 +1,7 @@
+/*
+  This module provides utility functions for handling media files.
+*/
+
 const KILOBYTE = 1024;
 const MEGABYTE = 1024 * KILOBYTE;
 

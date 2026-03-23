@@ -29,11 +29,6 @@ export async function readNotificationApi(notificationId: number): Promise<Notif
   return data;
 }
 
-export async function readAllNotificationsApi(): Promise<{ updated: number }> {
-  const { data } = await apiClient.post<{ updated: number }>("/notifications/read-all");
-  return data;
-}
-
 export async function deleteNotificationApi(notificationId: number): Promise<void> {
   await apiClient.delete(`/notifications/${notificationId}`);
 }

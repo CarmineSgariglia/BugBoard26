@@ -4,7 +4,6 @@ import {
   deleteNotificationApi,
   getNotificationsStreamUrl,
   listNotificationsApi,
-  readAllNotificationsApi,
   readNotificationApi,
 } from "@features/notification/api";
 
@@ -75,13 +74,6 @@ describe("feature notifications api module", () => {
 
     await expect(readNotificationApi(1)).resolves.toEqual({ notifyUserId: 1, isRead: true });
     expect(postMock).toHaveBeenCalledWith("/notifications/1/read");
-  });
-
-  it("marks all read", async () => {
-    postMock.mockResolvedValue({ data: { updated: 2 } });
-
-    await expect(readAllNotificationsApi()).resolves.toEqual({ updated: 2 });
-    expect(postMock).toHaveBeenCalledWith("/notifications/read-all");
   });
 
   it("deletes a notification", async () => {

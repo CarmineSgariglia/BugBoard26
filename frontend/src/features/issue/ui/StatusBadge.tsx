@@ -1,6 +1,6 @@
 interface StatusBadgeProps {
     text: string;
-    color: string; // es. "emerald-500", "blue-500", "orange-500"
+    color: string;
     glow?: boolean;
     variant?: "default" | "pill";
     className?: string;
