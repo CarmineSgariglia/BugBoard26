@@ -3,5 +3,5 @@
  * with the support email address pre-filled.
  */
 export const handleGetHelp = () => {
-    window.location.href = "mailto:admin@bugboard.com";
+    window.location.href = "mailto:supporto@bugboard.com";
 };
