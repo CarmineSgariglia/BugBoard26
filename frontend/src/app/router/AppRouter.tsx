@@ -68,6 +68,15 @@ export function AppRouter() {
           }
         >
           <Route path="/login" element={<LoginPage />} />
+        </Route>
+
+        <Route
+          element={
+            <Suspense fallback={<PublicRouteFallback />}>
+              <AuthLayout />
+            </Suspense>
+          }
+        >
           <Route path="/forgot-password" element={<RecoverPasswordRequestPage />} />
           <Route path="/forgot-password/verify" element={<RecoverPasswordVerifyPage />} />
         </Route>
