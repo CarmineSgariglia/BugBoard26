@@ -126,12 +126,26 @@ def _csv_env(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def _origins(scheme: str, hosts: list[str], *, port: str | None = None) -> set[str]:
+    return {
+        f"{scheme}://{host}{f':{port}' if port else ''}"
+        for host in hosts
+    }
+
+
+def _origins_csv(scheme: str, hosts: list[str], *, port: str | None = None) -> str:
+    return ",".join(sorted(_origins(scheme, hosts, port=port)))
+
+
 CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False").lower() == "true"
 CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "True").lower() == "true"
-CORS_ALLOWED_ORIGINS = _csv_env("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+default_cors_origins = _origins_csv("http", ["localhost", "127.0.0.1"], port="5173") if DEBUG else ""
+CORS_ALLOWED_ORIGINS = _csv_env("CORS_ALLOWED_ORIGINS", default_cors_origins)
 
 if not DEBUG and CORS_ALLOW_ALL_ORIGINS:
     raise ImproperlyConfigured("CORS_ALLOW_ALL_ORIGINS=True is not allowed in production")
+if not DEBUG and not CORS_ALLOWED_ORIGINS:
+    raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set in production")
 
 csrf_origins = set(_csv_env("CSRF_TRUSTED_ORIGINS", ""))
 csrf_origins.update(CORS_ALLOWED_ORIGINS)
@@ -141,14 +155,10 @@ csrf_origins.update(_csv_env("CSRF_TRUSTED_ORIGINS_EXTRA", ""))
 # Keep this block debug-only to avoid weakening production posture.
 if DEBUG:
     csrf_origins.update(
-        {
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://frontend:5173",
-            "http://172.21.160.1:5173",
-            "https://localhost",
-            "https://127.0.0.1",
-        }
+        _origins("http", ["localhost", "127.0.0.1", "frontend", "172.21.160.1"], port="5173")
+    )
+    csrf_origins.update(
+        _origins("https", ["localhost", "127.0.0.1"])
     )
 
 CSRF_TRUSTED_ORIGINS = sorted(csrf_origins)

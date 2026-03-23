@@ -1,21 +1,18 @@
 """Utility helpers shared across the core app."""
 from __future__ import annotations
 
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from django.conf import settings
 
 
 def build_media_url(path_or_url: str) -> str:
-    """Return an absolute media URL for a stored path or trusted HTTPS URL."""
+    """Return a media URL for a stored path or an absolute HTTPS URL only."""
     if not path_or_url:
         return ""
-    if path_or_url.startswith("https://"):
-        return path_or_url
-    if path_or_url.startswith("http://"):
-        return ""
-    if "://" in path_or_url:
-        return ""
+    parsed = urlparse(path_or_url)
+    if parsed.scheme:
+        return path_or_url if parsed.scheme == "https" else ""
     if path_or_url.startswith("/media/"):
         return path_or_url
     media_base = settings.MEDIA_URL or "/media/"
