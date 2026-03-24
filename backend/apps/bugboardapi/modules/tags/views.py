@@ -4,9 +4,8 @@ from __future__ import annotations
 import logging
 
 from rest_framework import mixins, permissions, viewsets
-from rest_framework.exceptions import PermissionDenied
 
-from ...permissions import is_admin
+from ...permissions import require_admin
 from .models import Tag
 from .serializers import TagSerializer
 
@@ -26,11 +25,9 @@ class TagViewSet(
     lookup_url_kwarg = "tagId"
 
     def perform_create(self, serializer):
-        if not is_admin(self.request.user):
-            raise PermissionDenied("Only admins can create tags")
+        require_admin(self.request.user)
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
-        if not is_admin(request.user):
-            raise PermissionDenied("Only admins can delete tags")
+        require_admin(request.user)
         return super().destroy(request, *args, **kwargs)

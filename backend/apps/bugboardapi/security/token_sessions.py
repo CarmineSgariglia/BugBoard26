@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone as dt_timezone
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
@@ -13,14 +14,18 @@ from rest_framework_simplejwt.utils import get_md5_hash_password
 
 from ..modules.users.token_session_models import RevokedTokenSession
 
+if TYPE_CHECKING:
+    from django.contrib.auth.models import User
+    from django.http import HttpRequest
 
-def build_token_pair_for_user(user) -> tuple[str, str]:
+
+def build_token_pair_for_user(user: User) -> tuple[str, str]:
     refresh = RefreshToken.for_user(user)
     refresh["sid"] = uuid4().hex
     return str(refresh.access_token), str(refresh)
 
 
-def set_password_and_invalidate_sessions(*, user, new_password: str) -> None:
+def set_user_password(*, user: User, new_password: str) -> None:
     user.set_password(new_password)
     user.save(update_fields=["password"])
 
@@ -39,10 +44,16 @@ def revoke_token_session(*, sid: str | None, user_id: int | None, expires_at_uni
     )
 
 
-def revoke_session_from_refresh(refresh_token: str) -> None:
+def _parse_refresh_token(refresh_token: str) -> RefreshToken | None:
     try:
-        token = RefreshToken(refresh_token)
+        return RefreshToken(refresh_token)
     except TokenError:
+        return None
+
+
+def revoke_session_from_refresh(refresh_token: str) -> None:
+    token = _parse_refresh_token(refresh_token)
+    if token is None:
         return
 
     revoke_token_session(
@@ -53,9 +64,8 @@ def revoke_session_from_refresh(refresh_token: str) -> None:
 
 
 def is_refresh_token_session_revoked(refresh_token: str) -> bool:
-    try:
-        token = RefreshToken(refresh_token)
-    except TokenError:
+    token = _parse_refresh_token(refresh_token)
+    if token is None:
         return False
 
     return is_token_session_revoked(token.get("sid"))
@@ -65,9 +75,8 @@ def is_refresh_token_password_stale(refresh_token: str) -> bool:
     if not api_settings.CHECK_REVOKE_TOKEN:
         return False
 
-    try:
-        token = RefreshToken(refresh_token)
-    except TokenError:
+    token = _parse_refresh_token(refresh_token)
+    if token is None:
         return False
 
     user_id = token.get(api_settings.USER_ID_CLAIM)
@@ -83,19 +92,25 @@ def is_refresh_token_password_stale(refresh_token: str) -> bool:
     return token.get(api_settings.REVOKE_TOKEN_CLAIM) != get_md5_hash_password(user.password)
 
 
-def revoke_session_from_access(request) -> None:
+def _validated_access_token_from_request(request: HttpRequest):
     authenticator = JWTAuthentication()
     header = authenticator.get_header(request)
     if header is None:
-        return
+        return None
 
     raw_token = authenticator.get_raw_token(header)
     if raw_token is None:
-        return
+        return None
 
     try:
-        validated_token = authenticator.get_validated_token(raw_token)
+        return authenticator.get_validated_token(raw_token)
     except TokenError:
+        return None
+
+
+def revoke_session_from_access(request: HttpRequest) -> None:
+    validated_token = _validated_access_token_from_request(request)
+    if validated_token is None:
         return
 
     revoke_token_session(

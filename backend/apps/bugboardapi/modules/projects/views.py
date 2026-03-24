@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
 
-from ...permissions import check_admin, ensure_project_access, filter_by_project_access
+from ...permissions import filter_by_project_access, require_admin, require_project_access
 from .membership import (
     is_admin_project_subscribed,
     subscribe_admin_to_project,
@@ -76,12 +76,12 @@ class ProjectViewSet(
         return queryset
 
     def perform_create(self, serializer):
-        check_admin(self.request.user)
+        require_admin(self.request.user)
         raw_user_ids = self.request.data.get("userIds", self.request.data.get("team", []))
         create_project_with_team(serializer=serializer, creator=self.request.user, raw_user_ids=raw_user_ids)
 
     def update(self, request, *args, **kwargs):
-        check_admin(request.user)
+        require_admin(request.user)
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
 
@@ -101,7 +101,7 @@ class ProjectViewSet(
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
-        check_admin(request.user)
+        require_admin(request.user)
         project = self.get_object()
         delete_project_and_notify(project=project)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -114,7 +114,7 @@ class ProjectViewSet(
     )
     def members(self, request, *args, **kwargs):
         project = self.get_object()
-        ensure_project_access(request.user, project)
+        require_project_access(request.user, project)
         include_admins = str(request.query_params.get("includeAdmins", "")).lower() in {"1", "true", "yes"}
         memberships = list_project_memberships(project=project, include_admins=include_admins)
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
@@ -131,7 +131,7 @@ class ProjectViewSet(
         },
     )
     def subscription(self, request, *args, **kwargs):
-        check_admin(request.user)
+        require_admin(request.user)
         project = self.get_object()
 
         if request.method == "GET":

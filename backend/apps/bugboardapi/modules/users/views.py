@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework import serializers
 from rest_framework.views import APIView
 
-from ...permissions import check_admin
+from ...permissions import require_admin
 from ...roles import is_admin_user
 from .commands import (
     change_user_password,
@@ -112,11 +112,11 @@ class UserViewSet(
         )
 
     def perform_create(self, serializer):
-        check_admin(self.request.user)
+        require_admin(self.request.user)
         serializer.save()
 
     def create(self, request, *args, **kwargs):
-        check_admin(request.user)
+        require_admin(request.user)
         return super().create(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
@@ -169,7 +169,7 @@ class UserPasswordView(APIView):
         responses=password_response_serializer,
     )
     def put(self, request, userId):
-        check_admin(request.user)
+        require_admin(request.user)
         serializer = AdminResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload = change_user_password(
@@ -208,7 +208,7 @@ class UserProfileImageView(APIView):
         responses=UserSerializer,
     )
     def put(self, request, userId):
-        check_admin(request.user)
+        require_admin(request.user)
         user = User.objects.filter(pk=userId).first()
         if user is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)

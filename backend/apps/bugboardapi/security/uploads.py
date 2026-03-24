@@ -83,6 +83,13 @@ IMAGE_QUALITY_STEPS = (82, 74, 66, 58, 50)
 IMAGE_SCALE_STEPS = (1.0, 0.85, 0.72, 0.6)
 
 
+def _upload_metadata(uploaded_file) -> tuple[int, str, str]:
+    size = int(getattr(uploaded_file, "size", 0) or 0)
+    content_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower()
+    suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
+    return size, content_type, suffix
+
+
 def _read_prefix(uploaded_file, size: int = 16) -> bytes:
     position = uploaded_file.tell() if hasattr(uploaded_file, "tell") else None
     prefix = uploaded_file.read(size)
@@ -91,50 +98,48 @@ def _read_prefix(uploaded_file, size: int = 16) -> bytes:
     return prefix
 
 
-def _ensure_image_signature(content_type: str, uploaded_file) -> None:
+def _ensure_image_signature(content_type: str, uploaded_file, *, field_name: str) -> None:
     prefix = _read_prefix(uploaded_file)
     if content_type == IMAGE_JPEG_MIME_TYPE:
         if not prefix.startswith(JPEG_SIGNATURE):
-            raise ValidationError({"image": "File content does not match JPEG format"})
+            raise ValidationError({field_name: "File content does not match JPEG format"})
         return
     if content_type == IMAGE_WEBP_MIME_TYPE:
         if not (prefix.startswith(b"RIFF") and prefix[8:12] == b"WEBP"):
-            raise ValidationError({"image": "File content does not match WEBP format"})
+            raise ValidationError({field_name: "File content does not match WEBP format"})
         return
     signature = IMAGE_SIGNATURES.get(content_type)
     if signature and not prefix.startswith(signature):
-        raise ValidationError({"image": f"File content does not match {content_type} format"})
+        raise ValidationError({field_name: f"File content does not match {content_type} format"})
 
 
-def _ensure_video_signature(content_type: str, uploaded_file) -> None:
+def _ensure_video_signature(content_type: str, uploaded_file, *, field_name: str) -> None:
     prefix = _read_prefix(uploaded_file, size=32)
     if content_type == "video/webm":
         if not prefix.startswith(WEBM_SIGNATURE):
-            raise ValidationError({"file": "File content does not match WEBM format"})
+            raise ValidationError({field_name: "File content does not match WEBM format"})
         return
 
     if content_type in {"video/mp4", "video/quicktime"}:
         if len(prefix) < 12 or prefix[4:8] != FTYP_MARKER:
-            raise ValidationError({"file": "File content does not match MP4/MOV format"})
+            raise ValidationError({field_name: "File content does not match MP4/MOV format"})
 
 
 def validate_profile_image(uploaded_file, *, max_size_bytes: int = 2 * 1024 * 1024) -> tuple[str, int]:
-    size = int(getattr(uploaded_file, "size", 0) or 0)
+    size, content_type, suffix = _upload_metadata(uploaded_file)
     if size <= 0:
         raise ValidationError({"image": "Image file is empty"})
     if size > max_size_bytes:
         raise ValidationError({"image": "Max image size is 2MB"})
 
-    content_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower()
     if content_type not in ALLOWED_IMAGE_TYPES:
         raise ValidationError({"image": "Allowed formats: JPEG, PNG, WEBP"})
 
-    suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
     expected_suffix = ALLOWED_IMAGE_TYPES[content_type]
     if suffix and suffix not in {expected_suffix, JPEG_EXTENSION if expected_suffix == JPG_EXTENSION else expected_suffix}:
         raise ValidationError({"image": "File extension does not match image type"})
 
-    _ensure_image_signature(content_type, uploaded_file)
+    _ensure_image_signature(content_type, uploaded_file, field_name="image")
     return expected_suffix.removeprefix("."), size
 
 
@@ -232,12 +237,10 @@ def validate_issue_attachment(
     max_size_bytes: int = 10 * 1024 * 1024,
     max_image_size_bytes: int | None = None,
 ) -> tuple[str, int]:
-    size = int(getattr(uploaded_file, "size", 0) or 0)
+    size, content_type, suffix = _upload_metadata(uploaded_file)
     if size <= 0:
         raise ValidationError({"file": "File is empty"})
 
-    content_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower()
-    suffix = Path(getattr(uploaded_file, "name", "")).suffix.lower()
     allowed_suffixes = ALLOWED_ATTACHMENT_TYPES.get(content_type)
     if not allowed_suffixes:
         raise ValidationError({"file": "Unsupported attachment type"})
@@ -248,9 +251,9 @@ def validate_issue_attachment(
         image_size_limit = max_image_size_bytes or max_size_bytes
         if size > image_size_limit:
             raise ValidationError({"file": "Max image/file size is 10MB"})
-        _ensure_image_signature(content_type, uploaded_file)
+        _ensure_image_signature(content_type, uploaded_file, field_name="file")
     elif content_type.startswith("video/"):
-        _ensure_video_signature(content_type, uploaded_file)
+        _ensure_video_signature(content_type, uploaded_file, field_name="file")
     elif size > max_size_bytes:
         raise ValidationError({"file": "Max file size is 10MB"})
 
@@ -270,6 +273,5 @@ def store_upload(*, uploaded_file, storage_dir: str, filename_suffix: str) -> St
             storage_path,
         )
         raise MediaStorageUnavailable() from exc
-    mime_type = (getattr(uploaded_file, "content_type", "") or "").strip().lower()
-    size = int(getattr(uploaded_file, "size", 0) or 0)
+    size, mime_type, _suffix = _upload_metadata(uploaded_file)
     return StoredUpload(path=saved_path, mime_type=mime_type, size=size)

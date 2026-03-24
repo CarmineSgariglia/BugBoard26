@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -9,7 +11,7 @@ from rest_framework import serializers
 def build_password_validation_user(
     *,
     instance: User | None = None,
-    attrs: dict | None = None,
+    attrs: Mapping[str, str] | None = None,
 ) -> User:
     attrs = attrs or {}
     user = instance or User()

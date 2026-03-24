@@ -1,19 +1,14 @@
 from .checks import (
-    check_admin,
-    check_assignee_or_admin,
-    ensure_issue_access,
-    ensure_project_access,
-    is_admin,
+    require_admin,
+    require_assignee_or_admin,
+    require_project_access,
 )
-from .scopes import filter_by_project_access, user_project_ids
+from .scopes import filter_by_project_access
 
 
 __all__ = [
-    "check_assignee_or_admin",
-    "check_admin",
-    "ensure_issue_access",
-    "ensure_project_access",
     "filter_by_project_access",
-    "is_admin",
-    "user_project_ids",
+    "require_admin",
+    "require_assignee_or_admin",
+    "require_project_access",
 ]

@@ -19,11 +19,10 @@ from ...common.sse import (
     stream_sse_events,
 )
 from ...permissions import (
-    check_assignee_or_admin,
-    check_admin,
-    ensure_issue_access,
-    ensure_project_access,
     filter_by_project_access,
+    require_admin,
+    require_assignee_or_admin,
+    require_project_access,
 )
 from ...permissions.scopes import first_by_project_access
 from .models import (
@@ -129,7 +128,7 @@ class ProjectIssueListCreateView(APIView):
         project = _get_project_or_none(user=request.user, project_id=projectId)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        ensure_project_access(request.user, project)
+        require_project_access(request.user, project)
         queryset = list_project_issues_queryset(project=project, request=request)
         return Response(IssueSerializer(queryset, many=True, context={"request": request}).data)
 
@@ -138,7 +137,7 @@ class ProjectIssueListCreateView(APIView):
         project = _get_project_or_none(user=request.user, project_id=projectId)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        ensure_project_access(request.user, project)
+        require_project_access(request.user, project)
         serializer = IssueSerializer(data=request.data, context={"request": request, "project": project})
         serializer.is_valid(raise_exception=True)
         issue = create_issue_for_project(serializer=serializer, reporter=request.user, project=project)
@@ -172,8 +171,8 @@ class IssueViewSet(
         return filter_by_project_access(queryset=_issue_queryset(), user=self.request.user)
 
     def perform_destroy(self, instance):
-        check_admin(self.request.user)
-        ensure_issue_access(self.request.user, instance)
+        require_admin(self.request.user)
+        require_project_access(self.request.user, instance.project)
         delete_issue(instance=instance)
 
     def perform_update(self, serializer):
@@ -194,9 +193,9 @@ class IssueViewSet(
         },
     )
     def subscription(self, request, issueId=None):
-        check_admin(request.user)
+        require_admin(request.user)
         issue = self.get_object()
-        ensure_issue_access(request.user, issue)
+        require_project_access(request.user, issue.project)
 
         if request.method == "GET":
             return Response({
@@ -222,13 +221,13 @@ class IssueViewSet(
     )
     def events(self, request, issueId=None):
         issue = self.get_object()
-        ensure_issue_access(request.user, issue)
+        require_project_access(request.user, issue.project)
 
         if request.method.lower() == "get":
             events = issue.events.select_related("actor").prefetch_related("attachments").all()
             return Response(IssueEventSerializer(events, many=True).data)
 
-        check_assignee_or_admin(request.user, issue)
+        require_assignee_or_admin(request.user, issue)
         event = create_issue_comment(
             issue=issue,
             actor=request.user,
@@ -265,7 +264,7 @@ class IssueViewSet(
     )
     def events_stream(self, request, issueId=None):
         issue = self.get_object()
-        ensure_issue_access(request.user, issue)
+        require_project_access(request.user, issue.project)
 
         try:
             subscription = open_issue_subscription(issue.issue_id)
@@ -297,7 +296,7 @@ class IssueViewSet(
     @extend_schema(tags=["Issues"], responses=IssueSuggestionSerializer(many=True))
     def suggestions(self, request, issueId=None):
         issue = self.get_object()
-        ensure_issue_access(request.user, issue)
+        require_project_access(request.user, issue.project)
         memberships = list_issue_suggestion_memberships(issue=issue)
         payload = ProjectMembershipSerializer(memberships, many=True).data
         open_count_by_user_id = {membership.user_id: membership.open_count for membership in memberships}
@@ -307,14 +306,14 @@ class IssueViewSet(
 
     def partial_update(self, request, *args, **kwargs):
         issue = self.get_object()
-        ensure_issue_access(request.user, issue)
-        check_assignee_or_admin(request.user, issue)
+        require_project_access(request.user, issue.project)
+        require_assignee_or_admin(request.user, issue)
         return super().partial_update(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         issue = self.get_object()
-        ensure_issue_access(request.user, issue)
-        check_assignee_or_admin(request.user, issue)
+        require_project_access(request.user, issue.project)
+        require_assignee_or_admin(request.user, issue)
         return super().update(request, *args, **kwargs)
 
 
@@ -331,8 +330,8 @@ class IssueAssigneeDetailView(APIView):
         issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
         if not issue:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        check_admin(request.user)
-        ensure_issue_access(request.user, issue)
+        require_admin(request.user)
+        require_project_access(request.user, issue.project)
         assign_issue_users(issue=issue, actor=request.user, raw_user_ids=[userId])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -346,8 +345,8 @@ class IssueAssigneeDetailView(APIView):
         issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
         if not issue:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        check_admin(request.user)
-        ensure_issue_access(request.user, issue)
+        require_admin(request.user)
+        require_project_access(request.user, issue.project)
         unassign_issue_users(issue=issue, actor=request.user, raw_user_ids=[userId])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -357,8 +356,8 @@ class IssueAttachmentCollectionView(APIView):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def _ensure_attachment_write_access(self, issue: Issue) -> None:
-        ensure_issue_access(self.request.user, issue)
-        check_assignee_or_admin(self.request.user, issue)
+        require_project_access(self.request.user, issue.project)
+        require_assignee_or_admin(self.request.user, issue)
 
     @extend_schema(
         tags=["Attachments"],
@@ -368,7 +367,7 @@ class IssueAttachmentCollectionView(APIView):
         issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
         if not issue:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        ensure_issue_access(request.user, issue)
+        require_project_access(request.user, issue.project)
         attachments = (
             Attachment.objects.select_related("update", "update__issue")
             .filter(update__issue=issue)
@@ -409,8 +408,8 @@ class IssueEventAttachmentCollectionView(APIView):
         event = _scoped_issue_event_or_none(user=request.user, event_id=eventId)
         if not event or event.issue_id != issue.issue_id:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        ensure_issue_access(request.user, issue)
-        check_assignee_or_admin(request.user, issue)
+        require_project_access(request.user, issue.project)
+        require_assignee_or_admin(request.user, issue)
         attachment = upload_attachment_for_event(event=event, payload=request.data)
         return Response(
             AttachmentSerializer(attachment, context={"request": request}).data,
@@ -440,8 +439,8 @@ class IssueAttachmentDetailView(APIView):
         )
         if attachment is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        ensure_issue_access(request.user, issue)
-        check_assignee_or_admin(request.user, issue)
+        require_project_access(request.user, issue.project)
+        require_assignee_or_admin(request.user, issue)
         delete_media_path(attachment.path)
         attachment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

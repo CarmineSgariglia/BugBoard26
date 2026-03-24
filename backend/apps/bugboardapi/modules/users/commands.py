@@ -10,7 +10,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from ...common.parsing import parse_csv_ints_query_param
 from ...roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from ...security.passwords import ensure_valid_password
-from ...security.token_sessions import set_password_and_invalidate_sessions
+from ...security.token_sessions import set_user_password
 from ...security.uploads import compress_image_upload, store_upload, validate_profile_image
 from .policies import (
     validate_admin_password_reset_request,
@@ -102,7 +102,7 @@ def change_user_password(*, actor: User, target_user_id, payload: dict, mode: st
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
     with transaction.atomic():
-        set_password_and_invalidate_sessions(user=user, new_password=new_password)
+        set_user_password(user=user, new_password=new_password)
     return {"detail": "Password updated"}
 
 

@@ -13,7 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from ...security.passwords import ensure_valid_password
-from ...security.token_sessions import set_password_and_invalidate_sessions
+from ...security.token_sessions import set_user_password
 from ..users.password_reset_models import PasswordResetOTP
 
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ def reset_password_with_otp(email: str, code: str, new_password: str) -> bool:
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
     with transaction.atomic():
-        set_password_and_invalidate_sessions(user=user, new_password=new_password)
+        set_user_password(user=user, new_password=new_password)
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
