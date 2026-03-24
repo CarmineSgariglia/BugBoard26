@@ -4,11 +4,14 @@ import { isRequestAbortError } from "@shared/api/request";
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const csrfCookieName = "csrftoken";
 
+type CsrfBootstrapResponse = { csrfToken?: string };
+
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
 let accessToken: string | null = null;
+let csrfHeaderToken: string | null = null;
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
@@ -36,6 +39,16 @@ function readCookie(name: string): string {
   return match ? decodeURIComponent(match[1]) : "";
 }
 
+function getCsrfToken(): string {
+  const csrfCookieToken = readCookie(csrfCookieName);
+  if (csrfCookieToken) {
+    csrfHeaderToken = csrfCookieToken;
+    return csrfCookieToken;
+  }
+
+  return csrfHeaderToken ?? "";
+}
+
 function hasContentTypeHeader(headers: unknown): boolean {
   if (!headers || typeof headers !== "object") return false;
   return Object.keys(headers as Record<string, unknown>).some(
@@ -52,24 +65,31 @@ let refreshPromise: Promise<string> | null = null;
 
 async function bootstrapCsrfCookie(): Promise<void> {
   if (!csrfBootstrapPromise) {
-    csrfBootstrapPromise = refreshClient.get("/security/csrf-token").finally(() => {
-      csrfBootstrapPromise = null;
-    });
+    csrfBootstrapPromise = refreshClient
+      .get<CsrfBootstrapResponse>("/security/csrf-token")
+      .then(({ data }) => {
+        if (data.csrfToken) {
+          csrfHeaderToken = data.csrfToken;
+        }
+      })
+      .finally(() => {
+        csrfBootstrapPromise = null;
+      });
   }
 
   await csrfBootstrapPromise;
 }
 
 export async function ensureCsrfCookieReady(): Promise<boolean> {
-  if (readCookie(csrfCookieName)) return true;
+  if (getCsrfToken()) return true;
 
   await bootstrapCsrfCookie();
-  if (readCookie(csrfCookieName)) return true;
+  if (getCsrfToken()) return true;
 
   // Retry once to cover slow cookie propagation on the first bootstrap.
   await bootstrapCsrfCookie();
 
-  return Boolean(readCookie(csrfCookieName));
+  return Boolean(getCsrfToken());
 }
 
 function methodRequiresCsrf(method?: string): boolean {
@@ -106,7 +126,7 @@ refreshClient.interceptors.request.use(async (config) => {
   if (!methodRequiresCsrf(config.method)) return config;
 
   await ensureCsrfCookieReady();
-  const csrfToken = readCookie(csrfCookieName);
+  const csrfToken = getCsrfToken();
   if (csrfToken) {
     config.headers = config.headers ?? {};
     (config.headers as Record<string, string>)["X-CSRFToken"] = csrfToken;
@@ -118,7 +138,7 @@ refreshClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.request.use(async (config) => {
   if (methodRequiresCsrf(config.method)) {
     await ensureCsrfCookieReady();
-    const csrfToken = readCookie(csrfCookieName);
+    const csrfToken = getCsrfToken();
     if (csrfToken) {
       config.headers = config.headers ?? {};
       (config.headers as Record<string, string>)["X-CSRFToken"] = csrfToken;

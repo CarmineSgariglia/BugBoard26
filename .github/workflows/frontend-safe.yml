@@ -59,8 +59,16 @@ jobs:
       - name: Run frontend build
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run build
 
+      - name: Prepare frontend coverage directory
+        run: |
+          rm -rf frontend/coverage
+          mkdir -p frontend/coverage
+
       - name: Run frontend unit and integration tests
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm \
+            -v "$PWD/frontend/coverage:/workspace/frontend/coverage" \
+            frontend-test npm run test:coverage
 
       - name: Upload frontend test artifacts
         if: always()

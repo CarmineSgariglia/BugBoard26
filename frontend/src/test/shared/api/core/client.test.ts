@@ -138,6 +138,26 @@ describe("apiClient", () => {
     expect(refreshClient.get).toHaveBeenCalledTimes(2);
   });
 
+  it("uses the csrf token returned in the bootstrap response body when the cookie is unreadable", async () => {
+    const clientModule = await importClientModule();
+    const apiClient = axiosHarness.instances[0];
+    const refreshClient = axiosHarness.instances[1];
+
+    refreshClient.get.mockResolvedValue({ data: { csrfToken: "csrf-from-body" } });
+
+    await expect(clientModule.ensureCsrfCookieReady()).resolves.toBe(true);
+
+    const config = await apiClient.__requestHandlers[0]({
+      method: "post",
+      headers: {},
+      data: { title: "Created from fallback token" },
+      url: "/issues/10",
+    });
+
+    expect(refreshClient.get).toHaveBeenCalledTimes(1);
+    expect(config.headers["X-CSRFToken"]).toBe("csrf-from-body");
+  });
+
   it("does not add a json content-type for FormData payloads", async () => {
     await importClientModule();
     const apiClient = axiosHarness.instances[0];
