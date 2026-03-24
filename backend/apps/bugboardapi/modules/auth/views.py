@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import permissions, status
+from rest_framework.exceptions import PermissionDenied, Throttled
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -95,8 +96,40 @@ class LoginView(APIView):
         summary="Create session",
         description="Authenticates the user, returns an access token, and sets the refresh token in an HTTP-only cookie.",
         request=LoginRequestSerializer,
-        responses={200: LoginResponseSerializer, 401: DetailResponseSerializer},
+        responses={
+            200: LoginResponseSerializer,
+            401: DetailResponseSerializer,
+            403: DetailResponseSerializer,
+            429: DetailResponseSerializer,
+        },
     )
+    def handle_exception(self, exc):
+        email = self.request.data.get("email", "").strip() if hasattr(self.request, "data") else ""
+        request_path = getattr(self.request, "path", "")
+
+        if isinstance(exc, Throttled):
+            logger.warning(
+                "login_throttled",
+                extra={
+                    "auth_email": email,
+                    "request_path": request_path,
+                    "throttle_wait": exc.wait,
+                },
+            )
+        elif isinstance(exc, PermissionDenied):
+            detail = str(getattr(exc, "detail", exc))
+            if "CSRF" in detail.upper():
+                logger.warning(
+                    "login_csrf_rejected",
+                    extra={
+                        "auth_email": email,
+                        "request_path": request_path,
+                        "reason": detail,
+                    },
+                )
+
+        return super().handle_exception(exc)
+
     def post(self, request):
         email = request.data.get("email", "").strip()
         password = request.data.get("password", "")
@@ -104,10 +137,22 @@ class LoginView(APIView):
         username = user.username if user else ""
         auth_user = authenticate(request, username=username, password=password)
         if auth_user is None or not auth_user.is_active:
+            logger.info(
+                "login_invalid_credentials",
+                extra={"auth_email": email, "request_path": request.path},
+            )
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
         access_token, refresh_token = build_token_pair_for_user(auth_user)
         get_token(request)
+        logger.info(
+            "login_success",
+            extra={
+                "auth_email": auth_user.email,
+                "auth_user_id": auth_user.id,
+                "request_path": request.path,
+            },
+        )
 
         response = Response(
             {

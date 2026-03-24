@@ -112,6 +112,32 @@ describe("apiClient", () => {
     expect(config.headers["X-CSRFToken"]).toBe("csrf-from-bootstrap");
   });
 
+  it("retries the csrf bootstrap once when the cookie is still missing after the first attempt", async () => {
+    const clientModule = await importClientModule();
+    const refreshClient = axiosHarness.instances[1];
+
+    refreshClient.get
+      .mockResolvedValueOnce({ data: {} })
+      .mockImplementationOnce(async () => {
+        document.cookie = "csrftoken=csrf-after-retry; path=/";
+        return { data: {} };
+      });
+
+    await expect(clientModule.ensureCsrfCookieReady()).resolves.toBe(true);
+
+    expect(refreshClient.get).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns false when the csrf cookie is still missing after the controlled retry", async () => {
+    const clientModule = await importClientModule();
+    const refreshClient = axiosHarness.instances[1];
+
+    refreshClient.get.mockResolvedValue({ data: {} });
+
+    await expect(clientModule.ensureCsrfCookieReady()).resolves.toBe(false);
+    expect(refreshClient.get).toHaveBeenCalledTimes(2);
+  });
+
   it("does not add a json content-type for FormData payloads", async () => {
     await importClientModule();
     const apiClient = axiosHarness.instances[0];

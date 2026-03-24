@@ -6,6 +6,7 @@ from rest_framework.test import APITransactionTestCase
 
 from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
+from apps.bugboardapi.modules.projects.commands import delete_project_and_notify
 from apps.bugboardapi.modules.notifications.services import (
     notify_issue_assigned,
     notify_issue_closed,
@@ -123,6 +124,49 @@ class NotificationStreamTests(APITransactionTestCase):
         parsed = _parse_sse_chunk(chunk)
         self.assertEqual(parsed["id"], str(notify_user.notify_user_id))
         response.close()
+
+    def test_project_delete_stream_notifies_other_members_but_not_actor(self):
+        admin_response = None
+        member_response = None
+
+        try:
+            self.client.force_authenticate(user=self.admin)
+            admin_response = self.client.get(
+                "/api/notifications/stream",
+                HTTP_ACCEPT="text/event-stream",
+            )
+            self.assertEqual(admin_response.status_code, status.HTTP_200_OK)
+
+            self.client.force_authenticate(user=self.member)
+            member_response = self.client.get(
+                "/api/notifications/stream",
+                HTTP_ACCEPT="text/event-stream",
+            )
+            self.assertEqual(member_response.status_code, status.HTTP_200_OK)
+
+            delete_project_and_notify(project=self.project, actor=self.admin)
+
+            member_chunk = next(iter(member_response.streaming_content))
+            member_parsed = _parse_sse_chunk(member_chunk)
+            member_payload = json.loads(member_parsed["data"])
+
+            self.assertEqual(member_parsed["event"], "notification.created")
+            self.assertEqual(member_payload["type"], NotifyType.PROJECT_REMOVED)
+            self.assertFalse(
+                NotifyUser.objects.filter(
+                    notify_user_id=member_payload["notifyUserId"],
+                    user=self.admin,
+                ).exists()
+            )
+
+            admin_chunk = next(iter(admin_response.streaming_content))
+            admin_parsed = _parse_sse_chunk(admin_chunk)
+            self.assertEqual(admin_parsed["event"], "ping")
+        finally:
+            if admin_response is not None:
+                admin_response.close()
+            if member_response is not None:
+                member_response.close()
 
     @patch("apps.bugboardapi.modules.notifications.views.open_notification_subscription")
     def test_stream_sends_heartbeat_and_headers(self, open_subscription_mock):

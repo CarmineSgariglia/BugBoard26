@@ -118,10 +118,16 @@ def notify_project_added(*, users: list[User], project: Project, actor: User | N
     )
 
 
-def notify_project_removed(*, users: list[User], project: Project | None = None) -> Notification | None:
+def notify_project_removed(
+    *,
+    users: list[User],
+    project: Project | None = None,
+    actor: User | None = None,
+) -> Notification | None:
     return _create_notification(
         notify_type=NotifyType.PROJECT_REMOVED,
         users=users,
+        actor=actor,
         project=project,
     )
 

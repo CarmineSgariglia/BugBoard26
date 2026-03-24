@@ -112,10 +112,11 @@ class ProjectViewRegressionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         mock_notify_project_removed.assert_called_once()
         self.assertIsNone(mock_notify_project_removed.call_args.kwargs["project"])
+        self.assertEqual(mock_notify_project_removed.call_args.kwargs["actor"], self.admin)
         notified_user_ids = {
             user.id for user in mock_notify_project_removed.call_args.kwargs["users"]
         }
-        self.assertEqual(notified_user_ids, {self.admin.id, self.member.id})
+        self.assertEqual(notified_user_ids, {self.member.id})
 
     @patch("apps.bugboardapi.modules.projects.commands.notify_project_removed")
     def test_project_delete_skips_inactive_members_in_notifications(self, mock_notify_project_removed):
@@ -125,12 +126,7 @@ class ProjectViewRegressionTests(APITestCase):
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        mock_notify_project_removed.assert_called_once()
-
-        notified_user_ids = {
-            user.id for user in mock_notify_project_removed.call_args.kwargs["users"]
-        }
-        self.assertEqual(notified_user_ids, {self.admin.id})
+        mock_notify_project_removed.assert_not_called()
 
     def test_project_create_rejects_invalid_team_payload(self):
         response = self.client.post(
@@ -281,14 +277,36 @@ class ProjectTransactionalSafetyNetTests(APITestCase):
 
     def test_project_removed_notification_survives_project_deletion(self):
         with self.captureOnCommitCallbacks(execute=True):
-            delete_project_and_notify(project=self.project)
+            delete_project_and_notify(project=self.project, actor=self.admin)
 
         self.assertFalse(
             ProjectMembership.objects.filter(project_id=self.project.project_id).exists()
         )
+        self.assertFalse(
+            NotifyUser.objects.filter(
+                user=self.admin,
+                notification__notify_type=NotifyType.PROJECT_REMOVED,
+            ).exists()
+        )
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=self.member,
+                notification__notify_type=NotifyType.PROJECT_REMOVED,
+            ).exists()
+        )
+
+    def test_project_removed_notification_is_skipped_when_only_actor_was_subscribed(self):
+        solo_project = create_project_with_members(
+            created_by=self.admin,
+            name="Solo Project",
+            admin_members=[self.admin],
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            delete_project_and_notify(project=solo_project, actor=self.admin)
+
+        self.assertFalse(
+            NotifyUser.objects.filter(
                 notification__notify_type=NotifyType.PROJECT_REMOVED,
             ).exists()
         )

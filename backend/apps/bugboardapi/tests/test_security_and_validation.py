@@ -1,6 +1,7 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.test import SimpleTestCase
+from unittest.mock import patch
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from rest_framework.throttling import ScopedRateThrottle
@@ -319,22 +320,57 @@ class AuthCsrfTests(APITestCase):
 
     def test_login_requires_csrf_and_succeeds_with_token(self):
         client = APIClient(enforce_csrf_checks=True)
-        blocked_response = client.post(
-            "/api/sessions",
-            {"email": self.user.email, "password": "StrongPass123!"},
-            format="json",
-        )
+        with self.assertLogs("apps.bugboardapi.modules.auth.views", level="WARNING") as captured_logs:
+            blocked_response = client.post(
+                "/api/sessions",
+                {"email": self.user.email, "password": "StrongPass123!"},
+                format="json",
+            )
         self.assertEqual(blocked_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(any("login_csrf_rejected" in message for message in captured_logs.output))
 
         csrf_response = client.get("/api/security/csrf-token")
         csrf_token = csrf_response.cookies["csrftoken"].value
-        login_response = client.post(
-            "/api/sessions",
-            {"email": self.user.email, "password": "StrongPass123!"},
-            format="json",
-            HTTP_X_CSRFTOKEN=csrf_token,
-        )
+        with self.assertLogs("apps.bugboardapi.modules.auth.views", level="INFO") as captured_logs:
+            login_response = client.post(
+                "/api/sessions",
+                {"email": self.user.email, "password": "StrongPass123!"},
+                format="json",
+                HTTP_X_CSRFTOKEN=csrf_token,
+            )
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(any("login_success" in message for message in captured_logs.output))
+
+    def test_login_logs_invalid_credentials_separately(self):
+        with self.assertLogs("apps.bugboardapi.modules.auth.views", level="INFO") as captured_logs:
+            response = self.client.post(
+                "/api/sessions",
+                {"email": self.user.email, "password": "WrongPass123!"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue(any("login_invalid_credentials" in message for message in captured_logs.output))
+
+    def test_login_logs_throttled_attempts(self):
+        client = APIClient(enforce_csrf_checks=True)
+        csrf_response = client.get("/api/security/csrf-token")
+        csrf_token = csrf_response.cookies["csrftoken"].value
+
+        with patch.object(ScopedRateThrottle, "allow_request", return_value=False), patch.object(
+            ScopedRateThrottle,
+            "wait",
+            return_value=60,
+        ), self.assertLogs("apps.bugboardapi.modules.auth.views", level="WARNING") as captured_logs:
+            response = client.post(
+                "/api/sessions",
+                {"email": self.user.email, "password": "StrongPass123!"},
+                format="json",
+                HTTP_X_CSRFTOKEN=csrf_token,
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertTrue(any("login_throttled" in message for message in captured_logs.output))
 
     def test_otp_endpoints_require_csrf(self):
         client = APIClient(enforce_csrf_checks=True)

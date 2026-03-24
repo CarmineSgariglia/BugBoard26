@@ -2,6 +2,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { isRequestAbortError } from "@shared/api/request";
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const csrfCookieName = "csrftoken";
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
@@ -49,9 +50,7 @@ function isFormDataPayload(payload: unknown): boolean {
 let csrfBootstrapPromise: Promise<unknown> | null = null;
 let refreshPromise: Promise<string> | null = null;
 
-async function ensureCsrfCookie(): Promise<void> {
-  if (readCookie("csrftoken")) return;
-
+async function bootstrapCsrfCookie(): Promise<void> {
   if (!csrfBootstrapPromise) {
     csrfBootstrapPromise = refreshClient.get("/security/csrf-token").finally(() => {
       csrfBootstrapPromise = null;
@@ -59,6 +58,18 @@ async function ensureCsrfCookie(): Promise<void> {
   }
 
   await csrfBootstrapPromise;
+}
+
+export async function ensureCsrfCookieReady(): Promise<boolean> {
+  if (readCookie(csrfCookieName)) return true;
+
+  await bootstrapCsrfCookie();
+  if (readCookie(csrfCookieName)) return true;
+
+  // Retry once to cover slow cookie propagation on the first bootstrap.
+  await bootstrapCsrfCookie();
+
+  return Boolean(readCookie(csrfCookieName));
 }
 
 function methodRequiresCsrf(method?: string): boolean {
@@ -94,8 +105,8 @@ async function refreshAccessTokenSingleFlight(): Promise<string> {
 refreshClient.interceptors.request.use(async (config) => {
   if (!methodRequiresCsrf(config.method)) return config;
 
-  await ensureCsrfCookie();
-  const csrfToken = readCookie("csrftoken");
+  await ensureCsrfCookieReady();
+  const csrfToken = readCookie(csrfCookieName);
   if (csrfToken) {
     config.headers = config.headers ?? {};
     (config.headers as Record<string, string>)["X-CSRFToken"] = csrfToken;
@@ -106,8 +117,8 @@ refreshClient.interceptors.request.use(async (config) => {
 
 apiClient.interceptors.request.use(async (config) => {
   if (methodRequiresCsrf(config.method)) {
-    await ensureCsrfCookie();
-    const csrfToken = readCookie("csrftoken");
+    await ensureCsrfCookieReady();
+    const csrfToken = readCookie(csrfCookieName);
     if (csrfToken) {
       config.headers = config.headers ?? {};
       (config.headers as Record<string, string>)["X-CSRFToken"] = csrfToken;

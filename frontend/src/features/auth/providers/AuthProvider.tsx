@@ -19,7 +19,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const refreshUser = useCallback(async () => {
-    await refetch();
+    const result = await refetch();
+    return result.data ?? null;
   }, [refetch]);
 
   return <AuthContext.Provider value={{ user, refreshUser, isLoading }}>{children}</AuthContext.Provider>;

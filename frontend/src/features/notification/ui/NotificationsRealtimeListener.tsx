@@ -21,7 +21,6 @@ import {
 import type { NotificationItem, NotificationsPage } from "@shared/api/types/notifications";
 import { useAuth } from "@features/auth";
 import { useToast } from "@shared/providers";
-import { consumeOwnProjectRemovalNotificationSuppression } from "@features/project/lib/notificationSuppression";
 import {
   invalidateProjectAccessQueries,
   revokeProjectAccess,
@@ -306,15 +305,6 @@ export function NotificationsRealtimeListener() {
         routeProjectId,
         routeTarget.kind === "issue" ? routeTarget.issueId : null,
       );
-    }
-
-    if (
-      notification.type === "PROJECT_REMOVED" &&
-      notification.projectId != null &&
-      consumeOwnProjectRemovalNotificationSuppression(notification.projectId)
-    ) {
-      deleteMutation.mutate(notification.notifyUserId);
-      return;
     }
 
     if (shouldSilenceNotification(notification, routeTarget)) {

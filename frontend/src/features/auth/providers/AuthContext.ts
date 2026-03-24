@@ -4,7 +4,7 @@ import type { AuthUser } from "@shared/api/types/auth";
 
 export interface AuthContextType {
   user: AuthUser | null;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
   isLoading: boolean;
 }
 
