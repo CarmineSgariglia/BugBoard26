@@ -103,7 +103,7 @@ class ProjectViewSet(
     def destroy(self, request, *args, **kwargs):
         require_admin(request.user)
         project = self.get_object()
-        delete_project_and_notify(project=project)
+        delete_project_and_notify(project=project, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get"], url_path="members")

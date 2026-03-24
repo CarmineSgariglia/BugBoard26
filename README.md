@@ -1,148 +1,295 @@
-# BugBoard26 Three-Tier Setup
+# BugBoard26
 
-Containerized three-tier architecture:
-- Presentation Tier: React + TypeScript + Tailwind CSS
-- Application Tier: Django + Django REST Framework
-- Data Tier: PostgreSQL
+BugBoard26 e un issue tracker full-stack per la gestione collaborativa di progetti, issue, attivita operative e notifiche in tempo reale.
 
-## Repository Structure
+Il repository contiene:
 
-- `frontend/`: React + TypeScript + Tailwind app
-- `backend/`: Django REST API app
-- `docker-compose.yml`: Orchestrates all tiers
-- `docker-compose.prod.yml`: Immutable-image production definition for VM deploys
-- `env/dev.example`: Local development environment template
-- `BrunoTesting/env/bruno-safe.ci.env`: Safe CI environment for Bruno and CI workflows
-- `env/production.example`: Production environment template
+- un frontend React 19 + TypeScript + Vite
+- un backend Django 5 + Django REST Framework
+- PostgreSQL come database
+- workflow Docker Compose per sviluppo, test e produzione
+- suite Bruno per il collaudo API
 
-## Development
+## Panoramica
 
-1. Create environment file:
-   - `cp env/dev.example .env`
-2. Build and run the development stack:
-   - `docker compose up --build`
-3. Open applications:
-   - Frontend: `http://localhost:5173`
-   - Backend API / health: `http://localhost:8000/api/health`
+Dal codice attuale emergono queste capacita principali:
 
-Notes:
-- In development, the frontend is served by the Vite dev server.
-- Browser DevTools can inspect the client source more directly in this mode.
+- autenticazione con access token JWT, refresh token in cookie HTTP-only e protezione CSRF
+- recupero password tramite OTP
+- gestione utenti con ruoli globali `admin` e `developer`
+- creazione e manutenzione di progetti con team associato
+- gestione issue con stato, priorita, tipo, assegnatari, tag e allegati
+- timeline attivita issue con commenti e stream Server-Sent Events
+- notifiche realtime con stream dedicato e sottoscrizioni admin a progetti e issue
+- upload avatar e media con storage locale in sviluppo e Google Cloud Storage in produzione
+- documentazione OpenAPI generata con `drf-spectacular`
 
-## CI
+## Stack Tecnologico
 
-- The CI workflows generate `.env` from `BrunoTesting/env/bruno-safe.ci.env`.
-- `BrunoTesting/env/bruno-safe.ci.env` is intentionally minimal and uses only fake/local-safe values.
-- Do not use the CI env file for local development or production.
-- Backend changes are validated on push by `.github/workflows/backend-safe.yml`, which runs the Django suite with coverage.
-- SonarCloud analysis runs from `.github/workflows/sonar.yml` only for backend-related changes and analyzes the backend codebase only.
-- Pull requests targeting `main` are gated by `.github/workflows/main-pr-gate.yml`, which aggregates the safe backend, frontend, and Bruno suites into a single required check.
-- Production releases run from `.github/workflows/deploy-prod.yml`: the workflow rebuilds `backend` and `web`, pushes immutable images to Artifact Registry, and deploys to the VM only after GitHub Environment approval.
-- SonarCloud is intentionally informational: keep `Main PR Gate` as the only required status check on `main`.
-- GitHub secret required for SonarCloud: `SONAR_TOKEN`.
+### Frontend
 
-## Code Quality
+- React 19
+- TypeScript
+- Vite 7
+- Tailwind CSS
+- TanStack Query
+- React Router 7
+- Axios
+- Vitest + Testing Library
 
-- SonarCloud publishes coverage, code smells, bugs, vulnerabilities, and security hotspots for the backend only.
-- The repository is configured so the SonarCloud scan reads only backend Python sources and the backend coverage XML.
-- SonarCloud should remain non-blocking in branch protection; use it for backend visibility and review, not as a required merge gate.
-- Recommended branch protection for `main`: require only the `Main PR Gate` status check.
-- For local editor feedback in VS Code, install the `SonarLint` extension. The workspace already contains the connected-mode mapping for project `CarmineSgariglia_BugBoard26` in `.vscode/settings.json`.
-- Local SonarLint feedback is expected only for `backend/**/*.py`. Frontend files are not part of the current SonarCloud scope.
-- Terminal output will not match the SonarCloud web UI unless `sonar-scanner` is installed and authenticated separately.
+### Backend
 
-## Backend Testing
+- Python 3.12
+- Django 5
+- Django REST Framework
+- Simple JWT
+- drf-spectacular
+- django-cors-headers
+- django-anymail con provider Brevo
+- gunicorn
 
-- Run the backend suite in the running backend container:
-  - `docker compose exec -T backend python manage.py test apps.bugboardapi.tests -v 2`
-  - `make backend-test`
-- Run backend coverage and generate terminal, XML, and HTML reports:
-  - `docker compose exec -T backend sh -lc 'mkdir -p coverage && export COVERAGE_RCFILE=.coveragerc && coverage erase && coverage run manage.py test apps.bugboardapi.tests -v 2 && coverage report -m && coverage xml -o coverage/coverage.xml && coverage html -d coverage/htmlcov'`
-  - `make backend-coverage`
-- Coverage artifacts are written under `backend/coverage/`.
-- Native fallback for low-level inspection without extra tooling:
-  - `docker compose exec -T backend sh -lc 'python -m trace --count --missing --summary --coverdir=/tmp/backend-trace manage.py test apps.bugboardapi.tests'`
-  - Prefer `coverage.py` for CI and release gating; use `trace` only as a diagnostic fallback.
+### Infrastruttura
 
-## Frontend Testing
+- PostgreSQL 16
+- Docker Compose
+- Nginx per HTTPS locale e deploy produzione
+- GitHub Actions per safe suites, PR gate e deploy
 
-- Run the frontend unit/integration suite in the CI test container:
-  - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test`
-  - `make frontend-test`
-- Run frontend coverage:
-  - `docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm frontend-test npm run test:coverage`
-  - `make frontend-coverage`
-- Frontend artifacts are written under `frontend/coverage/`.
+## Struttura Del Repository
 
-## Production
+```text
+.
+|-- backend/                 # API Django, moduli applicativi, test backend
+|-- frontend/                # App React/Vite
+|-- BrunoTesting/            # Collezioni Bruno e env per test API
+|-- Documentazione/          # OpenAPI, deployment guide e documenti di progetto
+|-- nginx/                   # Build web production e configurazioni proxy
+|-- scripts/                 # Script di bootstrap CI, HTTPS locale e deploy
+|-- env/                     # Template ambiente dev/prod
+|-- docker-compose.yml       # Stack locale di sviluppo
+|-- docker-compose.ci.yml    # Override per test e CI
+|-- docker-compose.prod.yml  # Stack production-like / produzione
+|-- Makefile                 # Shortcut operativi
+```
 
-- Use `env/production.example` as template for production secrets and security flags.
-- Configure media storage on GCS via `MEDIA_STORAGE_BACKEND=gcs`, `GS_BUCKET_NAME`, and VM IAM / ADC credentials.
-- Production deployment model:
-  - CI validates the repo
-  - release workflow builds immutable `backend` and `web` images
-  - the VM deploys by pulling validated images from Artifact Registry
-  - production must never rely on `git pull` or local `docker compose build`
-- Start a production-like stack locally with:
-  - `make prod-up`
-- Validate the production compose with sample production values:
-  - `make prod-config`
-- Exposed ports in production:
-  - `80` and `443` on the `web` service only
-- TLS certificates are managed on the VM host with Let's Encrypt / `certbot` and mounted into `web` from `${SSL_CERTS_HOST_PATH}`.
-- Internal-only services in the production stack:
-  - `backend` and `db` are reachable only on the Docker network
-- Frontend delivery in production:
-  - nginx serves the compiled files from `dist/`
-  - sourcemaps are disabled
-  - API requests go through the same origin (`/api`)
-  - media files are served directly by GCS using the absolute URLs returned by the backend
-- Recommended production VM baseline on Google Cloud:
-  - `e2-standard-2`
-  - `pd-balanced` disk `50-100 GB`
-  - region `europe-west8`
-- Realtime runtime mode:
-  - production uses in-memory cache/transport and a single Gunicorn worker for single-VM SSE reliability
+Nel backend la logica applicativa e organizzata principalmente in `backend/apps/bugboardapi/modules/`:
 
-## API Endpoints
+- `auth`
+- `users`
+- `projects`
+- `issues`
+- `notifications`
+- `tags`
 
-- `GET /api/health`: health check
-- `GET /api/schema`: OpenAPI 3.0.3 schema
-- `GET /api/docs`: Swagger UI
-- `GET /api/redoc`: Redoc
-- `GET /api/projects`: list visible projects
-- `GET /api/projects/{projectId}`: retrieve a project
-- `GET /api/projects/{projectId}/issues`: list issues for a project
-- `POST /api/projects/{projectId}/issues`: create an issue inside a project
-- `GET /api/issues/{issueId}`: retrieve issue
-- `PUT/PATCH /api/issues/{issueId}`: update issue
-- `DELETE /api/issues/{issueId}`: delete issue
+Nel frontend l'organizzazione e per layer:
 
-## Backend API Conventions
+- `frontend/src/app` per bootstrap, router e provider
+- `frontend/src/pages` per le route
+- `frontend/src/features` per le funzionalita verticali
+- `frontend/src/shared` per componenti, hook, client API e utility condivise
+- `frontend/src/widgets` per layout e blocchi compositi
 
-- Router-backed resource roots use `GenericViewSet + mixins`, not `ModelViewSet`.
-- Router registration uses `SimpleRouter(trailing_slash=False)` so the API does not expose an API root or format suffix routes such as `.json`.
-- `APIView` is reserved for flow-oriented or custom endpoints that are not a resource root.
-- Resource roots registered in the router should expose only the HTTP methods the product actually supports.
-- Current resource roots follow this rule:
-  - `users`: `list`, `retrieve`, `create`, `update`
-  - `projects`: `list`, `retrieve`, `create`, `update`, `destroy`
-  - `issues`: router-backed resource with explicit mixins plus custom actions
-  - `notifications`: router-backed resource with explicit mixins
-  - `tags`: `list`, `create`, `destroy`
-- Current flow/custom endpoints stay on `APIView`:
-  - session/auth flows under `/api/security/csrf-token`, `/api/sessions`, `/api/sessions/current`, `/api/sessions/current/access-token`, `/api/users/me`, and `/api/password-reset-*`
-  - user password/profile image flows under `/api/users/me/password`, `/api/users/{userId}/password`, `/api/users/me/profile-image`, and `/api/users/{userId}/profile-image`
-  - nested project issue flow `/api/projects/{projectId}/issues`
-  - nested issue attachment/event resources under `/api/issues/{issueId}/attachments` and `/api/issues/{issueId}/events/{eventId}/attachments`
-- Public path params use camelCase names such as `userId`, `projectId`, `issueId`, `eventId`, `attachmentId`, `notificationId`, and `tagId`.
-- Multiword custom action paths use kebab-case. Phase 1 removes legacy aliases such as `/users/{userId}/status`, `/issues/{issueId}/details`, `/users/me/upload_profile_image`, and router-generated `.json` paths.
-- `DELETE /api/issues/{issueId}` is bodyless; any UI confirmation stays in the frontend only.
-- Server-side JWT revocation remains enabled intentionally as a documented security exception to pure statelessness.
+## Prerequisiti
 
-## Notes
+Per il flusso standard bastano:
 
-- PostgreSQL data persistence is provided by Docker volume `postgres_data`.
-- Docker internal communication uses service names over `bugboard_net`.
-- In development, frontend requests use the Vite proxy for `/api`.
-- In production, nginx serves the frontend and proxies `/api` and `/admin` to Django; media URLs are served directly from GCS.
+- Docker
+- Docker Compose plugin
+
+Opzionali, se vuoi lavorare anche fuori dai container:
+
+- Node.js 20
+- Python 3.12
+
+## Avvio Rapido In Sviluppo
+
+1. Crea il file ambiente locale dal template:
+
+```bash
+cp env/dev.example .env
+```
+
+2. Avvia l'intero stack:
+
+```bash
+docker compose up --build
+```
+
+3. Apri i servizi:
+
+- frontend: `http://localhost:5173`
+- health check backend: `http://localhost:8000/api/health`
+- Swagger UI: `http://localhost:8000/api/docs`
+- ReDoc: `http://localhost:8000/api/redoc`
+- Django admin: `http://localhost:8000/admin`
+
+All'avvio del backend il container esegue automaticamente:
+
+- `python manage.py relabel_bugboardapi`
+- `python manage.py migrate`
+
+In sviluppo il frontend usa Vite con proxy su `/api` e `/media`.
+
+## Comandi Utili
+
+Il `Makefile` non sostituisce `docker compose`, ma raccoglie le operazioni piu frequenti:
+
+```bash
+make backend
+make frontend
+make all
+make logs
+make stop
+make shell-backend
+make shell-frontend
+```
+
+Per test e quality checks:
+
+```bash
+make backend-test
+make backend-coverage
+make frontend-test
+make frontend-coverage
+```
+
+Per HTTPS locale con Nginx:
+
+```bash
+make https
+make https-down
+```
+
+Per lo stack production-like:
+
+```bash
+make prod-up
+make prod-down
+make prod-config
+```
+
+## Configurazione Ambiente
+
+I template ufficiali sono:
+
+- `env/dev.example`
+- `env/production.example`
+
+### Variabili Chiave In Sviluppo
+
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `DJANGO_SECRET_KEY`
+- `DEBUG`
+- `ALLOWED_HOSTS`
+- `CORS_ALLOW_ALL_ORIGINS`
+- `CORS_ALLOWED_ORIGINS`
+- `CSRF_TRUSTED_ORIGINS`
+- `EMAIL_PROVIDER`
+- `VITE_API_BASE_URL`
+
+In sviluppo il template usa:
+
+- backend con `DEBUG=True`
+- provider email `console`
+- API frontend su `/api`
+
+### Variabili Chiave In Produzione
+
+Oltre a database e sicurezza, la produzione richiede anche:
+
+- `MEDIA_STORAGE_BACKEND=gcs`
+- `GS_BUCKET_NAME`
+- `GS_PROJECT_ID`
+- `GCS_MEDIA_URL`
+- `NGINX_SERVER_NAME`
+- `SSL_CERTS_HOST_PATH`
+- `NGINX_SSL_CERT_PATH`
+- `NGINX_SSL_KEY_PATH`
+
+Nota importante: dalle impostazioni Django il backend rifiuta la produzione con storage media locale. In ambiente reale e previsto Google Cloud Storage.
+
+## Test E Verifiche
+
+### Frontend
+
+Da `frontend/`:
+
+```bash
+npm run build
+npm run lint
+npm run test
+npm run test:unit
+npm run test:integration
+npm run test:coverage
+```
+
+### Backend
+
+Da `backend/`:
+
+```bash
+python manage.py check
+python manage.py test apps.bugboardapi.tests -v 2
+```
+
+### Bruno
+
+La cartella `BrunoTesting/` contiene la collezione API usata sia localmente sia in CI.
+
+Workflow principali gia presenti in repository:
+
+- `backend-safe.yml`
+- `frontend-safe.yml`
+- `bruno-safe.yml`
+- `main-pr-gate.yml`
+- `bruno-full.yml`
+- `deploy-prod.yml`
+
+La `main-pr-gate` richiede il passaggio delle tre safe suites.
+
+## Superficie API Principale
+
+La API e montata sotto `/api/`.
+
+Endpoint e aree principali:
+
+- health e docs: `/api/health`, `/api/schema`, `/api/docs`, `/api/redoc`
+- sicurezza e sessione: `/api/security/csrf-token`, `/api/sessions`, `/api/sessions/current`
+- utenti: `/api/users`, `/api/users/me`, password e profile image
+- progetti: `/api/projects`, `/api/projects/{projectId}/members`, `/api/projects/{projectId}/subscriptions/me`
+- issue: `/api/projects/{projectId}/issues`, `/api/issues/{issueId}`, `/api/issues/{issueId}/events`
+- stream realtime: `/api/issues/{issueId}/events/stream`, `/api/notifications/stream`
+- notifiche: `/api/notifications`
+- password reset: `/api/password-reset-requests`, `/api/password-reset-verifications`, `/api/password-resets`
+- tag e allegati: `/api/tags`, endpoint nested sotto `/api/issues/.../attachments`
+
+La specifica generata lato backend e disponibile anche in repository in [Documentazione/OpenAPI/openapi.yaml](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/OpenAPI/openapi.yaml).
+
+## Produzione E Deploy
+
+Il progetto supporta due modalita principali:
+
+- stack production-like locale con `make prod-up`
+- deploy produzione tramite immagini immutable e workflow GitHub
+
+Dettagli operativi:
+
+- guida deploy: [Documentazione/deployment_guide.md](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/deployment_guide.md)
+- compose produzione: [docker-compose.prod.yml](/Users/carminesgariglia/Desktop/BugBoard26/docker-compose.prod.yml)
+- script deploy remoto: [scripts/deploy_prod.sh](/Users/carminesgariglia/Desktop/BugBoard26/scripts/deploy_prod.sh)
+
+Nota architetturale: il realtime backend usa stream in memoria di processo. La documentazione di deploy del progetto considera quindi supportata la topologia con singola istanza backend e `GUNICORN_WORKERS=1`.
+
+## Documentazione Interna
+
+Altri riferimenti utili gia presenti:
+
+- guida deploy: [Documentazione/deployment_guide.md](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/deployment_guide.md)
+- documenti di progetto: [Documentazione](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione)
+- collezione Bruno: [BrunoTesting/BugBoard/README.md](/Users/carminesgariglia/Desktop/BugBoard26/BrunoTesting/BugBoard/README.md)
+
+## Contribuire
+
+Le linee guida operative per lavorare sul repository sono in [CONTRIBUTING.md](/Users/carminesgariglia/Desktop/BugBoard26/CONTRIBUTING.md).

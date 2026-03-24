@@ -92,7 +92,7 @@ def update_project_with_team(*, serializer, project: Project, raw_user_ids, has_
     return updated_project
 
 
-def delete_project_and_notify(*, project: Project):
+def delete_project_and_notify(*, project: Project, actor: User | None = None):
     recipient_users = [
         membership.user
         for membership in visible_project_memberships(
@@ -104,4 +104,4 @@ def delete_project_and_notify(*, project: Project):
     with transaction.atomic():
         project.delete()
         if recipient_users:
-            notify_project_removed(users=recipient_users, project=None)
+            notify_project_removed(users=recipient_users, actor=actor, project=None)

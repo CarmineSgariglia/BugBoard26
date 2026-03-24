@@ -1,156 +1,301 @@
-# Contributing to BugBoard26
+# Contribuire A BugBoard26
 
-Thanks for taking the time to contribute.
+Questo documento descrive come lavorare sul repository in modo coerente con il progetto reale: stack Docker-first, frontend React/Vite, backend Django REST e suite di controllo gia integrate in CI.
 
-BugBoard26 is a full-stack issue tracking application with:
+## Principi Di Lavoro
 
-- a React + TypeScript frontend
-- a Django REST backend
-- PostgreSQL for persistence
-- Docker-based local development and CI workflows
+Quando contribuisci a BugBoard26 cerca di mantenere ogni modifica:
 
-This guide explains how to set up the project, make changes safely, and open a pull request that is easy to review.
+- focalizzata su un singolo obiettivo
+- coperta dai test pertinenti
+- coerente con la struttura esistente del codice
+- accompagnata da documentazione quando cambia setup, API o workflow
 
-## Before You Start
+Il progetto ha gia una `main-pr-gate` che dipende da:
 
-Make sure you have:
+- backend safe suite
+- frontend safe suite
+- Bruno safe suite
 
-- Docker and Docker Compose available locally
-- Node.js available if you want to run frontend commands outside containers
-- Python available if you want to run backend management commands outside containers
+Conviene quindi lavorare pensando fin dall'inizio a questi tre livelli di verifica.
 
-If you only want the standard project setup, Docker is the main requirement.
+## Setup Locale
 
-## Local Setup
+Il setup di riferimento e Docker Compose.
 
-1. Create a local environment file:
+1. Crea l'ambiente locale:
 
 ```bash
 cp env/dev.example .env
 ```
 
-2. Start the development stack:
+2. Avvia lo stack:
 
 ```bash
 docker compose up --build
 ```
 
-3. Open the app:
+3. Verifica che i servizi siano raggiungibili:
 
-- Frontend: `http://localhost:5173`
-- Backend health check: `http://localhost:8000/api/health`
+- frontend: `http://localhost:5173`
+- backend health: `http://localhost:8000/api/health`
+- Swagger: `http://localhost:8000/api/docs`
 
-You can also use the shortcuts in the `Makefile`:
+Shortcut utili:
 
-- `make backend`
-- `make frontend`
-- `make all`
-- `make logs`
-- `make shell-backend`
-- `make shell-frontend`
-- `make prod-up`
-- `make prod-scale-up`
+```bash
+make all
+make backend
+make frontend
+make logs
+make shell-backend
+make shell-frontend
+```
 
-The `Makefile` is optional. The source of truth for local development is still `docker compose`.
+## Prerequisiti
 
-## Recommended Development Workflow
+Minimi:
 
-- Keep changes focused and small when possible.
-- Update tests in the same change when behavior changes.
-- Update documentation when setup, public routes, or contributor workflow changes.
-- For UI changes, verify both behavior and visual regressions before opening a PR.
-- If you change API contracts, make sure frontend usage and backend tests stay aligned.
+- Docker
+- Docker Compose plugin
 
-## Running Tests
+Opzionali per eseguire comandi direttamente fuori dai container:
 
-Run the checks that match the area you changed.
+- Node.js 20
+- Python 3.12
+
+## Mappa Del Codice
+
+### Backend
+
+Il backend vive in `backend/` ed e organizzato soprattutto in:
+
+- `backend/apps/bugboardapi/modules/auth`
+- `backend/apps/bugboardapi/modules/users`
+- `backend/apps/bugboardapi/modules/projects`
+- `backend/apps/bugboardapi/modules/issues`
+- `backend/apps/bugboardapi/modules/notifications`
+- `backend/apps/bugboardapi/modules/tags`
+- `backend/apps/bugboardapi/tests`
 
 ### Frontend
 
-From `frontend/`:
+Il frontend vive in `frontend/` con struttura a layer:
+
+- `frontend/src/app`
+- `frontend/src/pages`
+- `frontend/src/features`
+- `frontend/src/shared`
+- `frontend/src/widgets`
+
+Gli alias Vite gia configurati sono:
+
+- `@app`
+- `@pages`
+- `@features`
+- `@shared`
+- `@widgets`
+- `@legacy`
+
+### Altri Percorsi Rilevanti
+
+- `BrunoTesting/` per test API e bootstrap CI
+- `Documentazione/` per deployment guide e specifica OpenAPI
+- `scripts/` per bootstrap test, HTTPS locale e deploy
+
+## Workflow Consigliato
+
+1. Crea un branch dedicato.
+
+Naming consigliato, non imposto dal repository:
+
+- `feature/...`
+- `fix/...`
+- `docs/...`
+- `refactor/...`
+
+2. Mantieni la modifica piccola e mirata.
+
+3. Aggiorna test e documentazione nello stesso branch se cambi:
+
+- comportamento utente
+- route API
+- variabili ambiente
+- compose / deploy
+- workflow contributivo
+
+4. Esegui i controlli dell'area toccata prima di aprire la PR.
+
+## Test Da Eseguire
+
+Esegui i check minimi compatibili con il tipo di modifica.
+
+### Se tocchi il frontend
+
+Da `frontend/`:
 
 ```bash
+npm run build
 npm run test
 npm run test:coverage
 ```
 
-Useful additional commands:
+Se stai lavorando soprattutto su componenti o integrazione locale:
 
 ```bash
-npm run build
-npm run lint
+npm run test:unit
+npm run test:integration
 ```
 
-### Backend
+Oppure via Docker/Makefile:
 
-From `backend/`:
+```bash
+make frontend-test
+make frontend-coverage
+```
+
+### Se tocchi il backend
+
+Da `backend/`:
 
 ```bash
 python manage.py check
-python manage.py test apps.bugboardapi.tests
+python manage.py test apps.bugboardapi.tests -v 2
 ```
 
-If your change affects models, serializers, permissions, or API responses, backend tests should be part of the PR.
+Oppure via Docker/Makefile:
 
-### API / CI-Oriented Testing
+```bash
+make backend-test
+make backend-coverage
+```
 
-This repository also contains Bruno collections under `BrunoTesting/` for API coverage and CI workflows.
+### Se tocchi contratti API o flussi end-to-end
 
-Bruno is useful when working on API behavior, but it should not be treated as the only required local check for every contribution. Use it when it helps validate backend flows or when you are touching CI-tested API paths.
+Valuta anche la suite Bruno in `BrunoTesting/`.
 
-## Backend API Conventions
+Le safe suites in CI coprono i casi critici minimi, mentre il workflow `bruno-full.yml` e pensato per controlli piu estesi o manuali.
 
-When adding or changing Django REST endpoints, follow these rules:
+## Convenzioni Backend
 
-- Use `GenericViewSet + mixins` for router-backed resource roots.
-- Use only the mixins that match the intended public HTTP surface.
-- Do not use `ModelViewSet` for router-backed resources unless the resource is truly full CRUD.
-- Use `APIView` for flow-oriented, bootstrap, nested, or non-resource endpoints.
-- If a method should not exist publicly, do not expose the mixin for it.
-- Use kebab-case for multiword custom action paths.
-- If an old custom path must be kept for compatibility, keep the frontend on the canonical path and document the alias clearly.
+Quando modifichi o aggiungi endpoint Django REST, allineati alle convenzioni gia presenti nel progetto:
 
-Current router conventions in this project:
+- usa `GenericViewSet + mixins` per resource root gestite dal router
+- usa solo i mixin che corrispondono davvero alla superficie HTTP pubblica
+- evita `ModelViewSet` se la risorsa non e davvero full CRUD
+- usa `APIView` per flow endpoint, nested endpoint o route non strettamente resource-oriented
+- usa `kebab-case` per custom action path multiword
+- se cambi route o metodi pubblici, aggiorna test backend e documentazione
 
-- `users`: `list`, `retrieve`, `create`, `update`
-- `projects`: `list`, `retrieve`, `create`, `update`, `destroy`
-- `issues`: explicit mixins plus custom actions
-- `attachments`: explicit mixins
-- `notifications`: explicit mixins
-- `tags`: `list`, `create`, `destroy`
+Convenzioni gia osservabili nel codice:
 
-When changing public routes or supported methods:
+- `users`: list, retrieve, create, update
+- `projects`: list, retrieve, create, update, destroy
+- `issues`: retrieve, update, destroy + action dedicate
+- `tags`: list, create, destroy
+- `notifications`: endpoint dedicati con list, update singolo, update bulk e stream
 
-- update backend tests in the same change
-- update `README.md` if the public contract changed
-- verify frontend usage matches the documented path
+Se tocchi i modelli:
 
-## Pull Request Expectations
+- genera e includi le migration Django
+- verifica che serializer, permission e test restino coerenti
 
-A good pull request should include:
+## Convenzioni Frontend
 
-- a short explanation of what changed and why
-- the tests you ran
-- screenshots or a short GIF for visible UI changes
-- notes about breaking changes, migrations, or contract changes when relevant
+Per il frontend conviene seguire i pattern gia usati:
 
-If a change is intentionally incomplete or has follow-up work, call that out clearly in the PR description.
+- tieni la logica di business dentro `features`
+- usa `pages` solo per composizione di route
+- riusa `shared/api/core/client.ts` per non rompere il flusso CSRF + refresh token
+- preferisci React Query per fetch, cache e invalidazioni
+- usa gli alias gia configurati invece di import relativi lunghi
 
-## Keeping Documentation In Sync
+Quando cambi il comportamento UI:
 
-Please update documentation when your change affects:
+- verifica sia lo stato loading/error sia il percorso nominale
+- se la modifica e visibile, prepara screenshot o breve video per la PR
 
-- local setup
-- environment variables
-- Docker workflows
-- public API routes
-- contributor workflow
+## Contratti E Realtime
 
-In most cases:
+Questo progetto usa stream Server-Sent Events per:
 
-- `README.md` should stay focused on project setup and architecture
-- `CONTRIBUTING.md` should stay focused on how to work on the project
+- notifiche
+- activity stream delle issue
 
-## What Not To Add Here
+Quando tocchi queste aree:
 
-This repository currently does not define a CLA process, release workflow, or formal governance model in the docs. Please do not add those sections unless the project explicitly adopts them.
+- verifica la compatibilita del payload backend
+- controlla eventuali listener frontend
+- evita modifiche silenziose al formato dati senza aggiornare test o documentazione
+
+## Variabili D'Ambiente
+
+Le sorgenti di riferimento sono:
+
+- `env/dev.example`
+- `env/production.example`
+
+Se aggiungi una nuova variabile:
+
+- documentala nel template giusto
+- usa un default sensato se possibile
+- aggiorna `README.md` se impatta setup o deploy
+
+Ricorda che in produzione il backend richiede storage media `gcs`, quindi modifiche a upload, avatar o allegati vanno pensate anche per quel contesto.
+
+## Bruno E Test API
+
+Usa `BrunoTesting/` quando lavori su:
+
+- autenticazione
+- sessioni
+- password reset
+- route utenti/progetti/issue/notifiche
+- regressioni sui contratti API
+
+La collezione ha gia bootstrap e environment dedicati. Se cambi endpoint o payload, aggiorna anche la documentazione Bruno pertinente.
+
+## Cosa Non Committare
+
+Rispetta il `.gitignore`. In particolare non vanno committati:
+
+- `.env`
+- certificati locali in `nginx/certs/`
+- file temporanei in `BrunoTesting/.tmp/`
+- coverage report
+- media upload locali
+- log e file macchina-specifici
+
+## Pull Request
+
+Una PR buona per questo progetto dovrebbe includere:
+
+- descrizione breve del problema e della soluzione
+- elenco dei test eseguiti
+- screenshot o GIF se hai cambiato UI
+- note su migrazioni, variabili ambiente o impatti deploy se presenti
+
+Se la modifica e deliberatamente parziale o introduce follow-up, dichiaralo esplicitamente nella descrizione.
+
+## Documentazione Da Aggiornare Quando Serve
+
+Aggiorna la documentazione quando tocchi:
+
+- setup locale
+- env vars
+- Docker / Compose
+- deploy
+- route pubbliche
+- workflow di contribuzione
+
+Di norma:
+
+- `README.md` resta il punto di ingresso al progetto
+- `CONTRIBUTING.md` resta il riferimento per il lavoro sul repository
+- `Documentazione/deployment_guide.md` resta la guida operativa per la produzione
+
+## Riferimenti Utili
+
+- [README.md](/Users/carminesgariglia/Desktop/BugBoard26/README.md)
+- [Documentazione/deployment_guide.md](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/deployment_guide.md)
+- [BrunoTesting/BugBoard/README.md](/Users/carminesgariglia/Desktop/BugBoard26/BrunoTesting/BugBoard/README.md)
