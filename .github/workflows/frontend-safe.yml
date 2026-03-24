@@ -67,8 +67,8 @@ jobs:
       - name: Run frontend unit and integration tests
         run: |
           docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm \
-            -v "$PWD/frontend/coverage:/workspace/frontend/coverage" \
-            frontend-test npm run test:coverage
+            -v "$PWD/frontend/coverage:/workspace/frontend/ci-artifacts" \
+            frontend-test npm run test:coverage -- --coverage.reportsDirectory=/workspace/frontend/ci-artifacts/vitest
 
       - name: Upload frontend test artifacts
         if: always()
