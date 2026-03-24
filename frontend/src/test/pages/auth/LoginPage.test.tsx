@@ -111,9 +111,7 @@ describe("LoginPage", () => {
 
   it("retries csrf preparation on submit when the initial warmup does not make the cookie ready", async () => {
     const user = userEvent.setup();
-    loginState.ensureCsrfCookieReady
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true);
+    loginState.ensureCsrfCookieReady.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     loginState.loginApi.mockResolvedValue({
       userId: 1,
       username: "devuser",
@@ -221,9 +219,7 @@ describe("LoginPage", () => {
     await user.type(screen.getByPlaceholderText("Password"), "Password1!");
     await user.click(screen.getByRole("button", { name: /login/i }));
 
-    expect(
-      await screen.findByText("We couldn't reach the server. Please try again.")
-    ).toBeInTheDocument();
+    expect(await screen.findByText("We couldn't reach the server. Please try again.")).toBeInTheDocument();
   });
 
   it("shows a dedicated error when login succeeds but session verification fails", async () => {

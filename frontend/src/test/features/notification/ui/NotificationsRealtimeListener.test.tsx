@@ -748,6 +748,53 @@ describe("NotificationsRealtimeListener", () => {
     expect(readNotificationApiMock).not.toHaveBeenCalled();
   });
 
+  it("suppresses the self-generated project removed notification when the project was just deleted locally", async () => {
+    const notification: NotificationItem = {
+      notifyUserId: 201,
+      notificationId: 30,
+      type: "PROJECT_REMOVED",
+      createdAt: "2026-03-19T10:15:00Z",
+      issueId: null,
+      projectId: 77,
+      isRead: false,
+      readAt: null,
+    };
+
+    window.sessionStorage.setItem(
+      "bugboard26:suppressed-project-removals",
+      JSON.stringify([77]),
+    );
+
+    let hasSentEvent = false;
+    global.fetch = vi.fn().mockImplementation(() => {
+      if (hasSentEvent) {
+        return Promise.resolve(createStreamResponse());
+      }
+
+      hasSentEvent = true;
+      return Promise.resolve(
+        createStreamResponse([
+          `id: ${notification.notifyUserId}\nevent: notification.created\ndata: ${JSON.stringify(notification)}\n\n`,
+        ]),
+      );
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    renderListener(queryClient, "/projects");
+
+    await waitFor(() => {
+      expect(deleteNotificationApiMock).toHaveBeenCalledWith(201);
+    });
+
+    expect(screen.queryByText("Project removed")).not.toBeInTheDocument();
+    expect(window.sessionStorage.getItem("bugboard26:suppressed-project-removals")).toBeNull();
+  });
+
   it("removes project access immediately and redirects to home when a project unassignment arrives", async () => {
     const notification: NotificationItem = {
       notifyUserId: 202,

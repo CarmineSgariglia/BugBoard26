@@ -8,6 +8,7 @@ import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { deleteProjectApi } from "@features/project/api";
 import { generateConfirmationCode } from "@features/project/lib/confirmationCode";
+import { suppressOwnProjectRemovalNotification } from "@features/project/lib/notificationSuppression";
 import type { Project } from "@shared/api/types/projects";
 
 interface DeleteProjectFlowProps {
@@ -44,6 +45,7 @@ function DeleteProjectDialog({
   const deleteMutation = useMutation({
     mutationFn: () => deleteProjectApi(projectId),
     onSuccess: () => {
+      suppressOwnProjectRemovalNotification(projectId);
       queryClient.setQueryData<Project[]>(["projects"], (currentProjects = []) =>
         currentProjects.filter((project) => project.projectId !== projectId)
       );
