@@ -115,6 +115,8 @@ class IssueEventSerializer(serializers.ModelSerializer):
     issueId = serializers.IntegerField(source="issue.issue_id", read_only=True)
     actorId = serializers.IntegerField(source="actor.id", read_only=True)
     actorUsername = serializers.CharField(source="actor.username", read_only=True)
+    actorFirstName = serializers.CharField(source="actor.first_name", read_only=True)
+    actorLastName = serializers.CharField(source="actor.last_name", read_only=True)
     eventType = serializers.CharField(source="event_type")
     oldStatus = serializers.CharField(source="old_status", required=False, allow_blank=True)
     newStatus = serializers.CharField(source="new_status", required=False, allow_blank=True)
@@ -122,7 +124,11 @@ class IssueEventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = IssueEvent
-        fields = ["updateId", "issueId", "actorId", "actorUsername", "eventType", "at", "message", "oldStatus", "newStatus", "attachments"]
+        fields = [
+            "updateId", "issueId", "actorId", "actorUsername",
+            "actorFirstName", "actorLastName",
+            "eventType", "at", "message", "oldStatus", "newStatus", "attachments"
+        ]
 
     @extend_schema_field(AttachmentSerializer(many=True))
     def get_attachments(self, obj) -> list[dict[str, object]]:
