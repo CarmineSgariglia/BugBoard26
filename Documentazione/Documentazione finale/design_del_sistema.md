@@ -1,4 +1,4 @@
-# Design del Sistema
+# Design del Sistema di BugBoard26
 
 ## 1. Obiettivo del documento
 
