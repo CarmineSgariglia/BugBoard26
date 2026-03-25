@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from "react";
-import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { IoIosNotificationsOutline } from "react-icons/io";
 
@@ -66,7 +66,8 @@ function navReducer(state: NavState, action: NavAction): NavState {
 
 export function TopNav() {
   const navigate = useNavigate();
-  const { user: currentUser, refreshUser } = useAuth();
+  const queryClient = useQueryClient();
+  const { user: currentUser, setAuthenticatedUser } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
 
   const [state, dispatch] = useReducer(navReducer, {
@@ -89,9 +90,13 @@ export function TopNav() {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await logoutApi();
-      await refreshUser();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.cancelQueries();
+      setAuthenticatedUser(null);
+      queryClient.removeQueries({
+        predicate: (query) => query.queryKey[0] !== "auth",
+      });
       dispatch({ type: "CLOSE_ALL" });
       navigate("/login", { replace: true });
     },

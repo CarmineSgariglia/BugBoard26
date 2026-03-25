@@ -29,19 +29,17 @@ vi.mock("@shared/ui/ConfirmModal", () => ({
 }));
 
 describe("LogoutConfirmModal", () => {
-  it("clears the query cache and forwards the logout confirmation", async () => {
+  it("forwards the logout confirmation", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
-    const { queryClient } = renderWithProviders(
+    renderWithProviders(
       <LogoutConfirmModal isOpen={true} onClose={vi.fn()} onConfirm={onConfirm} />
     );
-    const clearSpy = vi.spyOn(queryClient, "clear");
 
     expect(screen.getByText("Sign Out")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
-    expect(clearSpy).toHaveBeenCalledTimes(1);
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });

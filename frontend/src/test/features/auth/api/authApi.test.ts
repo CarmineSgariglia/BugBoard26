@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import axios from "axios";
 
 import {
   loginApi,
@@ -17,6 +18,13 @@ const { getMock, postMock, deleteMock, setAccessTokenMock } = vi.hoisted(() => (
   setAccessTokenMock: vi.fn(),
 }));
 
+vi.mock("axios", () => ({
+  __esModule: true,
+  default: {
+    isAxiosError: vi.fn(),
+  },
+}));
+
 vi.mock("@shared/api/core/client", () => ({
   __esModule: true,
   default: {
@@ -33,6 +41,7 @@ describe("feature auth api module", () => {
     postMock.mockReset();
     deleteMock.mockReset();
     setAccessTokenMock.mockReset();
+    vi.mocked(axios.isAxiosError).mockReset();
   });
 
   it("logs in and stores the access token", async () => {
@@ -77,12 +86,34 @@ describe("feature auth api module", () => {
     });
   });
 
-  it("always clears the access token on logout, even when the request fails", async () => {
+  it("clears the access token on logout success", async () => {
+    deleteMock.mockResolvedValueOnce({ data: {} });
+
+    await expect(logoutApi()).resolves.toBeUndefined();
+    expect(deleteMock).toHaveBeenCalledWith("/sessions/current");
+    expect(setAccessTokenMock).toHaveBeenCalledWith(null);
+  });
+
+  it("treats unauthorized logout responses as already logged out", async () => {
+    const unauthorizedError = {
+      isAxiosError: true,
+      response: { status: 401 },
+    };
+    deleteMock.mockRejectedValueOnce(unauthorizedError);
+    vi.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    await expect(logoutApi()).resolves.toBeUndefined();
+    expect(deleteMock).toHaveBeenCalledWith("/sessions/current");
+    expect(setAccessTokenMock).toHaveBeenCalledWith(null);
+  });
+
+  it("preserves the local access token when logout fails for non-auth reasons", async () => {
     deleteMock.mockRejectedValueOnce(new Error("network down"));
+    vi.mocked(axios.isAxiosError).mockReturnValue(false);
 
     await expect(logoutApi()).rejects.toThrow("network down");
     expect(deleteMock).toHaveBeenCalledWith("/sessions/current");
-    expect(setAccessTokenMock).toHaveBeenCalledWith(null);
+    expect(setAccessTokenMock).not.toHaveBeenCalled();
   });
 
   it("fetches the current user from /users/me", async () => {

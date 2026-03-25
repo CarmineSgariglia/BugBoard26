@@ -1,3 +1,4 @@
+import axios from "axios";
 import apiClient, { setAccessToken } from "@shared/api/core/client";
 import type { AuthUser } from "@shared/api/types/auth";
 
@@ -39,9 +40,18 @@ export async function resetPasswordApi(
 export async function logoutApi(): Promise<void> {
   try {
     await apiClient.delete("/sessions/current");
-  } finally {
-    setAccessToken(null);
+  } catch (error) {
+    if (!axios.isAxiosError(error)) {
+      throw error;
+    }
+
+    const statusCode = error.response?.status;
+    if (statusCode !== 401 && statusCode !== 403) {
+      throw error;
+    }
   }
+
+  setAccessToken(null);
 }
 
 export async function meApi(): Promise<AuthUser> {
