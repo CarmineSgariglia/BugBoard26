@@ -2,6 +2,7 @@ import os
 import sys
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -58,15 +59,51 @@ def _validate_refresh_cookie_path(*, cookie_path: str) -> str:
     return normalized_path
 
 
+def _csv_env(name: str, default: str = "") -> list[str]:
+    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
+
+
+def _host_from_origin(origin: str) -> str | None:
+    candidate = origin.strip()
+    if not candidate:
+        return None
+
+    parsed_origin = urlsplit(candidate)
+    return parsed_origin.hostname
+
+
+def _hosts_from_server_names(server_names: str) -> set[str]:
+    hosts = set()
+    for server_name in server_names.replace(",", " ").split():
+        normalized_host = server_name.strip()
+        if normalized_host and normalized_host != "_":
+            hosts.add(normalized_host)
+    return hosts
+
+
+def _build_allowed_hosts(
+    *,
+    explicit_hosts_csv: str,
+    server_names: str = "",
+    trusted_origins: list[str] | tuple[str, ...] = (),
+) -> list[str]:
+    allowed_hosts = {
+        host.strip()
+        for host in explicit_hosts_csv.split(",")
+        if host.strip()
+    }
+    allowed_hosts.update(_hosts_from_server_names(server_names))
+    allowed_hosts.update(
+        host
+        for host in (_host_from_origin(origin) for origin in trusted_origins)
+        if host
+    )
+    return sorted(allowed_hosts)
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", DEFAULT_DEV_SECRET_KEY)
 
 DEBUG = _env_flag("DEBUG", True)
-
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,backend").split(",")
-    if host.strip()
-]
 
 _validate_secret_key(secret_key=SECRET_KEY, debug=DEBUG)
 
@@ -157,9 +194,6 @@ NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS = float(
     os.getenv("NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", "20")
 )
 
-def _csv_env(name: str, default: str = "") -> list[str]:
-    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
-
 
 def _origins(scheme: str, hosts: list[str], *, port: str | None = None) -> set[str]:
     return {
@@ -176,15 +210,27 @@ CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False").lower() ==
 CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "True").lower() == "true"
 default_cors_origins = _origins_csv("http", ["localhost", "127.0.0.1"], port="5173") if DEBUG else ""
 CORS_ALLOWED_ORIGINS = _csv_env("CORS_ALLOWED_ORIGINS", default_cors_origins)
+configured_csrf_origins = _csv_env("CSRF_TRUSTED_ORIGINS", "")
+configured_csrf_extra_origins = _csv_env("CSRF_TRUSTED_ORIGINS_EXTRA", "")
 
 if not DEBUG and CORS_ALLOW_ALL_ORIGINS:
     raise ImproperlyConfigured("CORS_ALLOW_ALL_ORIGINS=True is not allowed in production")
 if not DEBUG and not CORS_ALLOWED_ORIGINS:
     raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set in production")
 
-csrf_origins = set(_csv_env("CSRF_TRUSTED_ORIGINS", ""))
+ALLOWED_HOSTS = _build_allowed_hosts(
+    explicit_hosts_csv=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,backend"),
+    server_names=os.getenv("NGINX_SERVER_NAME", ""),
+    trusted_origins=[
+        *CORS_ALLOWED_ORIGINS,
+        *configured_csrf_origins,
+        *configured_csrf_extra_origins,
+    ],
+)
+
+csrf_origins = set(configured_csrf_origins)
 csrf_origins.update(CORS_ALLOWED_ORIGINS)
-csrf_origins.update(_csv_env("CSRF_TRUSTED_ORIGINS_EXTRA", ""))
+csrf_origins.update(configured_csrf_extra_origins)
 
 # Dev convenience for Docker/Vite local networking.
 # Keep this block debug-only to avoid weakening production posture.

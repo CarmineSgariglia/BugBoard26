@@ -34,6 +34,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "False"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-your-domain.com www.your-domain.com}
       CORS_ALLOW_ALL_ORIGINS: "False"
       MEDIA_STORAGE_BACKEND: ${MEDIA_STORAGE_BACKEND:-gcs}
       STATIC_ROOT: ${STATIC_ROOT:-/app/staticfiles}

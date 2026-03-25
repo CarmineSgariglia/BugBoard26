@@ -15,6 +15,9 @@ from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.modules.auth.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
 from config.settings import (
     MIN_SECRET_KEY_LENGTH,
+    _build_allowed_hosts,
+    _host_from_origin,
+    _hosts_from_server_names,
     _validate_refresh_cookie_path,
     _validate_secret_key,
 )
@@ -339,6 +342,29 @@ class SettingsValidationTests(SimpleTestCase):
             "AUTH_REFRESH_COOKIE_PATH must cover /api/sessions/current and /api/sessions/current/access-token",
         ):
             _validate_refresh_cookie_path(cookie_path="/api/auth")
+
+    def test_host_from_origin_strips_scheme_and_port(self):
+        self.assertEqual(_host_from_origin("https://www.bugboard.it:8443"), "www.bugboard.it")
+
+    def test_hosts_from_server_names_splits_space_separated_values(self):
+        self.assertEqual(
+            _hosts_from_server_names("bugboard.it www.bugboard.it _"),
+            {"bugboard.it", "www.bugboard.it"},
+        )
+
+    def test_allowed_hosts_include_proxy_server_names_and_trusted_origins(self):
+        self.assertEqual(
+            _build_allowed_hosts(
+                explicit_hosts_csv="backend,bugboard.it",
+                server_names="bugboard.it www.bugboard.it",
+                trusted_origins=[
+                    "https://bugboard.it",
+                    "https://www.bugboard.it",
+                    "http://35.240.52.33",
+                ],
+            ),
+            ["35.240.52.33", "backend", "bugboard.it", "www.bugboard.it"],
+        )
 
 
 class AuthCsrfTests(APITestCase):
