@@ -18,6 +18,11 @@ export function ManageAccountSettingsScreen() {
     setIsEditingUser(false);
   };
 
+  const handleSelfEditRedirect = () => {
+    setActiveTab("profile");
+    setIsEditingUser(false);
+  };
+
   const useWideLayout = activeTab === "manage_users" && !isEditingUser;
 
   return (
@@ -37,7 +42,12 @@ export function ManageAccountSettingsScreen() {
           <div className={`w-full transition-all ${useWideLayout ? "w-full" : "max-w-lg"}`}>
             {activeTab === "profile" && <ProfileSettingsSection isAdmin={isAdmin} />}
             {activeTab === "add_users" && <AddUsersSection />}
-            {activeTab === "manage_users" && <ManageUsersSection onEditingChange={setIsEditingUser} />}
+            {activeTab === "manage_users" && (
+              <ManageUsersSection
+                onEditingChange={setIsEditingUser}
+                onSelfEditRedirect={handleSelfEditRedirect}
+              />
+            )}
           </div>
         </div>
 

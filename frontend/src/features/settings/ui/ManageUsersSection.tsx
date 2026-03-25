@@ -17,9 +17,10 @@ import { ToggleUserStatusModal } from "./ToggleUserStatusModal";
 
 export interface ManageUsersSectionProps {
   onEditingChange?: (isEditing: boolean) => void;
+  onSelfEditRedirect?: () => void;
 }
 
-export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps) {
+export function ManageUsersSection({ onEditingChange, onSelfEditRedirect }: ManageUsersSectionProps) {
   const { user: currentUser } = useAuth();
   const {
     users,
@@ -41,9 +42,11 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
   const [toggleStatusUser, setToggleStatusUser] = useState<AuthUser | null>(null);
 
+  const isDjangoSuperuser = useCallback((user: AuthUser) => Boolean(user.isSuperuser), []);
+
   const isSuperuserDeactivationLocked = useCallback(
-    (user: AuthUser) => Boolean(user.isSuperuser && user.active),
-    []
+    (user: AuthUser) => Boolean(isDjangoSuperuser(user) && user.active),
+    [isDjangoSuperuser]
   );
 
   const toggleUserStatusMutation = useMutation({
@@ -62,6 +65,11 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
 
   const handleActionClick = (actionName: string, user: AuthUser) => {
     if (actionName === "Edit") {
+      if (currentUser?.userId === user.userId) {
+        onSelfEditRedirect?.();
+        return;
+      }
+      if (isDjangoSuperuser(user)) return;
       setEditingUser(user);
       onEditingChange?.(true);
     } else if (actionName === "Delete") {
@@ -150,8 +158,15 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
               <>
                 <button
                   onClick={() => handleActionClick("Edit", user)}
-                  className="text-neutral-500 hover:text-white transition-colors"
-                  title="Edit User"
+                  className="text-neutral-500 hover:text-white transition-colors disabled:cursor-not-allowed disabled:text-neutral-700 disabled:hover:text-neutral-700"
+                  title={
+                    currentUser?.userId === user.userId
+                      ? "Edit in Profile Settings"
+                      : isDjangoSuperuser(user)
+                        ? "Django superusers cannot be edited"
+                        : "Edit User"
+                  }
+                  disabled={isDjangoSuperuser(user)}
                 >
                   <FiEdit2 size={16} />
                 </button>

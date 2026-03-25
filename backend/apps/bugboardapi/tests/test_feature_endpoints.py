@@ -513,6 +513,83 @@ class UserManagementEndpointTests(APITestCase):
         superuser.refresh_from_db()
         self.assertTrue(superuser.is_active)
 
+    def test_admin_cannot_edit_superuser_via_patch_endpoint(self):
+        superuser = User.objects.create_superuser(
+            username="users_root_patch",
+            email="users_root_patch@example.com",
+            password="StrongPass123!",
+            first_name="Root",
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/users/{superuser.id}",
+            {"firstName": "Changed"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        superuser.refresh_from_db()
+        self.assertEqual(superuser.first_name, "Root")
+
+    def test_admin_cannot_reset_superuser_password_via_client_endpoint(self):
+        superuser = User.objects.create_superuser(
+            username="users_root_password",
+            email="users_root_password@example.com",
+            password="StrongPass123!",
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.put(
+            f"/api/users/{superuser.id}/password",
+            {"newPassword": "AnotherStrongPass123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.check_password("StrongPass123!"))
+
+    def test_superuser_cannot_change_own_password_via_client_endpoint(self):
+        superuser = User.objects.create_superuser(
+            username="users_root_self_password",
+            email="users_root_self_password@example.com",
+            password="StrongPass123!",
+        )
+
+        self.client.force_authenticate(user=superuser)
+        response = self.client.put(
+            "/api/users/me/password",
+            {
+                "currentPassword": "StrongPass123!",
+                "newPassword": "AnotherStrongPass123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.check_password("StrongPass123!"))
+
+    def test_admin_cannot_upload_profile_image_for_superuser_via_client_endpoint(self):
+        superuser = User.objects.create_superuser(
+            username="users_root_avatar",
+            email="users_root_avatar@example.com",
+            password="StrongPass123!",
+        )
+        image = SimpleUploadedFile(
+            "avatar.png", make_png_bytes(size=(128, 128)), content_type="image/png"
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.put(
+            f"/api/users/{superuser.id}/profile-image",
+            {"profile_img": image},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_profile_image_upload_self_success(self):
         self.client.force_authenticate(user=self.member)
         image = SimpleUploadedFile(

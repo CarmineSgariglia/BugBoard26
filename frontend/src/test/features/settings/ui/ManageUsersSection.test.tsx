@@ -203,7 +203,7 @@ describe("ManageUsersSection", () => {
 
     renderWithProviders(<ManageUsersSection onEditingChange={onEditingChange} />);
 
-    await user.click(screen.getAllByTitle("Edit User")[1]);
+    await user.click(screen.getByTitle("Edit User"));
 
     expect(onEditingChange).toHaveBeenCalledWith(true);
     expect(screen.getByText("editing:user1")).toBeInTheDocument();
@@ -215,6 +215,25 @@ describe("ManageUsersSection", () => {
 
     await user.click(screen.getByRole("button", { name: /close editor/i }));
     expect(onEditingChange).toHaveBeenCalledWith(false);
+  });
+
+  it("redirects self edit to profile settings instead of opening the admin editor", async () => {
+    const user = userEvent.setup();
+    const onSelfEditRedirect = vi.fn();
+    const onEditingChange = vi.fn();
+
+    renderWithProviders(
+      <ManageUsersSection
+        onEditingChange={onEditingChange}
+        onSelfEditRedirect={onSelfEditRedirect}
+      />
+    );
+
+    await user.click(screen.getByTitle("Edit in Profile Settings"));
+
+    expect(onSelfEditRedirect).toHaveBeenCalledTimes(1);
+    expect(onEditingChange).not.toHaveBeenCalledWith(true);
+    expect(screen.queryByText("editing:admin")).not.toBeInTheDocument();
   });
 
   it("opens the toggle modal, confirms status changes and blocks self-deactivation", async () => {
@@ -244,5 +263,13 @@ describe("ManageUsersSection", () => {
     const rootToggleButton = screen.getByTitle("Django superusers cannot be deactivated");
     expect(rootToggleButton.hasAttribute("disabled")).toBe(true);
     expect(screen.queryByText("toggle:root")).not.toBeInTheDocument();
+  });
+
+  it("disables editing for django superusers", () => {
+    renderWithProviders(<ManageUsersSection />);
+
+    const rootEditButton = screen.getByTitle("Django superusers cannot be edited");
+    expect(rootEditButton.hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText("editing:root")).not.toBeInTheDocument();
   });
 });

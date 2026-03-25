@@ -20,13 +20,16 @@ vi.mock("@features/settings/ui/AddUsersSection", () => ({
 vi.mock("@features/settings/ui/ManageUsersSection", () => ({
   ManageUsersSection: ({
     onEditingChange,
+    onSelfEditRedirect,
   }: {
     onEditingChange?: (isEditing: boolean) => void;
+    onSelfEditRedirect?: () => void;
   }) => (
     <div>
       <span>Manage users body</span>
       <button onClick={() => onEditingChange?.(true)}>Start editing</button>
       <button onClick={() => onEditingChange?.(false)}>Stop editing</button>
+      <button onClick={() => onSelfEditRedirect?.()}>Open self profile</button>
     </div>
   ),
 }));
@@ -84,5 +87,19 @@ describe("ManageAccountSettingsScreen", () => {
     await user.click(screen.getByRole("button", { name: /stop editing/i }));
 
     expect(container.querySelector(".pl-0")).toBeInTheDocument();
+  });
+
+  it("returns to profile settings when manage-users requests self edit redirect", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ManageAccountSettingsScreen />);
+
+    await user.click(screen.getByText("Manage Users"));
+    expect(screen.getByText("Manage users body")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /open self profile/i }));
+
+    expect(screen.getByText("Profile section admin:true")).toBeInTheDocument();
+    expect(screen.queryByText("Manage users body")).not.toBeInTheDocument();
   });
 });
