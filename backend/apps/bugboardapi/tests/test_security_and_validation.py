@@ -1,6 +1,10 @@
+import json
+from http.cookiejar import CookieJar
+from urllib.request import HTTPCookieProcessor, Request, build_opener
+
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
-from django.test import SimpleTestCase
+from django.test import LiveServerTestCase, SimpleTestCase
 from unittest.mock import patch
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -9,7 +13,11 @@ from rest_framework.throttling import ScopedRateThrottle
 from apps.bugboardapi.modules.projects.models import Project, ProjectMembership
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.modules.auth.views import LoginView, PasswordOTPRequestView, PasswordOTPVerifyView, PasswordResetView
-from config.settings import MIN_SECRET_KEY_LENGTH, _validate_secret_key
+from config.settings import (
+    MIN_SECRET_KEY_LENGTH,
+    _validate_refresh_cookie_path,
+    _validate_secret_key,
+)
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
 
@@ -303,6 +311,19 @@ class SettingsValidationTests(SimpleTestCase):
     def test_secret_key_validation_allows_short_values_only_in_debug(self):
         _validate_secret_key(secret_key="debug-short", debug=True)
 
+    def test_refresh_cookie_path_validation_accepts_session_scope(self):
+        self.assertEqual(
+            _validate_refresh_cookie_path(cookie_path="/api/sessions/current/"),
+            "/api/sessions/current",
+        )
+
+    def test_refresh_cookie_path_validation_rejects_incompatible_scope(self):
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            "AUTH_REFRESH_COOKIE_PATH must cover /api/sessions/current and /api/sessions/current/access-token",
+        ):
+            _validate_refresh_cookie_path(cookie_path="/api/auth")
+
 
 class AuthCsrfTests(APITestCase):
     def setUp(self):
@@ -317,6 +338,8 @@ class AuthCsrfTests(APITestCase):
         response = client.get("/api/security/csrf-token")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("csrftoken", response.cookies)
+        self.assertEqual(response["Cache-Control"], "no-store, no-cache, must-revalidate")
+        self.assertEqual(response["Pragma"], "no-cache")
 
     def test_login_requires_csrf_and_succeeds_with_token(self):
         client = APIClient(enforce_csrf_checks=True)
@@ -458,3 +481,66 @@ class JwtAuthFlowTests(APITestCase):
     def test_refresh_requires_cookie(self):
         response = self.client.post("/api/sessions/current/access-token", {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class AuthBrowserCookieFlowTests(LiveServerTestCase):
+    def setUp(self):
+        self.user = create_user_with_profile(
+            username="browser_cookie_user",
+            email="browser-cookie@example.com",
+            password="StrongPass123!",
+        )
+        self.cookie_jar = CookieJar()
+        self.opener = build_opener(HTTPCookieProcessor(self.cookie_jar))
+
+    def _request(self, path: str, *, method: str = "GET", payload: dict | None = None, headers: dict[str, str] | None = None):
+        request_headers = dict(headers or {})
+        body = None
+        if payload is not None:
+            body = json.dumps(payload).encode("utf-8")
+            request_headers.setdefault("Content-Type", "application/json")
+
+        request = Request(
+            f"{self.live_server_url}{path}",
+            data=body,
+            headers=request_headers,
+            method=method,
+        )
+        with self.opener.open(request) as response:
+            raw_body = response.read().decode("utf-8")
+            return response.status, raw_body, response.headers
+
+    def _cookie(self, name: str):
+        for cookie in self.cookie_jar:
+            if cookie.name == name:
+                return cookie
+        return None
+
+    def test_browser_cookie_jar_can_refresh_after_login(self):
+        csrf_status, _csrf_body, _csrf_headers = self._request("/api/security/csrf-token")
+        self.assertEqual(csrf_status, status.HTTP_200_OK)
+
+        csrf_cookie = self._cookie("csrftoken")
+        self.assertIsNotNone(csrf_cookie)
+
+        login_status, login_body, _login_headers = self._request(
+            "/api/sessions",
+            method="POST",
+            payload={"email": self.user.email, "password": "StrongPass123!"},
+            headers={"X-CSRFToken": csrf_cookie.value},
+        )
+        self.assertEqual(login_status, status.HTTP_200_OK)
+        self.assertIn("accessToken", json.loads(login_body))
+
+        refresh_cookie = self._cookie(settings.AUTH_REFRESH_COOKIE_NAME)
+        self.assertIsNotNone(refresh_cookie)
+        self.assertEqual(refresh_cookie.path, settings.AUTH_REFRESH_COOKIE_PATH)
+
+        refresh_status, refresh_body, _refresh_headers = self._request(
+            "/api/sessions/current/access-token",
+            method="POST",
+            payload={},
+            headers={"X-CSRFToken": csrf_cookie.value},
+        )
+        self.assertEqual(refresh_status, status.HTTP_200_OK)
+        self.assertIn("accessToken", json.loads(refresh_body))

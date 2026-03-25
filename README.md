@@ -153,13 +153,6 @@ make frontend-test
 make frontend-coverage
 ```
 
-Per HTTPS locale con Nginx:
-
-```bash
-make https
-make https-down
-```
-
 Per lo stack production-like:
 
 ```bash
@@ -265,7 +258,7 @@ Endpoint e aree principali:
 - password reset: `/api/password-reset-requests`, `/api/password-reset-verifications`, `/api/password-resets`
 - tag e allegati: `/api/tags`, endpoint nested sotto `/api/issues/.../attachments`
 
-La specifica generata lato backend e disponibile anche in repository in [Documentazione/OpenAPI/openapi.yaml](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/OpenAPI/openapi.yaml).
+La specifica generata lato backend e disponibile anche in repository in [Documentazione/OpenAPI/openapi.yaml].
 
 ## Produzione E Deploy
 
@@ -276,9 +269,8 @@ Il progetto supporta due modalita principali:
 
 Dettagli operativi:
 
-- guida deploy: [Documentazione/deployment_guide.md](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/deployment_guide.md)
-- compose produzione: [docker-compose.prod.yml](/Users/carminesgariglia/Desktop/BugBoard26/docker-compose.prod.yml)
-- script deploy remoto: [scripts/deploy_prod.sh](/Users/carminesgariglia/Desktop/BugBoard26/scripts/deploy_prod.sh)
+- compose produzione: [docker-compose.prod.yml]
+- script deploy remoto: [scripts/deploy_prod.sh]
 
 Nota architetturale: il realtime backend usa stream in memoria di processo. La documentazione di deploy del progetto considera quindi supportata la topologia con singola istanza backend e `GUNICORN_WORKERS=1`.
 
@@ -286,10 +278,9 @@ Nota architetturale: il realtime backend usa stream in memoria di processo. La d
 
 Altri riferimenti utili gia presenti:
 
-- guida deploy: [Documentazione/deployment_guide.md](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/deployment_guide.md)
-- documenti di progetto: [Documentazione](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione)
-- collezione Bruno: [BrunoTesting/BugBoard/README.md](/Users/carminesgariglia/Desktop/BugBoard26/BrunoTesting/BugBoard/README.md)
+- documenti di progetto: [Documentazione]
+- collezione Bruno: [BrunoTesting/BugBoard/README.md]
 
 ## Contribuire
 
-Le linee guida operative per lavorare sul repository sono in [CONTRIBUTING.md](/Users/carminesgariglia/Desktop/BugBoard26/CONTRIBUTING.md).
+Le linee guida operative per lavorare sul repository sono in [CONTRIBUTING.md].

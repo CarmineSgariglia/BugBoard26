@@ -296,6 +296,5 @@ Di norma:
 
 ## Riferimenti Utili
 
-- [README.md](/Users/carminesgariglia/Desktop/BugBoard26/README.md)
-- [Documentazione/deployment_guide.md](/Users/carminesgariglia/Desktop/BugBoard26/Documentazione/deployment_guide.md)
-- [BrunoTesting/BugBoard/README.md](/Users/carminesgariglia/Desktop/BugBoard26/BrunoTesting/BugBoard/README.md)
+- [README.md]
+- [BrunoTesting/BugBoard/README.md]
