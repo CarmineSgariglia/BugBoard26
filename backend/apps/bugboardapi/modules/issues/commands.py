@@ -183,8 +183,6 @@ def unassign_issue_users(*, issue: Issue, actor, raw_user_ids):
             notification_actor=actor,
         )
 
-
-
 def create_issue_comment(*, issue: Issue, actor, raw_message, payload):
     message = validate_issue_event_message(
         raw_message,
