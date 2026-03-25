@@ -187,6 +187,22 @@ class UserPermissionTests(APITestCase):
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_active)
 
+    def test_admin_cannot_deactivate_superuser_via_patch(self):
+        superuser = self.admin.__class__.objects.create_superuser(
+            username="root_admin_user",
+            email="root_admin@example.com",
+            password="StrongPass123!",
+        )
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f"/api/users/{superuser.id}",
+            {"active": False},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.is_active)
+
 class IssueCreationValidationTests(APITestCase):
     def setUp(self):
         self.admin = create_user_with_profile(

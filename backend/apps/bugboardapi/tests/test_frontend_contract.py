@@ -50,7 +50,7 @@ class FrontendContractTests(APITestCase):
         self.client.force_authenticate(user=self.member)
         response = self.client.get("/api/users/me")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        expected_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
+        expected_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "isSuperuser", "profileImg", "active"}
         self.assertTrue(expected_keys.issubset(set(response.data.keys())))
 
     def test_users_list_payload_matches_frontend_contract(self):
@@ -60,7 +60,7 @@ class FrontendContractTests(APITestCase):
         expected_top_level_keys = {"count", "next", "previous", "results"}
         self.assertTrue(expected_top_level_keys.issubset(set(response.data.keys())))
         self.assertGreaterEqual(len(response.data["results"]), 1)
-        expected_user_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
+        expected_user_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "isSuperuser", "profileImg", "active"}
         self.assertTrue(expected_user_keys.issubset(set(response.data["results"][0].keys())))
 
     def test_projects_list_payload_matches_frontend_contract(self):
@@ -90,7 +90,7 @@ class FrontendContractTests(APITestCase):
             "createdAt",
         }
         self.assertTrue(expected_keys.issubset(set(response.data[0].keys())))
-        reporter_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "profileImg", "active"}
+        reporter_keys = {"userId", "username", "email", "firstName", "lastName", "isAdmin", "isSuperuser", "profileImg", "active"}
         self.assertTrue(reporter_keys.issubset(set(response.data[0]["reporter"].keys())))
 
     def test_notifications_payload_matches_frontend_contract(self):

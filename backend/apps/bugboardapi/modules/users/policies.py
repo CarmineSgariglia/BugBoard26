@@ -8,6 +8,8 @@ def ensure_can_edit_user(*, actor: User, target_user: User, payload) -> None:
     is_admin_actor = is_admin_user(actor)
     if actor != target_user and not is_admin_actor:
         raise PermissionDenied("Cannot edit other users")
+    if target_user.is_superuser and payload.get("active") is False:
+        raise PermissionDenied("You cannot deactivate a superuser")
     if is_admin_actor and actor == target_user and any(
         field in payload for field in {"active", "group", "isAdmin"}
     ):

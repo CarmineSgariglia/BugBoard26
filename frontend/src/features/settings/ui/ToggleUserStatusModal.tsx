@@ -21,6 +21,8 @@ export function ToggleUserStatusModal({
   if (!user) return null;
 
   const isActive = user.active ?? true;
+  if (user.isSuperuser && isActive) return null;
+
   const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.username;
 
   return (

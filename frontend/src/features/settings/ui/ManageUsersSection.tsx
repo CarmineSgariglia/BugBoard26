@@ -41,6 +41,11 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
   const [toggleStatusUser, setToggleStatusUser] = useState<AuthUser | null>(null);
 
+  const isSuperuserDeactivationLocked = useCallback(
+    (user: AuthUser) => Boolean(user.isSuperuser && user.active),
+    []
+  );
+
   const toggleUserStatusMutation = useMutation({
     mutationFn: async (targetUser: AuthUser) => {
       const nextActive = !targetUser.active;
@@ -60,14 +65,16 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
       setEditingUser(user);
       onEditingChange?.(true);
     } else if (actionName === "Delete") {
+      if (isSuperuserDeactivationLocked(user)) return;
       setToggleStatusUser(user);
     }
   };
 
   const handleToggleStatus = useCallback(async () => {
     if (!toggleStatusUser || toggleUserStatusMutation.isPending) return;
+    if (isSuperuserDeactivationLocked(toggleStatusUser)) return;
     await toggleUserStatusMutation.mutateAsync(toggleStatusUser);
-  }, [toggleStatusUser, toggleUserStatusMutation]);
+  }, [isSuperuserDeactivationLocked, toggleStatusUser, toggleUserStatusMutation]);
 
   if (editingUser) {
     return (
@@ -154,11 +161,13 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
                   title={
                     currentUser?.userId === user.userId
                       ? "You cannot deactivate your own account"
+                      : isSuperuserDeactivationLocked(user)
+                        ? "Django superusers cannot be deactivated"
                       : user.active
                         ? "Deactivate User"
                         : "Activate User"
                   }
-                  disabled={currentUser?.userId === user.userId}
+                  disabled={currentUser?.userId === user.userId || isSuperuserDeactivationLocked(user)}
                 >
                   <MdGroupOff size={16} />
                 </button>

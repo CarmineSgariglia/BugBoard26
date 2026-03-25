@@ -141,8 +141,9 @@ describe("ManageUsersSection", () => {
   const updateLocalUserMock = vi.fn();
 
   const mockUsers = [
-    { userId: 1, username: "admin", email: "a@a.com", active: true, isAdmin: true },
-    { userId: 2, username: "user1", email: "b@b.com", active: false, isAdmin: false },
+    { userId: 1, username: "admin", email: "a@a.com", active: true, isAdmin: true, isSuperuser: false },
+    { userId: 2, username: "user1", email: "b@b.com", active: false, isAdmin: false, isSuperuser: false },
+    { userId: 3, username: "root", email: "root@a.com", active: true, isAdmin: true, isSuperuser: true },
   ];
 
   beforeEach(() => {
@@ -183,6 +184,7 @@ describe("ManageUsersSection", () => {
 
     expect(screen.getByText("admin")).toBeInTheDocument();
     expect(screen.getByText("user1")).toBeInTheDocument();
+    expect(screen.getByText("root")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("search"), "qa");
     await user.selectOptions(screen.getByLabelText("select-All Roles"), "Admin");
@@ -234,5 +236,13 @@ describe("ManageUsersSection", () => {
         expect.objectContaining({ userId: 2, active: true })
       );
     });
+  });
+
+  it("disables deactivation for django superusers", () => {
+    renderWithProviders(<ManageUsersSection />);
+
+    const rootToggleButton = screen.getByTitle("Django superusers cannot be deactivated");
+    expect(rootToggleButton.hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText("toggle:root")).not.toBeInTheDocument();
   });
 });

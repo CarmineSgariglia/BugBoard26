@@ -24,6 +24,7 @@ class UserReadSerializer(serializers.ModelSerializer):
     lastName = serializers.CharField(source="last_name", read_only=True)
     group = serializers.SerializerMethodField()
     isAdmin = serializers.SerializerMethodField()
+    isSuperuser = serializers.BooleanField(source="is_superuser", read_only=True)
     profileImg = serializers.SerializerMethodField()
     active = serializers.BooleanField(source="is_active", read_only=True)
 
@@ -37,6 +38,7 @@ class UserReadSerializer(serializers.ModelSerializer):
             "lastName",
             "group",
             "isAdmin",
+            "isSuperuser",
             "profileImg",
             "active",
         ]

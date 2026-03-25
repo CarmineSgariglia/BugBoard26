@@ -331,6 +331,7 @@ class UserManagementEndpointTests(APITestCase):
         self.assertIn("results", response.data)
         self.assertGreaterEqual(response.data["count"], 2)
         self.assertGreaterEqual(len(response.data["results"]), 2)
+        self.assertIn("isSuperuser", response.data["results"][0])
 
     def test_admin_user_list_search_filter(self):
         self.client.force_authenticate(user=self.admin)
@@ -487,6 +488,30 @@ class UserManagementEndpointTests(APITestCase):
         )
         self.assertEqual(deactivate.status_code, status.HTTP_200_OK)
         self.assertFalse(deactivate.data["active"])
+
+    def test_superuser_is_marked_in_user_payload_and_cannot_be_deactivated(self):
+        superuser = User.objects.create_superuser(
+            username="users_root",
+            email="users_root@example.com",
+            password="StrongPass123!",
+        )
+
+        self.client.force_authenticate(user=self.admin)
+
+        list_response = self.client.get("/api/users?search=users_root")
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["count"], 1)
+        self.assertTrue(list_response.data["results"][0]["isAdmin"])
+        self.assertTrue(list_response.data["results"][0]["isSuperuser"])
+
+        deactivate_response = self.client.patch(
+            f"/api/users/{superuser.id}",
+            {"active": False},
+            format="json",
+        )
+        self.assertEqual(deactivate_response.status_code, status.HTTP_403_FORBIDDEN)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.is_active)
 
     def test_profile_image_upload_self_success(self):
         self.client.force_authenticate(user=self.member)

@@ -23,6 +23,16 @@ const inactiveUser: AuthUser = {
   active: false,
 };
 
+const activeSuperuser: AuthUser = {
+  userId: 99,
+  username: "root",
+  email: "root@example.com",
+  firstName: "Root",
+  lastName: "Admin",
+  active: true,
+  isSuperuser: true,
+};
+
 describe("ToggleUserStatusModal", () => {
   const defaultProps = {
     isOpen: true,
@@ -87,6 +97,13 @@ describe("ToggleUserStatusModal", () => {
       <ToggleUserStatusModal {...defaultProps} user={userNoActive} />
     );
     expect(screen.getByText("Deactivate User")).toBeInTheDocument();
+  });
+
+  it("does not render for an active superuser", () => {
+    renderWithProviders(
+      <ToggleUserStatusModal {...defaultProps} user={activeSuperuser} />
+    );
+    expect(screen.queryByText("Deactivate User")).not.toBeInTheDocument();
   });
 
   it("calls onConfirm when confirm button is clicked", async () => {
