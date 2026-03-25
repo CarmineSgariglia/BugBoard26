@@ -1,7 +1,0 @@
-info:
-  name: 07_Tags
-  type: folder
-  seq: 7
-
-request:
-  auth: inherit

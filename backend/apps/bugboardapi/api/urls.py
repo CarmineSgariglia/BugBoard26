@@ -15,15 +15,11 @@ from ..modules.auth.views import (
 )
 from ..modules.issues.views import (
     IssueAssigneeDetailView,
-    IssueAttachmentCollectionView,
-    IssueAttachmentDetailView,
-    IssueEventAttachmentCollectionView,
     IssueViewSet,
     ProjectIssueListCreateView,
 )
 from ..modules.notifications.views import NotificationViewSet
 from ..modules.projects.views import ProjectViewSet
-from ..modules.tags.views import TagViewSet
 from ..modules.users.views import (
     CurrentUserPasswordView,
     CurrentUserProfileImageView,
@@ -36,7 +32,6 @@ router = SimpleRouter(trailing_slash=False)
 router.register("users", UserViewSet, basename="users")
 router.register("projects", ProjectViewSet, basename="projects")
 router.register("issues", IssueViewSet, basename="issues")
-router.register("tags", TagViewSet, basename="tags")
 
 urlpatterns = [
     path("health", health_check, name="health-check"),
@@ -57,7 +52,7 @@ urlpatterns = [
     path("users/<int:userId>/profile-image", UserProfileImageView.as_view(), name="users-profile-image"),
     path(
         "notifications",
-        NotificationViewSet.as_view({"get": "list", "patch": "partial_update_all"}),
+        NotificationViewSet.as_view({"get": "list"}),
         name="notifications-list",
     ),
     path(
@@ -67,7 +62,7 @@ urlpatterns = [
     ),
     path(
         "notifications/<int:notificationId>",
-        NotificationViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
+        NotificationViewSet.as_view({"patch": "partial_update", "delete": "destroy"}),
         name="notifications-detail",
     ),
     path("projects/<int:projectId>/issues", ProjectIssueListCreateView.as_view(), name="project-issues"),
@@ -75,21 +70,6 @@ urlpatterns = [
         "issues/<int:issueId>/assignees/<int:userId>",
         IssueAssigneeDetailView.as_view(),
         name="issue-assignee-detail",
-    ),
-    path(
-        "issues/<int:issueId>/attachments",
-        IssueAttachmentCollectionView.as_view(),
-        name="issue-attachments",
-    ),
-    path(
-        "issues/<int:issueId>/attachments/<int:attachmentId>",
-        IssueAttachmentDetailView.as_view(),
-        name="issue-attachment-detail",
-    ),
-    path(
-        "issues/<int:issueId>/events/<int:eventId>/attachments",
-        IssueEventAttachmentCollectionView.as_view(),
-        name="issue-event-attachments",
     ),
     *router.urls,
 ]

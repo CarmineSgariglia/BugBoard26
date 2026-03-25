@@ -10,8 +10,6 @@ Questa cartella contiene una suite Bruno rifattorizzata e organizzata per route 
 - `API/03_Projects`: `/projects/*` e `/projects/{projectId}/issues`
 - `API/04_Issues`: `/issues/*`
 - `API/05_Notifications`: `/notifications/*`
-- `API/07_Tags`: `/tags/*`
-- `API/08_Attachments`: attachment nested sotto `/issues/{issueId}`
 
 Ogni area include test `auth`, `no_auth`, `not_found` e casi di validazione/permesso.
 
@@ -19,11 +17,9 @@ Nota Fase 1 REST cleanup:
 
 - l'attivazione utente usa `PATCH /users/{userId}` con body `{ "active": boolean }`
 - l'update issue canonico usa solo `PATCH /issues/{issueId}`
-- `DELETE /issues/{issueId}` non richiede body
 - l'upload profilo self-service usa solo `PUT /users/me/profile-image`
 - i commenti issue usano `/issues/{issueId}/events`
 - assign/unassign usano `/issues/{issueId}/assignees/{userId}`
-- read all notifications usa `PATCH /notifications` con body `{ "isRead": true }`
 
 ## Environment
 
@@ -38,7 +34,6 @@ Variabili chiave usate dalla suite:
 - `access_token`
 - `current_user_id`
 - `project_id`, `issue_id`, `notify_user_id`, `target_user_id`
-- `tag_id`, `attachment_id`
 - `target_user_id`, `invalid_id`, `invalid_token`
 
 I valori ID vengono aggiornati automaticamente dalle request `00_Setup` presenti nelle singole aree.

@@ -1,9 +1,5 @@
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
@@ -226,19 +222,6 @@ class IssueRefactorSafetyNetTests(APITestCase):
             unassigned_notification_count,
         )
 
-    def test_attachment_create_requires_file_without_creating_issue_event(self):
-        event_count = IssueEvent.objects.filter(issue=self.issue).count()
-
-        self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
-            {"message": "attachment without file"},
-            format="multipart",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(IssueEvent.objects.filter(issue=self.issue).count(), event_count)
-
     def test_issue_comment_creates_one_event_and_one_notification_for_non_actor_recipient(self):
         IssueAssignee.objects.create(issue=self.issue, user=self.admin)
         existing_comment_count = IssueEvent.objects.filter(
@@ -334,124 +317,6 @@ class IssueRefactorSafetyNetTests(APITestCase):
             ).exists()
         )
 
-    def test_attachment_create_rejects_multiple_files_without_creating_issue_event(self):
-        event_count = IssueEvent.objects.filter(issue=self.issue).count()
-
-        self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
-            {
-                "message": "too many files",
-                "file": [
-                    SimpleUploadedFile("one.txt", b"one", content_type="text/plain"),
-                    SimpleUploadedFile("two.txt", b"two", content_type="text/plain"),
-                ],
-            },
-            format="multipart",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["file"], "Exactly one attachment file is required")
-        self.assertEqual(IssueEvent.objects.filter(issue=self.issue).count(), event_count)
-
-    def test_attachment_issue_lookup_is_scoped_to_visible_projects(self):
-        self.client.force_authenticate(user=self.another_member)
-        uploaded = SimpleUploadedFile(
-            "notes.txt",
-            b"hello",
-            content_type="text/plain",
-        )
-
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
-            {"file": uploaded},
-            format="multipart",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-        outsider = create_user_with_profile(
-            username="issues_safety_outsider",
-            email="issues_safety_outsider@example.com",
-            password="StrongPass123!",
-        )
-        self.client.force_authenticate(user=outsider)
-        uploaded = SimpleUploadedFile(
-            "notes.txt",
-            b"hello",
-            content_type="text/plain",
-        )
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/attachments",
-            {"file": uploaded},
-            format="multipart",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_attachment_event_lookup_is_scoped_to_visible_projects(self):
-        event = IssueEvent.objects.create(
-            issue=self.issue,
-            actor=self.member,
-            event_type=EventType.COMMENT,
-            message="comment",
-        )
-
-        self.client.force_authenticate(user=self.another_member)
-        uploaded = SimpleUploadedFile(
-            "notes.txt",
-            b"hello",
-            content_type="text/plain",
-        )
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
-            {"file": uploaded},
-            format="multipart",
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-        outsider = create_user_with_profile(
-            username="issues_safety_outsider_event",
-            email="issues_safety_outsider_event@example.com",
-            password="StrongPass123!",
-        )
-        self.client.force_authenticate(user=outsider)
-        uploaded = SimpleUploadedFile(
-            "notes.txt",
-            b"hello",
-            content_type="text/plain",
-        )
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
-            {"file": uploaded},
-            format="multipart",
-        )
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_attachment_event_upload_rejects_multiple_files(self):
-        event = IssueEvent.objects.create(
-            issue=self.issue,
-            actor=self.member,
-            event_type=EventType.COMMENT,
-            message="comment",
-        )
-
-        self.client.force_authenticate(user=self.member)
-        response = self.client.post(
-            f"/api/issues/{self.issue.issue_id}/events/{event.update_id}/attachments",
-            {
-                "file": [
-                    SimpleUploadedFile("one.txt", b"one", content_type="text/plain"),
-                    SimpleUploadedFile("two.txt", b"two", content_type="text/plain"),
-                ],
-            },
-            format="multipart",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["file"], "Exactly one attachment file is required")
-        self.assertFalse(Attachment.objects.filter(update=event).exists())
-
     def test_partial_multifile_upload_does_not_leave_persisted_attachments(self):
         event = IssueEvent.objects.create(
             issue=self.issue,
@@ -484,42 +349,6 @@ class IssueRefactorSafetyNetTests(APITestCase):
             Attachment.objects.filter(update=event, path=saved_path).exists()
         )
         delete_media_path_mock.assert_called_once_with(saved_path)
-
-    def test_issue_delete_cleans_up_attachment_files(self):
-        event = IssueEvent.objects.create(
-            issue=self.issue,
-            actor=self.member,
-            event_type=EventType.COMMENT,
-            message="with attachment",
-        )
-
-        with TemporaryDirectory() as tmp_dir:
-            relative_path = f"issue-attachments/{self.issue.issue_id}/delete-me.txt"
-            absolute_path = Path(tmp_dir) / relative_path
-            absolute_path.parent.mkdir(parents=True, exist_ok=True)
-            absolute_path.write_text("delete me", encoding="utf-8")
-
-            with override_settings(MEDIA_ROOT=tmp_dir):
-                attachment = Attachment.objects.create(
-                    update=event,
-                    original_name="delete-me.txt",
-                    path=relative_path,
-                    mime_type="text/plain",
-                    size=9,
-                )
-
-                self.client.force_authenticate(user=self.admin)
-                with self.captureOnCommitCallbacks(execute=True):
-                    response = self.client.delete(
-                        f"/api/issues/{self.issue.issue_id}",
-                        {"title": self.issue.title},
-                        format="json",
-                    )
-
-            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-            self.assertFalse(absolute_path.exists())
-            self.assertFalse(Attachment.objects.filter(pk=attachment.pk).exists())
-
 
 class IssueTransactionalSafetyNetTests(APITestCase):
     def setUp(self):

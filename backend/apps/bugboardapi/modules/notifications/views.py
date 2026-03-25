@@ -4,12 +4,11 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from rest_framework import serializers
 
 from ...common.sse import (
     ServerSentEventsRenderer,
@@ -21,11 +20,10 @@ from .models import NotifyUser
 from .realtime import open_notification_subscription
 from .services import (
     delete_notification_for_user,
-    mark_all_notifications_as_read,
     mark_notification_as_read,
 )
 from .serializers import NotifyUserSerializer
-from .serializers import NotificationPatchSerializer, NotificationReadAllResponseSerializer, NotificationsPageSerializer
+from .serializers import NotificationPatchSerializer, NotificationsPageSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +41,6 @@ MAX_NOTIFICATIONS_PAGE_SIZE = 50
         ],
         responses=NotificationsPageSerializer,
     ),
-    retrieve=extend_schema(tags=["Notifications"], responses=NotifyUserSerializer),
     partial_update=extend_schema(
         tags=["Notifications"],
         summary="Update notification state",
@@ -54,7 +51,6 @@ MAX_NOTIFICATIONS_PAGE_SIZE = 50
 )
 class NotificationViewSet(
     mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
@@ -125,20 +121,6 @@ class NotificationViewSet(
         notify_user = self.get_object()
         notify_user = mark_notification_as_read(notify_user=notify_user)
         return Response(NotifyUserSerializer(notify_user).data)
-
-    @extend_schema(
-        tags=["Notifications"],
-        operation_id="notifications_bulk_update",
-        summary="Bulk update notifications",
-        description="Bulk update notification state for the current user.",
-        request=NotificationPatchSerializer,
-        responses=NotificationReadAllResponseSerializer,
-    )
-    def partial_update_all(self, request):
-        serializer = NotificationPatchSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        updated = mark_all_notifications_as_read(user=request.user)
-        return Response({"updated": updated})
 
     def destroy(self, request, *args, **kwargs):
         notify_user = self.get_object()

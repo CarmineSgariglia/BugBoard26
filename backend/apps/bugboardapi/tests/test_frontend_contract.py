@@ -6,7 +6,6 @@ from rest_framework.test import APITestCase
 
 from apps.bugboardapi.modules.issues.models import Attachment, EventType, Issue, IssueEvent, IssueStatus
 from apps.bugboardapi.modules.notifications.services import notify_issue_updated
-from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -36,7 +35,6 @@ class FrontendContractTests(APITestCase):
             admin_members=[self.admin],
             developer_members=[self.member],
         )
-        self.tag = Tag.objects.create(name="contract-tag")
         self.issue = Issue.objects.create(
             project=self.project,
             reporter=self.admin,

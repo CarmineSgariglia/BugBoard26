@@ -14,15 +14,12 @@ from ..notifications.services import (
     notify_issue_updated,
 )
 from .activity import (
-    create_attachment_for_event,
     create_issue_event,
     create_issue_event_with_attachment,
-    delete_media_path,
     issue_notification_recipients,
-    schedule_issue_event_broadcast,
     validate_issue_event_message,
 )
-from .models import Attachment, EventType, Issue, IssueEvent, IssueStatus
+from .models import EventType, Issue, IssueEvent, IssueStatus
 from .mutations import add_issue_assignees, ensure_issue_assignees, remove_existing_issue_assignees
 from .rules import validate_issue_assignment_user_ids
 
@@ -141,26 +138,6 @@ def update_issue_from_serializer(*, serializer, actor, raw_message):
             )
     return issue
 
-
-def delete_issue(*, instance: Issue):
-    attachment_paths = list(
-        dict.fromkeys(
-            path
-            for path in Attachment.objects.filter(update__issue=instance).values_list("path", flat=True)
-            if path
-        )
-    )
-
-    with transaction.atomic():
-        instance.delete()
-        if attachment_paths:
-            def delete_attachment_files() -> None:
-                for path in attachment_paths:
-                    delete_media_path(path)
-
-            transaction.on_commit(delete_attachment_files)
-
-
 def assign_issue_users(*, issue: Issue, actor, raw_user_ids):
     user_ids = request_user_ids(raw_user_ids)
     if not user_ids:
@@ -230,31 +207,3 @@ def create_issue_comment(*, issue: Issue, actor, raw_message, payload):
             notification_users=issue_notification_recipients(issue=issue, actor=actor),
         )
     return event
-
-
-def upload_attachment_for_event(*, event: IssueEvent, payload):
-    attachments = create_attachment_for_event(
-        event,
-        payload,
-        required=True,
-        max_files=1,
-    )
-    schedule_issue_event_broadcast(event)
-    return attachments[0]
-
-
-def create_issue_attachment(*, issue: Issue, actor, payload):
-    message = (payload.get("message", "") or "").strip() or "Attachment uploaded"
-    event = _dispatch_issue_side_effects(
-        issue=issue,
-        actor=actor,
-        event_type=EventType.COMMENT,
-        message=message,
-        payload=payload,
-        attachments_required=True,
-        max_files=1,
-        notification_sender=notify_issue_updated,
-        notification_users=issue_notification_recipients(issue=issue, actor=actor),
-    )
-    attachment = event.attachments.first()
-    return attachment

@@ -40,14 +40,12 @@ def _extract_team_payload(data):
     retrieve=extend_schema(tags=["Projects"]),
     create=extend_schema(tags=["Projects"]),
     partial_update=extend_schema(tags=["Projects"]),
-    update=extend_schema(tags=["Projects"]),
     destroy=extend_schema(tags=["Projects"], responses={204: OpenApiResponse(description="Project deleted")}),
 )
 class ProjectViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
-    mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
@@ -70,14 +68,13 @@ class ProjectViewSet(
         raw_user_ids = self.request.data.get("userIds", self.request.data.get("team", []))
         create_project_with_team(serializer=serializer, creator=self.request.user, raw_user_ids=raw_user_ids)
 
-    def update(self, request, *args, **kwargs):
+    def partial_update(self, request, *args, **kwargs):
         require_admin(request.user)
-        partial = kwargs.pop("partial", False)
         instance = self.get_object()
 
         payload, raw_user_ids, has_team_payload = _extract_team_payload(request.data)
 
-        serializer = self.get_serializer(instance, data=payload, partial=partial)
+        serializer = self.get_serializer(instance, data=payload, partial=True)
         serializer.is_valid(raise_exception=True)
 
         update_project_with_team(

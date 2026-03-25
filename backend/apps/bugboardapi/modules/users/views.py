@@ -54,16 +54,12 @@ class UserListPagination(PageNumberPagination):
             OpenApiParameter("excludeUserIds", str, OpenApiParameter.QUERY),
         ],
     ),
-    retrieve=extend_schema(tags=["Users"]),
     create=extend_schema(tags=["Users"]),
     partial_update=extend_schema(tags=["Users"]),
-    update=extend_schema(tags=["Users"]),
 )
 class UserViewSet(
     mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
-    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     serializer_class = UserSerializer
@@ -107,12 +103,12 @@ class UserViewSet(
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
         ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
-        return super().partial_update(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        user = self.get_object()
-        ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
-        return super().update(request, *args, **kwargs)
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        if getattr(user, "_prefetched_objects_cache", None):
+            user._prefetched_objects_cache = {}
+        return Response(serializer.data)
 
 
 password_response_serializer = inline_serializer(

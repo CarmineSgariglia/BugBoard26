@@ -7,7 +7,6 @@ from django.conf import settings
 from drf_spectacular.utils import OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import serializers
@@ -26,27 +25,21 @@ from ...permissions import (
 )
 from ...permissions.scopes import first_by_project_access
 from .models import (
-    Attachment,
     Issue,
     IssueEvent,
 )
 from ..projects.models import Project
 from .serializers import (
-    AttachmentSerializer,
     IssueEventSerializer,
     IssueSuggestionSerializer,
     IssueSerializer,
 )
-from .activity import delete_media_path
 from .commands import (
     assign_issue_users,
     create_issue_for_project,
-    create_issue_attachment,
     create_issue_comment,
-    delete_issue,
     unassign_issue_users,
     update_issue_from_serializer,
-    upload_attachment_for_event,
 )
 from .membership import (
     is_admin_issue_subscribed,
@@ -76,20 +69,6 @@ issue_update_multipart_request_serializer = inline_serializer(
     },
 )
 
-issue_event_attachment_upload_request_serializer = inline_serializer(
-    name="IssueEventAttachmentUploadRequest",
-    fields={"file": serializers.FileField()},
-)
-
-issue_attachment_create_request_serializer = inline_serializer(
-    name="IssueAttachmentCreateRequest",
-    fields={
-        "message": serializers.CharField(required=False, allow_blank=True),
-        "file": serializers.FileField(),
-    },
-)
-
-
 def _get_project_or_none(*, user, project_id: int):
     return first_by_project_access(
         queryset=Project.objects.all(),
@@ -107,15 +86,6 @@ def _scoped_issue_or_none(*, user, issue_id):
         queryset=_issue_queryset(),
         user=user,
         lookup={"issue_id": issue_id},
-    )
-
-
-def _scoped_issue_event_or_none(*, user, event_id):
-    return first_by_project_access(
-        queryset=IssueEvent.objects.select_related("issue"),
-        user=user,
-        lookup={"update_id": event_id},
-        project_lookup="issue__project_id",
     )
 
 
@@ -146,18 +116,9 @@ class ProjectIssueListCreateView(APIView):
 @extend_schema_view(
     retrieve=extend_schema(tags=["Issues"], responses=IssueSerializer),
     partial_update=extend_schema(tags=["Issues"], responses=IssueSerializer),
-    update=extend_schema(tags=["Issues"], responses=IssueSerializer),
-    destroy=extend_schema(
-        tags=["Issues"],
-        description="Deletes the issue. No request body is required or documented in Phase 1.",
-        request=None,
-        responses={204: OpenApiResponse(description="Issue deleted")},
-    ),
 )
 class IssueViewSet(
     mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     serializer_class = IssueSerializer
@@ -168,11 +129,6 @@ class IssueViewSet(
 
     def get_queryset(self):
         return filter_by_project_access(queryset=_issue_queryset(), user=self.request.user)
-
-    def perform_destroy(self, instance):
-        require_admin(self.request.user)
-        require_project_access(self.request.user, instance.project)
-        delete_issue(instance=instance)
 
     def perform_update(self, serializer):
         update_issue_from_serializer(
@@ -303,13 +259,12 @@ class IssueViewSet(
         issue = self.get_object()
         require_project_access(request.user, issue.project)
         require_assignee_or_admin(request.user, issue)
-        return super().partial_update(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        issue = self.get_object()
-        require_project_access(request.user, issue.project)
-        require_assignee_or_admin(request.user, issue)
-        return super().update(request, *args, **kwargs)
+        serializer = self.get_serializer(issue, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(issue, "_prefetched_objects_cache", None):
+            issue._prefetched_objects_cache = {}
+        return Response(serializer.data)
 
 
 class IssueAssigneeDetailView(APIView):
@@ -343,99 +298,4 @@ class IssueAssigneeDetailView(APIView):
         require_admin(request.user)
         require_project_access(request.user, issue.project)
         unassign_issue_users(issue=issue, actor=request.user, raw_user_ids=[userId])
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class IssueAttachmentCollectionView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
-
-    def _ensure_attachment_write_access(self, issue: Issue) -> None:
-        require_project_access(self.request.user, issue.project)
-        require_assignee_or_admin(self.request.user, issue)
-
-    @extend_schema(
-        tags=["Attachments"],
-        responses=AttachmentSerializer(many=True),
-    )
-    def get(self, request, issueId):
-        issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
-        if not issue:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        require_project_access(request.user, issue.project)
-        attachments = (
-            Attachment.objects.select_related("update", "update__issue")
-            .filter(update__issue=issue)
-            .order_by("-uploaded_at")
-        )
-        return Response(AttachmentSerializer(attachments, many=True, context={"request": request}).data)
-
-    @extend_schema(
-        tags=["Attachments"],
-        request={"multipart/form-data": issue_attachment_create_request_serializer},
-        responses={201: AttachmentSerializer},
-    )
-    def post(self, request, issueId):
-        issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
-        if not issue:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        self._ensure_attachment_write_access(issue)
-        attachment = create_issue_attachment(issue=issue, actor=request.user, payload=request.data)
-        return Response(
-            AttachmentSerializer(attachment, context={"request": request}).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-
-class IssueEventAttachmentCollectionView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
-
-    @extend_schema(
-        tags=["Attachments"],
-        request={"multipart/form-data": issue_event_attachment_upload_request_serializer},
-        responses={201: AttachmentSerializer},
-    )
-    def post(self, request, issueId, eventId):
-        issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
-        if not issue:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        event = _scoped_issue_event_or_none(user=request.user, event_id=eventId)
-        if not event or event.issue_id != issue.issue_id:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        require_project_access(request.user, issue.project)
-        require_assignee_or_admin(request.user, issue)
-        attachment = upload_attachment_for_event(event=event, payload=request.data)
-        return Response(
-            AttachmentSerializer(attachment, context={"request": request}).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-
-class IssueAttachmentDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    @extend_schema(
-        tags=["Attachments"],
-        request=None,
-        responses={204: OpenApiResponse(description="Attachment deleted")},
-    )
-    def delete(self, request, issueId, attachmentId):
-        issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
-        if not issue:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        attachment = (
-            Attachment.objects.select_related("update", "update__issue")
-            .filter(
-                attachment_id=attachmentId,
-                update__issue=issue,
-            )
-            .first()
-        )
-        if attachment is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        require_project_access(request.user, issue.project)
-        require_assignee_or_admin(request.user, issue)
-        delete_media_path(attachment.path)
-        attachment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
