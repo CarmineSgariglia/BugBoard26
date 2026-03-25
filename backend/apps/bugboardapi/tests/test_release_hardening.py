@@ -168,7 +168,7 @@ class AuthSessionCookieTests(APITestCase):
     @override_settings(
         AUTH_REFRESH_COOKIE_SECURE=True,
         AUTH_REFRESH_COOKIE_SAMESITE="Strict",
-        AUTH_REFRESH_COOKIE_PATH="/api/auth",
+        AUTH_REFRESH_COOKIE_PATH="/api/sessions/current",
     )
     def test_login_sets_refresh_cookie_flags_and_path(self):
         response = self.client.post(
@@ -178,7 +178,7 @@ class AuthSessionCookieTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         refresh_cookie = response.cookies[settings.AUTH_REFRESH_COOKIE_NAME]
-        self.assertEqual(refresh_cookie["path"], "/api/auth")
+        self.assertEqual(refresh_cookie["path"], "/api/sessions/current")
         self.assertEqual(refresh_cookie["samesite"], "Strict")
         self.assertTrue(refresh_cookie["secure"])
         self.assertTrue(refresh_cookie["httponly"])

@@ -24,6 +24,40 @@ def _validate_secret_key(*, secret_key: str, debug: bool) -> None:
         )
 
 
+def _normalize_cookie_path(cookie_path: str) -> str:
+    normalized_path = cookie_path.strip() or "/"
+    if not normalized_path.startswith("/"):
+        raise ImproperlyConfigured("AUTH_REFRESH_COOKIE_PATH must start with '/'")
+    if len(normalized_path) > 1 and normalized_path.endswith("/"):
+        normalized_path = normalized_path.rstrip("/")
+    return normalized_path
+
+
+def _cookie_path_covers_request_path(*, cookie_path: str, request_path: str) -> bool:
+    normalized_cookie_path = _normalize_cookie_path(cookie_path)
+    normalized_request_path = request_path if request_path.startswith("/") else f"/{request_path}"
+    return normalized_request_path == normalized_cookie_path or normalized_request_path.startswith(
+        f"{normalized_cookie_path}/"
+    )
+
+
+def _validate_refresh_cookie_path(*, cookie_path: str) -> str:
+    normalized_path = _normalize_cookie_path(cookie_path)
+    required_paths = (
+        "/api/sessions/current",
+        "/api/sessions/current/access-token",
+    )
+    if any(
+        not _cookie_path_covers_request_path(cookie_path=normalized_path, request_path=path)
+        for path in required_paths
+    ):
+        raise ImproperlyConfigured(
+            "AUTH_REFRESH_COOKIE_PATH must cover /api/sessions/current and "
+            "/api/sessions/current/access-token"
+        )
+    return normalized_path
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", DEFAULT_DEV_SECRET_KEY)
 
 DEBUG = _env_flag("DEBUG", True)
@@ -249,7 +283,9 @@ SPECTACULAR_SETTINGS = {
 }
 
 AUTH_REFRESH_COOKIE_NAME = os.getenv("AUTH_REFRESH_COOKIE_NAME", "bugboard_refresh")
-AUTH_REFRESH_COOKIE_PATH = os.getenv("AUTH_REFRESH_COOKIE_PATH", "/api/auth")
+AUTH_REFRESH_COOKIE_PATH = _validate_refresh_cookie_path(
+    cookie_path=os.getenv("AUTH_REFRESH_COOKIE_PATH", "/api/sessions/current")
+)
 AUTH_REFRESH_COOKIE_SECURE = os.getenv("AUTH_REFRESH_COOKIE_SECURE", str(not DEBUG)).lower() == "true"
 AUTH_REFRESH_COOKIE_SAMESITE = os.getenv("AUTH_REFRESH_COOKIE_SAMESITE", "Lax")
 

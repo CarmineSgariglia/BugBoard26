@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
@@ -11,8 +11,6 @@ import { Button } from "@shared/ui/Button";
 import { FormField } from "@shared/ui/FormField";
 import { Input } from "@shared/ui/Input";
 
-const postLoginVerificationCode = "post_login_verification_failed";
-
 function isTimeoutError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.code === "ECONNABORTED";
 }
@@ -21,16 +19,22 @@ function isNetworkError(error: unknown): boolean {
   return axios.isAxiosError(error) && !error.response && !isTimeoutError(error);
 }
 
-function isPostLoginVerificationError(error: unknown): boolean {
-  return error instanceof Error && error.message === postLoginVerificationCode;
-}
-
 function logLoginFailure(error: unknown): void {
   if (axios.isAxiosError(error)) {
+    const statusCode = error.response?.status ?? null;
+    const requestUrl = error.config?.url ?? null;
+    if (statusCode === 401) {
+      console.warn("login_401", {
+        status: statusCode,
+        requestUrl,
+      });
+      return;
+    }
+
     console.warn("login_failed", {
-      status: error.response?.status ?? null,
+      status: statusCode,
       code: error.code ?? null,
-      requestUrl: error.config?.url ?? null,
+      requestUrl,
       isTimeout: isTimeoutError(error),
     });
     return;
@@ -38,17 +42,13 @@ function logLoginFailure(error: unknown): void {
 
   console.warn("login_failed", {
     status: null,
-    code: isPostLoginVerificationError(error) ? postLoginVerificationCode : null,
+    code: null,
     requestUrl: null,
     isTimeout: false,
   });
 }
 
 function getLoginErrorMessage(error: unknown): string {
-  if (isPostLoginVerificationError(error)) {
-    return "Login succeeded, but we couldn't verify your session. Please try again.";
-  }
-
   if (axios.isAxiosError(error)) {
     const statusCode = error.response?.status;
     if (statusCode === 401) return "Invalid credentials";
@@ -71,15 +71,33 @@ function getLoginErrorMessage(error: unknown): string {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { refreshUser, setAuthenticatedUser } = useAuth();
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const [formValues, setFormValues] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isPreparingCsrf, setIsPreparingCsrf] = useState(true);
   const [isCsrfReady, setIsCsrfReady] = useState(false);
 
-  const isEmailValid = isValidEmail(email);
-  const isPasswordValid = isValidPassword(password);
+  const syncCredentialInputs = useCallback(() => {
+    const nextValues = {
+      email: emailInputRef.current?.value ?? "",
+      password: passwordInputRef.current?.value ?? "",
+    };
+    setFormValues((currentValues) => {
+      if (
+        currentValues.email === nextValues.email &&
+        currentValues.password === nextValues.password
+      ) {
+        return currentValues;
+      }
+      return nextValues;
+    });
+    return nextValues;
+  }, []);
+
+  const isEmailValid = isValidEmail(formValues.email.trim());
+  const isPasswordValid = isValidPassword(formValues.password);
   const isFormValid = isEmailValid && isPasswordValid;
 
   const prepareCsrfCookie = async (showFailureMessage: boolean): Promise<boolean> => {
@@ -91,6 +109,10 @@ export function LoginPage() {
 
       if (!ready && showFailureMessage) {
         setError("We couldn't prepare a secure login session. Please try again.");
+        console.warn("csrf_bootstrap_failed", {
+          requestUrl: "/security/csrf-token",
+          reason: "csrf_cookie_unavailable",
+        });
       }
 
       return ready;
@@ -99,6 +121,11 @@ export function LoginPage() {
       if (showFailureMessage) {
         setError("We couldn't prepare a secure login session. Please try again.");
       }
+      console.warn("csrf_bootstrap_failed", {
+        requestUrl: "/security/csrf-token",
+        isTimeout: isTimeoutError(csrfError),
+        status: axios.isAxiosError(csrfError) ? csrfError.response?.status ?? null : null,
+      });
       logLoginFailure(csrfError);
       return false;
     } finally {
@@ -116,9 +143,20 @@ export function LoginPage() {
         const ready = await ensureCsrfCookieReady();
         if (!isMounted) return;
         setIsCsrfReady(ready);
+        if (!ready) {
+          console.warn("csrf_bootstrap_failed", {
+            requestUrl: "/security/csrf-token",
+            reason: "csrf_cookie_unavailable",
+          });
+        }
       } catch (csrfError) {
         if (!isMounted) return;
         setIsCsrfReady(false);
+        console.warn("csrf_bootstrap_failed", {
+          requestUrl: "/security/csrf-token",
+          isTimeout: isTimeoutError(csrfError),
+          status: axios.isAxiosError(csrfError) ? csrfError.response?.status ?? null : null,
+        });
         logLoginFailure(csrfError);
       } finally {
         if (isMounted) {
@@ -132,17 +170,54 @@ export function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    syncCredentialInputs();
+
+    const syncIntervalId = window.setInterval(() => {
+      syncCredentialInputs();
+    }, 250);
+    const handleWindowFocus = () => {
+      syncCredentialInputs();
+    };
+    const handleVisibilityChange = () => {
+      syncCredentialInputs();
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(syncIntervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [syncCredentialInputs]);
+
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      await loginApi(email, password);
-      const user = await refreshUser();
-      if (!user) {
-        throw new Error(postLoginVerificationCode);
-      }
+      return loginApi(email, password);
     },
-    onSuccess: () => {
+    onSuccess: (user) => {
+      setAuthenticatedUser(user);
       console.info("login_success", { requestUrl: "/sessions" });
       navigate("/projects");
+      void refreshUser({ clearOnUnauthorized: false })
+        .then((nextUser) => {
+          if (!nextUser) {
+            console.warn("post_login_sync_failed", {
+              requestUrl: "/users/me",
+              reason: "missing_user",
+            });
+          }
+        })
+        .catch((syncError) => {
+          console.warn("post_login_sync_failed", {
+            requestUrl: "/users/me",
+            isTimeout: isTimeoutError(syncError),
+            status: axios.isAxiosError(syncError) ? syncError.response?.status ?? null : null,
+            code: axios.isAxiosError(syncError) ? syncError.code ?? null : null,
+          });
+        });
     },
     onError: (loginError) => {
       logLoginFailure(loginError);
@@ -152,7 +227,16 @@ export function LoginPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || loginMutation.isPending || isPreparingCsrf) return;
+    const nextValues = syncCredentialInputs();
+    const trimmedEmail = nextValues.email.trim();
+    if (
+      !isValidEmail(trimmedEmail) ||
+      !isValidPassword(nextValues.password) ||
+      loginMutation.isPending ||
+      isPreparingCsrf
+    ) {
+      return;
+    }
 
     setError("");
 
@@ -161,7 +245,7 @@ export function LoginPage() {
       if (!ready) return;
     }
 
-    loginMutation.mutate({ email: email.trim(), password });
+    loginMutation.mutate({ email: trimmedEmail, password: nextValues.password });
   };
 
   return (
@@ -169,18 +253,36 @@ export function LoginPage() {
       <form className="flex flex-col gap-3" onSubmit={onSubmit}>
         <FormField>
           <Input
+            ref={emailInputRef}
+            id="login-email"
+            name="email"
             type="email"
             placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            onInput={() => {
+              setError("");
+              syncCredentialInputs();
+            }}
+            onFocus={() => {
+              syncCredentialInputs();
+            }}
           />
         </FormField>
         <FormField>
           <Input
+            ref={passwordInputRef}
+            id="login-password"
+            name="password"
             type="password"
             placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            onInput={() => {
+              setError("");
+              syncCredentialInputs();
+            }}
+            onFocus={() => {
+              syncCredentialInputs();
+            }}
           />
         </FormField>
         {error ? <p className="text-sm text-rose-400">{error}</p> : null}

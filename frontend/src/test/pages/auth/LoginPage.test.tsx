@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,7 @@ const loginState = vi.hoisted(() => ({
   ensureCsrfCookieReady: vi.fn(),
   loginApi: vi.fn(),
   refreshUser: vi.fn(),
+  setAuthenticatedUser: vi.fn(),
   navigate: vi.fn(),
 }));
 
@@ -24,6 +25,7 @@ vi.mock("@features/auth", () => ({
   useAuth: () => ({
     user: null,
     refreshUser: loginState.refreshUser,
+    setAuthenticatedUser: loginState.setAuthenticatedUser,
     isLoading: false,
   }),
 }));
@@ -52,6 +54,7 @@ describe("LoginPage", () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.spyOn(console, "info").mockImplementation(() => undefined);
     loginState.ensureCsrfCookieReady.mockResolvedValue(true);
+    loginState.setAuthenticatedUser.mockReset();
     loginState.refreshUser.mockResolvedValue({
       userId: 1,
       username: "devuser",
@@ -81,12 +84,17 @@ describe("LoginPage", () => {
     expect(submitButton.hasAttribute("disabled")).toBe(true);
   });
 
-  it("submits trimmed credentials, refreshes auth and navigates only after session verification", async () => {
+  it("submits trimmed credentials, primes auth immediately and navigates", async () => {
     const user = userEvent.setup();
     loginState.loginApi.mockResolvedValue({
       userId: 1,
       username: "devuser",
       email: "user@example.com",
+      firstName: "Dev",
+      lastName: "User",
+      isAdmin: false,
+      profileImg: "",
+      active: true,
     });
 
     renderWithProviders(<LoginPage />);
@@ -105,7 +113,50 @@ describe("LoginPage", () => {
       expect(loginState.loginApi).toHaveBeenCalledWith("user@example.com", "Password1!");
     });
 
+    expect(loginState.setAuthenticatedUser).toHaveBeenCalledWith({
+      userId: 1,
+      username: "devuser",
+      email: "user@example.com",
+      firstName: "Dev",
+      lastName: "User",
+      isAdmin: false,
+      profileImg: "",
+      active: true,
+    });
     expect(loginState.refreshUser).toHaveBeenCalledTimes(1);
+    expect(loginState.navigate).toHaveBeenCalledWith("/projects");
+  });
+
+  it("submits autofilled DOM credentials even when React state was never updated", async () => {
+    loginState.loginApi.mockResolvedValue({
+      userId: 1,
+      username: "devuser",
+      email: "user@example.com",
+      firstName: "Dev",
+      lastName: "User",
+      isAdmin: false,
+      profileImg: "",
+      active: true,
+    });
+
+    renderWithProviders(<LoginPage />);
+    await waitFor(() => {
+      expect(loginState.ensureCsrfCookieReady).toHaveBeenCalledTimes(1);
+    });
+
+    const emailInput = screen.getByPlaceholderText("Email") as HTMLInputElement;
+    const passwordInput = screen.getByPlaceholderText("Password") as HTMLInputElement;
+    const form = emailInput.closest("form");
+
+    emailInput.value = "  user@example.com  ";
+    passwordInput.value = "Password1!";
+
+    expect(form).not.toBeNull();
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(loginState.loginApi).toHaveBeenCalledWith("user@example.com", "Password1!");
+    });
     expect(loginState.navigate).toHaveBeenCalledWith("/projects");
   });
 
@@ -222,12 +273,17 @@ describe("LoginPage", () => {
     expect(await screen.findByText("We couldn't reach the server. Please try again.")).toBeInTheDocument();
   });
 
-  it("shows a dedicated error when login succeeds but session verification fails", async () => {
+  it("logs a background sync warning when the post-login refresh cannot confirm the session", async () => {
     const user = userEvent.setup();
     loginState.loginApi.mockResolvedValue({
       userId: 1,
       username: "devuser",
       email: "user@example.com",
+      firstName: "Dev",
+      lastName: "User",
+      isAdmin: false,
+      profileImg: "",
+      active: true,
     });
     loginState.refreshUser.mockResolvedValue(null);
 
@@ -240,9 +296,15 @@ describe("LoginPage", () => {
     await user.type(screen.getByPlaceholderText("Password"), "Password1!");
     await user.click(screen.getByRole("button", { name: /login/i }));
 
-    expect(
-      await screen.findByText("Login succeeded, but we couldn't verify your session. Please try again.")
-    ).toBeInTheDocument();
-    expect(loginState.navigate).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(loginState.navigate).toHaveBeenCalledWith("/projects");
+    });
+    expect(console.warn).toHaveBeenCalledWith(
+      "post_login_sync_failed",
+      expect.objectContaining({
+        requestUrl: "/users/me",
+        reason: "missing_user",
+      }),
+    );
   });
 });

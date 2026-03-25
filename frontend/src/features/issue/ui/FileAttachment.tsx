@@ -2,7 +2,7 @@ import { FiFile, FiUploadCloud, FiX } from "react-icons/fi";
 
 import { ATTACHMENT_FILE_INPUT_ACCEPT, ATTACHMENT_MAX_FILES, formatBytes } from "@shared/lib/media";
 import { AttachmentUploadInfoPopover } from "@shared/ui/AttachmentUploadInfoPopover";
-import { useFileValidation } from "@features/issue/activity/useFileValidation";
+import { useFileValidation } from "@features/issue/lib/useFileValidation";
 
 interface FileAttachmentProps {
   onFilesChange: (files: File[]) => void;

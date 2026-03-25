@@ -13,7 +13,7 @@ const composerState = vi.hoisted(() => ({
   removeFile: vi.fn(),
 }));
 
-vi.mock("@features/issue/activity/useFileValidation", () => ({
+vi.mock("@features/issue/lib/useFileValidation", () => ({
   useFileValidation: () => ({
     error: composerState.fileError,
     isPreparingFiles: composerState.isPreparingFiles,

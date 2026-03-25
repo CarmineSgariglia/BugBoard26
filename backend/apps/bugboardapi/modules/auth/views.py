@@ -74,7 +74,10 @@ class CSRFTokenView(APIView):
         responses=CSRFTokenResponseSerializer,
     )
     def get(self, request):
-        return Response({"csrfToken": get_token(request)})
+        response = Response({"csrfToken": get_token(request)})
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response["Pragma"] = "no-cache"
+        return response
 
 
 class LoginView(APIView):
@@ -133,6 +136,10 @@ class LoginView(APIView):
                 "login_invalid_credentials",
                 extra={"auth_email": email, "request_path": request.path},
             )
+            logger.warning(
+                "login_401",
+                extra={"request_path": request.path, "status_code": status.HTTP_401_UNAUTHORIZED},
+            )
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
         access_token, refresh_token = build_token_pair_for_user(auth_user)
@@ -170,6 +177,7 @@ class RefreshView(APIView):
     def post(self, request):
         refresh_token = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
         if not refresh_token:
+            logger.warning("refresh_missing_cookie", extra={"request_path": request.path})
             return Response({"detail": "Refresh token missing"}, status=status.HTTP_401_UNAUTHORIZED)
         if is_refresh_token_session_revoked(refresh_token) or is_refresh_token_password_stale(
             refresh_token

@@ -117,7 +117,7 @@ describe("IssueModal", () => {
       await waitFor(() => {
         expect(
           screen.getByText(
-            "Issue creata, ma primo commento/allegati non salvati (permessi insufficienti)."
+            "Issue created, but first comment/attachments not saved (insufficient permissions)."
           )
         ).toBeInTheDocument();
       });
