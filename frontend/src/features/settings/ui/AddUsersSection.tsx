@@ -94,7 +94,7 @@ export function AddUsersSection() {
   };
 
   return (
-    <GlassCard className="w-full">
+    <GlassCard>
       <ProfileHeader
         title="Add New User"
         subtitle="Enter the details below to create a new account."

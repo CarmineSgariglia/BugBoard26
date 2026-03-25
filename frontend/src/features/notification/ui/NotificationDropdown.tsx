@@ -202,7 +202,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             <div className="fixed inset-0 z-40" onClick={onClose}></div>
 
             <div className="absolute top-full right-0 mt-2 z-50 w-80 origin-top-right">
-                <GlassCard className="!p-0 overflow-hidden flex flex-col">
+                <GlassCard className="!p-0">
                     <div className="px-4 py-3 font-semibold text-white text-sm border-b border-white/5 shrink-0">
                         Notifications
                     </div>

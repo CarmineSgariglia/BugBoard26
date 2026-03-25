@@ -26,7 +26,7 @@ export function UserTable({
 }: UserTableProps) {
     if (isLoading) {
         return (
-            <GlassCard className="w-full overflow-hidden p-0 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            <GlassCard className="p-0 border-none shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
                 <div className="p-8 text-center text-sm text-neutral-400">Loading users...</div>
             </GlassCard>
         );
@@ -34,7 +34,7 @@ export function UserTable({
 
     if (error) {
         return (
-            <GlassCard className="w-full overflow-hidden p-0 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            <GlassCard className="p-0 border-none shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
                 <div className="p-8 text-center text-sm text-red-400">{error}</div>
             </GlassCard>
         );
@@ -63,7 +63,7 @@ export function UserTable({
     }
 
     return (
-        <GlassCard className="w-full overflow-hidden p-0 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+        <GlassCard className="p-0 border-none shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
             <div className="grid grid-cols-12 gap-4 px-8 py-5 border-b border-white/5 text-[10px] font-bold text-[#8A8F98] uppercase tracking-widest hidden md:grid">
                 <div className={profileCol}>User Profile</div>
                 <div className={emailCol}>Email Address</div>

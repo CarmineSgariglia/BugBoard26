@@ -123,12 +123,17 @@ class IssueRefactorSafetyNetTests(APITestCase):
             close_notification_count,
         )
 
-    def test_closed_issue_cannot_be_reopened_via_status_endpoint(self):
-        self.issue.status = IssueStatus.CANCELLED
+    def test_done_issue_can_be_reopened_via_status_endpoint(self):
+        self.issue.status = IssueStatus.DONE
         self.issue.save(update_fields=["status"])
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
         status_event_count = IssueEvent.objects.filter(
             issue=self.issue,
             event_type=EventType.STATUS_CHANGE,
+        ).count()
+        update_notification_count = NotifyUser.objects.filter(
+            notification__notify_type=NotifyType.ISSUE_UPDATED,
+            notification__issue=self.issue,
         ).count()
 
         self.client.force_authenticate(user=self.member)
@@ -138,15 +143,60 @@ class IssueRefactorSafetyNetTests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.issue.refresh_from_db()
-        self.assertEqual(self.issue.status, IssueStatus.CANCELLED)
+        self.assertEqual(self.issue.status, IssueStatus.IN_PROGRESS)
         self.assertEqual(
             IssueEvent.objects.filter(
                 issue=self.issue,
                 event_type=EventType.STATUS_CHANGE,
             ).count(),
-            status_event_count,
+            status_event_count + 1,
+        )
+        self.assertEqual(
+            NotifyUser.objects.filter(
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).count(),
+            update_notification_count + 1,
+        )
+
+    def test_cancelled_issue_can_be_reopened_via_status_endpoint(self):
+        self.issue.status = IssueStatus.CANCELLED
+        self.issue.save(update_fields=["status"])
+        IssueAssignee.objects.create(issue=self.issue, user=self.admin)
+        status_event_count = IssueEvent.objects.filter(
+            issue=self.issue,
+            event_type=EventType.STATUS_CHANGE,
+        ).count()
+        update_notification_count = NotifyUser.objects.filter(
+            notification__notify_type=NotifyType.ISSUE_UPDATED,
+            notification__issue=self.issue,
+        ).count()
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.patch(
+            f"/api/issues/{self.issue.issue_id}",
+            {"status": IssueStatus.IN_PROGRESS, "message": "resume work"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.issue.refresh_from_db()
+        self.assertEqual(self.issue.status, IssueStatus.IN_PROGRESS)
+        self.assertEqual(
+            IssueEvent.objects.filter(
+                issue=self.issue,
+                event_type=EventType.STATUS_CHANGE,
+            ).count(),
+            status_event_count + 1,
+        )
+        self.assertEqual(
+            NotifyUser.objects.filter(
+                notification__notify_type=NotifyType.ISSUE_UPDATED,
+                notification__issue=self.issue,
+            ).count(),
+            update_notification_count + 1,
         )
 
     def test_assigning_an_existing_assignee_is_a_no_op(self):

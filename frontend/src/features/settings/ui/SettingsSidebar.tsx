@@ -28,7 +28,7 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
   };
 
   return (
-    <GlassCard className="w-[260px] flex-shrink-0 pb-4 h-fit flex flex-col justify-between min-h-[400px]">
+    <GlassCard className="flex-shrink-0 pb-4 h-fit justify-between min-h-[400px]">
       <div className="flex flex-col pt-2">
         <div
           className={getTabClass("profile")}

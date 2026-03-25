@@ -186,8 +186,6 @@ def unassign_issue_users(*, issue: Issue, actor, raw_user_ids):
 def _validate_issue_status_transition(*, issue: Issue, new_status: str) -> None:
     if new_status not in dict(IssueStatus.choices):
         raise ValidationError({"status": "Invalid status"})
-    if issue.status in {IssueStatus.DONE, IssueStatus.CANCELLED} and new_status != issue.status:
-        raise ValidationError({"status": "Closed issues cannot be reopened"})
 
 
 def create_issue_comment(*, issue: Issue, actor, raw_message, payload):

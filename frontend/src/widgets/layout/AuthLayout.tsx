@@ -50,7 +50,7 @@ export function AuthLayout() {
                     {pageTitle}
                 </h1>
 
-                <GlassCard className="w-full max-w-[440px] rounded-[28px] border border-white/10 bg-[#1A1F2B]/88 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)] sm:p-8">
+                <GlassCard className="max-w-[440px] rounded-[28px] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)] sm:p-8">
                     <div className="flex flex-col items-center">
                         <Link to="/login" className="mb-5 inline-flex">
                             <img

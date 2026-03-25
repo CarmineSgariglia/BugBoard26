@@ -132,7 +132,7 @@ export function ManageUsersSection({ onEditingChange }: ManageUsersSectionProps)
         </div>
       </div>
 
-      <GlassCard className="w-full overflow-hidden p-0 border-none bg-[#1A1D24] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+      <GlassCard className="p-0 border-none shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
         <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
           <UserTable
             users={users}

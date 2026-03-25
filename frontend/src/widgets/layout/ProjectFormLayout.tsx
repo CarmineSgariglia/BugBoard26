@@ -22,7 +22,7 @@ export function ProjectFormLayout({
     const currentStep = stepInfo ? stepInfo.split(" ")[1] : "";
 
     return (
-        <GlassCard className="w-full max-w-2xl mx-auto flex flex-col px-8 pt-5 pb-0 gap-2 shadow-2xl">
+        <GlassCard className="max-w-2xl mx-auto px-8 pt-5 pb-0 gap-2">
             {/* Header: Titolo, Sottotitolo e Indicatore Step */}
             <div className="flex items-start justify-between gap-4">
                 <div>

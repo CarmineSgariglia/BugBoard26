@@ -165,7 +165,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
   }, [user, saveMutation, isSaveEnabled]);
 
   return (
-    <GlassCard className="w-full">
+    <GlassCard>
       <ProfileHeader
         avatarUrl={avatarUrl}
         title="Profile Settings"

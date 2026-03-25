@@ -138,7 +138,7 @@ export function AdminUserEditSection({ user, onClose, onUserUpdated }: AdminUser
   };
 
   return (
-    <GlassCard className="w-full">
+    <GlassCard>
       <ProfileHeader
         avatarUrl={avatarUrl}
         title={`${user.firstName || user.username} ${user.lastName || ""}'s Profile`}
