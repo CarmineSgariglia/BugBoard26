@@ -5,13 +5,14 @@ from ...roles import is_admin_user
 
 
 def ensure_can_edit_user(*, actor: User, target_user: User, payload) -> None:
-    if actor != target_user and not is_admin_user(actor):
+    is_admin_actor = is_admin_user(actor)
+    if actor != target_user and not is_admin_actor:
         raise PermissionDenied("Cannot edit other users")
-    if is_admin_user(actor) and actor == target_user and any(
+    if is_admin_actor and actor == target_user and any(
         field in payload for field in {"active", "group", "isAdmin"}
     ):
         raise PermissionDenied("You cannot change your own active status or role")
-    if not is_admin_user(actor):
+    if not is_admin_actor:
         forbidden_fields = {"isAdmin", "group", "active"}
         if any(field in payload for field in forbidden_fields):
             raise PermissionDenied("You cannot modify admin or active flags")
@@ -46,15 +47,6 @@ def validate_admin_password_reset_request(
         raise PermissionDenied("Use the self-service password endpoint for your own account")
     if target_user.check_password(new_password):
         raise ValidationError({"newPassword": "New password must be different from current password"})
-
-
-def validate_status_change_request(*, actor: User, target_user: User, active) -> None:
-    if not isinstance(active, bool):
-        raise ValidationError({"active": "Boolean value is required"})
-    if actor == target_user:
-        raise PermissionDenied("You cannot deactivate your own account")
-
-
 def ensure_can_upload_profile_image(*, actor: User, target_user: User) -> None:
     if actor != target_user and not is_admin_user(actor):
         raise PermissionDenied("Cannot edit other users")

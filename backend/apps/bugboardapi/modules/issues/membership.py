@@ -23,36 +23,26 @@ def issue_assignees_queryset(
     return queryset
 
 
-def developer_issue_assignees(
-    *,
-    issue: Issue,
-    active_only: bool = False,
-) -> list[IssueAssignee]:
-    assignees = list(issue_assignees_queryset(issue=issue, active_only=active_only))
-    return [assignee for assignee in assignees if not is_admin_user(assignee.user)]
+def _issue_assignee_users(*, issue: Issue, active_only: bool, admin_only: bool) -> list[User]:
+    return [
+        assignee.user
+        for assignee in issue_assignees_queryset(issue=issue, active_only=active_only)
+        if is_admin_user(assignee.user) is admin_only
+    ]
 
 
 def developer_issue_assignee_users(*, issue: Issue, active_only: bool = False) -> list[User]:
-    return [assignee.user for assignee in developer_issue_assignees(issue=issue, active_only=active_only)]
+    return _issue_assignee_users(
+        issue=issue,
+        active_only=active_only,
+        admin_only=False,
+    )
 
 
 def is_developer_issue_assignee(*, issue: Issue, user: User) -> bool:
     if is_admin_user(user):
         return False
     return IssueAssignee.objects.filter(issue=issue, user=user).exists()
-
-
-def admin_issue_subscriptions(
-    *,
-    issue: Issue,
-    active_only: bool = False,
-) -> list[IssueAssignee]:
-    assignees = list(issue_assignees_queryset(issue=issue, active_only=active_only))
-    return [assignee for assignee in assignees if is_admin_user(assignee.user)]
-
-
-def admin_issue_subscription_users(*, issue: Issue, active_only: bool = False) -> list[User]:
-    return [assignee.user for assignee in admin_issue_subscriptions(issue=issue, active_only=active_only)]
 
 
 def effective_admin_issue_subscription_users(*, issue: Issue, active_only: bool = False) -> list[User]:
@@ -65,7 +55,7 @@ def effective_admin_issue_subscription_users(*, issue: Issue, active_only: bool 
     }
     return [
         user
-        for user in admin_issue_subscription_users(issue=issue, active_only=active_only)
+        for user in _issue_assignee_users(issue=issue, active_only=active_only, admin_only=True)
         if user.id in project_admin_ids
     ]
 

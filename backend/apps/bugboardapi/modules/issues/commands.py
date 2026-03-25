@@ -1,5 +1,3 @@
-from functools import partial
-
 from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
@@ -29,14 +27,6 @@ from .mutations import add_issue_assignees, ensure_issue_assignees, remove_exist
 from .rules import validate_issue_assignment_user_ids
 
 _UNSET = object()
-
-
-def _project_issue_admin_users(*, project) -> list[User]:
-    return admin_project_subscription_users(project=project, active_only=True)
-
-
-def _issue_update_recipients(*, issue: Issue, actor=None) -> list[User]:
-    return issue_notification_recipients(issue=issue, actor=actor)
 
 
 def _issue_closed_recipients(*, issue: Issue) -> list[User]:
@@ -96,21 +86,6 @@ def _dispatch_issue_side_effects(
     return event
 
 
-def _issue_attachment_paths(*, issue: Issue) -> list[str]:
-    return list(
-        dict.fromkeys(
-            path
-            for path in Attachment.objects.filter(update__issue=issue).values_list("path", flat=True)
-            if path
-        )
-    )
-
-
-def _delete_issue_attachment_files(paths: list[str]) -> None:
-    for path in paths:
-        delete_media_path(path)
-
-
 def create_issue_for_project(*, serializer, reporter, project):
     with transaction.atomic():
         issue = serializer.save(project=project, reporter=reporter)
@@ -122,7 +97,7 @@ def create_issue_for_project(*, serializer, reporter, project):
             event_type=EventType.CREATE,
             message="Issue created",
             notification_sender=notify_issue_added,
-            notification_users=_project_issue_admin_users(project=project),
+            notification_users=admin_project_subscription_users(project=project, active_only=True),
             notification_actor=reporter,
         )
     return issue
@@ -150,7 +125,7 @@ def update_issue_from_serializer(*, serializer, actor, raw_message):
                 notification_users=(
                     _issue_closed_recipients(issue=issue)
                     if issue.status == IssueStatus.DONE
-                    else _issue_update_recipients(issue=issue, actor=actor)
+                    else issue_notification_recipients(issue=issue, actor=actor)
                 ),
                 notification_actor=actor if issue.status == IssueStatus.DONE else _UNSET,
             )
@@ -162,18 +137,28 @@ def update_issue_from_serializer(*, serializer, actor, raw_message):
                 event_type=EventType.EDIT,
                 message=message,
                 notification_sender=notify_issue_updated,
-                notification_users=_issue_update_recipients(issue=issue, actor=actor),
+                notification_users=issue_notification_recipients(issue=issue, actor=actor),
             )
     return issue
 
 
 def delete_issue(*, instance: Issue):
-    attachment_paths = _issue_attachment_paths(issue=instance)
+    attachment_paths = list(
+        dict.fromkeys(
+            path
+            for path in Attachment.objects.filter(update__issue=instance).values_list("path", flat=True)
+            if path
+        )
+    )
 
     with transaction.atomic():
         instance.delete()
         if attachment_paths:
-            transaction.on_commit(partial(_delete_issue_attachment_files, attachment_paths))
+            def delete_attachment_files() -> None:
+                for path in attachment_paths:
+                    delete_media_path(path)
+
+            transaction.on_commit(delete_attachment_files)
 
 
 def assign_issue_users(*, issue: Issue, actor, raw_user_ids):
@@ -228,35 +213,6 @@ def _validate_issue_status_transition(*, issue: Issue, new_status: str) -> None:
         raise ValidationError({"status": "Closed issues cannot be reopened"})
 
 
-def update_issue_status(*, issue: Issue, actor, new_status, raw_message, payload):
-    _validate_issue_status_transition(issue=issue, new_status=new_status)
-    old_status = issue.status
-    if new_status == old_status:
-        return issue
-
-    with transaction.atomic():
-        issue.status = new_status
-        issue.save(update_fields=["status"])
-
-        _dispatch_issue_side_effects(
-            issue=issue,
-            actor=actor,
-            event_type=EventType.STATUS_CHANGE,
-            message=raw_message,
-            payload=payload,
-            old_status=old_status,
-            new_status=new_status,
-            notification_sender=notify_issue_closed if new_status == IssueStatus.DONE else notify_issue_updated,
-            notification_users=(
-                _issue_closed_recipients(issue=issue)
-                if new_status == IssueStatus.DONE
-                else _issue_update_recipients(issue=issue, actor=actor)
-            ),
-            notification_actor=actor if new_status == IssueStatus.DONE else _UNSET,
-        )
-    return issue
-
-
 def create_issue_comment(*, issue: Issue, actor, raw_message, payload):
     message = validate_issue_event_message(
         raw_message,
@@ -271,7 +227,7 @@ def create_issue_comment(*, issue: Issue, actor, raw_message, payload):
             message=message,
             payload=payload,
             notification_sender=notify_issue_updated,
-            notification_users=_issue_update_recipients(issue=issue, actor=actor),
+            notification_users=issue_notification_recipients(issue=issue, actor=actor),
         )
     return event
 
@@ -298,7 +254,7 @@ def create_issue_attachment(*, issue: Issue, actor, payload):
         attachments_required=True,
         max_files=1,
         notification_sender=notify_issue_updated,
-        notification_users=_issue_update_recipients(issue=issue, actor=actor),
+        notification_users=issue_notification_recipients(issue=issue, actor=actor),
     )
     attachment = event.attachments.first()
     return attachment

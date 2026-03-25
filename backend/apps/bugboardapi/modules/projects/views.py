@@ -1,8 +1,6 @@
 """Project and membership views."""
 from __future__ import annotations
 
-import logging
-
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -10,22 +8,14 @@ from rest_framework.response import Response
 from rest_framework import serializers
 
 from ...permissions import filter_by_project_access, require_admin, require_project_access
-from .membership import (
-    is_admin_project_subscribed,
-    subscribe_admin_to_project,
-    unsubscribe_admin_from_project,
-)
+from .membership import visible_project_memberships
 from .commands import (
     create_project_with_team,
     delete_project_and_notify,
     update_project_with_team,
 )
-from .models import Project
-from .queries import list_project_memberships
+from .models import Project, ProjectMembership
 from .serializers import ProjectMembershipSerializer, ProjectSerializer
-
-logger = logging.getLogger(__name__)
-
 
 subscription_state_serializer = inline_serializer(
     name="ProjectSubscriptionState",
@@ -116,7 +106,7 @@ class ProjectViewSet(
         project = self.get_object()
         require_project_access(request.user, project)
         include_admins = str(request.query_params.get("includeAdmins", "")).lower() in {"1", "true", "yes"}
-        memberships = list_project_memberships(project=project, include_admins=include_admins)
+        memberships = visible_project_memberships(project=project, include_admins=include_admins)
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
     @action(detail=True, methods=["get", "put", "delete"], url_path="subscriptions/me")
@@ -136,12 +126,15 @@ class ProjectViewSet(
 
         if request.method == "GET":
             return Response({
-                "subscribed": is_admin_project_subscribed(project=project, user=request.user),
+                "subscribed": ProjectMembership.objects.filter(
+                    project=project,
+                    user=request.user,
+                ).exists(),
             })
 
         if request.method == "PUT":
-            subscribe_admin_to_project(project=project, user=request.user)
+            ProjectMembership.objects.get_or_create(project=project, user=request.user)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        unsubscribe_admin_from_project(project=project, user=request.user)
+        ProjectMembership.objects.filter(project=project, user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

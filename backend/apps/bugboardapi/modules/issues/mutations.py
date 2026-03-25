@@ -21,12 +21,6 @@ def add_issue_assignees(*, issue: Issue, user_ids: list[int]) -> list[User]:
     return added_assignees
 
 
-def remove_issue_assignees(*, issue: Issue, user_ids: list[int]) -> list[User]:
-    users = list(User.objects.filter(id__in=user_ids, is_active=True))
-    IssueAssignee.objects.filter(issue=issue, user_id__in=user_ids).delete()
-    return users
-
-
 def remove_existing_issue_assignees(*, issue: Issue, user_ids: list[int]) -> list[User]:
     users = list(
         User.objects.filter(
@@ -60,8 +54,7 @@ def create_issue_from_validated_data(validated_data: dict) -> Issue:
 
     issue = Issue.objects.create(**validated_data)
     ensure_issue_assignees(issue=issue, user_ids=assignee_ids)
-    for tag_id in resolved_tag_ids:
-        IssueTag.objects.get_or_create(issue=issue, tag_id=tag_id)
+    _sync_issue_tags(issue=issue, tag_ids=resolved_tag_ids)
     return issue
 
 

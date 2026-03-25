@@ -25,7 +25,7 @@ from ...security.token_sessions import (
     revoke_session_from_access,
     revoke_session_from_refresh,
 )
-from ..auth.password_reset import issue_otp_for_email, reset_password_with_otp, verify_otp
+from .password_reset import issue_otp_for_email, reset_password_with_otp, verify_otp
 from ..users.serializers import UserReadSerializer
 from .serializers import (
     CSRFTokenResponseSerializer,
@@ -42,31 +42,23 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
-def _refresh_cookie_name() -> str:
-    return settings.AUTH_REFRESH_COOKIE_NAME
-
-
-def _refresh_cookie_path() -> str:
-    return settings.AUTH_REFRESH_COOKIE_PATH
-
-
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
     max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
     response.set_cookie(
-        _refresh_cookie_name(),
+        settings.AUTH_REFRESH_COOKIE_NAME,
         refresh_token,
         max_age=max_age,
         httponly=True,
         secure=settings.AUTH_REFRESH_COOKIE_SECURE,
         samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
-        path=_refresh_cookie_path(),
+        path=settings.AUTH_REFRESH_COOKIE_PATH,
     )
 
 
 def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(
-        _refresh_cookie_name(),
-        path=_refresh_cookie_path(),
+        settings.AUTH_REFRESH_COOKIE_NAME,
+        path=settings.AUTH_REFRESH_COOKIE_PATH,
         samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
     )
 
@@ -176,7 +168,7 @@ class RefreshView(APIView):
         responses={200: RefreshResponseSerializer, 401: DetailResponseSerializer},
     )
     def post(self, request):
-        refresh_token = request.COOKIES.get(_refresh_cookie_name())
+        refresh_token = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
         if not refresh_token:
             return Response({"detail": "Refresh token missing"}, status=status.HTTP_401_UNAUTHORIZED)
         if is_refresh_token_session_revoked(refresh_token) or is_refresh_token_password_stale(
@@ -211,7 +203,7 @@ class LogoutView(APIView):
         responses={204: OpenApiResponse(description="Logged out")},
     )
     def delete(self, request):
-        refresh_token = request.COOKIES.get(_refresh_cookie_name())
+        refresh_token = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
         if refresh_token:
             revoke_session_from_refresh(refresh_token)
             try:

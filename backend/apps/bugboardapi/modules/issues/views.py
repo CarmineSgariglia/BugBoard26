@@ -31,7 +31,6 @@ from .models import (
     IssueEvent,
 )
 from ..projects.models import Project
-from ..projects.serializers import ProjectMembershipSerializer
 from .serializers import (
     AttachmentSerializer,
     IssueEventSerializer,
@@ -298,11 +297,7 @@ class IssueViewSet(
         issue = self.get_object()
         require_project_access(request.user, issue.project)
         memberships = list_issue_suggestion_memberships(issue=issue)
-        payload = ProjectMembershipSerializer(memberships, many=True).data
-        open_count_by_user_id = {membership.user_id: membership.open_count for membership in memberships}
-        for item in payload:
-            item["openCount"] = open_count_by_user_id.get(item["userId"], 0)
-        return Response(payload)
+        return Response(IssueSuggestionSerializer(memberships, many=True).data)
 
     def partial_update(self, request, *args, **kwargs):
         issue = self.get_object()

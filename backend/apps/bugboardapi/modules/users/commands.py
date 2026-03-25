@@ -7,16 +7,14 @@ from django.db import transaction
 from django.db.models import Q, QuerySet
 from rest_framework.exceptions import NotFound, ValidationError
 
-from ...common.parsing import parse_csv_ints_query_param
 from ...roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME
 from ...security.passwords import ensure_valid_password
 from ...security.token_sessions import set_user_password
 from ...security.uploads import compress_image_upload, store_upload, validate_profile_image
 from .policies import (
+    ensure_can_upload_profile_image,
     validate_admin_password_reset_request,
     validate_self_password_change_request,
-    ensure_can_upload_profile_image,
-    validate_status_change_request,
 )
 from .profile_models import UserProfileImage
 
@@ -71,39 +69,42 @@ def filter_users_queryset(
     return queryset.distinct()
 
 
-def set_user_status(*, actor: User, target_user: User, active):
-    validate_status_change_request(actor=actor, target_user=target_user, active=active)
-    target_user.is_active = active
-    target_user.save(update_fields=["is_active"])
-    return User.objects.get(id=target_user.id)
-
-
-def change_user_password(*, actor: User, target_user_id, payload: dict, mode: str):
+def _get_target_user_or_404(*, target_user_id: int) -> User:
     user = User.objects.filter(id=target_user_id).first()
     if user is None:
         raise NotFound("User not found")
+    return user
 
-    new_password = payload["newPassword"]
-    if mode == "self-service":
-        validate_self_password_change_request(
-            actor=actor,
-            target_user=user,
-            current_password=payload.get("currentPassword", "") or "",
-            new_password=new_password,
-        )
-    elif mode == "admin-reset":
-        validate_admin_password_reset_request(
-            actor=actor,
-            target_user=user,
-            new_password=new_password,
-        )
-    else:
-        raise ValueError(f"Unsupported password change mode: {mode}")
+
+def _update_password(*, user: User, new_password: str) -> dict[str, str]:
     ensure_valid_password(new_password, user=user, field_name="newPassword")
 
     with transaction.atomic():
         set_user_password(user=user, new_password=new_password)
     return {"detail": "Password updated"}
+
+
+def change_current_user_password(*, actor: User, payload: dict) -> dict[str, str]:
+    user = _get_target_user_or_404(target_user_id=actor.id)
+    new_password = payload["newPassword"]
+    validate_self_password_change_request(
+        actor=actor,
+        target_user=user,
+        current_password=payload.get("currentPassword", "") or "",
+        new_password=new_password,
+    )
+    return _update_password(user=user, new_password=new_password)
+
+
+def reset_user_password(*, actor: User, target_user_id: int, payload: dict) -> dict[str, str]:
+    user = _get_target_user_or_404(target_user_id=target_user_id)
+    new_password = payload["newPassword"]
+    validate_admin_password_reset_request(
+        actor=actor,
+        target_user=user,
+        new_password=new_password,
+    )
+    return _update_password(user=user, new_password=new_password)
 
 
 def save_profile_image_for_user(*, request, user: User):

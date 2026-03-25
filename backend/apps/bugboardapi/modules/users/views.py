@@ -1,23 +1,21 @@
 """User management views."""
 from __future__ import annotations
 
-import logging
-
 from django.contrib.auth.models import User
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
-from rest_framework import mixins, permissions, status, viewsets
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
+from rest_framework import mixins, permissions, serializers, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
-from rest_framework import serializers
 from rest_framework.views import APIView
 
+from ...common.parsing import parse_csv_ints_query_param
 from ...permissions import require_admin
 from ...roles import is_admin_user
 from .commands import (
-    change_user_password,
+    change_current_user_password,
     filter_users_queryset,
-    parse_csv_ints_query_param,
+    reset_user_password,
     save_profile_image_for_user,
 )
 from .policies import ensure_can_edit_user
@@ -27,8 +25,6 @@ from .serializers import (
     UserMutationSerializer,
     UserSerializer,
 )
-
-logger = logging.getLogger(__name__)
 
 
 profile_image_upload_request = inline_serializer(
@@ -83,23 +79,16 @@ class UserViewSet(
             return UserMutationSerializer
         return UserSerializer
 
-    def _parse_csv_ints_query_param(self, name: str) -> list[int]:
-        return parse_csv_ints_query_param(
-            raw_value=self.request.query_params.get(name),
-            field_name=name,
-        )
-
-    def _validate_user_update_permissions(self, request, user: User) -> None:
-        ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
-
-    def _profile_image_response(self, *, request, user: User) -> Response:
-        updated_user = save_profile_image_for_user(request=request, user=user)
-        return Response(self.get_serializer(updated_user).data, status=status.HTTP_200_OK)
-
     def get_queryset(self):
         queryset = super().get_queryset()
-        user_ids = self._parse_csv_ints_query_param("userIds")
-        exclude_user_ids = self._parse_csv_ints_query_param("excludeUserIds")
+        user_ids = parse_csv_ints_query_param(
+            raw_value=self.request.query_params.get("userIds"),
+            field_name="userIds",
+        )
+        exclude_user_ids = parse_csv_ints_query_param(
+            raw_value=self.request.query_params.get("excludeUserIds"),
+            field_name="excludeUserIds",
+        )
         return filter_users_queryset(
             queryset=queryset,
             actor=self.request.user,
@@ -111,22 +100,18 @@ class UserViewSet(
             is_admin_actor=is_admin_user(self.request.user),
         )
 
-    def perform_create(self, serializer):
-        require_admin(self.request.user)
-        serializer.save()
-
     def create(self, request, *args, **kwargs):
         require_admin(request.user)
         return super().create(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
-        self._validate_user_update_permissions(request, user)
+        ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
         return super().partial_update(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         user = self.get_object()
-        self._validate_user_update_permissions(request, user)
+        ensure_can_edit_user(actor=request.user, target_user=user, payload=request.data)
         return super().update(request, *args, **kwargs)
 
 
@@ -149,11 +134,9 @@ class CurrentUserPasswordView(APIView):
     def put(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        payload = change_user_password(
+        payload = change_current_user_password(
             actor=request.user,
-            target_user_id=request.user.id,
             payload=serializer.validated_data,
-            mode="self-service",
         )
         return Response(payload)
 
@@ -172,11 +155,10 @@ class UserPasswordView(APIView):
         require_admin(request.user)
         serializer = AdminResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        payload = change_user_password(
+        payload = reset_user_password(
             actor=request.user,
             target_user_id=userId,
             payload=serializer.validated_data,
-            mode="admin-reset",
         )
         return Response(payload)
 

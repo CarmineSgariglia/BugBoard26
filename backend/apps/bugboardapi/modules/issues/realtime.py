@@ -9,8 +9,6 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-ISSUE_EVENT_CHANNEL = "issue-events:{issue_id}"
-
 _memory_lock = threading.Lock()
 _memory_subscribers: dict[int, list[queue.Queue["IssueRealtimeEvent"]]] = defaultdict(list)
 
@@ -49,10 +47,6 @@ class MemoryIssueSubscription(IssueSubscription):
             _memory_subscribers[self._issue_id] = [item for item in queues if item is not self._events]
             if not _memory_subscribers[self._issue_id]:
                 _memory_subscribers.pop(self._issue_id, None)
-
-
-def get_issue_event_channel(issue_id: int) -> str:
-    return ISSUE_EVENT_CHANNEL.format(issue_id=issue_id)
 
 
 def publish_issue_event_created(issue_id: int, event_payload: dict[str, Any]) -> None:

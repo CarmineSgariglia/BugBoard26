@@ -3,18 +3,6 @@ from rest_framework import serializers
 from .models import Tag
 
 
-def normalize_tag_name(name: str) -> str:
-    return Tag.normalize_name(name)
-
-
-def find_tag_by_name(name: str) -> Tag | None:
-    return Tag.find_by_normalized_name(name)
-
-
-def get_or_create_tag_by_name(name: str) -> tuple[Tag | None, bool]:
-    return Tag.get_or_create_normalized(name)
-
-
 def validate_existing_tag_ids(tag_ids: list[int] | None) -> None:
     if tag_ids is None:
         return
@@ -38,7 +26,7 @@ def resolve_tag_ids(*, tag_ids: list[int], tag_names: list[str]) -> list[int]:
             resolved.append(tag_id)
 
     for raw_name in tag_names:
-        tag, _ = get_or_create_tag_by_name(raw_name)
+        tag, _ = Tag.get_or_create_normalized(raw_name)
         if tag is None:
             continue
         if tag.tag_id not in seen:

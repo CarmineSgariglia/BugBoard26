@@ -22,41 +22,17 @@ def project_memberships_queryset(
     return queryset
 
 
+def _project_memberships(*, project: Project, active_only: bool = False) -> list[ProjectMembership]:
+    return list(project_memberships_queryset(project=project, active_only=active_only))
+
+
 def is_project_member(*, user: User, project: Project) -> bool:
     return ProjectMembership.objects.filter(project=project, user=user).exists()
 
 
-def admin_project_subscriptions(
-    *,
-    project: Project,
-    active_only: bool = False,
-) -> list[ProjectMembership]:
-    memberships = list(
-        project_memberships_queryset(
-            project=project,
-            active_only=active_only,
-        )
-    )
-    return [membership for membership in memberships if is_admin_user(membership.user)]
-
-
 def admin_project_subscription_users(*, project: Project, active_only: bool = False) -> list[User]:
-    return [membership.user for membership in admin_project_subscriptions(project=project, active_only=active_only)]
-
-
-def is_admin_project_subscribed(*, project: Project, user: User) -> bool:
-    if not is_admin_user(user):
-        return False
-    return ProjectMembership.objects.filter(project=project, user=user).exists()
-
-
-def subscribe_admin_to_project(*, project: Project, user: User) -> ProjectMembership:
-    membership, _ = ProjectMembership.objects.get_or_create(project=project, user=user)
-    return membership
-
-
-def unsubscribe_admin_from_project(*, project: Project, user: User) -> None:
-    ProjectMembership.objects.filter(project=project, user=user).delete()
+    memberships = _project_memberships(project=project, active_only=active_only)
+    return [membership.user for membership in memberships if is_admin_user(membership.user)]
 
 
 def developer_project_memberships(
@@ -64,12 +40,7 @@ def developer_project_memberships(
     project: Project,
     active_only: bool = False,
 ) -> list[ProjectMembership]:
-    memberships = list(
-        project_memberships_queryset(
-            project=project,
-            active_only=active_only,
-        )
-    )
+    memberships = _project_memberships(project=project, active_only=active_only)
     return [membership for membership in memberships if not is_admin_user(membership.user)]
 
 
@@ -79,12 +50,7 @@ def visible_project_memberships(
     include_admins: bool,
     active_only: bool = False,
 ) -> list[ProjectMembership]:
-    memberships = list(
-        project_memberships_queryset(
-            project=project,
-            active_only=active_only,
-        )
-    )
+    memberships = _project_memberships(project=project, active_only=active_only)
     if include_admins:
         return memberships
     return [membership for membership in memberships if not is_admin_user(membership.user)]

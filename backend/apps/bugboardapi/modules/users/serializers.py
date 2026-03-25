@@ -143,10 +143,6 @@ class AdminResetPasswordSerializer(serializers.Serializer):
     newPassword = serializers.CharField(min_length=8)
 
 
-class UserStatusPatchSerializer(serializers.Serializer):
-    active = serializers.BooleanField()
-
-
 def _resolve_requested_group(
     *,
     requested_group,

@@ -129,4 +129,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
 
 class IssueSuggestionSerializer(ProjectMembershipSerializer):
-    openCount = serializers.IntegerField()
+    openCount = serializers.IntegerField(source="open_count")
+
+    class Meta(ProjectMembershipSerializer.Meta):
+        fields = [*ProjectMembershipSerializer.Meta.fields, "openCount"]

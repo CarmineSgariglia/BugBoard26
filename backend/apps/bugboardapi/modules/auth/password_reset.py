@@ -27,16 +27,8 @@ def _email_hash(email: str) -> str:
     return hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()[:12]
 
 
-def _active_user(email: str) -> User | None:
+def _find_active_user_by_email(email: str) -> User | None:
     return User.objects.filter(email__iexact=email.strip(), is_active=True).first()
-
-
-def _latest_open_otp(user: User) -> PasswordResetOTP | None:
-    return (
-        PasswordResetOTP.objects.filter(user=user, is_used=False)
-        .order_by("-created_at")
-        .first()
-    )
 
 
 def _send_otp_email(*, email: str, code: str) -> None:
@@ -73,7 +65,7 @@ def _send_otp_email(*, email: str, code: str) -> None:
 
 
 def issue_otp_for_email(email: str) -> None:
-    user = _active_user(email)
+    user = _find_active_user_by_email(email)
     if not user:
         logger.info("otp_request_unknown email_hash=%s", _email_hash(email))
         return
@@ -98,8 +90,8 @@ def issue_otp_for_email(email: str) -> None:
         logger.exception("otp_request_send_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))
 
 
-def _validate_and_consume_attempt(*, user: User, code: str) -> tuple[bool, PasswordResetOTP | None]:
-    otp = _latest_open_otp(user)
+def _validate_otp_attempt(*, user: User, code: str) -> tuple[bool, PasswordResetOTP | None]:
+    otp = PasswordResetOTP.objects.filter(user=user, is_used=False).order_by("-created_at").first()
     if not otp:
         return False, None
 
@@ -118,12 +110,12 @@ def _validate_and_consume_attempt(*, user: User, code: str) -> tuple[bool, Passw
 
 
 def verify_otp(email: str, code: str) -> tuple[bool, datetime | None]:
-    user = _active_user(email)
+    user = _find_active_user_by_email(email)
     if not user:
         logger.info("otp_verify_unknown email_hash=%s", _email_hash(email))
         return False, None
 
-    valid, otp = _validate_and_consume_attempt(user=user, code=code)
+    valid, otp = _validate_otp_attempt(user=user, code=code)
     if not valid:
         logger.info("otp_verify_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))
         return False, None
@@ -133,12 +125,12 @@ def verify_otp(email: str, code: str) -> tuple[bool, datetime | None]:
 
 
 def reset_password_with_otp(email: str, code: str, new_password: str) -> bool:
-    user = _active_user(email)
+    user = _find_active_user_by_email(email)
     if not user:
         logger.info("otp_reset_unknown email_hash=%s", _email_hash(email))
         return False
 
-    valid, otp = _validate_and_consume_attempt(user=user, code=code)
+    valid, otp = _validate_otp_attempt(user=user, code=code)
     if not valid or otp is None:
         logger.info("otp_reset_failed user_id=%s email_hash=%s", user.id, _email_hash(user.email))
         return False
