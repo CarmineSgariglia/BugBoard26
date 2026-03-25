@@ -5,6 +5,8 @@ const baseEvent = {
   issueId: 5,
   actorId: 7,
   actorUsername: "dev",
+  actorFirstName: "",
+  actorLastName: "",
   actorProfileImg: null,
   at: "2026-03-13T10:00:00Z",
   message: "",
@@ -56,6 +58,20 @@ describe("formatIssueActivityEvent", () => {
       },
       "Mattia Lemma (mattia.lemma)"
     );
+
+    expect(formatted.actorName).toBe("Mattia Lemma (mattia.lemma)");
+    expect(formatted.title).toBe("Mattia Lemma (mattia.lemma)");
+  });
+
+  it("builds Nome Cognome (username) from the event actor fields when available", () => {
+    const formatted = formatIssueActivityEvent({
+      ...baseEvent,
+      eventType: "COMMENT",
+      actorUsername: "mattia.lemma",
+      actorFirstName: "Mattia",
+      actorLastName: "Lemma",
+      message: "Ping",
+    });
 
     expect(formatted.actorName).toBe("Mattia Lemma (mattia.lemma)");
     expect(formatted.title).toBe("Mattia Lemma (mattia.lemma)");

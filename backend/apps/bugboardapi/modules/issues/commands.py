@@ -105,7 +105,8 @@ def update_issue_from_serializer(*, serializer, actor, raw_message):
     old_status = issue.status
     requested_status = serializer.validated_data.get("status", old_status)
     normalized_message = validate_issue_event_message(raw_message, strip=True)
-    _validate_issue_status_transition(issue=issue, new_status=requested_status)
+    if requested_status not in dict(IssueStatus.choices):
+        raise ValidationError({"status": "Invalid status"})
 
     with transaction.atomic():
         issue = serializer.save()
@@ -182,10 +183,6 @@ def unassign_issue_users(*, issue: Issue, actor, raw_user_ids):
             notification_actor=actor,
         )
 
-
-def _validate_issue_status_transition(*, issue: Issue, new_status: str) -> None:
-    if new_status not in dict(IssueStatus.choices):
-        raise ValidationError({"status": "Invalid status"})
 
 
 def create_issue_comment(*, issue: Issue, actor, raw_message, payload):

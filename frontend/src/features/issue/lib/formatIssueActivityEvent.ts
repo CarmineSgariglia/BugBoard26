@@ -15,12 +15,20 @@ export type UiActivityItem = {
     attachments: IssueUpdate["attachments"];
 };
 
+function formatActorDisplayNameFromEvent(event: Pick<
+    IssueUpdate,
+    "actorUsername" | "actorFirstName" | "actorLastName"
+>): string {
+    const fullName = `${event.actorFirstName ?? ""} ${event.actorLastName ?? ""}`.trim();
+    return fullName ? `${fullName} (${event.actorUsername})` : event.actorUsername;
+}
+
 export function formatIssueActivityEvent(
     event: IssueUpdate,
     actorDisplayName?: string,
 ): UiActivityItem {
     const type = event.eventType;
-    const actorName = actorDisplayName ?? event.actorUsername;
+    const actorName = actorDisplayName ?? formatActorDisplayNameFromEvent(event);
 
     if (type === "COMMENT") {
         return {
