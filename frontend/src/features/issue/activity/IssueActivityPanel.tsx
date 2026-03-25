@@ -64,7 +64,7 @@ function getSubmitErrorMessage(error: unknown): string {
         }
     }
 
-    return "File non valido o non supportato.";
+    return "Invalid or unsupported file.";
 }
 
 function formatActorDisplayName(member: {

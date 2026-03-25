@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useFileValidation } from "../../../../features/issue/activity/useFileValidation";
+import { useFileValidation } from "../../../../features/issue/lib/useFileValidation";
 import { prepareAttachmentUpload } from "@shared/lib/media";
 
 // Mock @shared/lib/media
@@ -39,7 +39,7 @@ describe("useFileValidation", () => {
     // Only 1 file should be accepted
     expect(result.current.files).toHaveLength(1);
     expect(result.current.files[0].name).toBe("file1.txt");
-    
+
     // Limits message warning
     expect(result.current.error).toContain("Max 1 files allowed");
   });

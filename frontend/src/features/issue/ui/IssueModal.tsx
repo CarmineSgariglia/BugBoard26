@@ -53,21 +53,21 @@ function toNonBlockingWarning(error: unknown): string {
   ) {
     const response = (error as { response: { status?: number; data?: unknown } }).response;
     if (response.status === 403) {
-      return "Issue creata, ma primo commento/allegati non salvati (permessi insufficienti).";
+      return "Issue created, but first comment/attachments not saved (insufficient permissions).";
     }
 
     const data = response.data;
     if (typeof data === "object" && data !== null) {
       if ("detail" in data && typeof (data as { detail?: unknown }).detail === "string") {
-        return `Issue creata, ma primo commento/allegati non salvati: ${(data as { detail: string }).detail}`;
+        return `Issue created, but first comment/attachments not saved: ${(data as { detail: string }).detail}`;
       }
       if ("file" in data && typeof (data as { file?: unknown }).file === "string") {
-        return `Issue creata, ma primo commento/allegati non salvati: ${(data as { file: string }).file}`;
+        return `Issue created, but first comment/attachments not saved: ${(data as { file: string }).file}`;
       }
     }
   }
 
-  return "Issue creata, ma primo commento/allegati non salvati.";
+  return "Issue created, but first comment/attachments not saved.";
 }
 
 function getInitialFormState(mode: "create" | "edit", initialData?: Issue | null): IssueFormState {

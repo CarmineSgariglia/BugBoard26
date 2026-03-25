@@ -4,7 +4,7 @@ import { ATTACHMENT_FILE_INPUT_ACCEPT, ATTACHMENT_MAX_FILES, formatBytes } from 
 import { AttachmentUploadInfoPopover } from "@shared/ui/AttachmentUploadInfoPopover";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLength } from "@shared/ui/DescriptionFieldWithLength";
-import { useFileValidation } from "./useFileValidation";
+import { useFileValidation } from "../lib/useFileValidation";
 
 type Props = {
     message: string;
@@ -108,7 +108,7 @@ export function IssueActivityComposer({
                             fileInputRef.current.value = "";
                         }
                     }}
-                    />
+                />
 
                 {isPreparingFiles ? <span className="text-xs text-sky-300">Optimizing media...</span> : null}
 
