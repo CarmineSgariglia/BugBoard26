@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from ...common.media import build_media_url
@@ -20,7 +21,8 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         model = ProjectMembership
         fields = ["projectMembershipId", "projectId", "userId", "username", "firstName", "lastName", "email", "role", "profileImg"]
 
-    def get_role(self, instance):
+    @extend_schema_field(serializers.CharField())
+    def get_role(self, instance) -> str:
         return get_global_role(instance.user) or DEVELOPER_GROUP_NAME
 
     def to_representation(self, instance):

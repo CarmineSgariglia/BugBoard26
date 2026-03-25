@@ -272,10 +272,10 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "BugBoard26 API",
     "DESCRIPTION": (
-        "Canonical Phase 1 API surface for BugBoard26. "
+        "API surface for BugBoard26."
         "JWT session revocation remains enabled as an intentional security exception."
     ),
-    "VERSION": "1.0.0-phase1",
+    "VERSION": "1.0.0",
     "OAS_VERSION": "3.0.3",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": r"/api",

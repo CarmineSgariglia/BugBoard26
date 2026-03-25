@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: BugBoard26 API
-  version: 1.0.0-phase1
-  description: Canonical Phase 1 API surface for BugBoard26. JWT session revocation
-    remains enabled as an intentional security exception.
+  version: 1.0.0
+  description: API surface for BugBoard26.JWT session revocation remains enabled as
+    an intentional security exception.
 paths:
   /api/health:
     get:
@@ -32,38 +32,6 @@ paths:
         required: true
       tags:
       - Issues
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Issue'
-          description: ''
-    put:
-      operationId: issues_update
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        description: A unique integer value identifying this issue.
-        required: true
-      tags:
-      - Issues
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IssueRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/IssueRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/IssueRequest'
-        required: true
       security:
       - bearerAuth: []
       responses:
@@ -104,24 +72,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Issue'
           description: ''
-    delete:
-      operationId: issues_destroy
-      description: Deletes the issue. No request body is required or documented in
-        Phase 1.
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        description: A unique integer value identifying this issue.
-        required: true
-      tags:
-      - Issues
-      security:
-      - bearerAuth: []
-      responses:
-        '204':
-          description: Issue deleted
   /api/issues/{issueId}/assignees/{userId}:
     put:
       operationId: issues_assignees_update
@@ -165,17 +115,19 @@ paths:
       responses:
         '204':
           description: Assignee removed
-  /api/issues/{issueId}/attachments:
+  /api/issues/{issueId}/events:
     get:
-      operationId: issues_attachments_list
+      operationId: issues_events_list
+      description: Issue activity events.
       parameters:
       - in: path
         name: issueId
         schema:
           type: integer
+        description: A unique integer value identifying this issue.
         required: true
       tags:
-      - Attachments
+      - Issues
       security:
       - bearerAuth: []
       responses:
@@ -185,77 +137,17 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Attachment'
+                  $ref: '#/components/schemas/IssueEvent'
           description: ''
-    post:
-      operationId: issues_attachments_create
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Attachments
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/IssueAttachmentCreateRequestRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      responses:
         '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Attachment'
-          description: ''
-  /api/issues/{issueId}/attachments/{attachmentId}:
-    delete:
-      operationId: issues_attachments_destroy
-      parameters:
-      - in: path
-        name: attachmentId
-        schema:
-          type: integer
-        required: true
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Attachments
-      security:
-      - bearerAuth: []
-      responses:
-        '204':
-          description: Attachment deleted
-  /api/issues/{issueId}/events:
-    get:
-      operationId: issues_events_retrieve
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        description: A unique integer value identifying this issue.
-        required: true
-      tags:
-      - issues
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Issue'
+                $ref: '#/components/schemas/IssueEvent'
           description: ''
     post:
       operationId: issues_events_create
+      description: Issue activity events.
       parameters:
       - in: path
         name: issueId
@@ -264,18 +156,15 @@ paths:
         description: A unique integer value identifying this issue.
         required: true
       tags:
-      - issues
+      - Issues
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/IssueRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/IssueRequest'
+              $ref: '#/components/schemas/IssueUpdateJsonRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/IssueRequest'
+              $ref: '#/components/schemas/IssueUpdateMultipartRequestRequest'
         required: true
       security:
       - bearerAuth: []
@@ -284,42 +173,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Issue'
+                type: array
+                items:
+                  $ref: '#/components/schemas/IssueEvent'
           description: ''
-  /api/issues/{issueId}/events/{eventId}/attachments:
-    post:
-      operationId: issues_events_attachments_create
-      parameters:
-      - in: path
-        name: eventId
-        schema:
-          type: integer
-        required: true
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Attachments
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/IssueEventAttachmentUploadRequestRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      responses:
         '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Attachment'
+                $ref: '#/components/schemas/IssueEvent'
           description: ''
   /api/issues/{issueId}/events/stream:
     get:
       operationId: issues_events_stream_retrieve
+      description: Server-Sent Events activity stream for the issue.
       parameters:
       - in: path
         name: issueId
@@ -328,7 +195,7 @@ paths:
         description: A unique integer value identifying this issue.
         required: true
       tags:
-      - issues
+      - Issues
       security:
       - bearerAuth: []
       responses:
@@ -336,11 +203,12 @@ paths:
           content:
             text/event-stream:
               schema:
-                $ref: '#/components/schemas/Issue'
+                type: string
           description: ''
   /api/issues/{issueId}/subscriptions/me:
     get:
       operationId: issues_subscriptions_me_retrieve
+      description: Admin subscription state for the authenticated user on the issue.
       parameters:
       - in: path
         name: issueId
@@ -349,7 +217,7 @@ paths:
         description: A unique integer value identifying this issue.
         required: true
       tags:
-      - issues
+      - Issues
       security:
       - bearerAuth: []
       responses:
@@ -357,10 +225,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Issue'
+                $ref: '#/components/schemas/IssueSubscriptionState'
           description: ''
+        '204':
+          description: Subscription updated
     put:
       operationId: issues_subscriptions_me_update
+      description: Admin subscription state for the authenticated user on the issue.
       parameters:
       - in: path
         name: issueId
@@ -369,19 +240,7 @@ paths:
         description: A unique integer value identifying this issue.
         required: true
       tags:
-      - issues
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IssueRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/IssueRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/IssueRequest'
-        required: true
+      - Issues
       security:
       - bearerAuth: []
       responses:
@@ -389,10 +248,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Issue'
+                $ref: '#/components/schemas/IssueSubscriptionState'
           description: ''
+        '204':
+          description: Subscription updated
     delete:
       operationId: issues_subscriptions_me_destroy
+      description: Admin subscription state for the authenticated user on the issue.
       parameters:
       - in: path
         name: issueId
@@ -401,24 +263,7 @@ paths:
         description: A unique integer value identifying this issue.
         required: true
       tags:
-      - issues
-      security:
-      - bearerAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/issues/{issueId}/suggestions:
-    get:
-      operationId: issues_suggestions_retrieve
-      parameters:
-      - in: path
-        name: issueId
-        schema:
-          type: integer
-        description: A unique integer value identifying this issue.
-        required: true
-      tags:
-      - issues
+      - Issues
       security:
       - bearerAuth: []
       responses:
@@ -426,7 +271,32 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Issue'
+                $ref: '#/components/schemas/IssueSubscriptionState'
+          description: ''
+        '204':
+          description: Subscription updated
+  /api/issues/{issueId}/suggestions:
+    get:
+      operationId: issues_suggestions_list
+      parameters:
+      - in: path
+        name: issueId
+        schema:
+          type: integer
+        description: A unique integer value identifying this issue.
+        required: true
+      tags:
+      - Issues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IssueSuggestion'
           description: ''
   /api/notifications:
     get:
@@ -454,52 +324,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/NotificationsPage'
           description: ''
-    patch:
-      operationId: notifications_bulk_update
-      description: Bulk update notification state for the current user.
-      summary: Bulk update notifications
-      tags:
-      - Notifications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPatchRequest'
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationReadAllResponse'
-          description: ''
   /api/notifications/{notificationId}:
-    get:
-      operationId: notifications_retrieve
-      parameters:
-      - in: path
-        name: notificationId
-        schema:
-          type: integer
-        required: true
-      tags:
-      - Notifications
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotifyUser'
-          description: ''
     patch:
       operationId: notifications_partial_update
       summary: Update notification state
@@ -549,16 +374,18 @@ paths:
   /api/notifications/stream:
     get:
       operationId: notifications_stream_retrieve
+      description: Server-Sent Events stream for the authenticated user.
+      summary: Stream notifications
       tags:
-      - notifications
+      - Notifications
       security:
       - bearerAuth: []
       responses:
         '200':
           content:
-            application/json:
+            text/event-stream:
               schema:
-                $ref: '#/components/schemas/NotifyUser'
+                type: string
           description: ''
   /api/password-reset-requests:
     post:
@@ -720,38 +547,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
           description: ''
-    put:
-      operationId: projects_update
-      parameters:
-      - in: path
-        name: projectId
-        schema:
-          type: integer
-        description: A unique integer value identifying this project.
-        required: true
-      tags:
-      - Projects
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProjectRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ProjectRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProjectRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-          description: ''
     patch:
       operationId: projects_partial_update
       parameters:
@@ -854,8 +649,12 @@ paths:
           description: ''
   /api/projects/{projectId}/members:
     get:
-      operationId: projects_members_retrieve
+      operationId: projects_members_list
       parameters:
+      - in: query
+        name: includeAdmins
+        schema:
+          type: boolean
       - in: path
         name: projectId
         schema:
@@ -863,7 +662,7 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - projects
+      - Projects
       security:
       - bearerAuth: []
       responses:
@@ -871,11 +670,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectMembership'
           description: ''
   /api/projects/{projectId}/subscriptions/me:
     get:
       operationId: projects_subscriptions_me_retrieve
+      description: Admin subscription state for the authenticated user on the project.
+      summary: Project subscription
       parameters:
       - in: path
         name: projectId
@@ -884,7 +687,7 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - projects
+      - Projects
       security:
       - bearerAuth: []
       responses:
@@ -892,10 +695,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
+                $ref: '#/components/schemas/ProjectSubscriptionState'
           description: ''
+        '204':
+          description: Subscription updated
     put:
       operationId: projects_subscriptions_me_update
+      description: Admin subscription state for the authenticated user on the project.
+      summary: Project subscription
       parameters:
       - in: path
         name: projectId
@@ -904,19 +711,7 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - projects
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProjectRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ProjectRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProjectRequest'
-        required: true
+      - Projects
       security:
       - bearerAuth: []
       responses:
@@ -924,10 +719,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
+                $ref: '#/components/schemas/ProjectSubscriptionState'
           description: ''
+        '204':
+          description: Subscription updated
     delete:
       operationId: projects_subscriptions_me_destroy
+      description: Admin subscription state for the authenticated user on the project.
+      summary: Project subscription
       parameters:
       - in: path
         name: projectId
@@ -936,12 +735,18 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - projects
+      - Projects
       security:
       - bearerAuth: []
       responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSubscriptionState'
+          description: ''
         '204':
-          description: No response body
+          description: Subscription updated
   /api/security/csrf-token:
     get:
       operationId: security_csrf_token_retrieve
@@ -994,6 +799,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/DetailResponse'
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
   /api/sessions/current:
     delete:
       operationId: sessions_current_destroy
@@ -1032,64 +849,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DetailResponse'
           description: ''
-  /api/tags:
-    get:
-      operationId: tags_list
-      tags:
-      - tags
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Tag'
-          description: ''
-    post:
-      operationId: tags_create
-      tags:
-      - tags
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TagRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TagRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TagRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Tag'
-          description: ''
-  /api/tags/{tagId}:
-    delete:
-      operationId: tags_destroy
-      parameters:
-      - in: path
-        name: tagId
-        schema:
-          type: integer
-        description: A unique integer value identifying this tag.
-        required: true
-      tags:
-      - tags
-      security:
-      - bearerAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/users:
     get:
       operationId: users_list
@@ -1155,58 +914,6 @@ paths:
                 $ref: '#/components/schemas/UserMutation'
           description: ''
   /api/users/{userId}:
-    get:
-      operationId: users_retrieve
-      parameters:
-      - in: path
-        name: userId
-        schema:
-          type: integer
-        description: A unique integer value identifying this user.
-        required: true
-      tags:
-      - Users
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-          description: ''
-    put:
-      operationId: users_update
-      parameters:
-      - in: path
-        name: userId
-        schema:
-          type: integer
-        description: A unique integer value identifying this user.
-        required: true
-      tags:
-      - Users
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserMutationRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UserMutationRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UserMutationRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserMutation'
-          description: ''
     patch:
       operationId: users_partial_update
       parameters:
@@ -1518,24 +1225,47 @@ components:
       - profileImg
       - userId
       - username
-    IssueAttachmentCreateRequestRequest:
+    IssueEvent:
       type: object
       properties:
+        updateId:
+          type: integer
+          readOnly: true
+        issueId:
+          type: integer
+          readOnly: true
+        actorId:
+          type: integer
+          readOnly: true
+        actorUsername:
+          type: string
+          readOnly: true
+        eventType:
+          type: string
+        at:
+          type: string
+          format: date-time
+          readOnly: true
         message:
           type: string
-        file:
+          maxLength: 1000
+        oldStatus:
           type: string
-          format: binary
-      required:
-      - file
-    IssueEventAttachmentUploadRequestRequest:
-      type: object
-      properties:
-        file:
+        newStatus:
           type: string
-          format: binary
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+          readOnly: true
       required:
-      - file
+      - actorId
+      - actorUsername
+      - at
+      - attachments
+      - eventType
+      - issueId
+      - updateId
     IssueRequest:
       type: object
       properties:
@@ -1577,6 +1307,78 @@ components:
       - description
       - title
       - type
+    IssueSubscriptionState:
+      type: object
+      properties:
+        subscribed:
+          type: boolean
+      required:
+      - subscribed
+    IssueSuggestion:
+      type: object
+      properties:
+        projectMembershipId:
+          type: integer
+          readOnly: true
+        projectId:
+          type: integer
+          readOnly: true
+        userId:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        firstName:
+          type: string
+          readOnly: true
+        lastName:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        profileImg:
+          type: string
+          readOnly: true
+        openCount:
+          type: integer
+      required:
+      - email
+      - firstName
+      - lastName
+      - openCount
+      - profileImg
+      - projectId
+      - projectMembershipId
+      - role
+      - userId
+      - username
+    IssueUpdateJsonRequestRequest:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+      required:
+      - message
+    IssueUpdateMultipartRequestRequest:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+        file:
+          type: array
+          items:
+            type: string
+            format: binary
+      required:
+      - message
     LoginRequestRequest:
       type: object
       properties:
@@ -1600,13 +1402,6 @@ components:
       required:
       - accessToken
       - user
-    NotificationReadAllResponse:
-      type: object
-      properties:
-        updated:
-          type: integer
-      required:
-      - updated
     NotificationsPage:
       type: object
       properties:
@@ -1887,6 +1682,47 @@ components:
       - description
       - name
       - projectId
+    ProjectMembership:
+      type: object
+      properties:
+        projectMembershipId:
+          type: integer
+          readOnly: true
+        projectId:
+          type: integer
+          readOnly: true
+        userId:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        firstName:
+          type: string
+          readOnly: true
+        lastName:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        profileImg:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - firstName
+      - lastName
+      - profileImg
+      - projectId
+      - projectMembershipId
+      - role
+      - userId
+      - username
     ProjectRequest:
       type: object
       properties:
@@ -1907,6 +1743,13 @@ components:
       required:
       - description
       - name
+    ProjectSubscriptionState:
+      type: object
+      properties:
+        subscribed:
+          type: boolean
+      required:
+      - subscribed
     RefreshResponse:
       type: object
       properties:

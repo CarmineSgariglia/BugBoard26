@@ -48,6 +48,12 @@ MAX_NOTIFICATIONS_PAGE_SIZE = 50
         responses=NotifyUserSerializer,
     ),
     destroy=extend_schema(tags=["Notifications"], responses={204: OpenApiResponse(description="Notification deleted")}),
+    stream=extend_schema(
+        tags=["Notifications"],
+        summary="Stream notifications",
+        description="Server-Sent Events stream for the authenticated user.",
+        responses={(200, "text/event-stream"): OpenApiTypes.STR},
+    ),
 )
 class NotificationViewSet(
     mixins.ListModelMixin,
@@ -150,12 +156,6 @@ class NotificationViewSet(
         methods=["get"],
         url_path="stream",
         renderer_classes=[ServerSentEventsRenderer],
-    )
-    @extend_schema(
-        tags=["Notifications"],
-        summary="Stream notifications",
-        description="Server-Sent Events stream for the authenticated user. Phase 1 accepted non-REST endpoint.",
-        responses={(200, "text/event-stream"): OpenApiTypes.STR},
     )
     def stream(self, request):
         try:

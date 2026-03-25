@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import permissions, status
 from rest_framework.exceptions import PermissionDenied, Throttled
 from rest_framework.response import Response
@@ -80,13 +80,8 @@ class CSRFTokenView(APIView):
         return response
 
 
-class LoginView(APIView):
-    permission_classes = [permissions.AllowAny]
-    authentication_classes = [CSRFAwareSessionAuthentication]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "login"
-
-    @extend_schema(
+@extend_schema_view(
+    post=extend_schema(
         tags=["Sessions"],
         summary="Create session",
         description="Authenticates the user, returns an access token, and sets the refresh token in an HTTP-only cookie.",
@@ -98,6 +93,14 @@ class LoginView(APIView):
             429: DetailResponseSerializer,
         },
     )
+)
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [CSRFAwareSessionAuthentication]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
+    serializer_class = LoginRequestSerializer
+
     def handle_exception(self, exc):
         email = self.request.data.get("email", "").strip() if hasattr(self.request, "data") else ""
         request_path = getattr(self.request, "path", "")

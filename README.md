@@ -252,11 +252,10 @@ Endpoint e aree principali:
 - sicurezza e sessione: `/api/security/csrf-token`, `/api/sessions`, `/api/sessions/current`
 - utenti: `/api/users`, `/api/users/me`, password e profile image
 - progetti: `/api/projects`, `/api/projects/{projectId}/members`, `/api/projects/{projectId}/subscriptions/me`
-- issue: `/api/projects/{projectId}/issues`, `/api/issues/{issueId}`, `/api/issues/{issueId}/events`
+- issue: `/api/projects/{projectId}/issues`, `/api/issues/{issueId}`, `/api/issues/{issueId}/assignees/{userId}`, `/api/issues/{issueId}/events`
 - stream realtime: `/api/issues/{issueId}/events/stream`, `/api/notifications/stream`
 - notifiche: `/api/notifications`
 - password reset: `/api/password-reset-requests`, `/api/password-reset-verifications`, `/api/password-resets`
-- tag e allegati: `/api/tags`, endpoint nested sotto `/api/issues/.../attachments`
 
 La specifica generata lato backend e disponibile anche in repository in [Documentazione/OpenAPI/openapi.yaml].
 

@@ -116,6 +116,30 @@ class ProjectIssueListCreateView(APIView):
 @extend_schema_view(
     retrieve=extend_schema(tags=["Issues"], responses=IssueSerializer),
     partial_update=extend_schema(tags=["Issues"], responses=IssueSerializer),
+    subscription=extend_schema(
+        tags=["Issues"],
+        description="Admin subscription state for the authenticated user on the issue.",
+        request=None,
+        responses={
+            200: issue_subscription_state_serializer,
+            204: OpenApiResponse(description="Subscription updated"),
+        },
+    ),
+    events=extend_schema(
+        tags=["Issues"],
+        description="Issue activity events.",
+        request={
+            "application/json": issue_update_json_request_serializer,
+            "multipart/form-data": issue_update_multipart_request_serializer,
+        },
+        responses={200: IssueEventSerializer(many=True), 201: IssueEventSerializer},
+    ),
+    events_stream=extend_schema(
+        tags=["Issues"],
+        description="Server-Sent Events activity stream for the issue.",
+        responses={(200, "text/event-stream"): OpenApiTypes.STR},
+    ),
+    suggestions=extend_schema(tags=["Issues"], responses=IssueSuggestionSerializer(many=True)),
 )
 class IssueViewSet(
     mixins.RetrieveModelMixin,
@@ -138,15 +162,6 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["get", "put", "delete"], url_path="subscriptions/me")
-    @extend_schema(
-        tags=["Issues"],
-        description="Admin subscription state for the authenticated user on the issue.",
-        request=None,
-        responses={
-            200: issue_subscription_state_serializer,
-            204: OpenApiResponse(description="Subscription updated"),
-        },
-    )
     def subscription(self, request, issueId=None):
         require_admin(request.user)
         issue = self.get_object()
@@ -165,15 +180,6 @@ class IssueViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get", "post"], url_path="events")
-    @extend_schema(
-        tags=["Issues"],
-        description="Issue activity events.",
-        request={
-            "application/json": issue_update_json_request_serializer,
-            "multipart/form-data": issue_update_multipart_request_serializer,
-        },
-        responses={200: IssueEventSerializer(many=True), 201: IssueEventSerializer},
-    )
     def events(self, request, issueId=None):
         issue = self.get_object()
         require_project_access(request.user, issue.project)
@@ -212,11 +218,6 @@ class IssueViewSet(
         url_path="events/stream",
         renderer_classes=[ServerSentEventsRenderer],
     )
-    @extend_schema(
-        tags=["Issues"],
-        description="Server-Sent Events activity stream for the issue.",
-        responses={(200, "text/event-stream"): OpenApiTypes.STR},
-    )
     def events_stream(self, request, issueId=None):
         issue = self.get_object()
         require_project_access(request.user, issue.project)
@@ -248,7 +249,6 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["get"], url_path="suggestions")
-    @extend_schema(tags=["Issues"], responses=IssueSuggestionSerializer(many=True))
     def suggestions(self, request, issueId=None):
         issue = self.get_object()
         require_project_access(request.user, issue.project)

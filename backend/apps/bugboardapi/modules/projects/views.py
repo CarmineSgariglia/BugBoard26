@@ -41,6 +41,21 @@ def _extract_team_payload(data):
     create=extend_schema(tags=["Projects"]),
     partial_update=extend_schema(tags=["Projects"]),
     destroy=extend_schema(tags=["Projects"], responses={204: OpenApiResponse(description="Project deleted")}),
+    members=extend_schema(
+        tags=["Projects"],
+        parameters=[OpenApiParameter("includeAdmins", bool, OpenApiParameter.QUERY)],
+        responses=ProjectMembershipSerializer(many=True),
+    ),
+    subscription=extend_schema(
+        tags=["Projects"],
+        summary="Project subscription",
+        description="Admin subscription state for the authenticated user on the project.",
+        request=None,
+        responses={
+            200: subscription_state_serializer,
+            204: OpenApiResponse(description="Subscription updated"),
+        },
+    ),
 )
 class ProjectViewSet(
     mixins.ListModelMixin,
@@ -94,11 +109,6 @@ class ProjectViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get"], url_path="members")
-    @extend_schema(
-        tags=["Projects"],
-        parameters=[OpenApiParameter("includeAdmins", bool, OpenApiParameter.QUERY)],
-        responses=ProjectMembershipSerializer(many=True),
-    )
     def members(self, request, *args, **kwargs):
         project = self.get_object()
         require_project_access(request.user, project)
@@ -107,16 +117,6 @@ class ProjectViewSet(
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
     @action(detail=True, methods=["get", "put", "delete"], url_path="subscriptions/me")
-    @extend_schema(
-        tags=["Projects"],
-        summary="Project subscription",
-        description="Admin subscription state for the authenticated user on the project.",
-        request=None,
-        responses={
-            200: subscription_state_serializer,
-            204: OpenApiResponse(description="Subscription updated"),
-        },
-    )
     def subscription(self, request, *args, **kwargs):
         require_admin(request.user)
         project = self.get_object()

@@ -93,24 +93,6 @@ class IssueSerializer(serializers.ModelSerializer):
         return update_issue_from_validated_data(instance, validated_data)
 
 
-class IssueEventSerializer(serializers.ModelSerializer):
-    updateId = serializers.IntegerField(source="update_id", read_only=True)
-    issueId = serializers.IntegerField(source="issue.issue_id", read_only=True)
-    actorId = serializers.IntegerField(source="actor.id", read_only=True)
-    actorUsername = serializers.CharField(source="actor.username", read_only=True)
-    eventType = serializers.CharField(source="event_type")
-    oldStatus = serializers.CharField(source="old_status", required=False, allow_blank=True)
-    newStatus = serializers.CharField(source="new_status", required=False, allow_blank=True)
-    attachments = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = IssueEvent
-        fields = ["updateId", "issueId", "actorId", "actorUsername", "eventType", "at", "message", "oldStatus", "newStatus", "attachments"]
-
-    def get_attachments(self, obj):
-        return AttachmentSerializer(obj.attachments.all(), many=True).data
-
-
 class AttachmentSerializer(serializers.ModelSerializer):
     attachmentId = serializers.IntegerField(source="attachment_id", read_only=True)
     updateId = serializers.IntegerField(source="update.update_id", read_only=True)
@@ -126,6 +108,25 @@ class AttachmentSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.CharField())
     def get_url(self, obj) -> str:
         return build_media_url(obj.path)
+
+
+class IssueEventSerializer(serializers.ModelSerializer):
+    updateId = serializers.IntegerField(source="update_id", read_only=True)
+    issueId = serializers.IntegerField(source="issue.issue_id", read_only=True)
+    actorId = serializers.IntegerField(source="actor.id", read_only=True)
+    actorUsername = serializers.CharField(source="actor.username", read_only=True)
+    eventType = serializers.CharField(source="event_type")
+    oldStatus = serializers.CharField(source="old_status", required=False, allow_blank=True)
+    newStatus = serializers.CharField(source="new_status", required=False, allow_blank=True)
+    attachments = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = IssueEvent
+        fields = ["updateId", "issueId", "actorId", "actorUsername", "eventType", "at", "message", "oldStatus", "newStatus", "attachments"]
+
+    @extend_schema_field(AttachmentSerializer(many=True))
+    def get_attachments(self, obj) -> list[dict[str, object]]:
+        return AttachmentSerializer(obj.attachments.all(), many=True).data
 
 
 class IssueSuggestionSerializer(ProjectMembershipSerializer):

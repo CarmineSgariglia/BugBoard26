@@ -1,5 +1,5 @@
 from django.urls import path
-from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerSplitView
 from rest_framework.routers import SimpleRouter
 
 from .health import health_check
@@ -36,7 +36,7 @@ router.register("issues", IssueViewSet, basename="issues")
 urlpatterns = [
     path("health", health_check, name="health-check"),
     path("schema", SpectacularAPIView.as_view(), name="schema"),
-    path("docs", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("docs", SpectacularSwaggerSplitView.as_view(url_name="schema"), name="swagger-ui"),
     path("redoc", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     path("security/csrf-token", CSRFTokenView.as_view(), name="csrf-token"),
     path("sessions", LoginView.as_view(), name="sessions-create"),
