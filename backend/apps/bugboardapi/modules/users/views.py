@@ -147,13 +147,14 @@ class UserPasswordView(APIView):
         request=AdminResetPasswordSerializer,
         responses=password_response_serializer,
     )
-    def put(self, request, userId):
+    def put(self, request, *args, **kwargs):
+        user_id = kwargs["userId"]
         require_admin(request.user)
         serializer = AdminResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload = reset_user_password(
             actor=request.user,
-            target_user_id=userId,
+            target_user_id=user_id,
             payload=serializer.validated_data,
         )
         return Response(payload)
@@ -185,9 +186,10 @@ class UserProfileImageView(APIView):
         request={"multipart/form-data": profile_image_upload_request},
         responses=UserSerializer,
     )
-    def put(self, request, userId):
+    def put(self, request, *args, **kwargs):
+        user_id = kwargs["userId"]
         require_admin(request.user)
-        user = User.objects.filter(pk=userId).first()
+        user = User.objects.filter(pk=user_id).first()
         if user is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         updated_user = save_profile_image_for_user(request=request, user=user)

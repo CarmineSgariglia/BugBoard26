@@ -41,7 +41,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const pushSuccessToast = useCallback(
-    (description: string, title = "Successo") => {
+    (description: string, title = "Success") => {
       pushToast({
         title,
         description,

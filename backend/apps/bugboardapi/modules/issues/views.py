@@ -93,8 +93,9 @@ class ProjectIssueListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(tags=["Issues"], responses=IssueSerializer(many=True))
-    def get(self, request, projectId):
-        project = _get_project_or_none(user=request.user, project_id=projectId)
+    def get(self, request, *args, **kwargs):
+        project_id = kwargs["projectId"]
+        project = _get_project_or_none(user=request.user, project_id=project_id)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         require_project_access(request.user, project)
@@ -102,8 +103,9 @@ class ProjectIssueListCreateView(APIView):
         return Response(IssueSerializer(queryset, many=True, context={"request": request}).data)
 
     @extend_schema(tags=["Issues"], request=IssueSerializer, responses={201: IssueSerializer})
-    def post(self, request, projectId):
-        project = _get_project_or_none(user=request.user, project_id=projectId)
+    def post(self, request, *args, **kwargs):
+        project_id = kwargs["projectId"]
+        project = _get_project_or_none(user=request.user, project_id=project_id)
         if not project:
             return Response(status=status.HTTP_404_NOT_FOUND)
         require_project_access(request.user, project)
@@ -162,7 +164,7 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["get", "put", "delete"], url_path="subscriptions/me")
-    def subscription(self, request, issueId=None):
+    def subscription(self, request, *args, **kwargs):
         require_admin(request.user)
         issue = self.get_object()
         require_project_access(request.user, issue.project)
@@ -180,7 +182,7 @@ class IssueViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get", "post"], url_path="events")
-    def events(self, request, issueId=None):
+    def events(self, request, *args, **kwargs):
         issue = self.get_object()
         require_project_access(request.user, issue.project)
 
@@ -218,7 +220,7 @@ class IssueViewSet(
         url_path="events/stream",
         renderer_classes=[ServerSentEventsRenderer],
     )
-    def events_stream(self, request, issueId=None):
+    def events_stream(self, request, *args, **kwargs):
         issue = self.get_object()
         require_project_access(request.user, issue.project)
 
@@ -249,7 +251,7 @@ class IssueViewSet(
         )
 
     @action(detail=True, methods=["get"], url_path="suggestions")
-    def suggestions(self, request, issueId=None):
+    def suggestions(self, request, *args, **kwargs):
         issue = self.get_object()
         require_project_access(request.user, issue.project)
         memberships = list_issue_suggestion_memberships(issue=issue)
@@ -276,13 +278,15 @@ class IssueAssigneeDetailView(APIView):
         request=None,
         responses={204: OpenApiResponse(description="Assignee added")},
     )
-    def put(self, request, issueId, userId):
-        issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
+    def put(self, request, *args, **kwargs):
+        issue_id = kwargs["issueId"]
+        user_id = kwargs["userId"]
+        issue = _scoped_issue_or_none(user=request.user, issue_id=issue_id)
         if not issue:
             return Response(status=status.HTTP_404_NOT_FOUND)
         require_admin(request.user)
         require_project_access(request.user, issue.project)
-        assign_issue_users(issue=issue, actor=request.user, raw_user_ids=[userId])
+        assign_issue_users(issue=issue, actor=request.user, raw_user_ids=[user_id])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
@@ -291,11 +295,13 @@ class IssueAssigneeDetailView(APIView):
         request=None,
         responses={204: OpenApiResponse(description="Assignee removed")},
     )
-    def delete(self, request, issueId, userId):
-        issue = _scoped_issue_or_none(user=request.user, issue_id=issueId)
+    def delete(self, request, *args, **kwargs):
+        issue_id = kwargs["issueId"]
+        user_id = kwargs["userId"]
+        issue = _scoped_issue_or_none(user=request.user, issue_id=issue_id)
         if not issue:
             return Response(status=status.HTTP_404_NOT_FOUND)
         require_admin(request.user)
         require_project_access(request.user, issue.project)
-        unassign_issue_users(issue=issue, actor=request.user, raw_user_ids=[userId])
+        unassign_issue_users(issue=issue, actor=request.user, raw_user_ids=[user_id])
         return Response(status=status.HTTP_204_NO_CONTENT)

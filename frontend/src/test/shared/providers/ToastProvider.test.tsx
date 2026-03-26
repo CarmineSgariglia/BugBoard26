@@ -24,6 +24,21 @@ function ToastHarness() {
   );
 }
 
+function SuccessToastHarness() {
+  const { pushSuccessToast } = useToast();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        pushSuccessToast("Issue updated successfully.");
+      }}
+    >
+      Push success toast
+    </button>
+  );
+}
+
 describe("ToastProvider", () => {
   it("keeps only the latest three toasts in bottom-up order", async () => {
     render(
@@ -66,5 +81,20 @@ describe("ToastProvider", () => {
     await user.click(screen.getByRole("button", { name: "Dismiss Toast 1" }));
 
     expect(screen.queryByText("Toast 1")).not.toBeInTheDocument();
+  });
+
+  it("uses an English default title for success toasts", async () => {
+    render(
+      <ToastProvider>
+        <SuccessToastHarness />
+      </ToastProvider>,
+    );
+
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Push success toast" }));
+
+    expect(screen.getByText("Success")).toBeInTheDocument();
+    expect(screen.getByText("Issue updated successfully.")).toBeInTheDocument();
   });
 });
