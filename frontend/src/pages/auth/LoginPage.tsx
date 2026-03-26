@@ -4,12 +4,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { loginApi } from "@features/auth/api";
-import { isValidEmail, isValidPassword } from "@shared/lib/validation";
 import { useAuth } from "@features/auth";
+import { useSubmitValidation } from "@shared/hooks";
 import { ensureCsrfCookieReady } from "@shared/api/core/client";
 import { Button } from "@shared/ui/Button";
 import { FormField } from "@shared/ui/FormField";
 import { Input } from "@shared/ui/Input";
+import { InlineFeedbackMessage } from "@shared/ui/InlineFeedbackMessage";
 
 function isTimeoutError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.code === "ECONNABORTED";
@@ -74,31 +75,17 @@ export function LoginPage() {
   const { refreshUser, setAuthenticatedUser } = useAuth();
   const emailInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
-  const [formValues, setFormValues] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isPreparingCsrf, setIsPreparingCsrf] = useState(true);
   const [isCsrfReady, setIsCsrfReady] = useState(false);
+  const validation = useSubmitValidation<"email" | "password">();
 
   const syncCredentialInputs = useCallback(() => {
-    const nextValues = {
+    return {
       email: emailInputRef.current?.value ?? "",
       password: passwordInputRef.current?.value ?? "",
     };
-    setFormValues((currentValues) => {
-      if (
-        currentValues.email === nextValues.email &&
-        currentValues.password === nextValues.password
-      ) {
-        return currentValues;
-      }
-      return nextValues;
-    });
-    return nextValues;
   }, []);
-
-  const isEmailValid = isValidEmail(formValues.email.trim());
-  const isPasswordValid = isValidPassword(formValues.password);
-  const isFormValid = isEmailValid && isPasswordValid;
 
   const prepareCsrfCookie = async (showFailureMessage: boolean): Promise<boolean> => {
     setIsPreparingCsrf(true);
@@ -229,12 +216,15 @@ export function LoginPage() {
     e.preventDefault();
     const nextValues = syncCredentialInputs();
     const trimmedEmail = nextValues.email.trim();
-    if (
-      !isValidEmail(trimmedEmail) ||
-      !isValidPassword(nextValues.password) ||
-      loginMutation.isPending ||
-      isPreparingCsrf
-    ) {
+    const isFormComplete = validation.validate({
+      email: trimmedEmail.length > 0,
+      password: nextValues.password.length > 0,
+    });
+
+    if (!isFormComplete || loginMutation.isPending || isPreparingCsrf) {
+      if (!isFormComplete) {
+        setError("Inserire tutti i campi");
+      }
       return;
     }
 
@@ -259,9 +249,11 @@ export function LoginPage() {
             type="email"
             placeholder="Email"
             autoComplete="username"
+            hasError={validation.hasFieldError("email")}
             onInput={() => {
               setError("");
-              syncCredentialInputs();
+              const nextValues = syncCredentialInputs();
+              validation.updateFieldValidity("email", nextValues.email.trim().length > 0);
             }}
             onFocus={() => {
               syncCredentialInputs();
@@ -276,21 +268,19 @@ export function LoginPage() {
             type="password"
             placeholder="Password"
             autoComplete="current-password"
+            hasError={validation.hasFieldError("password")}
             onInput={() => {
               setError("");
-              syncCredentialInputs();
+              const nextValues = syncCredentialInputs();
+              validation.updateFieldValidity("password", nextValues.password.length > 0);
             }}
             onFocus={() => {
               syncCredentialInputs();
             }}
           />
         </FormField>
-        {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-        <Button
-          type="submit"
-          disabled={!isFormValid || loginMutation.isPending || isPreparingCsrf}
-          isLoading={loginMutation.isPending}
-        >
+        <InlineFeedbackMessage message={error} />
+        <Button type="submit" disabled={loginMutation.isPending} isLoading={loginMutation.isPending}>
           Login
         </Button>
       </form>

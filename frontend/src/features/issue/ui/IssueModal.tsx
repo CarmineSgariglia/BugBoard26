@@ -8,10 +8,13 @@ import { createIssueUpdateApi, updateIssueDetailsApi } from "@features/issue/api
 import { createProjectIssueApi } from "@features/project/api";
 import type { Issue } from "@shared/api/types/issues";
 import { CATEGORIES, STATUSES } from "@features/issue/model/constants";
+import { useSubmitValidation } from "@shared/hooks";
+import { useToast } from "@shared/providers";
 import { Button } from "@shared/ui/Button";
 import { DescriptionFieldWithLength } from "@shared/ui/DescriptionFieldWithLength";
 import { FormField } from "@shared/ui/FormField";
 import { GlassCard } from "@shared/ui/GlassCard";
+import { InlineFeedbackMessage } from "@shared/ui/InlineFeedbackMessage";
 import { Select } from "@shared/ui/Select";
 import { TagInput } from "@shared/ui/TagInput";
 import { TitleFieldWithLength } from "@shared/ui/TitleFieldWithLength";
@@ -132,7 +135,10 @@ function IssueModalContent({
   const [tags, setTags] = useState<string[]>(initialFormState.tags);
   const [files, setFiles] = useState<File[]>([]);
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
+  const [validationMessage, setValidationMessage] = useState("");
   const [createdWithWarning, setCreatedWithWarning] = useState(false);
+  const validation = useSubmitValidation<"title" | "description">();
+  const { pushSuccessToast } = useToast();
 
   const hasChanges = useMemo(() => {
     if (mode === "create") return true;
@@ -148,8 +154,6 @@ function IssueModalContent({
 
     return titleChanged || descChanged || categoryChanged || priorityChanged || statusChanged || tagsChanged || filesChanged;
   }, [mode, initialData, title, description, category, priority, status, tags, files]);
-
-  const isFormValid = title.trim().length >= 3 && (mode === "edit" || description.trim().length >= 5);
 
   const submitMutation = useMutation<SubmitResult>({
     mutationFn: async () => {
@@ -210,6 +214,9 @@ function IssueModalContent({
         setCreatedWithWarning(true);
         return;
       }
+      pushSuccessToast(
+        mode === "create" ? "Hai creato un nuovo issue" : "Issue modificato con successo.",
+      );
       onSuccess?.();
     },
     onError: (error) => {
@@ -218,7 +225,19 @@ function IssueModalContent({
   });
 
   const handleSubmit = () => {
-    if (!isFormValid || submitMutation.isPending || createdWithWarning) return;
+    if (submitMutation.isPending || createdWithWarning || (mode === "edit" && !hasChanges)) return;
+
+    const isValid = validation.validate({
+      title: title.trim().length >= 3,
+      description: mode === "edit" || description.trim().length >= 5,
+    });
+
+    if (!isValid) {
+      setValidationMessage("Verifica i campi evidenziati.");
+      return;
+    }
+
+    setValidationMessage("");
     submitMutation.mutate();
   };
 
@@ -243,9 +262,14 @@ function IssueModalContent({
               <TitleFieldWithLength
                 label="Title"
                 title={title}
-                onChangeTitle={setTitle}
+                onChangeTitle={(value) => {
+                  setTitle(value);
+                  validation.updateFieldValidity("title", value.trim().length >= 3);
+                  if (validationMessage) setValidationMessage("");
+                }}
                 placeholder="What's the issue?"
                 maxLength={30}
+                hasError={validation.hasFieldError("title")}
               />
             </div>
             <div>
@@ -274,10 +298,15 @@ function IssueModalContent({
             <DescriptionFieldWithLength
               label="Description"
               description={description}
-              onChangeDescription={setDescription}
+              onChangeDescription={(value) => {
+                setDescription(value);
+                validation.updateFieldValidity("description", value.trim().length >= 5);
+                if (validationMessage) setValidationMessage("");
+              }}
               placeholder="Provide more details about the issue..."
               maxLength={1000}
               textareaClassName="!min-h-[80px]"
+              hasError={validation.hasFieldError("description")}
             />
           )}
           {mode === "create" && <FileAttachment onFilesChange={setFiles} />}
@@ -294,6 +323,7 @@ function IssueModalContent({
               {submitWarning}
             </div>
           ) : null}
+          <InlineFeedbackMessage message={validationMessage} />
 
           <div className="flex items-center justify-between">
             <button
@@ -306,7 +336,7 @@ function IssueModalContent({
             <Button
               variant="primary"
               onClick={handleSubmit}
-              disabled={!isFormValid || submitMutation.isPending || !hasChanges || createdWithWarning}
+              disabled={submitMutation.isPending || (mode === "edit" && !hasChanges) || createdWithWarning}
               isLoading={submitMutation.isPending}
               fullWidth={false}
             >

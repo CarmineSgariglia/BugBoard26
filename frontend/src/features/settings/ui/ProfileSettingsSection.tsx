@@ -3,9 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { RiArrowGoBackLine } from "react-icons/ri";
 import { MdOutlineMail } from "react-icons/md";
+import { useToast } from "@shared/providers";
 
 import { GlassCard } from "@shared/ui/GlassCard";
 import { FooterActions } from "@shared/ui/FooterActions";
+import { InlineFeedbackMessage } from "@shared/ui";
 import { isValidName, isValidEmail, isValidPassword } from "@shared/lib/validation";
 import { resolveMediaUrl } from "@shared/api/core/media";
 import { useAuth } from "@features/auth";
@@ -26,6 +28,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const queryClient = useQueryClient();
+  const { pushSuccessToast } = useToast();
 
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
@@ -96,6 +99,11 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
     mutationFn: async () => {
       if (!user) return;
 
+      let didUpdateIdentity = false;
+      let didUploadImage = false;
+      let didChangePassword = false;
+      let hadPasswordError = false;
+
       setPasswordError("");
       setIdentityError("");
       setUsernameError("");
@@ -105,6 +113,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
         try {
           const updatedUser = await uploadSettingsProfileImageApi(selectedImageFile);
           completeUpload(updatedUser.profileImg ? resolveMediaUrl(updatedUser.profileImg) : undefined);
+          didUploadImage = true;
         } finally {
           setIsUploading(false);
         }
@@ -128,6 +137,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
           surname: updated.lastName || "",
           email: updated.email || "",
         });
+        didUpdateIdentity = true;
       }
 
       if (hasPasswordInput) {
@@ -135,11 +145,29 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
           await changeSettingsPasswordApi(user.userId, currentPassword, newPassword);
           setCurrentPassword("");
           setNewPassword("");
+          didChangePassword = true;
         } catch (pwdErr) {
+          hadPasswordError = true;
           setPasswordError(
             getErrorMessage(pwdErr, "Failed to change password. Please check your current password.")
           );
         }
+      }
+
+      return {
+        didUpdateIdentity,
+        didUploadImage,
+        didChangePassword,
+        hadPasswordError,
+      };
+    },
+    onSuccess: (result) => {
+      if (!result || result.hadPasswordError) {
+        return;
+      }
+
+      if (result.didUpdateIdentity || result.didUploadImage || result.didChangePassword) {
+        pushSuccessToast("Profilo modificato con successo.");
       }
     },
     onError: (err) => {
@@ -201,7 +229,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
 
       {identityError ? (
         <div className="px-8 pb-4">
-          <p className="text-sm font-medium text-red-400">{identityError}</p>
+          <InlineFeedbackMessage message={identityError} />
         </div>
       ) : null}
 

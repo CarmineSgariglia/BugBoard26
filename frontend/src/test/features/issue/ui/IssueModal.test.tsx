@@ -1,4 +1,4 @@
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { IssueModal } from "../../../../features/issue/ui/IssueModal";
@@ -6,10 +6,9 @@ import { renderWithProviders } from "../../../render";
 import { createProjectIssueApi } from "@features/project/api";
 import { createIssueUpdateApi, updateIssueDetailsApi } from "@features/issue/api";
 
-// Mock API endpoints
 vi.mock("@features/project/api", () => ({
   createProjectIssueApi: vi.fn(),
-  updateProjectApi: vi.fn() // Just in case
+  updateProjectApi: vi.fn(),
 }));
 
 vi.mock("@features/issue/api", () => ({
@@ -17,10 +16,9 @@ vi.mock("@features/issue/api", () => ({
   createIssueUpdateApi: vi.fn(),
 }));
 
-// Mock ModalOverlay to simplify layout requirements
 vi.mock("@widgets/layout/ModalOverlay", () => ({
-  ModalOverlay: ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) => 
-    isOpen ? <div data-testid="modal-overlay">{children}</div> : null
+  ModalOverlay: ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
+    isOpen ? <div data-testid="modal-overlay">{children}</div> : null,
 }));
 
 describe("IssueModal", () => {
@@ -33,57 +31,60 @@ describe("IssueModal", () => {
     type: "BUG",
     projectId: 1,
     createdAt: "2026-03-10T10:00:00Z",
-    tags: [{ name: "frontend" }]
+    tags: [{ name: "frontend" }],
   } as any;
 
   describe("Create Mode", () => {
     it("renders create issue layout with description field", () => {
       renderWithProviders(<IssueModal isOpen={true} onClose={vi.fn()} mode="create" projectId={1} />);
-      
+
       expect(screen.getByText(/create new issue/i)).toBeInTheDocument();
-      
-      // Should show Title & Description inputs
       expect(screen.getByPlaceholderText(/what's the issue/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/provide more details/i)).toBeInTheDocument();
-      
-      // Button text
       expect(screen.getByRole("button", { name: /create issue/i })).toBeInTheDocument();
     });
 
-    it("requires form validations to enable submit", () => {
+    it("keeps create submit active and marks invalid fields on submit", () => {
       renderWithProviders(<IssueModal isOpen={true} onClose={vi.fn()} mode="create" projectId={1} />);
-      
+
       const submitBtn = screen.getByRole("button", { name: /create issue/i });
-      expect(submitBtn).toHaveAttribute("disabled");
-
-      // Fill Title
-      fireEvent.change(screen.getByPlaceholderText(/what's the issue/i), { target: { value: "A new bug" } });
-      expect(submitBtn).toHaveAttribute("disabled"); // Still missing description
-
-      // Fill Description
-      fireEvent.change(screen.getByPlaceholderText(/provide more details/i), { target: { value: "Valid description here" } });
       expect(submitBtn).not.toHaveAttribute("disabled");
+
+      fireEvent.click(submitBtn);
+
+      expect(screen.getByText("Verifica i campi evidenziati.")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/what's the issue/i)).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByPlaceholderText(/provide more details/i)).toHaveAttribute("aria-invalid", "true");
     });
 
-    it("calls createProjectIssueApi on submit click", async () => {
+    it("calls createProjectIssueApi on submit click and shows success toast", async () => {
       vi.mocked(createProjectIssueApi).mockResolvedValue({ issueId: 45 } as any);
       vi.mocked(createIssueUpdateApi).mockResolvedValue({ updateId: 1 } as any);
       const onSuccess = vi.fn();
 
-      renderWithProviders(<IssueModal isOpen={true} onClose={vi.fn()} mode="create" projectId={1} onSuccess={onSuccess} />);
-      
-      fireEvent.change(screen.getByPlaceholderText(/what's the issue/i), { target: { value: "New Crash Bug" } });
-      fireEvent.change(screen.getByPlaceholderText(/provide more details/i), { target: { value: "More than 5 characters description for valid payload triggers." } });
+      renderWithProviders(
+        <IssueModal isOpen={true} onClose={vi.fn()} mode="create" projectId={1} onSuccess={onSuccess} />,
+      );
 
-      const submitBtn = screen.getByRole("button", { name: /create issue/i });
-      fireEvent.click(submitBtn);
+      fireEvent.change(screen.getByPlaceholderText(/what's the issue/i), {
+        target: { value: "New Crash Bug" },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/provide more details/i), {
+        target: { value: "More than 5 characters description for valid payload triggers." },
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: /create issue/i }));
 
       await vi.waitFor(() => {
-          expect(createProjectIssueApi).toHaveBeenCalledWith(1, expect.objectContaining({
-              title: "New Crash Bug"
-          }));
-          expect(onSuccess).toHaveBeenCalled();
+        expect(createProjectIssueApi).toHaveBeenCalledWith(
+          1,
+          expect.objectContaining({
+            title: "New Crash Bug",
+          }),
+        );
+        expect(onSuccess).toHaveBeenCalled();
       });
+      expect(screen.getByText("Hai creato un nuovo issue")).toBeInTheDocument();
     });
 
     it("shows a non-blocking warning when issue creation succeeds but the first update fails", async () => {
@@ -102,7 +103,7 @@ describe("IssueModal", () => {
           mode="create"
           projectId={1}
           onSuccess={onSuccess}
-        />
+        />,
       );
 
       fireEvent.change(screen.getByPlaceholderText(/what's the issue/i), {
@@ -117,8 +118,8 @@ describe("IssueModal", () => {
       await waitFor(() => {
         expect(
           screen.getByText(
-            "Issue created, but first comment/attachments not saved (insufficient permissions)."
-          )
+            "Issue created, but first comment/attachments not saved (insufficient permissions).",
+          ),
         ).toBeInTheDocument();
       });
       expect(screen.getByRole("button", { name: /issue created/i })).toBeInTheDocument();
@@ -129,38 +130,50 @@ describe("IssueModal", () => {
 
   describe("Edit Mode", () => {
     it("hydrates inputs with initialData and hides Description field", async () => {
-      renderWithProviders(<IssueModal isOpen={true} onClose={vi.fn()} mode="edit" initialData={dummyIssue} issue={dummyIssue} />);
-      
+      renderWithProviders(
+        <IssueModal isOpen={true} onClose={vi.fn()} mode="edit" initialData={dummyIssue} issue={dummyIssue} />,
+      );
+
       expect(screen.getByText(/edit issue/i)).toBeInTheDocument();
-      
-      // Hydration
+
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/what's the issue/i)).toHaveValue("Original Issue Title");
       });
-      
-      // Description input should NOT be rendered in edit mode inside this modal layer
+
       expect(screen.queryByPlaceholderText(/provide more details/i)).not.toBeInTheDocument();
     });
 
-    it("triggers updateIssueDetailsApi on Save Changes", async () => {
+    it("triggers updateIssueDetailsApi on Save Changes and shows edit success toast", async () => {
       vi.mocked(updateIssueDetailsApi).mockResolvedValue({ ...dummyIssue, title: "Modified Title" });
       const onSuccess = vi.fn();
 
-      renderWithProviders(<IssueModal isOpen={true} onClose={vi.fn()} mode="edit" initialData={dummyIssue} issue={dummyIssue} onSuccess={onSuccess} />);
-      
-      // Trigger state updates
-      const titleInput = screen.getByPlaceholderText(/what's the issue/i);
-      fireEvent.change(titleInput, { target: { value: "Modified Title" } });
+      renderWithProviders(
+        <IssueModal
+          isOpen={true}
+          onClose={vi.fn()}
+          mode="edit"
+          initialData={dummyIssue}
+          issue={dummyIssue}
+          onSuccess={onSuccess}
+        />,
+      );
 
-      const saveBtn = screen.getByRole("button", { name: /save changes/i });
-      fireEvent.click(saveBtn);
+      fireEvent.change(screen.getByPlaceholderText(/what's the issue/i), {
+        target: { value: "Modified Title" },
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
 
       await vi.waitFor(() => {
-          expect(updateIssueDetailsApi).toHaveBeenCalledWith(dummyIssue.issueId, expect.objectContaining({
-              title: "Modified Title"
-          }));
-          expect(onSuccess).toHaveBeenCalled();
+        expect(updateIssueDetailsApi).toHaveBeenCalledWith(
+          dummyIssue.issueId,
+          expect.objectContaining({
+            title: "Modified Title",
+          }),
+        );
+        expect(onSuccess).toHaveBeenCalled();
       });
+      expect(screen.getByText("Issue modificato con successo.")).toBeInTheDocument();
     });
 
     it("keeps Save Changes disabled when no edit has been made", async () => {
@@ -171,13 +184,11 @@ describe("IssueModal", () => {
           mode="edit"
           initialData={dummyIssue}
           issue={dummyIssue}
-        />
+        />,
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save changes/i })).toHaveAttribute(
-          "disabled"
-        );
+        expect(screen.getByRole("button", { name: /save changes/i })).toHaveAttribute("disabled");
       });
     });
   });

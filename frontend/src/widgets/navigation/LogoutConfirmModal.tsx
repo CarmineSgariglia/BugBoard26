@@ -16,9 +16,9 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, isLoading }: Lo
             onConfirm={onConfirm}
             isLoading={isLoading}
             title="Sign Out"
-            description="Are you sure you want to log out of your account?"
+            description="Are you sure you want to logout of your account?"
             icon={<IoIosLogOut size={24} />}
-            confirmText="Log Out"
+            confirmText="Logout"
             danger={true}
         />
     );

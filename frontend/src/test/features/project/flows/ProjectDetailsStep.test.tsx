@@ -1,14 +1,12 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { ProjectDetailsStep } from "@features/project/flows/ProjectDetailsStep";
 import { renderWithProviders } from "../../../render";
 
-// Mock ScrollComponent to avoid ResizeObserver issues
 vi.mock("@shared/ui/ScrollComponent", () => ({
-  ScrollComponent: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  ScrollComponent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("@widgets/layout/ProjectFormLayout", () => ({
@@ -25,7 +23,7 @@ vi.mock("@widgets/layout/ProjectFormLayout", () => ({
   }) => (
     <div>
       <h2>{title}</h2>
-      {stepInfo && <span>{stepInfo}</span>}
+      {stepInfo ? <span>{stepInfo}</span> : null}
       {children}
       {footer}
     </div>
@@ -49,9 +47,7 @@ describe("ProjectDetailsStep", () => {
   });
 
   it("renders 'Edit Project' title in edit mode", () => {
-    renderWithProviders(
-      <ProjectDetailsStep {...defaultProps} mode="edit" />
-    );
+    renderWithProviders(<ProjectDetailsStep {...defaultProps} mode="edit" />);
     expect(screen.getByText("Edit Project")).toBeInTheDocument();
   });
 
@@ -61,80 +57,40 @@ describe("ProjectDetailsStep", () => {
   });
 
   it("does not show step info in edit mode", () => {
-    renderWithProviders(
-      <ProjectDetailsStep {...defaultProps} mode="edit" />
-    );
+    renderWithProviders(<ProjectDetailsStep {...defaultProps} mode="edit" />);
     expect(screen.queryByText("STEP 1 OF 2")).not.toBeInTheDocument();
   });
 
-  it("Next button is disabled when form is empty", () => {
+  it("keeps Next active when form is empty", () => {
     renderWithProviders(<ProjectDetailsStep {...defaultProps} />);
-    const btn = screen.getByRole("button", { name: /next/i });
-    expect(btn.hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: /next/i })).not.toHaveAttribute("disabled");
   });
 
-  it("Next button is disabled when title < 3 chars", async () => {
+  it("marks invalid fields on submit instead of disabling Next", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ProjectDetailsStep {...defaultProps} />);
-    await user.type(
-      screen.getByPlaceholderText(/Insert your Project Title/i),
-      "AB"
-    );
-    await user.type(
-      screen.getByPlaceholderText(/Describe the project goals/i),
-      "Valid description"
-    );
-    expect(screen.getByRole("button", { name: /next/i }).hasAttribute("disabled")).toBe(true);
-  });
 
-  it("Next button is disabled when description < 5 chars", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<ProjectDetailsStep {...defaultProps} />);
-    await user.type(
-      screen.getByPlaceholderText(/Insert your Project Title/i),
-      "Valid Title"
-    );
-    await user.type(
-      screen.getByPlaceholderText(/Describe the project goals/i),
-      "Hi"
-    );
-    expect(screen.getByRole("button", { name: /next/i }).hasAttribute("disabled")).toBe(true);
-  });
+    await user.click(screen.getByRole("button", { name: /next/i }));
 
-  it("enables Next button when title ≥ 3 and description ≥ 5 chars", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<ProjectDetailsStep {...defaultProps} />);
-    await user.type(
-      screen.getByPlaceholderText(/Insert your Project Title/i),
-      "New Project"
-    );
-    await user.type(
-      screen.getByPlaceholderText(/Describe the project goals/i),
-      "A meaningful description"
-    );
-    expect(screen.getByRole("button", { name: /next/i }).hasAttribute("disabled")).toBe(false);
+    expect(await screen.findByText("Verifica i campi evidenziati.")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Insert your Project Title/i)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByPlaceholderText(/Describe the project goals/i)).toHaveAttribute("aria-invalid", "true");
   });
 
   it("calls onNext with trimmed title and description", async () => {
     const onNext = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(
-      <ProjectDetailsStep {...defaultProps} onNext={onNext} />
-    );
-    await user.type(
-      screen.getByPlaceholderText(/Insert your Project Title/i),
-      "  My Project  "
-    );
-    await user.type(
-      screen.getByPlaceholderText(/Describe the project goals/i),
-      "  My description  "
-    );
+    renderWithProviders(<ProjectDetailsStep {...defaultProps} onNext={onNext} />);
+
+    await user.type(screen.getByPlaceholderText(/Insert your Project Title/i), "  My Project  ");
+    await user.type(screen.getByPlaceholderText(/Describe the project goals/i), "  My description  ");
     await user.click(screen.getByRole("button", { name: /next/i }));
+
     expect(onNext).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "My Project",
         description: "My description",
-      })
+      }),
     );
   });
 
@@ -149,22 +105,18 @@ describe("ProjectDetailsStep", () => {
           icon: "folder",
           color: "#ffffff",
         }}
-      />
+      />,
     );
-    expect(
-      screen.getByPlaceholderText(/Insert your Project Title/i)
-    ).toHaveValue("Existing Title");
-    expect(
-      screen.getByPlaceholderText(/Describe the project goals/i)
-    ).toHaveValue("Existing description");
+
+    expect(screen.getByPlaceholderText(/Insert your Project Title/i)).toHaveValue("Existing Title");
+    expect(screen.getByPlaceholderText(/Describe the project goals/i)).toHaveValue("Existing description");
   });
 
   it("calls onExit when Exit link is clicked", async () => {
     const onExit = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(
-      <ProjectDetailsStep {...defaultProps} onExit={onExit} />
-    );
+    renderWithProviders(<ProjectDetailsStep {...defaultProps} onExit={onExit} />);
+
     await user.click(screen.getByText("Exit"));
     expect(onExit).toHaveBeenCalledTimes(1);
   });
@@ -180,8 +132,9 @@ describe("ProjectDetailsStep", () => {
           icon: "folder",
           color: "#fff",
         }}
-      />
+      />,
     );
+
     expect(screen.getByRole("button", { name: /confirm/i })).toBeInTheDocument();
   });
 });

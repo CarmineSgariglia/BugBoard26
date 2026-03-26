@@ -10,6 +10,7 @@ import { Pagination } from "@shared/ui/Pagination";
 import { UserTable } from "@shared/ui/UserTable";
 import type { AuthUser } from "@shared/api/types/auth";
 import { useAuth } from "@features/auth";
+import { useToast } from "@shared/providers";
 import { usePaginatedUsers } from "@features/user/hooks/usePaginatedUsers";
 import { setSettingsUserActiveApi } from "@features/settings/api";
 import { AdminUserEditSection } from "./AdminUserEditSection";
@@ -22,6 +23,7 @@ export interface ManageUsersSectionProps {
 
 export function ManageUsersSection({ onEditingChange, onSelfEditRedirect }: ManageUsersSectionProps) {
   const { user: currentUser } = useAuth();
+  const { pushSuccessToast } = useToast();
   const {
     users,
     totalItems,
@@ -57,6 +59,9 @@ export function ManageUsersSection({ onEditingChange, onSelfEditRedirect }: Mana
     onSuccess: (updatedUser) => {
       updateLocalUser(updatedUser);
       setToggleStatusUser(null);
+      pushSuccessToast(
+        updatedUser.active ? "Utente attivato con successo." : "Utente disattivato con successo.",
+      );
     },
     onError: (err) => {
       console.error("Failed to toggle user status", err);

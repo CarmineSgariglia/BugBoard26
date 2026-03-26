@@ -255,6 +255,7 @@ describe("ManageUsersSection", () => {
         expect.objectContaining({ userId: 2, active: true })
       );
     });
+    expect(await screen.findByText("Utente attivato con successo.")).toBeInTheDocument();
   });
 
   it("disables deactivation for django superusers", () => {

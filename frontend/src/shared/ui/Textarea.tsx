@@ -9,6 +9,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         return (
             <textarea
                 ref={ref}
+                aria-invalid={hasError || undefined}
                 className={`flex w-full rounded-lg border p-4 text-[14px] text-white placeholder:text-neutral-500 bg-[#1A1D24]/50 outline-none transition-all duration-200 resize-none
                     ${hasError
                         ? "border-rose-500/50 bg-rose-500/5 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30"

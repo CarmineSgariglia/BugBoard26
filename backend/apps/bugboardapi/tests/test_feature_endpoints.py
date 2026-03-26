@@ -550,7 +550,7 @@ class UserManagementEndpointTests(APITestCase):
         superuser.refresh_from_db()
         self.assertTrue(superuser.check_password("StrongPass123!"))
 
-    def test_superuser_cannot_change_own_password_via_client_endpoint(self):
+    def test_superuser_can_change_own_password_via_client_endpoint(self):
         superuser = User.objects.create_superuser(
             username="users_root_self_password",
             email="users_root_self_password@example.com",
@@ -567,9 +567,9 @@ class UserManagementEndpointTests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         superuser.refresh_from_db()
-        self.assertTrue(superuser.check_password("StrongPass123!"))
+        self.assertTrue(superuser.check_password("AnotherStrongPass123!"))
 
     def test_admin_cannot_upload_profile_image_for_superuser_via_client_endpoint(self):
         superuser = User.objects.create_superuser(
@@ -589,6 +589,53 @@ class UserManagementEndpointTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superuser_can_edit_own_safe_fields_via_patch_endpoint(self):
+        superuser = User.objects.create_superuser(
+            username="users_root_self_edit",
+            email="users_root_self_edit@example.com",
+            password="StrongPass123!",
+            first_name="Root",
+            last_name="User",
+        )
+
+        self.client.force_authenticate(user=superuser)
+        response = self.client.patch(
+            f"/api/users/{superuser.id}",
+            {
+                "firstName": "Updated",
+                "lastName": "Superuser",
+                "email": "users_root_self_edit_updated@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        superuser.refresh_from_db()
+        self.assertEqual(superuser.first_name, "Updated")
+        self.assertEqual(superuser.last_name, "Superuser")
+        self.assertEqual(superuser.email, "users_root_self_edit_updated@example.com")
+
+    def test_superuser_can_upload_own_profile_image_via_client_endpoint(self):
+        superuser = User.objects.create_superuser(
+            username="users_root_self_avatar",
+            email="users_root_self_avatar@example.com",
+            password="StrongPass123!",
+        )
+        image = SimpleUploadedFile(
+            "avatar.png", make_png_bytes(size=(128, 128)), content_type="image/png"
+        )
+
+        self.client.force_authenticate(user=superuser)
+        response = self.client.put(
+            "/api/users/me/profile-image",
+            {"profile_img": image},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.profile.profile_img)
 
     def test_profile_image_upload_self_success(self):
         self.client.force_authenticate(user=self.member)

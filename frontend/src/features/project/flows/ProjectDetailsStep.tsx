@@ -5,10 +5,12 @@ import { IoColorPalette } from "react-icons/io5";
 
 import { PREDEFINED_COLORS } from "@features/project/model/constants";
 import { PREDEFINED_ICONS } from "@features/project/ui/projectIconRegistry";
+import { useSubmitValidation } from "@shared/hooks";
 import { FooterActions } from "@shared/ui/FooterActions";
 import { FormField } from "@shared/ui/FormField";
 import { ScrollComponent } from "@shared/ui/ScrollComponent";
 import { DescriptionFieldWithLength } from "@shared/ui/DescriptionFieldWithLength";
+import { InlineFeedbackMessage } from "@shared/ui/InlineFeedbackMessage";
 import { TitleFieldWithLength } from "@shared/ui/TitleFieldWithLength";
 import { ProjectFormLayout } from "@widgets/layout/ProjectFormLayout";
 
@@ -36,12 +38,22 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
     const [selectedIcon, setSelectedIcon] = useState(initialData?.icon || "folder");
     const [selectedColor, setSelectedColor] = useState(initialData?.color || PREDEFINED_COLORS[0]);
     const [isOpen, toggle] = useState(false);
+    const [validationMessage, setValidationMessage] = useState("");
     const popover = useRef(null);
-
-    const isSaveEnabled = title.trim().length >= 3 && description.trim().length >= 5;
+    const validation = useSubmitValidation<"title" | "description">();
 
     const handleNextClick = () => {
-        if (!isSaveEnabled) return;
+        const isValid = validation.validate({
+            title: title.trim().length >= 3,
+            description: description.trim().length >= 5,
+        });
+
+        if (!isValid) {
+            setValidationMessage("Verifica i campi evidenziati.");
+            return;
+        }
+
+        setValidationMessage("");
 
         onNext({
             title: title.trim(),
@@ -77,7 +89,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
 
             footer={
                 <FooterActions
-                    isSaveEnabled={isSaveEnabled && !isSubmitting}
+                    isSaveEnabled={!isSubmitting}
                     onSave={handleNextClick}
                     isSaving={isSubmitting}
                     links={[{ label: "Exit", icon: <RiArrowGoBackLine size={16} />, onClick: onExit }]}
@@ -88,22 +100,34 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
             <div className="flex flex-col gap-2" >
                 <TitleFieldWithLength
                     title={title}
-                    onChangeTitle={setTitle}
+                    onChangeTitle={(value) => {
+                        setTitle(value);
+                        validation.updateFieldValidity("title", value.trim().length >= 3);
+                        if (validationMessage) setValidationMessage("");
+                    }}
                     maxLength={20}
                     placeholder="Insert your Project Title in minimum 3 characters..."
                     label="Project Title"
+                    hasError={validation.hasFieldError("title")}
                 />
             </div>
 
             <div className="flex flex-col gap-2">
                 <DescriptionFieldWithLength
                     description={description}
-                    onChangeDescription={setDescription}
+                    onChangeDescription={(value) => {
+                        setDescription(value);
+                        validation.updateFieldValidity("description", value.trim().length >= 5);
+                        if (validationMessage) setValidationMessage("");
+                    }}
                     maxLength={256}
                     placeholder="Describe the project goals in minimum 5 characters..."
                     label="Description"
+                    hasError={validation.hasFieldError("description")}
                 />
             </div>
+
+            <InlineFeedbackMessage message={validationMessage} />
 
             <div className="flex flex-col md:flex-row gap-6">
 

@@ -13,6 +13,8 @@ interface DescriptionFieldWithLengthProps {
     counterClassName?: string;
     hideLabel?: boolean;
     onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
+    hasError?: boolean;
+    error?: string;
 }
 
 export function DescriptionFieldWithLength({
@@ -26,6 +28,8 @@ export function DescriptionFieldWithLength({
     counterClassName,
     hideLabel = false,
     onKeyDown,
+    hasError = false,
+    error,
 }: DescriptionFieldWithLengthProps) {
     const max = maxLength || 256;
     const place = placeholder || "Insert your text...";
@@ -52,7 +56,7 @@ export function DescriptionFieldWithLength({
     );
 
     return (
-        <FormField label={hideLabel ? undefined : label} className={containerClassName}>
+        <FormField label={hideLabel ? undefined : label} className={containerClassName} error={error}>
             <Textarea
                 ref={textareaRef}
                 value={description}
@@ -62,6 +66,7 @@ export function DescriptionFieldWithLength({
                 aria-label={label}
                 rows={1}
                 onKeyDown={onKeyDown}
+                hasError={hasError}
                 className={`max-h-[120px] overflow-y-auto ${textareaClassName ?? ""}`.trim()}
             />
             {helperNode}

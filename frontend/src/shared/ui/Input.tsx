@@ -18,6 +18,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 <input
                     ref={ref}
                     type={actualType}
+                    aria-invalid={hasError || undefined}
                     className={`flex h-11 w-full rounded-lg border px-4 text-[14px] text-white placeholder:text-neutral-500 bg-[#1A1D24]/50 outline-none transition-all duration-200
                         ${hasError
                             ? "border-rose-500/50 bg-rose-500/5 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30"

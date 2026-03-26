@@ -9,6 +9,7 @@ import { FooterActions } from "@shared/ui/FooterActions";
 import { deleteProjectApi } from "@features/project/api";
 import { generateConfirmationCode } from "@features/project/lib/confirmationCode";
 import { suppressOwnProjectRemovalNotification } from "@features/project/lib/notificationSuppression";
+import { useToast } from "@shared/providers";
 import type { Project } from "@shared/api/types/projects";
 
 interface DeleteProjectFlowProps {
@@ -39,6 +40,7 @@ function DeleteProjectDialog({
 }: Omit<DeleteProjectFlowProps, "isOpen">) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { pushSuccessToast } = useToast();
   const [confirmationCode] = useState(() => generateConfirmationCode(10));
   const [userInput, setUserInput] = useState("");
 
@@ -49,6 +51,7 @@ function DeleteProjectDialog({
       queryClient.setQueryData<Project[]>(["projects"], (currentProjects = []) =>
         currentProjects.filter((project) => project.projectId !== projectId)
       );
+      pushSuccessToast("Progetto rimosso con successo.");
       onClose();
       navigate("/projects", { replace: true });
     },

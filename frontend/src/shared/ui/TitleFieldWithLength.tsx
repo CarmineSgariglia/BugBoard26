@@ -7,9 +7,19 @@ interface TitleFieldWithLengthProps {
     maxLength?: number;
     placeholder?: string;
     label: string;
+    hasError?: boolean;
+    error?: string;
 }
 
-export function TitleFieldWithLength({ title, onChangeTitle, maxLength, placeholder, label }: TitleFieldWithLengthProps) {
+export function TitleFieldWithLength({
+    title,
+    onChangeTitle,
+    maxLength,
+    placeholder,
+    label,
+    hasError = false,
+    error,
+}: TitleFieldWithLengthProps) {
     const max = maxLength || 20;
     const place = placeholder || "Insert your text...";
 
@@ -22,13 +32,14 @@ export function TitleFieldWithLength({ title, onChangeTitle, maxLength, placehol
     );
 
     return (
-        <FormField label={label}>
+        <FormField label={label} error={error}>
             <Input
                 type="text"
                 value={title}
                 onChange={(e) => onChangeTitle(e.target.value)}
                 maxLength={max}
                 placeholder={place}
+                hasError={hasError}
             />
             {helperNode}
         </FormField>

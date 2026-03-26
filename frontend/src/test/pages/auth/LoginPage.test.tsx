@@ -67,21 +67,22 @@ describe("LoginPage", () => {
     });
   });
 
-  it("keeps the submit button disabled until the form is valid and csrf bootstrap completes", async () => {
+  it("keeps the submit button active and shows a validation error when required fields are missing", async () => {
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />);
 
     const submitButton = screen.getByRole("button", { name: /login/i });
-    expect(submitButton.hasAttribute("disabled")).toBe(true);
+    expect(submitButton.hasAttribute("disabled")).toBe(false);
 
     await waitFor(() => {
       expect(loginState.ensureCsrfCookieReady).toHaveBeenCalledTimes(1);
     });
 
-    await user.type(screen.getByPlaceholderText("Email"), "bad@email");
-    await user.type(screen.getByPlaceholderText("Password"), "short");
+    await user.click(submitButton);
 
-    expect(submitButton.hasAttribute("disabled")).toBe(true);
+    expect(await screen.findByText("Inserire tutti i campi")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Email")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByPlaceholderText("Password")).toHaveAttribute("aria-invalid", "true");
   });
 
   it("submits trimmed credentials, primes auth immediately and navigates", async () => {
@@ -104,9 +105,6 @@ describe("LoginPage", () => {
 
     await user.type(screen.getByPlaceholderText("Email"), "  user@example.com  ");
     await user.type(screen.getByPlaceholderText("Password"), "Password1!");
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /login/i }).hasAttribute("disabled")).toBe(false);
-    });
     await user.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() => {
@@ -173,9 +171,6 @@ describe("LoginPage", () => {
 
     await user.type(screen.getByPlaceholderText("Email"), "user@example.com");
     await user.type(screen.getByPlaceholderText("Password"), "Password1!");
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /login/i }).hasAttribute("disabled")).toBe(false);
-    });
     await user.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() => {

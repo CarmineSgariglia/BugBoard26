@@ -34,7 +34,7 @@ export function ProfileDropdown({ isOpen, onClose, onLogout }: ProfileDropdownPr
                     </Button>
                     <Button variant="glass" destructive onClick={onLogout}>
                         <IoIosLogOut size={24} />
-                        Log Out
+                        Logout
                     </Button>
                 </GlassCard>
             </div>

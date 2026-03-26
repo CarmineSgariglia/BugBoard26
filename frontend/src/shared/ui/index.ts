@@ -9,6 +9,7 @@ export * from "./FormField";
 export * from "./GlassCard";
 export * from "./InfoBanner";
 export * from "./Input";
+export * from "./InlineFeedbackMessage";
 export * from "./Pagination";
 export * from "./ScrollComponent";
 export * from "./SearchBar";

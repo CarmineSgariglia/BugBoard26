@@ -152,6 +152,7 @@ describe("ProfileSettingsSection", () => {
         email: "dev@example.com",
       });
     });
+    expect(await screen.findByText("Profilo modificato con successo.")).toBeInTheDocument();
   });
 
   it("renders the current profile image when the authenticated user already has one", () => {

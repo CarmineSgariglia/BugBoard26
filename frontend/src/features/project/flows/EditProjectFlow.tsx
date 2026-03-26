@@ -6,6 +6,8 @@ import { ProjectDetailsStep, type ProjectDetailsData } from "./ProjectDetailsSte
 import { DeleteProjectFlow } from "./DeleteProjectFlow";
 import { updateProjectApi } from "@features/project/api";
 import type { Project } from "@shared/api/types/projects";
+import { useToast } from "@shared/providers";
+import { InlineFeedbackMessage } from "@shared/ui";
 import { ModalOverlay } from "@widgets/layout/ModalOverlay";
 
 interface EditProjectFlowProps {
@@ -17,6 +19,7 @@ interface EditProjectFlowProps {
 export function EditProjectFlow({ project, onClose, onUpdated }: EditProjectFlowProps) {
   const [error, setError] = useState("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const { pushSuccessToast } = useToast();
 
   const updateProjectMutation = useMutation({
     mutationFn: (data: ProjectDetailsData) =>
@@ -27,6 +30,7 @@ export function EditProjectFlow({ project, onClose, onUpdated }: EditProjectFlow
         color: data.color,
       }),
     onSuccess: (updated) => {
+      pushSuccessToast("Progetto modificato con successo.");
       onUpdated?.(updated);
       onClose();
     },
@@ -46,8 +50,8 @@ export function EditProjectFlow({ project, onClose, onUpdated }: EditProjectFlow
       <ModalOverlay isOpen={true} onClose={onClose}>
         <div className="relative">
           {error ? (
-            <div className="absolute top-0 left-0 right-0 -translate-y-full mb-4 bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-2 rounded-lg text-sm text-center">
-              {error}
+            <div className="absolute top-0 left-0 right-0 -translate-y-full px-4">
+              <InlineFeedbackMessage message={error} className="text-center" />
             </div>
           ) : null}
 
