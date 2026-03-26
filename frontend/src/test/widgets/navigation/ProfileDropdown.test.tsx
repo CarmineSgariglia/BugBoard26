@@ -61,7 +61,7 @@ describe("ProfileDropdown", () => {
       { route: "/projects" }
     );
 
-    await user.click(screen.getByRole("button", { name: /log out/i }));
+    await user.click(screen.getByRole("button", { name: /logout/i }));
 
     expect(onLogout).toHaveBeenCalledTimes(1);
   });

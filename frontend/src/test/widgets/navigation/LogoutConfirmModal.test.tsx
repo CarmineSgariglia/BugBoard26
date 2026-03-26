@@ -38,7 +38,7 @@ describe("LogoutConfirmModal", () => {
 
     expect(screen.getByText("Sign Out")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /log out/i }));
+    await user.click(screen.getByRole("button", { name: /logout/i }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
