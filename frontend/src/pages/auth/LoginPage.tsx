@@ -223,7 +223,7 @@ export function LoginPage() {
 
     if (!isFormComplete || loginMutation.isPending || isPreparingCsrf) {
       if (!isFormComplete) {
-        setError("Inserire tutti i campi");
+        setError("Please fill in all fields.");
       }
       return;
     }

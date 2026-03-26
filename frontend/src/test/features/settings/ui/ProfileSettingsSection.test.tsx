@@ -152,7 +152,7 @@ describe("ProfileSettingsSection", () => {
         email: "dev@example.com",
       });
     });
-    expect(await screen.findByText("Profilo modificato con successo.")).toBeInTheDocument();
+    expect(await screen.findByText("Profile updated successfully.")).toBeInTheDocument();
   });
 
   it("renders the current profile image when the authenticated user already has one", () => {

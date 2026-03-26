@@ -170,9 +170,9 @@ export function IssuePage() {
   const canCompose = !isIssueClosedForComments && (isAssigned || Boolean(currentUser?.isAdmin));
   const composeUnavailableMessage =
     safeIssue?.status === "DONE"
-      ? "This issue is setted as DONE"
+      ? "This issue is marked as done."
       : safeIssue?.status === "CANCELLED"
-        ? "This issue is cancelled"
+        ? "This issue is cancelled."
       : canCompose
         ? null
         : "You are not assigned to this issue";

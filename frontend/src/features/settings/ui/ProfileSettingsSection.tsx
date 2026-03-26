@@ -167,7 +167,7 @@ export function ProfileSettingsSection({ isAdmin = false }: { isAdmin?: boolean 
       }
 
       if (result.didUpdateIdentity || result.didUploadImage || result.didChangePassword) {
-        pushSuccessToast("Profilo modificato con successo.");
+        pushSuccessToast("Profile updated successfully.");
       }
     },
     onError: (err) => {

@@ -32,12 +32,12 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
       });
     },
     onSuccess: () => {
-      pushSuccessToast("Progetto creato con successo.");
+      pushSuccessToast("Project created successfully.");
       onSuccess?.();
       onClose();
     },
     onError: () => {
-      setError("Errore durante la creazione del progetto.");
+      setError("Error creating project.");
     },
   });
 
@@ -58,7 +58,7 @@ export function CreateProjectFlow({ isOpen, onClose, onSuccess }: CreateProjectF
 
   const handleCreateProject = () => {
     if (!projectData) {
-      setError("Errore: dati progetto mancanti.");
+      setError("Missing project data.");
       return;
     }
 

@@ -30,12 +30,12 @@ export function EditProjectFlow({ project, onClose, onUpdated }: EditProjectFlow
         color: data.color,
       }),
     onSuccess: (updated) => {
-      pushSuccessToast("Progetto modificato con successo.");
+      pushSuccessToast("Project updated successfully.");
       onUpdated?.(updated);
       onClose();
     },
     onError: (err) => {
-      setError("Errore durante l'aggiornamento del progetto");
+      setError("Error updating project.");
       console.error(err);
     },
   });

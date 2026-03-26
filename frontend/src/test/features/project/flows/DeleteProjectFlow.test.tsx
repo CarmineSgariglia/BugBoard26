@@ -152,7 +152,7 @@ describe("DeleteProjectFlow", () => {
         expect.objectContaining({ projectId: 77, name: "Beta Project" }),
       ]);
     });
-    expect(await screen.findByText("Progetto rimosso con successo.")).toBeInTheDocument();
+    expect(await screen.findByText("Project removed successfully.")).toBeInTheDocument();
   });
 
   it("calls onClose when Cancel is clicked", async () => {

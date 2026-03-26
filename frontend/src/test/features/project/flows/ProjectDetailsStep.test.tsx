@@ -72,8 +72,8 @@ describe("ProjectDetailsStep", () => {
 
     await user.click(screen.getByRole("button", { name: /next/i }));
 
-    expect(await screen.findByText("Verifica i campi evidenziati.")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Insert your Project Title/i)).toHaveAttribute("aria-invalid", "true");
+    expect(await screen.findByText("Please check the highlighted fields.")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Enter a project title/i)).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByPlaceholderText(/Describe the project goals/i)).toHaveAttribute("aria-invalid", "true");
   });
 
@@ -82,7 +82,7 @@ describe("ProjectDetailsStep", () => {
     const user = userEvent.setup();
     renderWithProviders(<ProjectDetailsStep {...defaultProps} onNext={onNext} />);
 
-    await user.type(screen.getByPlaceholderText(/Insert your Project Title/i), "  My Project  ");
+    await user.type(screen.getByPlaceholderText(/Enter a project title/i), "  My Project  ");
     await user.type(screen.getByPlaceholderText(/Describe the project goals/i), "  My description  ");
     await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -108,7 +108,7 @@ describe("ProjectDetailsStep", () => {
       />,
     );
 
-    expect(screen.getByPlaceholderText(/Insert your Project Title/i)).toHaveValue("Existing Title");
+    expect(screen.getByPlaceholderText(/Enter a project title/i)).toHaveValue("Existing Title");
     expect(screen.getByPlaceholderText(/Describe the project goals/i)).toHaveValue("Existing description");
   });
 

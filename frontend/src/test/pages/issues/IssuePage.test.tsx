@@ -284,7 +284,7 @@ describe("IssuePage", () => {
     expect(await screen.findByTestId("issue-activity-panel")).toBeInTheDocument();
     expect(screen.getByText("12:Broken login flow:false")).toBeInTheDocument();
     expect(
-      screen.getByText("composeUnavailableMessage:This issue is setted as DONE")
+      screen.getByText("composeUnavailableMessage:This issue is marked as done.")
     ).toBeInTheDocument();
   });
 
@@ -304,7 +304,7 @@ describe("IssuePage", () => {
     expect(await screen.findByTestId("issue-activity-panel")).toBeInTheDocument();
     expect(screen.getByText("12:Broken login flow:false")).toBeInTheDocument();
     expect(
-      screen.getByText("composeUnavailableMessage:This issue is cancelled")
+      screen.getByText("composeUnavailableMessage:This issue is cancelled.")
     ).toBeInTheDocument();
   });
 

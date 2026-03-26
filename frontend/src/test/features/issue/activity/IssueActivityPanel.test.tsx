@@ -253,7 +253,7 @@ describe("IssueActivityPanel", () => {
         issueTitle="Realtime issue"
         currentUser={currentUser}
         canCompose={false}
-        composeUnavailableMessage="This issue is setted as DONE"
+        composeUnavailableMessage="This issue is marked as done."
       />,
     );
 
@@ -262,7 +262,7 @@ describe("IssueActivityPanel", () => {
     });
 
     expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
-    expect(screen.getByText("This issue is setted as DONE")).toBeInTheDocument();
+    expect(screen.getByText("This issue is marked as done.")).toBeInTheDocument();
   });
 
   it("shows a cancelled message instead of the composer when the issue is cancelled", async () => {
@@ -274,7 +274,7 @@ describe("IssueActivityPanel", () => {
         issueTitle="Realtime issue"
         currentUser={currentUser}
         canCompose={false}
-        composeUnavailableMessage="This issue is cancelled"
+        composeUnavailableMessage="This issue is cancelled."
       />,
     );
 
@@ -283,7 +283,7 @@ describe("IssueActivityPanel", () => {
     });
 
     expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
-    expect(screen.getByText("This issue is cancelled")).toBeInTheDocument();
+    expect(screen.getByText("This issue is cancelled.")).toBeInTheDocument();
   });
 
   it("shows the loading state before the initial history is available", () => {

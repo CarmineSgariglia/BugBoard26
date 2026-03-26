@@ -14,11 +14,11 @@ export function AuthLayout() {
     let subtitle = "";
 
     if (location.pathname.includes("/forgot-password/verify")) {
-        pageTitle = "Retrieve Password";
-        subtitle = "Insert OTP code and your new password";
+        pageTitle = "Reset Password";
+        subtitle = "Enter the OTP code and your new password.";
     } else if (location.pathname.includes("/forgot-password")) {
-        pageTitle = "Retrieve Password";
-        subtitle = "Insert your email to recover your password";
+        pageTitle = "Reset Password";
+        subtitle = "Enter your email to reset your password.";
     }
 
     const isLoginPage = location.pathname === "/login";

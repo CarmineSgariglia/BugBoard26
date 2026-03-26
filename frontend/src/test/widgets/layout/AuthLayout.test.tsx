@@ -35,9 +35,9 @@ describe("AuthLayout", () => {
       { route: "/forgot-password" }
     );
 
-    expect(screen.getAllByText("Retrieve Password").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Reset Password").length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText("Insert your email to recover your password").length
+      screen.getAllByText("Enter your email to reset your password.").length
     ).toBeGreaterThan(0);
     expect(screen.getByText("Recovery form")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to login/i })).toHaveAttribute(
@@ -56,9 +56,9 @@ describe("AuthLayout", () => {
       { route: "/forgot-password/verify" }
     );
 
-    expect(screen.getAllByText("Retrieve Password").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Reset Password").length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText("Insert OTP code and your new password").length
+      screen.getAllByText("Enter the OTP code and your new password.").length
     ).toBeGreaterThan(0);
     expect(screen.getByText("Verify form")).toBeInTheDocument();
   });

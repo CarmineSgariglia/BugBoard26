@@ -51,7 +51,7 @@ function DeleteProjectDialog({
       queryClient.setQueryData<Project[]>(["projects"], (currentProjects = []) =>
         currentProjects.filter((project) => project.projectId !== projectId)
       );
-      pushSuccessToast("Progetto rimosso con successo.");
+      pushSuccessToast("Project removed successfully.");
       onClose();
       navigate("/projects", { replace: true });
     },

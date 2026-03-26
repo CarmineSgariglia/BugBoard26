@@ -80,7 +80,7 @@ describe("LoginPage", () => {
 
     await user.click(submitButton);
 
-    expect(await screen.findByText("Inserire tutti i campi")).toBeInTheDocument();
+    expect(await screen.findByText("Please fill in all fields.")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Email")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByPlaceholderText("Password")).toHaveAttribute("aria-invalid", "true");
   });

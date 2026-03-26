@@ -52,7 +52,7 @@ describe("IssueModal", () => {
 
       fireEvent.click(submitBtn);
 
-      expect(screen.getByText("Verifica i campi evidenziati.")).toBeInTheDocument();
+      expect(screen.getByText("Please check the highlighted fields.")).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/what's the issue/i)).toHaveAttribute("aria-invalid", "true");
       expect(screen.getByPlaceholderText(/provide more details/i)).toHaveAttribute("aria-invalid", "true");
     });
@@ -84,7 +84,7 @@ describe("IssueModal", () => {
         );
         expect(onSuccess).toHaveBeenCalled();
       });
-      expect(screen.getByText("Hai creato un nuovo issue")).toBeInTheDocument();
+      expect(screen.getByText("Issue created successfully.")).toBeInTheDocument();
     });
 
     it("shows a non-blocking warning when issue creation succeeds but the first update fails", async () => {
@@ -173,7 +173,7 @@ describe("IssueModal", () => {
         );
         expect(onSuccess).toHaveBeenCalled();
       });
-      expect(screen.getByText("Issue modificato con successo.")).toBeInTheDocument();
+      expect(screen.getByText("Issue updated successfully.")).toBeInTheDocument();
     });
 
     it("keeps Save Changes disabled when no edit has been made", async () => {

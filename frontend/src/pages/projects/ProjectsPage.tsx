@@ -68,7 +68,7 @@ export function ProjectsPage() {
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Enter project's name"
+            placeholder="Search projects by name..."
             bgColor="bg-white"
             textColor="text-neutral-900"
             placeholderColor="placeholder:text-neutral-400"
@@ -76,7 +76,7 @@ export function ProjectsPage() {
           />
         </div>
 
-        {error ? <p className="text-sm text-red-400">Unable to load data. Please login again.</p> : null}
+        {error ? <p className="text-sm text-red-400">Unable to load data. Please log in again.</p> : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
           {currentUser?.isAdmin && !searchQuery.trim() ? (

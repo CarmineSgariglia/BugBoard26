@@ -60,7 +60,7 @@ export function ManageUsersSection({ onEditingChange, onSelfEditRedirect }: Mana
       updateLocalUser(updatedUser);
       setToggleStatusUser(null);
       pushSuccessToast(
-        updatedUser.active ? "Utente attivato con successo." : "Utente disattivato con successo.",
+        updatedUser.active ? "User activated successfully." : "User deactivated successfully.",
       );
     },
     onError: (err) => {

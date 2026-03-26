@@ -49,7 +49,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
         });
 
         if (!isValid) {
-            setValidationMessage("Verifica i campi evidenziati.");
+            setValidationMessage("Please check the highlighted fields.");
             return;
         }
 
@@ -82,7 +82,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
             subtitle={
                 mode === "create"
                     ? "Start by defining the basics of your new project."
-                    : "Your Projects informations"
+                    : "Update your project's details."
             }
             stepInfo={mode === "create" ? "STEP 1 OF 2" : undefined}
             headerAction={headerAction}
@@ -106,7 +106,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                         if (validationMessage) setValidationMessage("");
                     }}
                     maxLength={20}
-                    placeholder="Insert your Project Title in minimum 3 characters..."
+                    placeholder="Enter a project title (at least 3 characters)..."
                     label="Project Title"
                     hasError={validation.hasFieldError("title")}
                 />
@@ -121,7 +121,7 @@ export function ProjectDetailsStep({ mode, isSubmitting, initialData, onNext, on
                         if (validationMessage) setValidationMessage("");
                     }}
                     maxLength={256}
-                    placeholder="Describe the project goals in minimum 5 characters..."
+                    placeholder="Describe the project goals (at least 5 characters)..."
                     label="Description"
                     hasError={validation.hasFieldError("description")}
                 />

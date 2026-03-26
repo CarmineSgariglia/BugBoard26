@@ -215,7 +215,7 @@ function IssueModalContent({
         return;
       }
       pushSuccessToast(
-        mode === "create" ? "Hai creato un nuovo issue" : "Issue modificato con successo.",
+        mode === "create" ? "Issue created successfully." : "Issue updated successfully.",
       );
       onSuccess?.();
     },
@@ -233,7 +233,7 @@ function IssueModalContent({
     });
 
     if (!isValid) {
-      setValidationMessage("Verifica i campi evidenziati.");
+      setValidationMessage("Please check the highlighted fields.");
       return;
     }
 
