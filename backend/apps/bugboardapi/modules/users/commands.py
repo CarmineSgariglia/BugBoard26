@@ -16,7 +16,7 @@ from .policies import (
     validate_admin_password_reset_request,
     validate_self_password_change_request,
 )
-from .profile_models import UserProfileImage
+from .models import UserProfileImage
 
 logger = logging.getLogger(__name__)
 

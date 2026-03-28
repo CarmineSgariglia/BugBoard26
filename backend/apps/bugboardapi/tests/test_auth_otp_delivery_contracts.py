@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.bugboardapi.modules.users.password_reset_models import PasswordResetOTP
+from apps.bugboardapi.modules.users.models import PasswordResetOTP
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
 

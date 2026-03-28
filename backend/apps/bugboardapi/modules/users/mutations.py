@@ -11,7 +11,7 @@ from .email_delivery import (
     UserOnboardingEmailDeliveryFailed,
     send_new_user_credentials_email,
 )
-from .profile_models import UserProfileImage
+from .models import UserProfileImage
 
 EMAIL_ALREADY_IN_USE_MESSAGE = "Email already in use"
 EMAIL_CASE_INSENSITIVE_INDEX_NAME = "auth_user_email_ci_unique_idx"

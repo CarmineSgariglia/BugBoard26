@@ -12,7 +12,7 @@ from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.utils import get_md5_hash_password
 
-from ..modules.users.token_session_models import RevokedTokenSession
+from ..modules.users.models import RevokedTokenSession
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import User

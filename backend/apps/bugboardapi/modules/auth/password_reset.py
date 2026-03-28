@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from ...security.passwords import ensure_valid_password
 from ...security.token_sessions import set_user_password
-from ..users.password_reset_models import PasswordResetOTP
+from ..users.models import PasswordResetOTP
 
 logger = logging.getLogger(__name__)
 
