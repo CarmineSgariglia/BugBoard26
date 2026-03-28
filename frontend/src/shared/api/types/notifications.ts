@@ -1,5 +1,6 @@
 export type NotificationType =
   | "PROJECT_ADDED"
+  | "PROJECT_ASSIGNED"
   | "PROJECT_REMOVED"
   | "PROJECT_UNASSIGNED"
   | "ISSUE_ASSIGNED"

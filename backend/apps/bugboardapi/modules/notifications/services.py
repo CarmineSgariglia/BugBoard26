@@ -109,9 +109,14 @@ def delete_notification_for_user(*, notify_user: NotifyUser) -> None:
             notification.delete()
 
 
-def notify_project_added(*, users: list[User], project: Project, actor: User | None = None) -> Notification | None:
+def notify_project_assigned(
+    *,
+    users: list[User],
+    project: Project,
+    actor: User | None = None,
+) -> Notification | None:
     return _create_notification(
-        notify_type=NotifyType.PROJECT_ADDED,
+        notify_type=NotifyType.PROJECT_ASSIGNED,
         users=users,
         actor=actor,
         project=project,

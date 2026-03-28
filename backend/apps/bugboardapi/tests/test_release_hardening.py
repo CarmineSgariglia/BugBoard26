@@ -235,7 +235,7 @@ class ProjectTransactionalSafetyNetTests(APITestCase):
         serializer.is_valid(raise_exception=True)
 
         with patch(
-            "apps.bugboardapi.modules.projects.commands.notify_project_added",
+            "apps.bugboardapi.modules.projects.commands.notify_project_assigned",
             side_effect=RuntimeError("project add notification failed"),
         ):
             with self.assertRaisesMessage(RuntimeError, "project add notification failed"):

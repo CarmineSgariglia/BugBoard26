@@ -74,7 +74,7 @@ describe("NotificationDropdown", () => {
       {
         notifyUserId: 102,
         notificationId: 11,
-        type: "PROJECT_ADDED",
+        type: "PROJECT_ASSIGNED",
         createdAt: "2026-03-13T11:00:00Z",
         issueId: null,
         projectId: 1,
@@ -97,7 +97,7 @@ describe("NotificationDropdown", () => {
 
     renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
-    expect(await screen.findByText("Project added")).toBeInTheDocument();
+    expect(await screen.findByText("Project assigned")).toBeInTheDocument();
 
     await userEvent.click(screen.getByTitle("Delete notification"));
 
@@ -211,7 +211,7 @@ describe("NotificationDropdown", () => {
       {
         notifyUserId: 105,
         notificationId: 14,
-        type: "PROJECT_ADDED",
+        type: "PROJECT_ASSIGNED",
         createdAt: "2026-03-13T14:00:00Z",
         issueId: null,
         projectId: 2,
@@ -228,7 +228,7 @@ describe("NotificationDropdown", () => {
 
     const { queryClient } = renderWithProviders(<NotificationDropdown isOpen onClose={() => {}} />);
 
-    expect(await screen.findByText("Project added")).toBeInTheDocument();
+    expect(await screen.findByText("Project assigned")).toBeInTheDocument();
 
     act(() => {
       queryClient.setQueryData(["notifications"], {
@@ -302,7 +302,7 @@ describe("NotificationDropdown", () => {
       {
         notifyUserId: 300,
         notificationId: 30,
-        type: "PROJECT_ADDED",
+        type: "PROJECT_ASSIGNED",
         createdAt: "2026-03-13T14:59:00Z",
         issueId: null,
         projectId: 2,
@@ -346,7 +346,7 @@ describe("NotificationDropdown", () => {
     fireEvent.scroll(scrollPanel);
 
     await waitFor(() => {
-      expect(screen.getByText("Project added")).toBeInTheDocument();
+      expect(screen.getByText("Project assigned")).toBeInTheDocument();
     });
   });
 });

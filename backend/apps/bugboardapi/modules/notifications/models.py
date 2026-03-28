@@ -8,6 +8,7 @@ from ..projects.models import Project
 # Model to represent the type of notification, with predefined choices for different events that can trigger notifications
 class NotifyType(models.TextChoices):
     PROJECT_ADDED = "PROJECT_ADDED", "Project Added"
+    PROJECT_ASSIGNED = "PROJECT_ASSIGNED", "Project Assigned"
     PROJECT_REMOVED = "PROJECT_REMOVED", "Project Removed"
     PROJECT_UNASSIGNED = "PROJECT_UNASSIGNED", "Project Unassigned"
     ISSUE_ASSIGNED = "ISSUE_ASSIGNED", "Issue Assigned"
