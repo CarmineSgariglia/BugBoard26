@@ -272,7 +272,7 @@ export function NotificationsRealtimeListener() {
 
   const handleNotificationCreated = useCallback((notification: NotificationItem) => {
     if (notification.projectId != null) {
-      if (notification.type === "PROJECT_ADDED") {
+      if (notification.type === "PROJECT_ASSIGNED") {
         void hydrateAddedProjectInHome(notification.projectId);
       }
 

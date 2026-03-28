@@ -29,7 +29,7 @@ from apps.bugboardapi.modules.issues.models import (
 from apps.bugboardapi.modules.notifications.models import Notification, NotifyType, NotifyUser
 from apps.bugboardapi.modules.notifications.services import (
     notify_issue_updated,
-    notify_project_added,
+    notify_project_assigned,
 )
 from apps.bugboardapi.modules.projects.models import ProjectMembership
 from apps.bugboardapi.modules.tags.models import Tag
@@ -961,7 +961,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertIn(self.member, self.project.members.all())
         self.assertIn(self.project, self.member.projects.all())
 
-    def test_project_create_accepts_team_alias_and_emits_added_notification(self):
+    def test_project_create_accepts_team_alias_and_emits_assigned_notification(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
             "/api/projects",
@@ -984,7 +984,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertTrue(
             NotifyUser.objects.filter(
                 user=self.member,
-                notification__notify_type=NotifyType.PROJECT_ADDED,
+                notification__notify_type=NotifyType.PROJECT_ASSIGNED,
                 notification__project_id=project_id,
             ).exists()
         )
@@ -1228,7 +1228,7 @@ class ProjectAndMembershipEndpointTests(APITestCase):
         self.assertFalse(
             NotifyUser.objects.filter(
                 user=other_admin,
-                notification__notify_type=NotifyType.PROJECT_ADDED,
+                notification__notify_type=NotifyType.PROJECT_ASSIGNED,
                 notification__project=self.project,
             ).exists()
         )
@@ -2509,7 +2509,7 @@ class NotificationTagMetaEndpointTests(APITestCase):
         self.assertEqual(notification.project, self.project)
 
     def test_project_notifications_keep_project_context(self):
-        notification = notify_project_added(users=[self.member], project=self.project)
+        notification = notify_project_assigned(users=[self.member], project=self.project)
         self.assertIsNone(notification.issue)
         self.assertEqual(notification.project, self.project)
 

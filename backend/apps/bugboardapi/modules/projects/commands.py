@@ -4,7 +4,7 @@ from django.db import transaction
 from ...common.parsing import request_user_ids
 from ...roles import is_admin_user
 from ..notifications.services import (
-    notify_project_added,
+    notify_project_assigned,
     notify_project_removed,
     notify_project_unassigned,
 )
@@ -33,7 +33,7 @@ def create_project_memberships(*, project: Project, creator: User, raw_user_ids)
         )
         members.append(member.user)
     if members:
-        notify_project_added(
+        notify_project_assigned(
             users=members,
             actor=creator,
             project=project,
@@ -68,7 +68,7 @@ def sync_project_team_members(*, project: Project, raw_user_ids, actor: User | N
         ProjectMembership.objects.filter(project=project, user_id__in=to_remove_ids).delete()
 
     if added_users:
-        notify_project_added(
+        notify_project_assigned(
             users=added_users,
             actor=actor,
             project=project,

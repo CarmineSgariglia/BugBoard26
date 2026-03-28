@@ -243,11 +243,11 @@ describe("NotificationsRealtimeListener", () => {
     });
   });
 
-  it("hydrates only the added project into the home projects cache on PROJECT_ADDED", async () => {
+  it("hydrates only the assigned project into the home projects cache on PROJECT_ASSIGNED", async () => {
     const notification: NotificationItem = {
       notifyUserId: 78,
       notificationId: 14,
-      type: "PROJECT_ADDED",
+      type: "PROJECT_ASSIGNED",
       createdAt: "2026-03-19T10:20:00Z",
       issueId: null,
       projectId: 9,
@@ -360,7 +360,7 @@ describe("NotificationsRealtimeListener", () => {
     const notification: NotificationItem = {
       notifyUserId: 140,
       notificationId: 25,
-      type: "PROJECT_ADDED",
+      type: "PROJECT_ASSIGNED",
       createdAt: "2026-03-19T10:20:00Z",
       issueId: null,
       projectId: 9,
@@ -556,7 +556,7 @@ describe("NotificationsRealtimeListener", () => {
       {
         notifyUserId: 95,
         notificationId: 18,
-        type: "PROJECT_ADDED",
+        type: "PROJECT_ASSIGNED",
         createdAt: "2026-03-14T11:15:00Z",
         issueId: null,
         projectId: 9,
@@ -646,7 +646,7 @@ describe("NotificationsRealtimeListener", () => {
       {
         notifyUserId: 93,
         notificationId: 16,
-        type: "PROJECT_ADDED",
+        type: "PROJECT_ASSIGNED",
         createdAt: "2026-03-14T11:15:00Z",
         issueId: null,
         projectId: 9,

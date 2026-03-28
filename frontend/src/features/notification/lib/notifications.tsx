@@ -15,8 +15,8 @@ export type NotificationTargetKind = "issue" | "project" | "none";
 
 export function getNotificationTargetKind(type: NotificationType): NotificationTargetKind {
   if (type.startsWith("ISSUE_")) return "issue";
-  if (type === "PROJECT_ADDED") return "project";
-  if (type === "PROJECT_UNASSIGNED" || type === "UNASSIGNED_PROJECT" || type === "PROJECT_REMOVED") {
+  if (type === "PROJECT_ADDED" || type === "PROJECT_ASSIGNED") return "project";
+  if (type === "PROJECT_UNASSIGNED" || type === "PROJECT_REMOVED") {
     return "none";
   }
   return "none";
@@ -26,6 +26,8 @@ export function getNotificationIcon(type: NotificationType) {
   switch (type) {
     case "PROJECT_ADDED":
       return <FiFolderPlus size={18} className="text-emerald-400" />;
+    case "PROJECT_ASSIGNED":
+      return <FiUserCheck size={18} className="text-emerald-400" />;
     case "PROJECT_REMOVED":
       return <FiFolderMinus size={18} className="text-rose-400" />;
     case "PROJECT_UNASSIGNED":
@@ -48,6 +50,8 @@ export function getNotificationTitle(type: NotificationType): string {
   switch (type) {
     case "PROJECT_ADDED":
       return "Project added";
+    case "PROJECT_ASSIGNED":
+      return "Project assigned";
     case "PROJECT_REMOVED":
       return "Project removed";
     case "PROJECT_UNASSIGNED":

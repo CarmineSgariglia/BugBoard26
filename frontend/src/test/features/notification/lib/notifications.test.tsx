@@ -14,7 +14,7 @@ import {
 describe("notification helpers", () => {
   it("returns consistent titles for known and unknown notification types", () => {
     expect(getNotificationTitle("ISSUE_UPDATED")).toBe("Issue updated");
-    expect(getNotificationTitle("PROJECT_ADDED")).toBe("Project added");
+    expect(getNotificationTitle("PROJECT_ASSIGNED")).toBe("Project assigned");
     expect(getNotificationTitle("CUSTOM_ALERT")).toBe("CUSTOM ALERT");
   });
 
@@ -40,7 +40,7 @@ describe("notification helpers", () => {
 
   it("determines notification target kind", () => {
     expect(getNotificationTargetKind("ISSUE_ADDED")).toBe("issue");
-    expect(getNotificationTargetKind("PROJECT_ADDED")).toBe("project");
+    expect(getNotificationTargetKind("PROJECT_ASSIGNED")).toBe("project");
     expect(getNotificationTargetKind("PROJECT_UNASSIGNED")).toBe("none");
     expect(getNotificationTargetKind("UNKNOWN")).toBe("none");
   });
