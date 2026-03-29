@@ -65,7 +65,6 @@ class IssueWorkflow:
     def plan_issue_update(
         self,
         *,
-        issue: Issue,
         actor,
         old_status: str,
         requested_status: str,
@@ -257,7 +256,6 @@ class IssueService:
         with transaction.atomic():
             issue = serializer.save()
             plan = self._workflow.plan_issue_update(
-                issue=issue,
                 actor=actor,
                 old_status=old_status,
                 requested_status=requested_status,
