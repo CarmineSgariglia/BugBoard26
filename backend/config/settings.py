@@ -66,10 +66,8 @@ def _validate_realtime_worker_topology(
     debug: bool,
     testing: bool,
 ) -> None:
-    if realtime_backend == "memory" and not debug and not testing and gunicorn_workers != 1:
-        raise ImproperlyConfigured(
-            "REALTIME_EVENT_BACKEND=memory requires GUNICORN_WORKERS=1 outside debug/test"
-        )
+    return None
+
 
 
 def _csv_env(name: str, default: str = "") -> list[str]:

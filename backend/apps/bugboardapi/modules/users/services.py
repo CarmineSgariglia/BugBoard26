@@ -62,11 +62,10 @@ class UserService:
         exclude_user_ids: list[int],
         is_admin_actor: bool,
     ):
-        if not is_admin_actor:
-            queryset = queryset.filter(id=actor.id)
-
         if user_ids:
             queryset = queryset.filter(id__in=user_ids)
+        elif not is_admin_actor:
+            queryset = queryset.filter(id=actor.id)
 
         if exclude_user_ids:
             queryset = queryset.exclude(id__in=exclude_user_ids)

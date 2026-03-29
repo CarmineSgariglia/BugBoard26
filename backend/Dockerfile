@@ -38,4 +38,4 @@ USER app
 EXPOSE 8000
 
 # Il comando CMD rimane lo stesso, ma ora ha i permessi per scrivere in /app/staticfiles
-CMD ["sh", "-c", "python manage.py relabel_bugboardapi && python manage.py migrate && if [ \"${DEBUG}\" = \"True\" ]; then python manage.py runserver 0.0.0.0:8000; else gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-1} --threads ${GUNICORN_THREADS:-8} --timeout ${GUNICORN_TIMEOUT:-0} --keep-alive ${GUNICORN_KEEPALIVE:-75}; fi"]
+CMD ["sh", "-c", "python manage.py relabel_bugboardapi && python manage.py migrate && if [ \"${DEBUG}\" = \"True\" ]; then python manage.py runserver 0.0.0.0:8000; else gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-8} --timeout ${GUNICORN_TIMEOUT:-0} --keep-alive ${GUNICORN_KEEPALIVE:-75}; fi"]
