@@ -212,7 +212,7 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertIn("detail", locked_response.data)
 
     @patch(
-        "apps.bugboardapi.modules.auth.password_reset._send_otp_email",
+        "apps.bugboardapi.modules.auth.password_reset.password_reset_service.send_otp_email",
         side_effect=RuntimeError("provider down"),
     )
     def test_otp_request_email_send_failure_returns_generic_and_logs_error(
@@ -233,7 +233,7 @@ class AuthOtpEndpointTests(APITestCase):
         )
 
     @override_settings(EMAIL_PROVIDER="console")
-    @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
+    @patch("apps.bugboardapi.common.email_sender.send_mail")
     def test_email_provider_console_default_in_dev(self, mock_send_mail):
         response = self.client.post(
             "/api/password-reset-requests", {"email": self.user.email}, format="json"
@@ -242,7 +242,7 @@ class AuthOtpEndpointTests(APITestCase):
         self.assertTrue(mock_send_mail.called)
 
     @override_settings(EMAIL_PROVIDER="console")
-    @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
+    @patch("apps.bugboardapi.common.email_sender.send_mail")
     def test_otp_request_email_contains_raw_six_digit_code_not_hash(self, mock_send_mail):
         response = self.client.post(
             "/api/password-reset-requests", {"email": self.user.email}, format="json"
@@ -279,8 +279,8 @@ class AuthOtpEndpointTests(APITestCase):
         DEFAULT_FROM_EMAIL="noreply@example.com",
         BREVO_SENDER_NAME="BugBoard26",
     )
-    @patch("apps.bugboardapi.modules.auth.password_reset.EmailMessage.send", return_value=1)
-    @patch("apps.bugboardapi.modules.auth.password_reset.send_mail")
+    @patch("apps.bugboardapi.common.email_sender.EmailMessage.send", return_value=1)
+    @patch("apps.bugboardapi.common.email_sender.send_mail")
     def test_email_provider_brevo_uses_anymail_backend(
         self, mock_send_mail, _mock_email_send
     ):
@@ -2113,7 +2113,7 @@ class IssueWorkflowEndpointTests(APITestCase):
             ).exists()
         )
 
-    @patch("apps.bugboardapi.modules.issues.commands.notify_issue_unassigned")
+    @patch("apps.bugboardapi.modules.issues.services.notify_issue_unassigned")
     def test_unassign_skips_inactive_users_in_notifications(self, mock_notify_issue_unassigned):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])

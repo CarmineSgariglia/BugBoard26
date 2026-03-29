@@ -10,11 +10,10 @@ from ...roles import (
     get_global_role,
 )
 from ...security.passwords import build_password_validation_user, ensure_valid_password
-from .mutations import (
+from .services import (
     EMAIL_ALREADY_IN_USE_MESSAGE,
     USERNAME_ALREADY_EXISTS_MESSAGE,
-    create_user_from_validated_data,
-    update_user_from_validated_data,
+    user_service,
 )
 
 
@@ -126,10 +125,10 @@ class UserMutationSerializer(UserReadSerializer):
         return attrs
 
     def create(self, validated_data):
-        return create_user_from_validated_data(validated_data)
+        return user_service.create_from_validated_data(validated_data)
 
     def update(self, instance, validated_data):
-        return update_user_from_validated_data(instance, validated_data)
+        return user_service.update_from_validated_data(instance, validated_data)
 
 
 class UserSerializer(UserReadSerializer):

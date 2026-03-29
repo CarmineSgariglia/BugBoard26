@@ -23,8 +23,8 @@ from apps.bugboardapi.roles import (
     get_global_role,
     is_admin_user,
 )
-from apps.bugboardapi.modules.issues.activity import delete_media_path
-from apps.bugboardapi.modules.users.commands import _delete_stored_file
+from apps.bugboardapi.modules.issues.activity import issue_activity_service
+from apps.bugboardapi.modules.users.services import delete_stored_file
 from apps.bugboardapi.security.uploads import (
     compress_image_upload,
     MediaStorageUnavailable,
@@ -240,16 +240,16 @@ class UploadStorageContractsTests(SimpleTestCase):
 
 
 class StorageDeletionContractsTests(SimpleTestCase):
-    @patch("apps.bugboardapi.modules.users.commands.default_storage.delete")
+    @patch("apps.bugboardapi.modules.users.services.default_storage.delete")
     def test_delete_stored_file_uses_default_storage_backend(self, mocked_delete):
-        _delete_stored_file("profile-images/5/old.webp")
+        delete_stored_file("profile-images/5/old.webp")
 
         mocked_delete.assert_called_once_with("profile-images/5/old.webp")
 
     @patch("apps.bugboardapi.modules.issues.activity.default_storage.delete")
     @patch("apps.bugboardapi.modules.issues.activity.default_storage.exists", return_value=True)
     def test_delete_media_path_uses_default_storage_backend(self, mocked_exists, mocked_delete):
-        delete_media_path("issue-attachments/8/file.webp")
+        issue_activity_service.delete_media_path("issue-attachments/8/file.webp")
 
         mocked_exists.assert_called_once_with("issue-attachments/8/file.webp")
         mocked_delete.assert_called_once_with("issue-attachments/8/file.webp")

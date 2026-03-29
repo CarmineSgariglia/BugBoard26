@@ -18,10 +18,7 @@ from ...common.sse import (
 )
 from .models import NotifyUser
 from .realtime import open_notification_subscription
-from .services import (
-    delete_notification_for_user,
-    mark_notification_as_read,
-)
+from .services import notification_service
 from .serializers import NotifyUserSerializer
 from .serializers import NotificationPatchSerializer, NotificationsPageSerializer
 
@@ -89,25 +86,6 @@ class NotificationViewSet(
 
         return value
 
-    def _load_notifications_from_db(self, *, limit: int, before: int | None = None) -> list[NotifyUser]:
-        queryset = self.get_queryset()
-        if before is not None:
-            queryset = queryset.filter(notify_user_id__lt=before)
-        return list(queryset[: limit + 1])
-
-    def _serialize_notifications_page(self, notifications: list[NotifyUser], *, limit: int) -> dict[str, object]:
-        page_items = notifications[:limit]
-        has_more = len(notifications) > limit
-        next_cursor = page_items[-1].notify_user_id if has_more and page_items else None
-        has_unread = NotifyUser.objects.filter(user=self.request.user, is_read=False).exists()
-
-        return {
-            "results": NotifyUserSerializer(page_items, many=True).data,
-            "nextCursor": next_cursor if has_more else None,
-            "hasMore": has_more,
-            "hasUnread": has_unread,
-        }
-
     def list(self, request, *args, **kwargs):
         limit = self._parse_positive_int(
             request.query_params.get("limit"),
@@ -118,38 +96,25 @@ class NotificationViewSet(
         limit = min(limit, MAX_NOTIFICATIONS_PAGE_SIZE)
         before = self._parse_positive_int(request.query_params.get("before"), field_name="before")
 
-        notifications = self._load_notifications_from_db(limit=limit, before=before)
-        return Response(self._serialize_notifications_page(notifications, limit=limit))
+        return Response(
+            notification_service.list_page(
+                user=request.user,
+                limit=limit,
+                before=before,
+            )
+        )
 
     def partial_update(self, request, *args, **kwargs):
         serializer = NotificationPatchSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         notify_user = self.get_object()
-        notify_user = mark_notification_as_read(notify_user=notify_user)
+        notify_user = notification_service.mark_as_read(notify_user=notify_user)
         return Response(NotifyUserSerializer(notify_user).data)
 
     def destroy(self, request, *args, **kwargs):
         notify_user = self.get_object()
-        delete_notification_for_user(notify_user=notify_user)
+        notification_service.delete_for_user(notify_user=notify_user)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def _load_catchup_notifications(self, *, user_id: int, last_seen_id: int) -> list[NotifyUser]:
-        return list(
-            NotifyUser.objects.select_related(
-                "notification",
-                "notification__issue",
-                "notification__project",
-            )
-            .filter(user_id=user_id, notify_user_id__gt=last_seen_id)
-            .order_by("notify_user_id")
-        )
-
-    def _serialize_catchup_notification(self, notify_user: NotifyUser) -> tuple[str, object, int]:
-        return (
-            "notification.created",
-            NotifyUserSerializer(notify_user).data,
-            notify_user.notify_user_id,
-        )
 
     @action(
         detail=False,
@@ -168,7 +133,7 @@ class NotificationViewSet(
 
         last_seen_id = parse_last_event_id(request)
         heartbeat_interval = max(float(getattr(settings, "NOTIFICATIONS_STREAM_HEARTBEAT_SECONDS", 20.0)), 1.0)
-        catchup_notifications = self._load_catchup_notifications(
+        catchup_notifications = notification_service.load_catchup_notifications(
             user_id=request.user.id,
             last_seen_id=last_seen_id,
         )
@@ -176,7 +141,7 @@ class NotificationViewSet(
         return build_sse_response(
             stream_sse_events(
                 catchup_items=catchup_notifications,
-                serialize_catchup_item=self._serialize_catchup_notification,
+                serialize_catchup_item=notification_service.serialize_stream_item,
                 subscription=subscription,
                 last_seen_id=last_seen_id,
                 heartbeat_interval=heartbeat_interval,

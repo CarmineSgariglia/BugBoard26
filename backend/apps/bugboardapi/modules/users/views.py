@@ -12,12 +12,6 @@ from rest_framework.views import APIView
 from ...common.parsing import parse_csv_ints_query_param
 from ...permissions import require_admin
 from ...roles import is_admin_user
-from .commands import (
-    change_current_user_password,
-    filter_users_queryset,
-    reset_user_password,
-    save_profile_image_for_user,
-)
 from .policies import ensure_can_edit_user
 from .serializers import (
     AdminResetPasswordSerializer,
@@ -25,6 +19,7 @@ from .serializers import (
     UserMutationSerializer,
     UserSerializer,
 )
+from .services import user_service
 
 
 profile_image_upload_request = inline_serializer(
@@ -85,7 +80,7 @@ class UserViewSet(
             raw_value=self.request.query_params.get("excludeUserIds"),
             field_name="excludeUserIds",
         )
-        return filter_users_queryset(
+        return user_service.filter_queryset(
             queryset=queryset,
             actor=self.request.user,
             search_query=self.request.query_params.get("search"),
@@ -130,7 +125,7 @@ class CurrentUserPasswordView(APIView):
     def put(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        payload = change_current_user_password(
+        payload = user_service.change_current_user_password(
             actor=request.user,
             payload=serializer.validated_data,
         )
@@ -152,7 +147,7 @@ class UserPasswordView(APIView):
         require_admin(request.user)
         serializer = AdminResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        payload = reset_user_password(
+        payload = user_service.reset_user_password(
             actor=request.user,
             target_user_id=user_id,
             payload=serializer.validated_data,
@@ -171,7 +166,7 @@ class CurrentUserProfileImageView(APIView):
         responses=UserSerializer,
     )
     def put(self, request):
-        updated_user = save_profile_image_for_user(request=request, user=request.user)
+        updated_user = user_service.save_profile_image(request=request, user=request.user)
         return Response(UserSerializer(updated_user, context={"request": request}).data)
 
 
@@ -192,5 +187,5 @@ class UserProfileImageView(APIView):
         user = User.objects.filter(pk=user_id).first()
         if user is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        updated_user = save_profile_image_for_user(request=request, user=user)
+        updated_user = user_service.save_profile_image(request=request, user=user)
         return Response(UserSerializer(updated_user, context={"request": request}).data)

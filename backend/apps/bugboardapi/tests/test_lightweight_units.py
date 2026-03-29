@@ -6,7 +6,7 @@ from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.test import APITestCase
 
 from apps.bugboardapi.security.authentication import RevocableJWTAuthentication
-from apps.bugboardapi.modules.issues.rules import validate_project_assignee_ids
+from apps.bugboardapi.modules.issues.services import issue_service
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.modules.tags.services import resolve_tag_ids, validate_existing_tag_ids
 from apps.bugboardapi.modules.users.serializers import UserMutationSerializer
@@ -22,22 +22,22 @@ def _detail_text(detail):
 
 class ValidateProjectAssigneeIdsTests(SimpleTestCase):
     def test_returns_early_when_assignee_ids_is_none(self):
-        with patch("apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids") as classify_user_ids:
-            validate_project_assignee_ids(project=object(), assignee_ids=None)
+        with patch("apps.bugboardapi.modules.issues.services.classify_project_assignment_user_ids") as classify_user_ids:
+            issue_service.validate_project_assignee_ids(project=object(), assignee_ids=None)
             classify_user_ids.assert_not_called()
 
     def test_returns_early_when_assignee_ids_is_empty(self):
-        with patch("apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids") as classify_user_ids:
-            validate_project_assignee_ids(project=object(), assignee_ids=[])
+        with patch("apps.bugboardapi.modules.issues.services.classify_project_assignment_user_ids") as classify_user_ids:
+            issue_service.validate_project_assignee_ids(project=object(), assignee_ids=[])
             classify_user_ids.assert_not_called()
 
     def test_raises_when_ids_are_not_project_members(self):
         with patch(
-            "apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids",
+            "apps.bugboardapi.modules.issues.services.classify_project_assignment_user_ids",
             return_value=([99], [], []),
         ):
             with self.assertRaises(ValidationError) as ctx:
-                validate_project_assignee_ids(project=object(), assignee_ids=[10, 99])
+                issue_service.validate_project_assignee_ids(project=object(), assignee_ids=[10, 99])
 
         self.assertEqual(
             _detail_text(ctx.exception.detail["assigneeIds"]),
@@ -46,11 +46,11 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
 
     def test_raises_when_assignee_is_admin(self):
         with patch(
-            "apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids",
+            "apps.bugboardapi.modules.issues.services.classify_project_assignment_user_ids",
             return_value=([], [10], []),
         ):
             with self.assertRaises(ValidationError) as ctx:
-                validate_project_assignee_ids(project=object(), assignee_ids=[10])
+                issue_service.validate_project_assignee_ids(project=object(), assignee_ids=[10])
 
         self.assertEqual(
             _detail_text(ctx.exception.detail["assigneeIds"]),
@@ -59,10 +59,10 @@ class ValidateProjectAssigneeIdsTests(SimpleTestCase):
 
     def test_accepts_non_admin_project_members(self):
         with patch(
-            "apps.bugboardapi.modules.issues.rules.classify_project_assignment_user_ids",
+            "apps.bugboardapi.modules.issues.services.classify_project_assignment_user_ids",
             return_value=([], [], []),
         ):
-            validate_project_assignee_ids(project=object(), assignee_ids=[10])
+            issue_service.validate_project_assignee_ids(project=object(), assignee_ids=[10])
 
 
 class RevocableJWTAuthenticationTests(SimpleTestCase):

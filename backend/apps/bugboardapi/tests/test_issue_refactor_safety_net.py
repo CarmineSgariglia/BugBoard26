@@ -4,12 +4,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
-from apps.bugboardapi.modules.issues.activity import create_attachment_for_event
-from apps.bugboardapi.modules.issues.commands import (
-    create_issue_comment,
-    create_issue_for_project,
-    update_issue_from_serializer,
-)
+from apps.bugboardapi.modules.issues.activity import issue_activity_service
 from apps.bugboardapi.modules.issues.models import (
     Attachment,
     EventType,
@@ -19,6 +14,7 @@ from apps.bugboardapi.modules.issues.models import (
     IssueStatus,
 )
 from apps.bugboardapi.modules.issues.serializers import IssueSerializer
+from apps.bugboardapi.modules.issues.services import issue_service
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
 from apps.bugboardapi.modules.tags.models import Tag
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
@@ -383,17 +379,18 @@ class IssueRefactorSafetyNetTests(APITestCase):
         saved_path = f"issue-attachments/{self.issue.issue_id}/partial.txt"
 
         with (
-            patch(
-                "apps.bugboardapi.modules.issues.activity.save_issue_uploaded_file",
+            patch.object(
+                issue_activity_service,
+                "save_uploaded_file",
                 side_effect=[
                     (saved_path, "text/plain", 12, "partial.txt"),
                     ValidationError({"file": "broken second file"}),
                 ],
             ),
-            patch("apps.bugboardapi.modules.issues.activity.delete_media_path") as delete_media_path_mock,
+            patch.object(issue_activity_service, "delete_media_path") as delete_media_path_mock,
         ):
             with self.assertRaises(ValidationError):
-                create_attachment_for_event(event, payload)
+                issue_activity_service.create_attachment_for_event(event, payload)
 
         self.assertFalse(
             Attachment.objects.filter(update=event, path=saved_path).exists()
@@ -444,11 +441,11 @@ class IssueTransactionalSafetyNetTests(APITestCase):
         serializer.is_valid(raise_exception=True)
 
         with patch(
-            "apps.bugboardapi.modules.issues.commands.notify_issue_added",
+            "apps.bugboardapi.modules.issues.services.notify_issue_added",
             side_effect=RuntimeError("issue add notification failed"),
         ):
             with self.assertRaisesMessage(RuntimeError, "issue add notification failed"):
-                create_issue_for_project(
+                issue_service.create_issue_for_project(
                     serializer=serializer,
                     reporter=self.admin,
                     project=self.project,
@@ -473,11 +470,11 @@ class IssueTransactionalSafetyNetTests(APITestCase):
         ).count()
 
         with patch(
-            "apps.bugboardapi.modules.issues.commands.notify_issue_updated",
+            "apps.bugboardapi.modules.issues.services.notify_issue_updated",
             side_effect=RuntimeError("issue update notification failed"),
         ):
             with self.assertRaisesMessage(RuntimeError, "issue update notification failed"):
-                update_issue_from_serializer(
+                issue_service.update_issue_from_serializer(
                     serializer=serializer,
                     actor=self.admin,
                     raw_message="updated",
@@ -501,11 +498,11 @@ class IssueTransactionalSafetyNetTests(APITestCase):
         ).count()
 
         with patch(
-            "apps.bugboardapi.modules.issues.commands.notify_issue_updated",
+            "apps.bugboardapi.modules.issues.services.notify_issue_updated",
             side_effect=RuntimeError("comment notification failed"),
         ):
             with self.assertRaisesMessage(RuntimeError, "comment notification failed"):
-                create_issue_comment(
+                issue_service.create_issue_comment(
                     issue=self.issue,
                     actor=self.member,
                     raw_message="A comment",

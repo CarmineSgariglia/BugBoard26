@@ -7,12 +7,8 @@ from django.test import TestCase
 from PIL import Image
 from rest_framework.test import APIRequestFactory
 
-from apps.bugboardapi.modules.users.commands import save_profile_image_for_user
 from apps.bugboardapi.modules.users.models import UserProfileImage
-from apps.bugboardapi.modules.users.mutations import (
-    create_user_from_validated_data,
-    update_user_from_validated_data,
-)
+from apps.bugboardapi.modules.users.services import user_service
 from apps.bugboardapi.roles import ADMIN_GROUP_NAME, DEVELOPER_GROUP_NAME, get_global_role
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
@@ -34,13 +30,14 @@ class UserTransactionBoundariesTests(TestCase):
         self.member.profile.profile_img = f"profile-images/{self.member.id}/existing.png"
         self.member.profile.save(update_fields=["profile_img"])
 
-    @patch(
-        "apps.bugboardapi.modules.users.mutations._save_profile_image",
+    @patch.object(
+        user_service.__class__,
+        "_save_profile_image",
         side_effect=RuntimeError("profile save failed"),
     )
     def test_create_user_rolls_back_when_profile_persistence_fails(self, _mock_profile_save):
         with self.assertRaisesMessage(RuntimeError, "profile save failed"):
-            create_user_from_validated_data(
+            user_service.create_from_validated_data(
                 {
                     "username": "txn_new_user",
                     "email": "txn_new_user@example.com",
@@ -57,10 +54,7 @@ class UserTransactionBoundariesTests(TestCase):
             self.member.__class__.objects.filter(username="txn_new_user").exists()
         )
 
-    @patch(
-        "apps.bugboardapi.modules.users.mutations.assign_global_role",
-        side_effect=RuntimeError("role assignment failed"),
-    )
+    @patch("apps.bugboardapi.modules.users.services.assign_global_role", side_effect=RuntimeError("role assignment failed"))
     def test_update_user_rolls_back_fields_and_profile_when_role_assignment_fails(
         self, _mock_assign_role
     ):
@@ -68,7 +62,7 @@ class UserTransactionBoundariesTests(TestCase):
         original_profile_img = self.member.profile.profile_img
 
         with self.assertRaisesMessage(RuntimeError, "role assignment failed"):
-            update_user_from_validated_data(
+            user_service.update_from_validated_data(
                 self.member,
                 {
                     "username": "txn_member_updated",
@@ -99,14 +93,14 @@ class UserTransactionBoundariesTests(TestCase):
         request.user = self.member
 
         with patch(
-            "apps.bugboardapi.modules.users.commands.store_upload",
+            "apps.bugboardapi.modules.users.services.store_upload",
             return_value=SimpleNamespace(
                 path=f"profile-images/{self.member.id}/new-avatar.png",
                 mime_type="image/png",
                 size=8,
             ),
         ), patch(
-            "apps.bugboardapi.modules.users.commands.compress_image_upload",
+            "apps.bugboardapi.modules.users.services.compress_image_upload",
             return_value=SimpleNamespace(
                 file=SimpleUploadedFile(
                     "avatar.webp",
@@ -123,10 +117,10 @@ class UserTransactionBoundariesTests(TestCase):
             autospec=True,
             side_effect=RuntimeError("profile update failed"),
         ), patch(
-            "apps.bugboardapi.modules.users.commands.default_storage.delete"
+            "apps.bugboardapi.modules.users.services.default_storage.delete"
         ) as mock_delete:
             with self.assertRaisesMessage(RuntimeError, "profile update failed"):
-                save_profile_image_for_user(request=request, user=self.member)
+                user_service.save_profile_image(request=request, user=self.member)
 
         self.member.refresh_from_db()
         self.member.profile.refresh_from_db()

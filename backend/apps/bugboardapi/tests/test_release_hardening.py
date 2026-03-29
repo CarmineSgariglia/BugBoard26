@@ -7,13 +7,9 @@ from rest_framework.test import APITestCase
 
 from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
-from apps.bugboardapi.modules.projects.commands import (
-    create_project_with_team,
-    delete_project_and_notify,
-    update_project_with_team,
-)
 from apps.bugboardapi.modules.projects.models import ProjectMembership
 from apps.bugboardapi.modules.projects.serializers import ProjectSerializer
+from apps.bugboardapi.modules.projects.services import project_service
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -105,7 +101,7 @@ class ProjectViewRegressionTests(APITestCase):
         returned_names = {item["name"] for item in response.data}
         self.assertEqual(returned_names, {"Alpha Board"})
 
-    @patch("apps.bugboardapi.modules.projects.commands.notify_project_removed")
+    @patch("apps.bugboardapi.modules.projects.services.notify_project_removed")
     def test_project_delete_notifies_members_before_deletion(self, mock_notify_project_removed):
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.delete(f"/api/projects/{self.alpha_project.project_id}")
@@ -117,7 +113,7 @@ class ProjectViewRegressionTests(APITestCase):
         }
         self.assertEqual(notified_user_ids, {self.admin.id, self.member.id})
 
-    @patch("apps.bugboardapi.modules.projects.commands.notify_project_removed")
+    @patch("apps.bugboardapi.modules.projects.services.notify_project_removed")
     def test_project_delete_skips_inactive_members_in_notifications(self, mock_notify_project_removed):
         self.member.is_active = False
         self.member.save(update_fields=["is_active"])
@@ -235,11 +231,11 @@ class ProjectTransactionalSafetyNetTests(APITestCase):
         serializer.is_valid(raise_exception=True)
 
         with patch(
-            "apps.bugboardapi.modules.projects.commands.notify_project_assigned",
+            "apps.bugboardapi.modules.projects.services.notify_project_assigned",
             side_effect=RuntimeError("project add notification failed"),
         ):
             with self.assertRaisesMessage(RuntimeError, "project add notification failed"):
-                create_project_with_team(
+                project_service.create_project_with_team(
                     serializer=serializer,
                     creator=self.admin,
                     raw_user_ids=[self.member.id],
@@ -258,11 +254,11 @@ class ProjectTransactionalSafetyNetTests(APITestCase):
         serializer.is_valid(raise_exception=True)
 
         with patch(
-            "apps.bugboardapi.modules.projects.commands.notify_project_unassigned",
+            "apps.bugboardapi.modules.projects.services.notify_project_unassigned",
             side_effect=RuntimeError("project unassign notification failed"),
         ):
             with self.assertRaisesMessage(RuntimeError, "project unassign notification failed"):
-                update_project_with_team(
+                project_service.update_project_with_team(
                     serializer=serializer,
                     project=self.project,
                     raw_user_ids=[],
@@ -281,7 +277,7 @@ class ProjectTransactionalSafetyNetTests(APITestCase):
 
     def test_project_removed_notification_survives_project_deletion(self):
         with self.captureOnCommitCallbacks(execute=True):
-            delete_project_and_notify(project=self.project)
+            project_service.delete_project_and_notify(project=self.project)
 
         self.assertFalse(
             ProjectMembership.objects.filter(project_id=self.project.project_id).exists()

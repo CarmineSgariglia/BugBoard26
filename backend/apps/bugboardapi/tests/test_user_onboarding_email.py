@@ -5,7 +5,7 @@ from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
-from apps.bugboardapi.modules.users.mutations import create_user_from_validated_data
+from apps.bugboardapi.modules.users.services import user_service
 from apps.bugboardapi.roles import ADMIN_GROUP_NAME
 from apps.bugboardapi.tests.utils import create_user_with_profile
 
@@ -26,11 +26,11 @@ class UserOnboardingEmailEndpointTests(APITransactionTestCase):
         BREVO_SENDER_NAME="BugBoard26",
     )
     @patch(
-        "apps.bugboardapi.modules.users.email_delivery.EmailMessage.send",
+        "apps.bugboardapi.common.email_sender.EmailMessage.send",
         autospec=True,
         return_value=1,
     )
-    @patch("apps.bugboardapi.modules.users.email_delivery.send_mail")
+    @patch("apps.bugboardapi.common.email_sender.send_mail")
     def test_create_user_without_password_uses_brevo_onboarding_template(
         self,
         mock_send_mail,
@@ -67,7 +67,7 @@ class UserOnboardingEmailEndpointTests(APITransactionTestCase):
         EMAIL_PROVIDER="console",
         DEFAULT_FROM_EMAIL="noreply@example.com",
     )
-    @patch("apps.bugboardapi.modules.users.email_delivery.send_mail")
+    @patch("apps.bugboardapi.common.email_sender.send_mail")
     def test_create_user_without_password_uses_text_email_for_non_brevo_provider(
         self,
         mock_send_mail,
@@ -98,7 +98,7 @@ class UserOnboardingEmailEndpointTests(APITransactionTestCase):
         BREVO_NEW_USER_TEMPLATE_ID="",
         DEFAULT_FROM_EMAIL="noreply@example.com",
     )
-    @patch("apps.bugboardapi.modules.users.email_delivery.EmailMessage.send")
+    @patch("apps.bugboardapi.common.email_sender.EmailMessage.send")
     def test_create_user_returns_503_when_brevo_template_is_missing(
         self,
         mock_email_send,
@@ -128,7 +128,7 @@ class UserOnboardingEmailEndpointTests(APITransactionTestCase):
         DEFAULT_FROM_EMAIL="noreply@example.com",
     )
     @patch(
-        "apps.bugboardapi.modules.users.email_delivery.send_mail",
+        "apps.bugboardapi.common.email_sender.send_mail",
         side_effect=RuntimeError("provider down"),
     )
     def test_create_user_returns_503_and_keeps_user_when_email_delivery_fails(
@@ -156,9 +156,12 @@ class UserOnboardingEmailEndpointTests(APITransactionTestCase):
 
 
 class UserOnboardingEmailMutationTests(TestCase):
-    @patch("apps.bugboardapi.modules.users.mutations.send_new_user_credentials_email")
     @patch(
-        "apps.bugboardapi.modules.users.mutations._save_profile_image",
+        "apps.bugboardapi.modules.users.services.user_onboarding_email_service.send_credentials_email"
+    )
+    @patch.object(
+        user_service.__class__,
+        "_save_profile_image",
         side_effect=RuntimeError("profile save failed"),
     )
     def test_create_user_does_not_send_email_when_persistence_fails(
@@ -167,7 +170,7 @@ class UserOnboardingEmailMutationTests(TestCase):
         mock_send_credentials,
     ):
         with self.assertRaisesMessage(RuntimeError, "profile save failed"):
-            create_user_from_validated_data(
+            user_service.create_from_validated_data(
                 {
                     "username": "txn_new_user",
                     "email": "txn_new_user@example.com",

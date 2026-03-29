@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
 from apps.bugboardapi.common.sse import build_sse_response, parse_last_event_id, stream_sse_events
-from apps.bugboardapi.modules.issues.activity import create_issue_event
+from apps.bugboardapi.modules.issues.activity import issue_activity_service
 from apps.bugboardapi.modules.issues.models import EventType, Issue, IssueStatus
 from apps.bugboardapi.modules.issues.realtime import open_issue_subscription
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
@@ -201,13 +201,13 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_issue_update_stream_emits_only_events_for_the_requested_issue(self):
-        issue_event = create_issue_event(
+        issue_event = issue_activity_service.create_event(
             issue=self.issue,
             actor=self.member,
             event_type=EventType.COMMENT,
             message="Visible comment",
         )
-        create_issue_event(
+        issue_activity_service.create_event(
             issue=self.other_issue,
             actor=self.other_member,
             event_type=EventType.STATUS_CHANGE,
@@ -236,13 +236,13 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         response.close()
 
     def test_issue_update_stream_resumes_from_last_event_id(self):
-        first_event = create_issue_event(
+        first_event = issue_activity_service.create_event(
             issue=self.issue,
             actor=self.member,
             event_type=EventType.COMMENT,
             message="First",
         )
-        second_event = create_issue_event(
+        second_event = issue_activity_service.create_event(
             issue=self.issue,
             actor=self.member,
             event_type=EventType.STATUS_CHANGE,
@@ -268,7 +268,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         response.close()
 
     def test_issue_update_stream_ignores_invalid_last_event_id(self):
-        issue_event = create_issue_event(
+        issue_event = issue_activity_service.create_event(
             issue=self.issue,
             actor=self.member,
             event_type=EventType.COMMENT,
@@ -327,7 +327,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         subscription = open_issue_subscription(self.issue.issue_id)
 
         with transaction.atomic():
-            create_issue_event(
+            issue_activity_service.create_event(
                 issue=self.issue,
                 actor=self.member,
                 event_type=EventType.COMMENT,
@@ -347,7 +347,7 @@ class IssueUpdateStreamTests(APITransactionTestCase):
         first_subscription = open_issue_subscription(self.issue.issue_id)
         second_subscription = open_issue_subscription(self.issue.issue_id)
 
-        create_issue_event(
+        issue_activity_service.create_event(
             issue=self.issue,
             actor=self.member,
             event_type=EventType.COMMENT,

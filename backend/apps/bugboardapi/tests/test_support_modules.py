@@ -9,7 +9,7 @@ from django.test import SimpleTestCase, TestCase
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from apps.bugboardapi.modules.issues.rules import validate_project_assignee_ids
+from apps.bugboardapi.modules.issues.services import issue_service
 from apps.bugboardapi.security.passwords import (
     build_password_validation_user,
     ensure_valid_password,
@@ -103,19 +103,19 @@ class IssueRulesDirectTests(TestCase):
         )
 
     def test_validate_project_assignee_ids_allows_none_or_empty(self):
-        validate_project_assignee_ids(project=self.project, assignee_ids=None)
-        validate_project_assignee_ids(project=self.project, assignee_ids=[])
+        issue_service.validate_project_assignee_ids(project=self.project, assignee_ids=None)
+        issue_service.validate_project_assignee_ids(project=self.project, assignee_ids=[])
 
     def test_validate_project_assignee_ids_rejects_non_member(self):
         with self.assertRaises(ValidationError):
-            validate_project_assignee_ids(
+            issue_service.validate_project_assignee_ids(
                 project=self.project,
                 assignee_ids=[self.outsider.id],
             )
 
     def test_validate_project_assignee_ids_rejects_admin_users(self):
         with self.assertRaises(ValidationError):
-            validate_project_assignee_ids(
+            issue_service.validate_project_assignee_ids(
                 project=self.project,
                 assignee_ids=[self.admin.id],
             )

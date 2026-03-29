@@ -34,13 +34,6 @@ from .serializers import (
     IssueSuggestionSerializer,
     IssueSerializer,
 )
-from .commands import (
-    assign_issue_users,
-    create_issue_for_project,
-    create_issue_comment,
-    unassign_issue_users,
-    update_issue_from_serializer,
-)
 from .membership import (
     is_admin_issue_subscribed,
     subscribe_admin_to_issue,
@@ -48,6 +41,7 @@ from .membership import (
 )
 from .queries import list_issue_suggestion_memberships, list_project_issues_queryset
 from .realtime import open_issue_subscription
+from .services import issue_service
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +105,11 @@ class ProjectIssueListCreateView(APIView):
         require_project_access(request.user, project)
         serializer = IssueSerializer(data=request.data, context={"request": request, "project": project})
         serializer.is_valid(raise_exception=True)
-        issue = create_issue_for_project(serializer=serializer, reporter=request.user, project=project)
+        issue = issue_service.create_issue_for_project(
+            serializer=serializer,
+            reporter=request.user,
+            project=project,
+        )
         return Response(IssueSerializer(issue, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
@@ -157,7 +155,7 @@ class IssueViewSet(
         return filter_by_project_access(queryset=_issue_queryset(), user=self.request.user)
 
     def perform_update(self, serializer):
-        update_issue_from_serializer(
+        issue_service.update_issue_from_serializer(
             serializer=serializer,
             actor=self.request.user,
             raw_message=self.request.data.get("message", ""),
@@ -191,7 +189,7 @@ class IssueViewSet(
             return Response(IssueEventSerializer(events, many=True).data)
 
         require_assignee_or_admin(request.user, issue)
-        event = create_issue_comment(
+        event = issue_service.create_issue_comment(
             issue=issue,
             actor=request.user,
             raw_message=request.data.get("message", ""),
@@ -286,7 +284,7 @@ class IssueAssigneeDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         require_admin(request.user)
         require_project_access(request.user, issue.project)
-        assign_issue_users(issue=issue, actor=request.user, raw_user_ids=[user_id])
+        issue_service.assign_issue_users(issue=issue, actor=request.user, raw_user_ids=[user_id])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
@@ -303,5 +301,5 @@ class IssueAssigneeDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         require_admin(request.user)
         require_project_access(request.user, issue.project)
-        unassign_issue_users(issue=issue, actor=request.user, raw_user_ids=[user_id])
+        issue_service.unassign_issue_users(issue=issue, actor=request.user, raw_user_ids=[user_id])
         return Response(status=status.HTTP_204_NO_CONTENT)

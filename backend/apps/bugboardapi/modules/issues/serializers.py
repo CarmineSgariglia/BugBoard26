@@ -7,12 +7,8 @@ from ..tags.serializers import TagSerializer
 from ..tags.services import validate_existing_tag_ids
 from ..projects.serializers import ProjectMembershipSerializer
 from ..users.serializers import UserReadSerializer
-from .mutations import (
-    create_issue_from_validated_data,
-    update_issue_from_validated_data,
-)
 from .models import Attachment, Issue, IssueEvent, IssueStatus
-from .rules import validate_project_assignee_ids
+from .services import issue_service
 
 
 class IssueSerializer(serializers.ModelSerializer):
@@ -79,7 +75,7 @@ class IssueSerializer(serializers.ModelSerializer):
         assignee_ids = attrs.get("assigneeIds")
         project = self.context.get("project") or getattr(self.instance, "project", None)
         if project is not None:
-            validate_project_assignee_ids(project=project, assignee_ids=assignee_ids)
+            issue_service.validate_project_assignee_ids(project=project, assignee_ids=assignee_ids)
 
         tag_ids = attrs.get("tagIds")
         validate_existing_tag_ids(tag_ids)
@@ -87,10 +83,10 @@ class IssueSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        return create_issue_from_validated_data(validated_data)
+        return issue_service.create_from_validated_data(validated_data)
 
     def update(self, instance, validated_data):
-        return update_issue_from_validated_data(instance, validated_data)
+        return issue_service.update_from_validated_data(instance, validated_data)
 
 
 class AttachmentSerializer(serializers.ModelSerializer):

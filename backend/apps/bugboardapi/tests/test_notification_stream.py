@@ -6,12 +6,12 @@ from rest_framework.test import APITransactionTestCase
 
 from apps.bugboardapi.modules.issues.models import Issue, IssueStatus
 from apps.bugboardapi.modules.notifications.models import NotifyType, NotifyUser
-from apps.bugboardapi.modules.projects.commands import delete_project_and_notify
 from apps.bugboardapi.modules.notifications.services import (
     notify_issue_assigned,
     notify_issue_closed,
     notify_issue_updated,
 )
+from apps.bugboardapi.modules.projects.services import project_service
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -144,7 +144,7 @@ class NotificationStreamTests(APITransactionTestCase):
             )
             self.assertEqual(member_response.status_code, status.HTTP_200_OK)
 
-            delete_project_and_notify(project=self.project, actor=self.admin)
+            project_service.delete_project_and_notify(project=self.project, actor=self.admin)
 
             member_chunk = next(iter(member_response.streaming_content))
             member_parsed = _parse_sse_chunk(member_chunk)

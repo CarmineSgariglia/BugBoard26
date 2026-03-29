@@ -18,7 +18,7 @@ class OtpDeliveryContractsTests(APITestCase):
         )
 
     @patch(
-        "apps.bugboardapi.modules.auth.password_reset._send_otp_email",
+        "apps.bugboardapi.modules.auth.password_reset.password_reset_service.send_otp_email",
         side_effect=RuntimeError("provider down"),
     )
     def test_failed_otp_delivery_keeps_previous_open_code_usable(self, _mock_send):

@@ -1,8 +1,8 @@
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from apps.bugboardapi.modules.issues.commands import assign_issue_users
 from apps.bugboardapi.modules.issues.models import Issue
+from apps.bugboardapi.modules.issues.services import issue_service
 from apps.bugboardapi.tests.utils import create_project_with_members, create_user_with_profile
 
 
@@ -39,7 +39,7 @@ class IssueAssignmentPolicyContractsTests(TestCase):
 
     def test_assign_issue_users_rejects_non_member_with_user_ids_error_key(self):
         with self.assertRaises(ValidationError) as exc:
-            assign_issue_users(
+            issue_service.assign_issue_users(
                 issue=self.issue,
                 actor=self.admin,
                 raw_user_ids=[self.outsider.id],
@@ -52,7 +52,7 @@ class IssueAssignmentPolicyContractsTests(TestCase):
 
     def test_assign_issue_users_rejects_admin_users_with_user_ids_error_key(self):
         with self.assertRaises(ValidationError) as exc:
-            assign_issue_users(
+            issue_service.assign_issue_users(
                 issue=self.issue,
                 actor=self.admin,
                 raw_user_ids=[self.admin.id],
@@ -68,7 +68,7 @@ class IssueAssignmentPolicyContractsTests(TestCase):
         self.member.save(update_fields=["is_active"])
 
         with self.assertRaises(ValidationError) as exc:
-            assign_issue_users(
+            issue_service.assign_issue_users(
                 issue=self.issue,
                 actor=self.admin,
                 raw_user_ids=[self.member.id],

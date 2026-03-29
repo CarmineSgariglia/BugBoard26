@@ -25,7 +25,7 @@ from ...security.token_sessions import (
     revoke_session_from_access,
     revoke_session_from_refresh,
 )
-from .password_reset import issue_otp_for_email, reset_password_with_otp, verify_otp
+from .password_reset import password_reset_service
 from ..users.serializers import UserReadSerializer
 from .serializers import (
     CSRFTokenResponseSerializer,
@@ -259,7 +259,7 @@ class PasswordOTPRequestView(APIView):
         serializer = PasswordOTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        issue_otp_for_email(email)
+        password_reset_service.issue_otp_for_email(email)
         return Response({"detail": "If the email exists, an OTP has been sent."})
 
 
@@ -281,7 +281,7 @@ class PasswordOTPVerifyView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         code = serializer.validated_data["code"]
-        valid, expires_at = verify_otp(email=email, code=code)
+        valid, expires_at = password_reset_service.verify_otp(email=email, code=code)
         if not valid:
             return Response({"valid": False})
         return Response({"valid": True, "expiresAt": expires_at})
@@ -306,7 +306,11 @@ class PasswordResetView(APIView):
         email = serializer.validated_data["email"]
         code = serializer.validated_data["code"]
         new_password = serializer.validated_data["newPassword"]
-        changed = reset_password_with_otp(email=email, code=code, new_password=new_password)
+        changed = password_reset_service.reset_password_with_otp(
+            email=email,
+            code=code,
+            new_password=new_password,
+        )
         if not changed:
             return Response({"detail": "Invalid or expired OTP"}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"detail": "Password reset completed"})

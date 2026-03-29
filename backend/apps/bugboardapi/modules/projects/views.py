@@ -9,13 +9,9 @@ from rest_framework import serializers
 
 from ...permissions import filter_by_project_access, require_admin, require_project_access
 from .membership import visible_project_memberships
-from .commands import (
-    create_project_with_team,
-    delete_project_and_notify,
-    update_project_with_team,
-)
 from .models import Project, ProjectMembership
 from .serializers import ProjectMembershipSerializer, ProjectSerializer
+from .services import project_service
 
 subscription_state_serializer = inline_serializer(
     name="ProjectSubscriptionState",
@@ -81,7 +77,11 @@ class ProjectViewSet(
     def perform_create(self, serializer):
         require_admin(self.request.user)
         raw_user_ids = self.request.data.get("userIds", self.request.data.get("team", []))
-        create_project_with_team(serializer=serializer, creator=self.request.user, raw_user_ids=raw_user_ids)
+        project_service.create_project_with_team(
+            serializer=serializer,
+            creator=self.request.user,
+            raw_user_ids=raw_user_ids,
+        )
 
     def partial_update(self, request, *args, **kwargs):
         require_admin(request.user)
@@ -92,7 +92,7 @@ class ProjectViewSet(
         serializer = self.get_serializer(instance, data=payload, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        update_project_with_team(
+        project_service.update_project_with_team(
             serializer=serializer,
             project=instance,
             raw_user_ids=raw_user_ids,
@@ -105,7 +105,7 @@ class ProjectViewSet(
     def destroy(self, request, *args, **kwargs):
         require_admin(request.user)
         project = self.get_object()
-        delete_project_and_notify(project=project, actor=request.user)
+        project_service.delete_project_and_notify(project=project, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get"], url_path="members")
