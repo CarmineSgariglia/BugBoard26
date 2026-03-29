@@ -59,13 +59,7 @@ def _validate_refresh_cookie_path(*, cookie_path: str) -> str:
     return normalized_path
 
 
-def _validate_realtime_worker_topology(
-    *,
-    realtime_backend: str,
-    gunicorn_workers: int,
-    debug: bool,
-    testing: bool,
-) -> None:
+def _validate_realtime_worker_topology() -> None:
     return None
 
 
@@ -190,14 +184,8 @@ IS_TESTING = any(arg in {"test", "pytest"} for arg in sys.argv)
 REALTIME_EVENT_BACKEND = (os.getenv("REALTIME_EVENT_BACKEND", "memory") or "memory").strip().lower()
 if REALTIME_EVENT_BACKEND != "memory":
     raise ImproperlyConfigured("REALTIME_EVENT_BACKEND must be 'memory'")
-GUNICORN_WORKERS = int(os.getenv("GUNICORN_WORKERS", "1"))
 
-_validate_realtime_worker_topology(
-    realtime_backend=REALTIME_EVENT_BACKEND,
-    gunicorn_workers=GUNICORN_WORKERS,
-    debug=DEBUG,
-    testing=IS_TESTING,
-)
+_validate_realtime_worker_topology()
 
 STATIC_URL = "/static/"
 STATIC_ROOT = Path(os.getenv("STATIC_ROOT", str(BASE_DIR / "staticfiles")))

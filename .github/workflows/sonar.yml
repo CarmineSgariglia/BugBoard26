@@ -95,11 +95,9 @@ jobs:
               source.text = "."
 
           for cls in root.findall(".//class"):
-              filename = cls.get("filename", "")
-              if filename.startswith("bugboardapi/"):
-                  cls.set("filename", f"backend/apps/{filename}")
-              elif filename:
-                  cls.set("filename", f"backend/config/{filename}")
+              filename = cls.get("filename", "").lstrip("./")
+              if filename and not filename.startswith("backend/"):
+                  cls.set("filename", f"backend/{filename}")
 
           tree.write("/tmp/coverage-sonar.xml", encoding="utf-8", xml_declaration=True)
           PY

@@ -1,6 +1,12 @@
 [run]
 branch = True
 relative_files = True
+omit =
+    apps/bugboardapi/tests/*
+    unit_test/*
 
 [report]
 show_missing = True
+omit =
+    apps/bugboardapi/tests/*
+    unit_test/*

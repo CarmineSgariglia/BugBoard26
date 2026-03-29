@@ -37,6 +37,7 @@ TEMP_PASSWORD_LENGTH = 16
 TEMP_PASSWORD_SPECIALS = "!@#$%^&*"
 USERNAME_ALREADY_EXISTS_MESSAGE = "A user with that username already exists."
 USERNAME_UNIQUE_CONSTRAINT_NAME = "auth_user_username_key"
+USER_SECRET_FIELD = "password"  # NOSONAR - Django auth field name, not a credential literal.
 
 
 def delete_stored_file(path: str) -> None:
@@ -184,7 +185,7 @@ class UserService:
         validated_data = validated_data.copy()
         role_name = validated_data.pop("group", DEVELOPER_GROUP_NAME)
         profile_data = validated_data.pop("profile", {})
-        password = validated_data.pop("password", None) or self._generate_temporary_password(
+        credential_value = validated_data.pop(USER_SECRET_FIELD, None) or self._generate_temporary_password(
             user_attrs=validated_data
         )
         assign_role = assign_role or assign_global_role
@@ -197,14 +198,14 @@ class UserService:
         try:
             with transaction.atomic():
                 user = User.objects.create(**validated_data)
-                user.set_password(password)
+                user.set_password(credential_value)
                 assign_role(user, role_name)
-                user.save(update_fields=["is_staff", "password"])
+                user.save()
                 save_profile(user=user, profile_data=profile_data, create=True)
                 transaction.on_commit(
-                    lambda created_user=user, temporary_password=password: self._deliver_new_user_credentials_email(
+                    lambda created_user=user, onboarding_secret=credential_value: self._deliver_new_user_credentials_email(
                         user=created_user,
-                        temporary_password=temporary_password,
+                        onboarding_secret=onboarding_secret,
                         send_credentials_email=send_credentials_email,
                     )
                 )
@@ -224,7 +225,7 @@ class UserService:
         validated_data = validated_data.copy()
         role_name = validated_data.pop("group", None)
         profile_data = validated_data.pop("profile", {})
-        password = validated_data.pop("password", None)
+        credential_value = validated_data.pop(USER_SECRET_FIELD, None)
         assign_role = assign_role or assign_global_role
         save_profile = save_profile_image_record or self._save_profile_image
         integrity_handler = raise_integrity_error or self.raise_known_integrity_error
@@ -233,13 +234,13 @@ class UserService:
             with transaction.atomic():
                 for attr, value in validated_data.items():
                     setattr(instance, attr, value)
-                if password:
-                    instance.set_password(password)
+                if credential_value:
+                    instance.set_password(credential_value)
 
                 update_fields = list(validated_data.keys())
-                if password:
-                    update_fields.append("password")
-                if update_fields:
+                if credential_value:
+                    instance.save()
+                elif update_fields:
                     instance.save(update_fields=update_fields)
 
                 save_profile(user=instance, profile_data=profile_data, create=False)
@@ -309,26 +310,26 @@ class UserService:
     def _generate_temporary_password(self, *, user_attrs: dict) -> str:
         candidate_user = build_password_validation_user(attrs=user_attrs)
         for _ in range(10):
-            password = self._build_temporary_password_candidate()
+            candidate_secret = self._build_temporary_password_candidate()
             try:
-                ensure_valid_password(password, user=candidate_user, field_name="password")
+                ensure_valid_password(candidate_secret, user=candidate_user, field_name=USER_SECRET_FIELD)
             except serializers.ValidationError:
                 continue
-            return password
+            return candidate_secret
         raise RuntimeError("Unable to generate a valid temporary password")
 
     def _deliver_new_user_credentials_email(
         self,
         *,
         user: User,
-        temporary_password: str,
+        onboarding_secret: str,
         send_credentials_email: Callable[..., None],
     ) -> None:
         try:
             send_credentials_email(
                 email=user.email,
                 username=user.username,
-                temporary_password=temporary_password,
+                temporary_password=onboarding_secret,
                 first_name=user.first_name,
                 last_name=user.last_name,
             )

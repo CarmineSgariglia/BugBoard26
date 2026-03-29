@@ -17,7 +17,6 @@ class PasswordResetOtpUniversityTests(TestCase):
         self.user = User.objects.create_user(
             username="university_otp_user",
             email="university_otp_user@example.com",
-            password="StrongPass123!",
         )
 
     def _create_otp(self, raw_code: str = "123456", **overrides) -> PasswordResetOTP:

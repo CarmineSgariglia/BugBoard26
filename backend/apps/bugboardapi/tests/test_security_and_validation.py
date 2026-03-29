@@ -368,24 +368,7 @@ class SettingsValidationTests(SimpleTestCase):
         )
 
     def test_memory_realtime_allows_multiple_workers_without_restrictions(self):
-        _validate_realtime_worker_topology(
-            realtime_backend="memory",
-            gunicorn_workers=2,
-            debug=False,
-            testing=False,
-        )
-        _validate_realtime_worker_topology(
-            realtime_backend="memory",
-            gunicorn_workers=2,
-            debug=True,
-            testing=False,
-        )
-        _validate_realtime_worker_topology(
-            realtime_backend="memory",
-            gunicorn_workers=2,
-            debug=False,
-            testing=True,
-        )
+        _validate_realtime_worker_topology()
 
 
 class AuthCsrfTests(APITestCase):
