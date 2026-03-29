@@ -1,28 +1,35 @@
 # BugBoard26
 
-BugBoard26 e un issue tracker full-stack per la gestione collaborativa di progetti, issue, attivita operative e notifiche in tempo reale.
+BugBoard26 è un'applicazione web progettata per raccogliere, organizzare e monitorare in modo semplice ed efficace bug, segnalazioni, idee e attività di miglioramento. Attraverso un approccio pratico e strutturato, mira a favorire la collaborazione tra i membri del team, aumentare la visibilità sulle criticità e rendere più fluido il processo di gestione e risoluzione delle issue.
 
-Il repository contiene:
+La repository contiene:
 
-- un frontend React 19 + TypeScript + Vite
-- un backend Django 5 + Django REST Framework
-- PostgreSQL come database
-- workflow Docker Compose per sviluppo, test e produzione
-- suite Bruno per il collaudo API
+- Frontend React 19 + TypeScript + Vite.
+- Backend Django 5 + Django REST Framework.
+- PostgreSQL come database.
+- Workflow Docker Compose per sviluppo, test e produzione.
+- Suite Bruno per il collaudo API.
+
+## Organizzazione del lavoro
+Tramite un sistema di task su Notion, è stato organizzato il lavoro del team in modo da avere una chiara visione di cosa fare e come farlo.
+
+Link al Notion: urly.it/31f8z7
 
 ## Panoramica
 
-Dal codice attuale emergono queste capacita principali:
+Le funzionalità principali del software sono:
 
-- autenticazione con access token JWT, refresh token in cookie HTTP-only e protezione CSRF
-- recupero password tramite OTP
-- gestione utenti con ruoli globali `admin` e `developer`
-- creazione e manutenzione di progetti con team associato
-- gestione issue con stato, priorita, tipo, assegnatari, tag e allegati
-- timeline attivita issue con commenti e stream Server-Sent Events
-- notifiche realtime con stream dedicato e sottoscrizioni admin a progetti e issue
-- upload avatar e media con storage locale in sviluppo e Google Cloud Storage in produzione
-- documentazione OpenAPI generata con `drf-spectacular`
+- Autenticazione con access token JWT, refresh token in cookie HTTP-only e protezione CSRF.
+- Recupero password tramite OTP inviato via email.
+- Gestione utenti con ruoli globali `admin` e `developer`.
+- Creazione e manutenzione di progetti con team associato.
+- Gestione issue con stato, priorita, tipo, assegnatari, tag e allegati.
+- Timeline attivita issue con commenti e stream Server-Sent Events (SSE).
+- Notifiche realtime con stream dedicato e sottoscrizioni admin a progetti e issue.
+- Upload avatar e media con storage locale in sviluppo e Google Cloud Storage in produzione.
+- Documentazione OpenAPI generata con `drf-spectacular`.
+- Funzionalià per la compressione di immagini.
+- Filtri per ricerche di issue e utenti.
 
 ## Stack Tecnologico
 
