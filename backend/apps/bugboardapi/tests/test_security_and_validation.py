@@ -367,19 +367,13 @@ class SettingsValidationTests(SimpleTestCase):
             ["35.240.52.33", "backend", "bugboard.it", "www.bugboard.it"],
         )
 
-    def test_memory_realtime_rejects_multiple_workers_outside_debug_and_tests(self):
-        with self.assertRaisesMessage(
-            ImproperlyConfigured,
-            "REALTIME_EVENT_BACKEND=memory requires GUNICORN_WORKERS=1 outside debug/test",
-        ):
-            _validate_realtime_worker_topology(
-                realtime_backend="memory",
-                gunicorn_workers=2,
-                debug=False,
-                testing=False,
-            )
-
-    def test_memory_realtime_allows_multiple_workers_only_in_debug_or_tests(self):
+    def test_memory_realtime_allows_multiple_workers_without_restrictions(self):
+        _validate_realtime_worker_topology(
+            realtime_backend="memory",
+            gunicorn_workers=2,
+            debug=False,
+            testing=False,
+        )
         _validate_realtime_worker_topology(
             realtime_backend="memory",
             gunicorn_workers=2,

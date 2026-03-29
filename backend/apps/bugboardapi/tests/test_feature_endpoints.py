@@ -321,6 +321,18 @@ class UserManagementEndpointTests(APITestCase):
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["userId"], self.member.id)
 
+    def test_non_admin_user_list_allows_explicit_user_ids_subset(self):
+        teammate = create_user_with_profile(
+            username="users_member_teammate",
+            email="users_member_teammate@example.com",
+            password="StrongPass123!",
+        )
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(f"/api/users?userIds={self.member.id},{teammate.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_user_ids = {item["userId"] for item in response.data["results"]}
+        self.assertEqual(returned_user_ids, {self.member.id, teammate.id})
+
     def test_admin_user_list_returns_multiple_users(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get("/api/users")
