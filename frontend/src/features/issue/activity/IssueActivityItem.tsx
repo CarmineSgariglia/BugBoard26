@@ -140,7 +140,6 @@ export const IssueActivityItem = forwardRef<HTMLDivElement, Props>(function Issu
         };
     }, [showNewMessageMarker]);
 
-    // Append (you) to the actor name if it's the current user's action
     const displayTitle = isMe && item.isComment
         ? `${item.actorName} (you)`
         : isMe && !item.isComment

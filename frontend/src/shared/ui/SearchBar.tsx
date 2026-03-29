@@ -1,7 +1,3 @@
-/*
-    SearchBar component
-*/
-
 import type { ChangeEvent } from "react";
 import { FaSearch } from "react-icons/fa";
 

@@ -1,15 +1,9 @@
 import React from "react";
 import { FiGlobe } from "react-icons/fi";
 
-/**
- * TextWithLinks
- * Intercetta tramite regex stringhe che iniziano per http:// o https://
- * e le ri-mappa in veri e propri anchor tags <a> mantenendo tutto il testo intermedio intoccato.
- */
 export function TextWithLinks({ text, className = "" }: { text: string; className?: string }) {
     if (!text) return null;
 
-    // RegEx standard per link (http/https o www.)
     const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/g;
 
     const parts = text.split(urlRegex);

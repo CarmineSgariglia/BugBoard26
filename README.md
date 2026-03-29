@@ -13,7 +13,7 @@ La repository contiene:
 ## Organizzazione del lavoro
 Tramite un sistema di task su Notion, è stato organizzato il lavoro del team in modo da avere una chiara visione di cosa fare e come farlo.
 
-Link al Notion: urly.it/31f8z7
+Link al Notion: [Link ->](https://urly.it/31f8z7)
 
 ## Panoramica
 
@@ -79,7 +79,7 @@ Le funzionalità principali del software sono:
 |-- Makefile                 # Shortcut operativi
 ```
 
-Nel backend la logica applicativa e organizzata principalmente in `backend/apps/bugboardapi/modules/`:
+Nel backend la logica applicativa è organizzata principalmente in `backend/apps/bugboardapi/modules/`:
 
 - `auth`
 - `users`
@@ -88,7 +88,7 @@ Nel backend la logica applicativa e organizzata principalmente in `backend/apps/
 - `notifications`
 - `tags`
 
-Nel frontend l'organizzazione e per layer:
+Nel frontend l'organizzazione è per layer:
 
 - `frontend/src/app` per bootstrap, router e provider
 - `frontend/src/pages` per le route
@@ -98,44 +98,41 @@ Nel frontend l'organizzazione e per layer:
 
 ## Prerequisiti
 
-Per il flusso standard bastano:
+Per l'esecuzione e la valutazione del progetto in ambiente isolato, è richiesta l'installazione dei seguenti strumenti:
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-- Docker
-- Docker Compose plugin
+Per l'ambiente di sviluppo locale e la compilazione manuale (opzionale), sono necessari inoltre:
+- Node.js (versione 20)
+- Python (versione 3.12)
 
-Opzionali, se vuoi lavorare anche fuori dai container:
+## Istruzioni per l'Esecuzione (Ambiente Locale)
 
-- Node.js 20
-- Python 3.12
+Di seguito sono riportati i passaggi per avviare l'intera infrastruttura dell'applicazione tramite Docker.
 
-## Avvio Rapido In Sviluppo
-
-1. Crea il file ambiente locale dal template:
-
+**1. Configurazione dell'Ambiente**
+Prima di avviare i container, è necessario configurare le variabili d'ambiente. Eseguire il seguente comando nella root del progetto per generare il file di configurazione a partire dal template fornito:
 ```bash
 cp env/dev.example .env
 ```
 
-2. Avvia l'intero stack:
-
+**2. Costruzione e Avvio dei Servizi**
+Avviare l'applicazione utilizzando Docker Compose. Il flag `--build` assicura che le immagini vengano ricompilate per includere eventuali ultime modifiche:
 ```bash
 docker compose up --build
 ```
+*I container si occuperanno automaticamente di configurare il database ed eseguire le migrazioni necessarie (`python manage.py migrate` e `relabel_bugboardapi`).*
 
-3. Apri i servizi:
+**3. Accesso ai Servizi**
+Una volta completato l'avvio, i servizi saranno accessibili ai seguenti indirizzi locali:
 
-- frontend: `http://localhost:5173`
-- health check backend: `http://localhost:8000/api/health`
-- Swagger UI: `http://localhost:8000/api/docs`
-- ReDoc: `http://localhost:8000/api/redoc`
-- Django admin: `http://localhost:8000/admin`
-
-All'avvio del backend il container esegue automaticamente:
-
-- `python manage.py relabel_bugboardapi`
-- `python manage.py migrate`
-
-In sviluppo il frontend usa Vite con proxy su `/api` e `/media`.
+| Servizio | URL Locale | Descrizione |
+|---|---|---|
+| **App Frontend** | [http://localhost:5173](http://localhost:5173) | Interfaccia utente principale (in sviluppo Vite agisce come proxy su `/api` e `/media`). |
+| **Backend Health** | [http://localhost:8000/api/health](http://localhost:8000/api/health) | Endpoint per verificare lo stato del server. |
+| **API Docs (Swagger)**| [http://localhost:8000/api/docs](http://localhost:8000/api/docs) | Documentazione interattiva delle API REST (formato Swagger UI). |
+| **API Docs (ReDoc)**  | [http://localhost:8000/api/redoc](http://localhost:8000/api/redoc) | Documentazione API alternativa (formato ReDoc). |
+| **Amministrazione**  | [http://localhost:8000/admin](http://localhost:8000/admin) | Pannello di amministrazione di Django. |
 
 ## Comandi Utili
 
@@ -287,6 +284,6 @@ Altri riferimenti utili gia presenti:
 - documenti di progetto: [Documentazione]
 - collezione Bruno: [BrunoTesting/BugBoard/README.md]
 
-## Contribuire
+## Stato del Progetto
 
-Le linee guida operative per lavorare sul repository sono in [CONTRIBUTING.md].
+Questo è un progetto accademico realizzato per un esame universitario. Essendo un progetto chiuso, **non si accettano contributi esterni o Pull Request**. Il codice è disponibile esclusivamente per fini valutativi.

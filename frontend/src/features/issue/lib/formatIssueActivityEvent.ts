@@ -1,5 +1,3 @@
-/* ADAPTER */
-
 import type { IssueUpdate } from "@shared/api/types/issues";
 
 export type UiActivityItem = {

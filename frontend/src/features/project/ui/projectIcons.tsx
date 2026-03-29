@@ -1,7 +1,7 @@
 import { PROJECT_ICONS, type ProjectIconId } from "./projectIconRegistry";
 
 /**
- * Helper per renderizzare l'icona dato un ID
+ * Helper to render the icon given an ID
  */
 export function getProjectIcon(id: string, size: number = 20, className: string = "") {
   const IconComponent = PROJECT_ICONS[id as ProjectIconId] || PROJECT_ICONS.folder;

@@ -20,7 +20,7 @@ interface ConfirmModalProps {
 export function ConfirmModal({
     isOpen, onClose, onConfirm, title, description, icon, confirmText, confirmVariant = "primary", isLoading, danger
 }: ConfirmModalProps) {
-    // Prevent background scrolling using our reusable hook
+
     useLockBodyScroll(isOpen);
 
     if (!isOpen) return null;
