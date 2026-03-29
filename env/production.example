@@ -10,6 +10,7 @@ DEBUG=False
 ALLOWED_HOSTS=35.240.52.33,your-domain.com,www.your-domain.com,backend
 
 # Gunicorn runtime
+# Realtime SSE in-memory: la configurazione production richiede un solo worker.
 GUNICORN_WORKERS=1
 GUNICORN_THREADS=8
 

@@ -271,7 +271,7 @@ Dettagli operativi:
 - compose produzione: [docker-compose.prod.yml]
 - script deploy remoto: [scripts/deploy_prod.sh]
 
-Nota architetturale: il realtime backend usa stream in memoria di processo. La documentazione di deploy del progetto considera quindi supportata la topologia con singola istanza backend e `GUNICORN_WORKERS=1`.
+Nota architetturale: il realtime backend usa stream in memoria di processo. La configurazione Django rifiuta quindi l'avvio fuori da debug/test se `REALTIME_EVENT_BACKEND=memory` e `GUNICORN_WORKERS` e diverso da `1`.
 
 ## Documentazione Interna
 

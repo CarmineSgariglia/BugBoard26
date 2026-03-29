@@ -59,6 +59,19 @@ def _validate_refresh_cookie_path(*, cookie_path: str) -> str:
     return normalized_path
 
 
+def _validate_realtime_worker_topology(
+    *,
+    realtime_backend: str,
+    gunicorn_workers: int,
+    debug: bool,
+    testing: bool,
+) -> None:
+    if realtime_backend == "memory" and not debug and not testing and gunicorn_workers != 1:
+        raise ImproperlyConfigured(
+            "REALTIME_EVENT_BACKEND=memory requires GUNICORN_WORKERS=1 outside debug/test"
+        )
+
+
 def _csv_env(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
@@ -176,6 +189,17 @@ USE_I18N = True
 USE_TZ = True
 
 IS_TESTING = any(arg in {"test", "pytest"} for arg in sys.argv)
+REALTIME_EVENT_BACKEND = (os.getenv("REALTIME_EVENT_BACKEND", "memory") or "memory").strip().lower()
+if REALTIME_EVENT_BACKEND != "memory":
+    raise ImproperlyConfigured("REALTIME_EVENT_BACKEND must be 'memory'")
+GUNICORN_WORKERS = int(os.getenv("GUNICORN_WORKERS", "1"))
+
+_validate_realtime_worker_topology(
+    realtime_backend=REALTIME_EVENT_BACKEND,
+    gunicorn_workers=GUNICORN_WORKERS,
+    debug=DEBUG,
+    testing=IS_TESTING,
+)
 
 STATIC_URL = "/static/"
 STATIC_ROOT = Path(os.getenv("STATIC_ROOT", str(BASE_DIR / "staticfiles")))

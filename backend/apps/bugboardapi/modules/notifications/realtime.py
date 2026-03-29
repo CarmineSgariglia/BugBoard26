@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from typing import TypeAlias
-
 from ...common.realtime import RealtimeEvent, RealtimeEventHub, RealtimeSubscription
 
-NotificationEvent: TypeAlias = RealtimeEvent
-NotificationSubscription: TypeAlias = RealtimeSubscription
+type NotificationEvent = RealtimeEvent
+type NotificationSubscription = RealtimeSubscription
 
 _notification_event_hub = RealtimeEventHub()
 

@@ -73,11 +73,12 @@ class IssueWorkflow:
         notifications: IssueNotificationHooks,
     ) -> IssueSideEffectPlan:
         self.ensure_valid_status(requested_status)
-        normalized_message = self._activity_service.validate_message(raw_message, strip=True)
+        normalized_message = self._activity_service.validate_message(
+            raw_message, strip=True
+        )
 
         if requested_status != old_status:
             return self._plan_status_change(
-                issue=issue,
                 actor=actor,
                 old_status=old_status,
                 new_status=requested_status,
@@ -98,7 +99,6 @@ class IssueWorkflow:
     def _plan_status_change(
         self,
         *,
-        issue: Issue,
         actor,
         old_status: str,
         new_status: str,
@@ -156,7 +156,9 @@ class IssueService:
         self._sync_issue_tags(issue=issue, tag_ids=resolved_tag_ids)
         return issue
 
-    def update_from_validated_data(self, instance: Issue, validated_data: dict) -> Issue:
+    def update_from_validated_data(
+        self, instance: Issue, validated_data: dict
+    ) -> Issue:
         assignee_ids = validated_data.pop("assigneeIds", None)
         tag_ids = validated_data.pop("tagIds", None)
         tag_names = validated_data.pop("tagNames", None)
@@ -170,7 +172,9 @@ class IssueService:
             self.replace_issue_assignees(issue=instance, assignee_ids=assignee_ids)
 
         if tag_ids is not None or tag_names is not None:
-            resolved_tag_ids = resolve_tag_ids(tag_ids=tag_ids or [], tag_names=tag_names or [])
+            resolved_tag_ids = resolve_tag_ids(
+                tag_ids=tag_ids or [], tag_names=tag_names or []
+            )
             self._sync_issue_tags(issue=instance, tag_ids=resolved_tag_ids)
 
         return instance
@@ -180,7 +184,9 @@ class IssueService:
         *,
         project,
         assignee_ids: list[int] | None,
-        classify_user_ids: Callable[..., tuple[list[int], list[int], list[int]]] | None = None,
+        classify_user_ids: (
+            Callable[..., tuple[list[int], list[int], list[int]]] | None
+        ) = None,
     ) -> None:
         self._validate_assignable_project_user_ids(
             project=project,
@@ -194,7 +200,9 @@ class IssueService:
         *,
         project,
         user_ids: list[int] | None,
-        classify_user_ids: Callable[..., tuple[list[int], list[int], list[int]]] | None = None,
+        classify_user_ids: (
+            Callable[..., tuple[list[int], list[int], list[int]]] | None
+        ) = None,
     ) -> None:
         self._validate_assignable_project_user_ids(
             project=project,
@@ -272,7 +280,9 @@ class IssueService:
         if not user_ids:
             raise ValidationError({"userIds": "At least one userId is required"})
 
-        self.validate_issue_assignment_user_ids(project=issue.project, user_ids=user_ids)
+        self.validate_issue_assignment_user_ids(
+            project=issue.project, user_ids=user_ids
+        )
 
         with transaction.atomic():
             assigned_users = self.add_issue_assignees(issue=issue, user_ids=user_ids)
@@ -338,7 +348,9 @@ class IssueService:
         notifications: IssueNotificationHooks | None = None,
     ) -> IssueEvent:
         notifications = notifications or self._notification_hooks()
-        message = self._activity_service.validate_message(raw_message, required=True, strip=True)
+        message = self._activity_service.validate_message(
+            raw_message, required=True, strip=True
+        )
         with transaction.atomic():
             return self._dispatch_side_effects(
                 issue=issue,
@@ -348,26 +360,36 @@ class IssueService:
                     message=message,
                     payload=payload,
                     notification_sender=notifications.issue_updated,
-                    notification_users=self._activity_service.notification_recipients(issue=issue, actor=actor),
+                    notification_users=self._activity_service.notification_recipients(
+                        issue=issue, actor=actor
+                    ),
                 ),
             )
 
-    def ensure_issue_assignees(self, *, issue: Issue, user_ids: list[int]) -> list[User]:
+    def ensure_issue_assignees(
+        self, *, issue: Issue, user_ids: list[int]
+    ) -> list[User]:
         assignees: list[User] = []
         for user_id in user_ids:
-            assignment, _ = IssueAssignee.objects.get_or_create(issue=issue, user_id=user_id)
+            assignment, _ = IssueAssignee.objects.get_or_create(
+                issue=issue, user_id=user_id
+            )
             assignees.append(assignment.user)
         return assignees
 
     def add_issue_assignees(self, *, issue: Issue, user_ids: list[int]) -> list[User]:
         added_assignees: list[User] = []
         for user_id in user_ids:
-            assignment, created = IssueAssignee.objects.get_or_create(issue=issue, user_id=user_id)
+            assignment, created = IssueAssignee.objects.get_or_create(
+                issue=issue, user_id=user_id
+            )
             if created:
                 added_assignees.append(assignment.user)
         return added_assignees
 
-    def remove_existing_issue_assignees(self, *, issue: Issue, user_ids: list[int]) -> list[User]:
+    def remove_existing_issue_assignees(
+        self, *, issue: Issue, user_ids: list[int]
+    ) -> list[User]:
         users = list(
             User.objects.filter(
                 issue_assignments__issue=issue,
@@ -380,8 +402,12 @@ class IssueService:
         ).delete()
         return users
 
-    def replace_issue_assignees(self, *, issue: Issue, assignee_ids: list[int]) -> list[User]:
-        IssueAssignee.objects.filter(issue=issue).exclude(user_id__in=assignee_ids).delete()
+    def replace_issue_assignees(
+        self, *, issue: Issue, assignee_ids: list[int]
+    ) -> list[User]:
+        IssueAssignee.objects.filter(issue=issue).exclude(
+            user_id__in=assignee_ids
+        ).delete()
         return self.ensure_issue_assignees(issue=issue, user_ids=assignee_ids)
 
     def _validate_assignable_project_user_ids(
@@ -400,11 +426,17 @@ class IssueService:
             user_ids=user_ids,
         )
         if invalid_ids:
-            raise ValidationError({field_name: f"Users must be members of project: {invalid_ids}"})
+            raise ValidationError(
+                {field_name: f"Users must be members of project: {invalid_ids}"}
+            )
         if admin_ids:
-            raise ValidationError({field_name: f"Admin users cannot be assigned to issues: {admin_ids}"})
+            raise ValidationError(
+                {field_name: f"Admin users cannot be assigned to issues: {admin_ids}"}
+            )
         if inactive_ids:
-            raise ValidationError({field_name: f"Users must be members of project: {inactive_ids}"})
+            raise ValidationError(
+                {field_name: f"Users must be members of project: {inactive_ids}"}
+            )
 
     def _notification_hooks(self) -> IssueNotificationHooks:
         return IssueNotificationHooks(
@@ -460,13 +492,15 @@ class IssueService:
 
         return event
 
-    def _merge_issue_notification_users(self, *, users: list[User], issue: Issue) -> list[User]:
+    def _merge_issue_notification_users(
+        self, *, users: list[User], issue: Issue
+    ) -> list[User]:
         recipients_by_id = {
-            user.id: user
-            for user in users
-            if getattr(user, "id", None) is not None
+            user.id: user for user in users if getattr(user, "id", None) is not None
         }
-        for user in effective_admin_issue_subscription_users(issue=issue, active_only=True):
+        for user in effective_admin_issue_subscription_users(
+            issue=issue, active_only=True
+        ):
             recipients_by_id[user.id] = user
         return list(recipients_by_id.values())
 
@@ -475,4 +509,7 @@ class IssueService:
         for tag_id in tag_ids:
             IssueTag.objects.get_or_create(issue=issue, tag_id=tag_id)
 
-issue_service = IssueService(workflow=IssueWorkflow(activity_service=issue_activity_service))
+
+issue_service = IssueService(
+    workflow=IssueWorkflow(activity_service=issue_activity_service)
+)

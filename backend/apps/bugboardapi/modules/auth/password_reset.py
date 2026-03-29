@@ -66,7 +66,12 @@ class PasswordResetService:
             logger.info("otp_verify_unknown email_hash=%s", self._email_hash(email))
             return False, None
 
-        valid, otp = self._validate_otp_attempt(user=user, code=code)
+        with transaction.atomic():
+            valid, otp = self._validate_otp_attempt(
+                user=user,
+                code=code,
+                lock=True,
+            )
         if not valid:
             logger.info("otp_verify_failed user_id=%s email_hash=%s", user.id, self._email_hash(user.email))
             return False, None
@@ -80,17 +85,23 @@ class PasswordResetService:
             logger.info("otp_reset_unknown email_hash=%s", self._email_hash(email))
             return False
 
-        valid, otp = self._validate_otp_attempt(user=user, code=code)
-        if not valid or otp is None:
-            logger.info("otp_reset_failed user_id=%s email_hash=%s", user.id, self._email_hash(user.email))
-            return False
-
-        self._password_validator(new_password, user=user, field_name="newPassword")
-
         with transaction.atomic():
+            valid, otp = self._validate_otp_attempt(
+                user=user,
+                code=code,
+                lock=True,
+                consume_on_match=True,
+            )
+            if not valid or otp is None:
+                logger.info(
+                    "otp_reset_failed user_id=%s email_hash=%s",
+                    user.id,
+                    self._email_hash(user.email),
+                )
+                return False
+
+            self._password_validator(new_password, user=user, field_name="newPassword")
             self._password_setter(user=user, new_password=new_password)
-            otp.is_used = True
-            otp.save(update_fields=["is_used"])
 
         logger.info("otp_reset_ok user_id=%s email_hash=%s", user.id, self._email_hash(user.email))
         return True
@@ -116,8 +127,13 @@ class PasswordResetService:
         *,
         user: User,
         code: str,
+        lock: bool = False,
+        consume_on_match: bool = False,
     ) -> tuple[bool, PasswordResetOTP | None]:
-        otp = PasswordResetOTP.objects.filter(user=user, is_used=False).order_by("-created_at").first()
+        otp_queryset = PasswordResetOTP.objects.filter(user=user, is_used=False)
+        if lock:
+            otp_queryset = otp_queryset.select_for_update()
+        otp = otp_queryset.order_by("-created_at").first()
         if not otp:
             return False, None
 
@@ -125,6 +141,8 @@ class PasswordResetService:
             return False, None
 
         if otp.matches_code(code):
+            if consume_on_match and not self._consume_pending_otp(otp=otp):
+                return False, None
             return True, otp
 
         otp.attempt_count += 1
@@ -133,6 +151,13 @@ class PasswordResetService:
             otp.is_used = True
         otp.save(update_fields=["attempt_count", "last_attempt_at", "is_used"])
         return False, otp
+
+    def _consume_pending_otp(self, *, otp: PasswordResetOTP) -> bool:
+        consumed_rows = PasswordResetOTP.objects.filter(pk=otp.pk, is_used=False).update(is_used=True)
+        if consumed_rows != 1:
+            return False
+        otp.is_used = True
+        return True
 
     def _mark_pending_otp_delivered(
         self,

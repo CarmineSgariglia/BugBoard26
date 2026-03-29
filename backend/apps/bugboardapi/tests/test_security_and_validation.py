@@ -18,6 +18,7 @@ from config.settings import (
     _build_allowed_hosts,
     _host_from_origin,
     _hosts_from_server_names,
+    _validate_realtime_worker_topology,
     _validate_refresh_cookie_path,
     _validate_secret_key,
 )
@@ -364,6 +365,32 @@ class SettingsValidationTests(SimpleTestCase):
                 ],
             ),
             ["35.240.52.33", "backend", "bugboard.it", "www.bugboard.it"],
+        )
+
+    def test_memory_realtime_rejects_multiple_workers_outside_debug_and_tests(self):
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            "REALTIME_EVENT_BACKEND=memory requires GUNICORN_WORKERS=1 outside debug/test",
+        ):
+            _validate_realtime_worker_topology(
+                realtime_backend="memory",
+                gunicorn_workers=2,
+                debug=False,
+                testing=False,
+            )
+
+    def test_memory_realtime_allows_multiple_workers_only_in_debug_or_tests(self):
+        _validate_realtime_worker_topology(
+            realtime_backend="memory",
+            gunicorn_workers=2,
+            debug=True,
+            testing=False,
+        )
+        _validate_realtime_worker_topology(
+            realtime_backend="memory",
+            gunicorn_workers=2,
+            debug=False,
+            testing=True,
         )
 
 
